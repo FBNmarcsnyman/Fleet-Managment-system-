@@ -1,0 +1,8 @@
+{
+  "name": "FBN FLEET MANAGEMENT",
+  "description": "A portal for FBN Transport drivers and supervisors to complete digital vehicle, trailer, and forklift checklists, including issue reporting with photo attachments.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

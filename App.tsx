@@ -1,0 +1,271 @@
+
+import React, { lazy, Suspense, useState } from 'react';
+import { useAuth, useUIState, useOperations, useVehicles, useWorkshop } from './contexts/AppContexts';
+
+import Login from './components/Login';
+import ClientLogin from './components/ClientLogin';
+import SupplierLogin from './components/SupplierLogin';
+import DriverChecklistAuth from './components/DriverChecklistAuth';
+import SupplierPODUploadView from './components/SupplierPODUploadView';
+import ClientQuoteView from './components/ClientQuoteView';
+import SupplierRegistrationPortal from './components/supplier/SupplierRegistrationPortal';
+
+
+import ManagementPortal from './components/ManagementPortal';
+import FleetPortal from './components/FleetPortal';
+import OperationsPortal from './components/operations/OperationsPortal';
+import WorkshopPortal from './components/WorkshopPortal';
+import FinancePortal from './components/FinancePortal';
+import IncidentManagement from './components/IncidentManagement';
+import HRPortal from './components/HRPortal';
+import UserManagement from './components/UserManagement';
+import Settings from './components/Settings';
+import DriverDashboard from './components/DriverDashboard';
+import ClientPortal from './components/ClientPortal';
+import SupplierPortal from './components/SupplierPortal';
+
+import Header from './components/shared/Header';
+import LiveAssistant from './components/LiveAssistant';
+import Modal from './components/Modal';
+import Toast from './components/Toast';
+import { User, Vehicle } from './types';
+
+// Lazy load modals
+const AddVehicleForm = lazy(() => import('./components/AddVehicleForm'));
+const AddCostForm = lazy(() => import('./components/AddCostForm'));
+const AddFuelEntryForm = lazy(() => import('./components/AddFuelEntryForm'));
+const AddRecurringCostForm = lazy(() => import('./components/AddRecurringCostForm'));
+const AddRevenueForm = lazy(() => import('./components/AddRevenueForm'));
+const AddServiceEntryForm = lazy(() => import('./components/AddServiceEntryForm'));
+const AddServiceIntervalForm = lazy(() => import('./components/AddServiceIntervalForm'));
+const AddUserForm = lazy(() => import('./components/AddUserForm'));
+const AddPartForm = lazy(() => import('./components/AddPartForm'));
+const AddPlannedServiceForm = lazy(() => import('./components/AddPlannedServiceForm'));
+const AddTireForm = lazy(() => import('./components/AddTireForm'));
+const AddTireInspectionForm = lazy(() => import('./components/AddTireInspectionForm'));
+const AssignLoadConModal = lazy(() => import('./components/operations/AssignLoadConModal'));
+const AssignPartModal = lazy(() => import('./components/AssignPartModal'));
+const CreateManifestModal = lazy(() => import('./components/operations/CreateManifestModal'));
+const CreatePurchaseRequestModal = lazy(() => import('./components/CreatePurchaseRequestModal'));
+const CreateQuoteForm = lazy(() => import('./components/operations/CreateQuoteForm'));
+const CreateBookingForm = lazy(() => import('./components/operations/CreateBookingForm'));
+const CreateTripSheetModal = lazy(() => import('./components/operations/CreateTripSheetModal'));
+const DismountTireModal = lazy(() => import('./components/DismountTireModal'));
+const LinkTrailerModal = lazy(() => import('./components/LinkTrailerModal'));
+const MountTireModal = lazy(() => import('./components/MountTireModal'));
+const ReceiveManifestModal = lazy(() => import('./components/operations/ReceiveManifestModal'));
+const ReceiveRetreadModal = lazy(() => import('./components/ReceiveRetreadModal'));
+const ScrapTireModal = lazy(() => import('./components/ScrapTireModal'));
+const SendForRetreadModal = lazy(() => import('./components/SendForRetreadModal'));
+const AddClientForm = lazy(() => import('./components/operations/AddClientForm'));
+const AddSupplierForm = lazy(() => import('./components/operations/AddSupplierForm'));
+const BulkImportSuppliersModal = lazy(() => import('./components/operations/BulkImportSuppliersModal'));
+const RateSupplierModal = lazy(() => import('./components/RateSupplierModal'));
+const QuotePDFModal = lazy(() => import('./components/operations/QuotePDFModal'));
+const AIDispatchAssistantModal = lazy(() => import('./components/operations/AIDispatchAssistantModal'));
+const UpdateJobModal = lazy(() => import('./components/operations/UpdateJobModal'));
+const DriverPODModal = lazy(() => import('./components/DriverPODModal'));
+const PerformChecklistForm = lazy(() => import('./components/PerformChecklistForm'));
+const CreateJobCardModal = lazy(() => import('./components/workshop/CreateJobCardModal'));
+const SupplierLoadConPDFModal = lazy(() => import('./components/operations/SupplierLoadConPDFModal'));
+const ViewPodModal = lazy(() => import('./components/operations/ViewPodModal'));
+const InvoicePDFModal = lazy(() => import('./components/operations/InvoicePDFModal'));
+const MoveBranchModal = lazy(() => import('./components/fleet/MoveBranchModal'));
+const SetBudgetModal = lazy(() => import('./components/finance/SetBudgetModal'));
+const AITriageModal = lazy(() => import('./components/workshop/AITriageModal'));
+const JobCardDetailModal = lazy(() => import('./components/workshop/JobCardDetailModal'));
+const SupplierApplicationDetailModal = lazy(() => import('./components/operations/SupplierApplicationDetailModal'));
+const BulkImportAssetsModal = lazy(() => import('./components/fleet/BulkImportAssetsModal'));
+const ConnectAssetSheetModal = lazy(() => import('./components/fleet/ConnectAssetSheetModal'));
+const BulkImportCostsModal = lazy(() => import('./components/fleet/BulkImportCostsModal'));
+const QuickBooksSyncModal = lazy(() => import('./components/fleet/QuickBooksSyncModal'));
+
+
+// A mapping of modal types to their components
+const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> } = {
+    addVehicle: AddVehicleForm,
+    addCost: AddCostForm,
+    addFuel: AddFuelEntryForm,
+    addRecurringCost: AddRecurringCostForm,
+    addRevenue: AddRevenueForm,
+    addService: AddServiceEntryForm,
+    addInterval: AddServiceIntervalForm,
+    addUser: AddUserForm,
+    addPart: AddPartForm,
+    addPlannedService: AddPlannedServiceForm,
+    addTire: AddTireForm,
+    addTireInspection: AddTireInspectionForm,
+    assignLoadCon: AssignLoadConModal,
+    assignPart: AssignPartModal,
+    createManifest: CreateManifestModal,
+    createPurchaseRequest: CreatePurchaseRequestModal,
+    createQuote: CreateQuoteForm,
+    createBooking: CreateBookingForm,
+    editQuote: CreateQuoteForm,
+    createTripSheet: CreateTripSheetModal,
+    dismountTire: DismountTireModal,
+    linkTrailer: LinkTrailerModal,
+    mountTire: MountTireModal,
+    receiveManifest: ReceiveManifestModal,
+    receiveRetread: ReceiveRetreadModal,
+    scrapTire: ScrapTireModal,
+    sendForRetread: SendForRetreadModal,
+    addClient: AddClientForm,
+    addSupplier: AddSupplierForm,
+    bulkImportSuppliers: BulkImportSuppliersModal,
+    rateSupplier: RateSupplierModal,
+    quotePdf: QuotePDFModal,
+    aiDispatchAssistant: AIDispatchAssistantModal,
+    updateJob: UpdateJobModal,
+    pod: DriverPODModal,
+    createJobCard: CreateJobCardModal,
+    supplierLoadConPdf: SupplierLoadConPDFModal,
+    viewPod: ViewPodModal,
+    invoicePdf: InvoicePDFModal,
+    moveBranch: MoveBranchModal,
+    setBudget: SetBudgetModal,
+    aiTriage: AITriageModal,
+    jobCardDetail: JobCardDetailModal,
+    supplierApplicationDetail: SupplierApplicationDetailModal,
+    bulkImportAssets: BulkImportAssetsModal,
+    connectAssetSheet: ConnectAssetSheetModal,
+    bulkImportCosts: BulkImportCostsModal,
+    quickbooksSync: QuickBooksSyncModal,
+};
+
+const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' } = {
+    createQuote: '5xl',
+    editQuote: '5xl',
+    createBooking: '3xl',
+    quotePdf: '4xl',
+    supplierLoadConPdf: '4xl',
+    invoicePdf: '4xl',
+    viewPod: '2xl',
+    jobCardDetail: '4xl',
+    aiTriage: '4xl',
+    aiDispatchAssistant: '4xl',
+    supplierApplicationDetail: '4xl',
+    bulkImportAssets: '2xl',
+    connectAssetSheet: '2xl',
+    bulkImportCosts: '2xl',
+    quickbooksSync: '2xl',
+};
+
+
+const App: React.FC = () => {
+    const { currentUser, currentViewOverride } = useAuth();
+    const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast } = useUIState();
+    const { quotes, clients, handleAcceptQuote, handleRejectQuote, handleAddChecklistSubmission } = useOperations();
+    const { vehicles, users, checklistTemplates } = useVehicles();
+    const [checklistFlow, setChecklistFlow] = useState<{ step: 'vehicleScan' | 'form', user: User, vehicle: Vehicle } | null>(null);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const publicQuoteId = urlParams.get('viewQuote');
+    const checklistVehicleId = urlParams.get('checklist');
+    const portal = urlParams.get('portal');
+
+    if (publicQuoteId) {
+        const quote = (quotes || []).find((q: any) => q.id === publicQuoteId);
+        if (quote) {
+            const client = (clients || []).find((c: any) => c.id === quote.clientId);
+            if (client) {
+                return <ClientQuoteView quote={quote} client={client} onAccept={handleAcceptQuote} onReject={handleRejectQuote} />;
+            }
+        }
+        return <div className="text-center p-8 text-red-400">Quote not found or invalid link.</div>;
+    }
+    
+    // Auth flow for standalone checklist scanning via QR
+    if (currentViewOverride === 'driver' && checklistVehicleId && !checklistFlow) {
+        const vehicle = (vehicles || []).find((v: any) => v.id === checklistVehicleId);
+        if (vehicle) {
+            return <DriverChecklistAuth vehicle={vehicle} users={users} onAuthenticated={(user) => {
+                showToast(`Authenticated as ${user.name}.`);
+                setChecklistFlow({ step: 'form', user, vehicle }); // Simplified step for now
+            }} />;
+        }
+    }
+    
+    if (checklistFlow && checklistFlow.step === 'form') {
+         return (
+            <Suspense fallback={<div className="text-white text-center p-8">Loading Form...</div>}>
+                <PerformChecklistForm
+                    vehicle={checklistFlow.vehicle}
+                    currentUser={checklistFlow.user}
+                    templates={checklistTemplates}
+                    onSubmit={(data) => {
+                        handleAddChecklistSubmission(data, checklistFlow.user);
+                        showToast('Checklist successfully submitted!');
+                        setChecklistFlow(null);
+                        window.history.pushState({}, '', window.location.pathname);
+                    }}
+                    onCancel={() => {
+                        setChecklistFlow(null);
+                        window.history.pushState({}, '', window.location.pathname);
+                    }}
+                    isStandalonePage
+                />
+            </Suspense>
+        );
+    }
+
+    if (!currentUser) {
+        if (portal === 'client') return <ClientLogin clientUsers={users.filter(u => u.role === 'Client')} />;
+        if (portal === 'supplier') return <SupplierLogin supplierUsers={users.filter(u => u.role === 'Supplier')} />;
+        if (portal === 'become-supplier') return <SupplierRegistrationPortal />;
+        return <Login />;
+    }
+    
+    if (currentUser.role === 'Client') return <ClientPortal />;
+    if (currentUser.role === 'Supplier') return <SupplierPortal />;
+    if (currentUser.role === 'Driver') return <DriverDashboard />;
+
+
+    const renderView = () => {
+        switch (currentView) {
+            case 'management': return <ManagementPortal />;
+            case 'fleet': return <FleetPortal />;
+            case 'operations': return <OperationsPortal />;
+            case 'workshop': return <WorkshopPortal />;
+            case 'finance': return <FinancePortal />;
+            case 'incidentManagement': return <IncidentManagement />;
+            case 'hr': return <HRPortal />;
+            case 'userManagement': return <UserManagement />;
+            case 'settings': return <Settings />;
+            case 'driverDashboard': return <DriverDashboard />;
+            default: return <ManagementPortal />;
+        }
+    };
+
+    const renderModalContent = () => {
+        if (!modal.isOpen || !modal.type) return null;
+        const ModalComponent = ModalRegistry[modal.type];
+        if (!ModalComponent) {
+            console.error(`Modal type "${modal.type}" not found in registry.`);
+            return <div>Error: Modal not found.</div>;
+        }
+        return <ModalComponent {...modal.payload} />;
+    };
+
+    return (
+        <div className="bg-gray-900 min-h-screen">
+            <Header />
+            <main className="w-full max-w-8xl mx-auto px-4 md:px-6 lg:px-8 py-8">
+                {renderView()}
+            </main>
+            <LiveAssistant isOpen={isLiveAssistantOpen} onClose={() => setIsLiveAssistantOpen(false)} />
+            <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 text-white">Loading Modal...</div>}>
+                <Modal 
+                    isOpen={modal.isOpen} 
+                    onClose={hideModal} 
+                    size={modal.type ? ModalSizeRegistry[modal.type] || '2xl' : '2xl'}
+                >
+                    {renderModalContent()}
+                </Modal>
+            </Suspense>
+            <Toast message={toastMessage} onDismiss={dismissToast} />
+        </div>
+    );
+};
+
+export default App;

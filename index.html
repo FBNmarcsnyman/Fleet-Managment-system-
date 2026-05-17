@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fuel Tracker Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    maxWidth: {
+                        '7xl': '80rem',
+                        '8xl': '96rem',
+                    },
+                    colors: {
+                        'brand-primary': '#1e40af',
+                        'brand-secondary': '#1d4ed8',
+                        'gray-900': '#111827',
+                        'gray-800': '#1f2937',
+                        'gray-700': '#374151',
+                        'gray-600': '#4b5563',
+                        'gray-400': '#9ca3af',
+                        'gray-200': '#e5e7eb',
+                        'gray-100': '#f3f4f6',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Maps API for Places Autocomplete and Advanced Markers -->
+    <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&callback=initMap" async defer></script>
+    <script>
+        function initMap() {
+            window.dispatchEvent(new Event('google-maps-api-loaded'));
+        }
+    </script>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.1.2",
+    "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
+    "xlsx": "https://esm.sh/xlsx",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^0.15.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-gray-900 text-gray-100 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>

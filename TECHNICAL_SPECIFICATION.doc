@@ -1,0 +1,112 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>FBN Fleet Management - Technical Specification</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+    body { font-family: "Segoe UI", Arial, sans-serif; line-height: 1.5; color: #333; }
+    h1 { color: #2563eb; font-size: 24pt; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-top: 20pt; }
+    h2 { color: #1e40af; font-size: 18pt; margin-top: 18pt; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+    h3 { color: #1e3a8a; font-size: 14pt; margin-top: 14pt; }
+    p, li { font-size: 11pt; margin-bottom: 8pt; }
+    code { font-family: "Consolas", "Courier New", monospace; background-color: #f3f4f6; padding: 2px 4px; border-radius: 4px; font-size: 10pt; }
+    .section { margin-bottom: 20pt; }
+    ul { margin-bottom: 10pt; }
+    .header-info { color: #666; font-style: italic; margin-bottom: 30pt; }
+</style>
+</head>
+<body>
+    <div class="section">
+        <h1>FBN Fleet Management System - Technical Specification</h1>
+        <p class="header-info">Document generated for development handover - March 2026</p>
+    </div>
+
+    <div class="section">
+        <h2>1. Project Overview</h2>
+        <p>FBN Fleet Management is a comprehensive, full-stack React application designed to manage logistics operations, vehicle maintenance, personnel, and financial performance for a transport fleet.</p>
+    </div>
+
+    <div class="section">
+        <h2>2. Tech Stack</h2>
+        <ul>
+            <li><strong>Frontend:</strong> React 18 (Functional Components, Hooks)</li>
+            <li><strong>Language:</strong> TypeScript (Strict typing)</li>
+            <li><strong>Styling:</strong> Tailwind CSS</li>
+            <li><strong>Icons:</strong> Lucide React</li>
+            <li><strong>State Management:</strong> Multi-Context API (Domain-driven)</li>
+            <li><strong>Persistence:</strong> LocalStorage (with JSON serialization)</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>3. Architecture: Domain-Driven Contexts</h2>
+        <p>The application uses a refactored, modular Context API structure to ensure performance and maintainability. All contexts are located in <code>/contexts/</code>.</p>
+        
+        <h3>Core Contexts:</h3>
+        <ul>
+            <li><strong>RawDataContext:</strong> The "Source of Truth". Handles the primary state object, <code>useReducer</code> logic, and <code>localStorage</code> synchronization.</li>
+            <li><strong>CommonDataContext:</strong> Manages shared data like <code>users</code>, <code>notifications</code>, and <code>messages</code>.</li>
+            <li><strong>AuthContext:</strong> Handles user sessions, login/logout, and granular permission checks.</li>
+            <li><strong>UIContext:</strong> Controls global UI state, including active views, modal management, and toast notifications.</li>
+        </ul>
+
+        <h3>Domain Contexts:</h3>
+        <ul>
+            <li><strong>FleetContext:</strong> Manages vehicles, fuel entries, service entries, and tires. Includes complex derived data for vehicle health scores and fuel performance (CPK, consumption).</li>
+            <li><strong>OperationsContext:</strong> Handles clients, suppliers, quotes, load confirmations, manifests, and trip sheets.</li>
+            <li><strong>WorkshopContext:</strong> Manages the maintenance lifecycle: job cards, parts inventory, and purchase requests.</li>
+            <li><strong>ManagementContext:</strong> Focuses on high-level business logic: budgets, forecasts, incident reports, and HR cases.</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>4. Key Data Models</h2>
+        <p>Defined in <code>/types.ts</code>.</p>
+        <ul>
+            <li><strong>Vehicle:</strong> id, registration, make, model, branch, status, currentOdometer, healthScore.</li>
+            <li><strong>LoadConfirmation:</strong> loadConNumber, clientId, status (Booked to Delivered), collectionPoint, deliveryPoint, podPhoto.</li>
+            <li><strong>JobCard:</strong> vehicleId, type (Repair/Service), status (Reported to Resolved), priority, partsUsed.</li>
+            <li><strong>User:</strong> name, email, role (Admin, Driver, Staff, Client, Supplier), permissions.</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>5. Portals & Features</h2>
+        <ul>
+            <li><strong>Management Portal:</strong> Executive dashboard with financial summaries and action centers.</li>
+            <li><strong>Fleet Portal:</strong> Real-time vehicle tracking, health monitoring, and fuel management.</li>
+            <li><strong>Operations Portal:</strong> Quote generation, load booking, driver assignment, and POD tracking.</li>
+            <li><strong>Workshop Portal:</strong> Maintenance scheduling, job card management, and inventory control.</li>
+            <li><strong>Finance Portal:</strong> Cost analysis, budget tracking, and QuickBooks integration.</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>6. Performance Optimizations</h2>
+        <ul>
+            <li><strong>Memoization:</strong> Heavy calculations (health scores, fuel metrics) are wrapped in granular <code>useMemo</code> blocks.</li>
+            <li><strong>O(1) Lookups:</strong> Uses <code>Map</code> objects for grouping data by vehicleId or userId.</li>
+            <li><strong>Lazy Loading:</strong> Modals and heavy portal components are loaded via <code>React.lazy</code> and <code>Suspense</code>.</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>7. File Structure</h2>
+        <ul>
+            <li><code>/src/components/</code>: Reusable UI components and portal views.</li>
+            <li><code>/src/contexts/</code>: Domain-specific state providers.</li>
+            <li><code>/src/hooks/</code>: Custom hooks (e.g., <code>useServiceStatus</code>).</li>
+            <li><code>/src/types.ts</code>: Centralized TypeScript interfaces.</li>
+            <li><code>/App.tsx</code>: Main routing and modal registry.</li>
+        </ul>
+    </div>
+</body>
+</html>

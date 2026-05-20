@@ -210,8 +210,8 @@ const App: React.FC = () => {
     }
 
     if (!currentUser) {
-        if (portal === 'client') return <ClientLogin clientUsers={users.filter(u => u.role === 'Client')} />;
-        if (portal === 'supplier') return <SupplierLogin supplierUsers={users.filter(u => u.role === 'Supplier')} />;
+        if (portal === 'client') return <ClientLogin />;
+        if (portal === 'supplier') return <SupplierLogin />;
         if (portal === 'become-supplier') return <SupplierRegistrationPortal />;
         return <Login />;
     }

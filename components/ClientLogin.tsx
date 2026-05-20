@@ -1,21 +1,38 @@
 import React, { useState } from 'react';
-import { User } from '../types';
-import { FuelIcon } from './icons/FuelIcon';
 import { useAuth } from '../contexts/AppContexts';
+import { FuelIcon } from './icons/FuelIcon';
 
-interface ClientLoginProps {
-    clientUsers: User[];
-}
+const ClientLogin: React.FC = () => {
+    const { handleLogin, resetPassword } = useAuth();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [info, setInfo] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
 
-const ClientLogin: React.FC<ClientLoginProps> = ({ clientUsers }) => {
-    const { handleLogin } = useAuth();
-    const [selectedUser, setSelectedUser] = useState(clientUsers[0]?.email || '');
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (selectedUser) {
-            handleLogin(selectedUser);
+        setError(null);
+        setInfo(null);
+        setSubmitting(true);
+        const result = await handleLogin(email, password);
+        if (!result.ok) {
+            setError(result.error);
+            setSubmitting(false);
         }
+    };
+
+    const handleForgot = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        setError(null);
+        setInfo(null);
+        if (!email) {
+            setError('Enter your email above first.');
+            return;
+        }
+        const result = await resetPassword(email);
+        if (result.ok) setInfo('Password reset email sent. Check your inbox.');
+        else setError(result.error);
     };
 
     return (
@@ -29,30 +46,45 @@ const ClientLogin: React.FC<ClientLoginProps> = ({ clientUsers }) => {
                     <p className="mt-2 text-gray-400">Please sign in to track your shipments.</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                     <div>
-                        <label htmlFor="user-select" className="block text-sm font-medium text-gray-300 mb-1">
-                           Select your company to login:
-                        </label>
-                        <select
-                            id="user-select"
-                            value={selectedUser}
-                            onChange={(e) => setSelectedUser(e.target.value)}
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                        <input
+                            id="email"
+                            type="email"
+                            autoComplete="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary"
-                        >
-                            {clientUsers.map(user => (
-                                <option key={user.email} value={user.email}>
-                                    {user.name}
-                                </option>
-                            ))}
-                        </select>
+                        />
                     </div>
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            autoComplete="current-password"
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary"
+                        />
+                    </div>
+                    {error && <p className="text-sm text-red-400">{error}</p>}
+                    {info && <p className="text-sm text-green-400">{info}</p>}
                     <div>
                         <button
                             type="submit"
-                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-primary hover:bg-brand-secondary focus:outline-none focus:ring-2 focus:ring-brand-secondary"
+                            disabled={submitting}
+                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-primary hover:bg-brand-secondary focus:outline-none focus:ring-2 focus:ring-brand-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Sign In
+                            {submitting ? 'Signing in…' : 'Sign In'}
                         </button>
+                    </div>
+                    <div className="text-center text-sm">
+                        <a href="#" onClick={handleForgot} className="font-medium text-brand-secondary hover:text-blue-400">
+                            Forgot password?
+                        </a>
                     </div>
                 </form>
             </div>

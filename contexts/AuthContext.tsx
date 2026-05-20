@@ -1,50 +1,101 @@
-
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect } from 'react';
-import { User, Permission } from '../types';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
+import { User, Permission, Branch } from '../types';
 import { useCommonData } from './CommonDataContext';
+import { supabase } from '../lib/supabase';
+import type { Database } from '../lib/database.types';
+
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 interface AuthState {
   currentUser: User | null;
   viewingClientAsAdmin: User | null;
 }
 
+type LoginResult = { ok: true } | { ok: false; error: string };
+
 interface AuthContextType extends AuthState {
-  handleLogin: (email: string) => void;
+  handleLogin: (email: string, password: string) => Promise<LoginResult>;
   handleLogout: () => void;
   hasPermission: (permission: Permission) => boolean;
   setViewClientAsAdmin: (user: User | null) => void;
   currentViewOverride: string | null;
   updateNavPreferences: (prefs: User['navigationPreferences']) => void;
+  resetPassword: (email: string) => Promise<LoginResult>;
+  isAuthReady: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const mapProfileRow = (row: ProfileRow, branchById: Map<string, Branch>): User => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role as User['role'],
+    permissions: (row.permissions || []) as Permission[],
+    assignedBranches: (row.assigned_branch_ids || [])
+        .map(id => branchById.get(id))
+        .filter((b): b is Branch => b !== undefined),
+    assignedVehicleIds: row.assigned_vehicle_ids?.length ? row.assigned_vehicle_ids : undefined,
+    licenseNumber: row.license_number ?? undefined,
+    licenseExpiry: row.license_expiry ?? undefined,
+    pdpExpiry: row.pdp_expiry ?? undefined,
+    dgCertExpiry: row.dg_cert_expiry ?? undefined,
+    medicalExpiry: row.medical_expiry ?? undefined,
+    inductionDate: row.induction_date ?? undefined,
+    lastRefresherDate: row.last_refresher_date ?? undefined,
+    clientId: row.client_id ?? undefined,
+    supplierId: row.supplier_id ?? undefined,
+    navigationPreferences: (row.navigation_preferences as User['navigationPreferences']) ?? undefined,
+});
+
+const fetchUserContext = async (userId: string): Promise<User | null> => {
+    const [profileRes, branchesRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('branches').select('id, name'),
+    ]);
+
+    if (profileRes.error || !profileRes.data) {
+        console.error('AuthContext: failed to load profile', profileRes.error);
+        return null;
+    }
+    if (branchesRes.error || !branchesRes.data) {
+        console.error('AuthContext: failed to load branches', branchesRes.error);
+        return null;
+    }
+
+    const branchById = new Map<string, Branch>(
+        branchesRes.data.map(b => [b.id, b.name as Branch])
+    );
+    return mapProfileRow(profileRes.data, branchById);
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { users, handleUpdateNavPreferences } = useCommonData();
+    const { handleUpdateNavPreferences } = useCommonData();
 
     const [state, setState] = useState<AuthState>({
         currentUser: null,
         viewingClientAsAdmin: null,
     });
-    
-    const [currentViewOverride, setCurrentViewOverride] = useState<string | null>(null);
+    const [currentViewOverride] = useState<string | null>(null);
+    const [isAuthReady, setIsAuthReady] = useState(false);
 
-    const handleLogin = useCallback((email: string) => {
-        if (!users || users.length === 0) return;
-        const user = users.find((u: User) => u.email === email);
-        if (user) {
-            localStorage.setItem('currentUserEmail', email);
-            setState(prev => ({ ...prev, currentUser: user }));
-        }
-    }, [users]);
+    const handleLogin = useCallback(async (email: string, password: string): Promise<LoginResult> => {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) return { ok: false, error: error.message };
+        if (!data.user) return { ok: false, error: 'No user returned from sign-in' };
+        const mapped = await fetchUserContext(data.user.id);
+        if (!mapped) return { ok: false, error: 'Signed in, but failed to load profile' };
+        setState(prev => ({ ...prev, currentUser: mapped }));
+        return { ok: true };
+    }, []);
 
     const handleLogout = useCallback(() => {
-        localStorage.removeItem('currentUserEmail');
-        setState(prev => ({ ...prev, currentUser: null, viewingClientAsAdmin: null }));
+        void supabase.auth.signOut();
+        setState({ currentUser: null, viewingClientAsAdmin: null });
     }, []);
-    
+
     const setViewClientAsAdmin = useCallback((user: User | null) => {
-        setState(prev => ({...prev, viewingClientAsAdmin: user}));
+        setState(prev => ({ ...prev, viewingClientAsAdmin: user }));
     }, []);
 
     const hasPermission = useCallback((permission: Permission) => {
@@ -56,25 +107,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             handleUpdateNavPreferences(state.currentUser.email, prefs);
         }
     }, [state.currentUser, handleUpdateNavPreferences]);
-    
-    useEffect(() => {
-        if (users && users.length > 0) {
-            const storedEmail = localStorage.getItem('currentUserEmail');
-            if (storedEmail) {
-                handleLogin(storedEmail);
-            }
-        }
-    }, [handleLogin, users]);
 
-    const value = useMemo(() => ({ 
-        ...state, 
-        handleLogin, 
-        handleLogout, 
-        hasPermission, 
-        setViewClientAsAdmin, 
-        currentViewOverride, 
-        updateNavPreferences 
-    }), [state, handleLogin, handleLogout, hasPermission, setViewClientAsAdmin, currentViewOverride, updateNavPreferences]);
+    const resetPassword = useCallback(async (email: string): Promise<LoginResult> => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true };
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        // One-shot hygiene: drop the mock-auth localStorage key from any prior session
+        localStorage.removeItem('currentUserEmail');
+
+        const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!active) return;
+
+            if (event === 'INITIAL_SESSION') {
+                if (session?.user) {
+                    const mapped = await fetchUserContext(session.user.id);
+                    if (active && mapped) {
+                        setState(prev => ({ ...prev, currentUser: mapped }));
+                    }
+                }
+                if (active) setIsAuthReady(true);
+                return;
+            }
+
+            if (event === 'SIGNED_OUT') {
+                setState({ currentUser: null, viewingClientAsAdmin: null });
+            }
+        });
+
+        return () => {
+            active = false;
+            sub.subscription.unsubscribe();
+        };
+    }, []);
+
+    const value = useMemo(() => ({
+        ...state,
+        handleLogin,
+        handleLogout,
+        hasPermission,
+        setViewClientAsAdmin,
+        currentViewOverride,
+        updateNavPreferences,
+        resetPassword,
+        isAuthReady,
+    }), [state, handleLogin, handleLogout, hasPermission, setViewClientAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase CLI scratch
+supabase/.temp/
+supabase/.branches/
+
+# Claude Code per-session settings
+.claude/

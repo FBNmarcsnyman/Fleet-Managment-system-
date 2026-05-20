@@ -32,6 +32,12 @@ export interface Vehicle {
   currentHours?: number;
   assignedDriverId?: string;
   healthScore?: number;
+  palletSpaces?: number;
+  payloadKg?: number;
+  cubicMeters?: number;
+  deckMeters?: number;
+  costPerKmTarget?: number;
+  monthlyFixedCost?: number;
 }
 
 export type VehicleStatus = 'On the road' | 'In for service' | 'Off the road' | 'Sold';
@@ -123,6 +129,7 @@ export interface Message {
 export type Role = 'Staff' | 'Driver' | 'Admin' | 'Super Admin' | 'Client' | 'Supplier' | 'Workshop Manager';
 
 export interface User {
+    id?: string;
     name: string;
     email: string;
     role: Role;
@@ -132,6 +139,10 @@ export interface User {
     licenseNumber?: string;
     licenseExpiry?: string;
     pdpExpiry?: string;
+    dgCertExpiry?: string;
+    medicalExpiry?: string;
+    inductionDate?: string;
+    lastRefresherDate?: string;
     clientId?: string;
     supplierId?: string;
     navigationPreferences?: {
@@ -564,6 +575,7 @@ export interface Part {
     quantityInStock: number;
     minStockLevel: number;
     cost: number;
+    branchId?: string;
 }
 
 export interface PurchaseRequest {
@@ -603,4 +615,48 @@ export interface Forecast {
     generatedDate: string;
     forecastedCosts: any[];
     insights: string;
+}
+
+export interface Route {
+    id: string;
+    origin: string;
+    destination: string;
+    distanceKm?: number;
+    estimatedHours?: number;
+    averageFuelLiters?: number;
+    tollCost?: number;
+    targetSellPerPallet?: number;
+    targetSellPerCbm?: number;
+    targetSellPerKg?: number;
+    targetSellPerDeckM?: number;
+    minimumSellFullLoad?: number;
+    targetSellFullLoad?: number;
+    premiumSellFullLoad?: number;
+    isActive: boolean;
+    notes?: string;
+}
+
+export type VehicleComplianceType =
+    | 'COF'
+    | 'LICENSE_DISC'
+    | 'TRACKER_CERT'
+    | 'INSURANCE'
+    | 'PERMIT'
+    | 'CROSS_BORDER'
+    | 'DG_PERMIT'
+    | 'OTHER';
+
+export type DocStatus = 'Valid' | 'Expired' | 'Pending Review';
+
+export interface VehicleComplianceDoc {
+    id: string;
+    vehicleId: string;
+    type: VehicleComplianceType;
+    name: string;
+    issueDate?: string;
+    expiryDate?: string;
+    status: DocStatus;
+    fileName?: string;
+    fileUrl?: string;
+    notes?: string;
 }

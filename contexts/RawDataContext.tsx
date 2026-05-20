@@ -1,10 +1,24 @@
 
 import React, { createContext, useReducer, useEffect, useMemo, ReactNode } from 'react';
-import * as mockData from '../mockData';
 import {
-  User, Vehicle, FuelEntry, ServiceEntry, OtherCost, RecurringCost, RevenueEntry, ServiceInterval, LoadConfirmation, Manifest, TripSheet, Client, Supplier, Quote, JobCard, ChecklistTemplate, ChecklistSubmission, Tire, TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase, PlannedService, Bowser, BowserRefill, FuelPriceRecord, Budget, Forecast, Notification, Message, JobCardStatus, SupplierApplication
+  User, Vehicle, FuelEntry, ServiceEntry, OtherCost, RecurringCost, RevenueEntry, ServiceInterval,
+  LoadConfirmation, Manifest, TripSheet, Client, Supplier, Quote, JobCard, ChecklistTemplate,
+  ChecklistSubmission, Tire, TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase,
+  PlannedService, Bowser, BowserRefill, FuelPriceRecord, Budget, Forecast, Notification, Message,
+  JobCardStatus, SupplierApplication, IncidentReport, Branch, Route, VehicleComplianceDoc,
+  ComplianceDoc, Attachment,
 } from '../types';
 import { COMMODITIES, PACKAGING_TYPES } from '../constants';
+import { supabase } from '../lib/supabase';
+import {
+  mapProfile, mapVehicle, mapFuelEntry, mapServiceEntry, mapOtherCost, mapRecurringCost,
+  mapRevenueEntry, mapServiceInterval, mapPlannedService, mapFuelPrice, mapBowser, mapBowserRefill,
+  mapBudget, mapForecast, mapJobCard, mapChecklistTemplate, mapChecklistSubmission, mapTire,
+  mapTireInspection, mapPart, mapPurchaseRequest, mapPurchaseOrder, mapHRCase, mapClient,
+  mapSupplier, mapSupplierComplianceDoc, mapSupplierRateCard, mapQuote, mapLoadConfirmation,
+  mapManifest, mapTripSheet, mapIncidentReport, mapSupplierApplication, mapNotification, mapMessage,
+  mapRoute, mapVehicleComplianceDoc,
+} from '../lib/mappers';
 
 export const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -12,64 +26,66 @@ export interface AppState {
     users: User[];
     vehicles: Vehicle[]; fuelEntries: FuelEntry[]; serviceEntries: ServiceEntry[]; otherCosts: OtherCost[]; recurringCosts: RecurringCost[]; revenueEntries: RevenueEntry[]; serviceIntervals: ServiceInterval[]; plannedServices: PlannedService[]; fuelPriceRecords: FuelPriceRecord[]; bowsers: Bowser[]; bowserRefills: BowserRefill[]; budgets: Budget[]; forecasts: Forecast[];
     jobCards: JobCard[]; checklistTemplates: ChecklistTemplate[]; checklistSubmissions: ChecklistSubmission[]; tires: Tire[]; tireInspections: TireInspection[]; parts: Part[]; purchaseRequests: PurchaseRequest[]; purchaseOrders: PurchaseOrder[]; hrCases: HRCase[];
-    clients: Client[]; suppliers: Supplier[]; quotes: Quote[]; loadConfirmations: LoadConfirmation[]; manifests: Manifest[]; tripSheets: TripSheet[]; incidentReports: any[]; supplierApplications: SupplierApplication[];
+    clients: Client[]; suppliers: Supplier[]; quotes: Quote[]; loadConfirmations: LoadConfirmation[]; manifests: Manifest[]; tripSheets: TripSheet[]; incidentReports: IncidentReport[]; supplierApplications: SupplierApplication[];
     notifications: Notification[];
     messages: Message[];
     selectedVehicleId: string | null;
     commodities: string[];
     packagingTypes: string[];
+    routes: Route[];
+    vehicleComplianceDocs: VehicleComplianceDoc[];
 }
 
-export const getInitialState = (): AppState => {
-    try {
-        const saved = localStorage.getItem('fbn_fleet_app_state_v3_1');
-        if (saved) {
-            return JSON.parse(saved);
-        }
-    } catch (e) {
-        console.error("Failed to load state from localStorage", e);
-    }
-    return {
-        users: mockData.mockUsers || [],
-        vehicles: mockData.mockVehicles || [],
-        fuelEntries: mockData.fuelEntries || [],
-        serviceEntries: mockData.serviceEntries || [],
-        otherCosts: mockData.otherCosts || [],
-        recurringCosts: mockData.recurringCosts || [],
-        revenueEntries: mockData.revenueEntries || [],
-        serviceIntervals: mockData.serviceIntervals || [],
-        plannedServices: mockData.plannedServices || [],
-        fuelPriceRecords: mockData.fuelPriceRecords || [],
-        bowsers: mockData.bowsers || [],
-        bowserRefills: mockData.bowserRefills || [],
-        budgets: mockData.budgets || [],
-        forecasts: mockData.forecasts || [],
-        jobCards: mockData.jobCards || [],
-        checklistTemplates: mockData.checklistTemplates || [],
-        checklistSubmissions: mockData.checklistSubmissions || [],
-        tires: mockData.tires || [],
-        tireInspections: mockData.tireInspections || [],
-        parts: mockData.parts || [],
-        purchaseRequests: mockData.purchaseRequests || [],
-        purchaseOrders: mockData.purchaseOrders || [],
-        hrCases: mockData.hrCases || [],
-        clients: mockData.clients || [],
-        suppliers: mockData.suppliers || [],
-        quotes: mockData.quotes || [],
-        loadConfirmations: mockData.loadConfirmations || [],
-        manifests: mockData.manifests || [],
-        tripSheets: mockData.tripSheets || [],
-        incidentReports: mockData.incidentReports || [],
-        supplierApplications: mockData.supplierApplications || [],
-        notifications: mockData.notifications || [],
-        messages: mockData.messages || [],
-        selectedVehicleId: null,
-        commodities: COMMODITIES,
-        packagingTypes: PACKAGING_TYPES,
-    };
-};
+const getEmptyState = (): AppState => ({
+    users: [], vehicles: [], fuelEntries: [], serviceEntries: [], otherCosts: [], recurringCosts: [],
+    revenueEntries: [], serviceIntervals: [], plannedServices: [], fuelPriceRecords: [], bowsers: [],
+    bowserRefills: [], budgets: [], forecasts: [], jobCards: [], checklistTemplates: [],
+    checklistSubmissions: [], tires: [], tireInspections: [], parts: [], purchaseRequests: [],
+    purchaseOrders: [], hrCases: [], clients: [], suppliers: [], quotes: [], loadConfirmations: [],
+    manifests: [], tripSheets: [], incidentReports: [], supplierApplications: [], notifications: [],
+    messages: [], selectedVehicleId: null, commodities: COMMODITIES, packagingTypes: PACKAGING_TYPES,
+    routes: [], vehicleComplianceDocs: [],
+});
 
-export type AppAction = 
+export const getInitialState = (): AppState => getEmptyState();
+
+export type AppAction =
+    | { type: 'RESET_ALL' }
+    | { type: 'SET_USERS', payload: User[] }
+    | { type: 'SET_VEHICLES', payload: Vehicle[] }
+    | { type: 'SET_FUEL_ENTRIES', payload: FuelEntry[] }
+    | { type: 'SET_SERVICE_ENTRIES', payload: ServiceEntry[] }
+    | { type: 'SET_OTHER_COSTS', payload: OtherCost[] }
+    | { type: 'SET_RECURRING_COSTS', payload: RecurringCost[] }
+    | { type: 'SET_REVENUE_ENTRIES', payload: RevenueEntry[] }
+    | { type: 'SET_SERVICE_INTERVALS', payload: ServiceInterval[] }
+    | { type: 'SET_PLANNED_SERVICES', payload: PlannedService[] }
+    | { type: 'SET_FUEL_PRICE_RECORDS', payload: FuelPriceRecord[] }
+    | { type: 'SET_BOWSERS', payload: Bowser[] }
+    | { type: 'SET_BOWSER_REFILLS', payload: BowserRefill[] }
+    | { type: 'SET_BUDGETS', payload: Budget[] }
+    | { type: 'SET_FORECASTS', payload: Forecast[] }
+    | { type: 'SET_JOB_CARDS', payload: JobCard[] }
+    | { type: 'SET_CHECKLIST_TEMPLATES', payload: ChecklistTemplate[] }
+    | { type: 'SET_CHECKLIST_SUBMISSIONS', payload: ChecklistSubmission[] }
+    | { type: 'SET_TIRES', payload: Tire[] }
+    | { type: 'SET_TIRE_INSPECTIONS', payload: TireInspection[] }
+    | { type: 'SET_PARTS', payload: Part[] }
+    | { type: 'SET_PURCHASE_REQUESTS', payload: PurchaseRequest[] }
+    | { type: 'SET_PURCHASE_ORDERS', payload: PurchaseOrder[] }
+    | { type: 'SET_HR_CASES', payload: HRCase[] }
+    | { type: 'SET_CLIENTS', payload: Client[] }
+    | { type: 'SET_SUPPLIERS', payload: Supplier[] }
+    | { type: 'SET_QUOTES', payload: Quote[] }
+    | { type: 'SET_LOAD_CONFIRMATIONS', payload: LoadConfirmation[] }
+    | { type: 'SET_MANIFESTS', payload: Manifest[] }
+    | { type: 'SET_TRIP_SHEETS', payload: TripSheet[] }
+    | { type: 'SET_INCIDENT_REPORTS', payload: IncidentReport[] }
+    | { type: 'SET_SUPPLIER_APPLICATIONS', payload: SupplierApplication[] }
+    | { type: 'SET_NOTIFICATIONS', payload: Notification[] }
+    | { type: 'SET_MESSAGES', payload: Message[] }
+    | { type: 'SET_ROUTES', payload: Route[] }
+    | { type: 'SET_VEHICLE_COMPLIANCE_DOCS', payload: VehicleComplianceDoc[] }
     | { type: 'ADD_USER', payload: Omit<User, 'permissions'> }
     | { type: 'SELECT_VEHICLE', payload: string | null }
     | { type: 'ADD_VEHICLE', payload: Omit<Vehicle, 'id'> }
@@ -127,6 +143,42 @@ export type AppAction =
 
 export const dataReducer = (state: AppState, action: AppAction): AppState => {
     switch (action.type) {
+        case 'RESET_ALL': return getEmptyState();
+        case 'SET_USERS': return { ...state, users: action.payload };
+        case 'SET_VEHICLES': return { ...state, vehicles: action.payload };
+        case 'SET_FUEL_ENTRIES': return { ...state, fuelEntries: action.payload };
+        case 'SET_SERVICE_ENTRIES': return { ...state, serviceEntries: action.payload };
+        case 'SET_OTHER_COSTS': return { ...state, otherCosts: action.payload };
+        case 'SET_RECURRING_COSTS': return { ...state, recurringCosts: action.payload };
+        case 'SET_REVENUE_ENTRIES': return { ...state, revenueEntries: action.payload };
+        case 'SET_SERVICE_INTERVALS': return { ...state, serviceIntervals: action.payload };
+        case 'SET_PLANNED_SERVICES': return { ...state, plannedServices: action.payload };
+        case 'SET_FUEL_PRICE_RECORDS': return { ...state, fuelPriceRecords: action.payload };
+        case 'SET_BOWSERS': return { ...state, bowsers: action.payload };
+        case 'SET_BOWSER_REFILLS': return { ...state, bowserRefills: action.payload };
+        case 'SET_BUDGETS': return { ...state, budgets: action.payload };
+        case 'SET_FORECASTS': return { ...state, forecasts: action.payload };
+        case 'SET_JOB_CARDS': return { ...state, jobCards: action.payload };
+        case 'SET_CHECKLIST_TEMPLATES': return { ...state, checklistTemplates: action.payload };
+        case 'SET_CHECKLIST_SUBMISSIONS': return { ...state, checklistSubmissions: action.payload };
+        case 'SET_TIRES': return { ...state, tires: action.payload };
+        case 'SET_TIRE_INSPECTIONS': return { ...state, tireInspections: action.payload };
+        case 'SET_PARTS': return { ...state, parts: action.payload };
+        case 'SET_PURCHASE_REQUESTS': return { ...state, purchaseRequests: action.payload };
+        case 'SET_PURCHASE_ORDERS': return { ...state, purchaseOrders: action.payload };
+        case 'SET_HR_CASES': return { ...state, hrCases: action.payload };
+        case 'SET_CLIENTS': return { ...state, clients: action.payload };
+        case 'SET_SUPPLIERS': return { ...state, suppliers: action.payload };
+        case 'SET_QUOTES': return { ...state, quotes: action.payload };
+        case 'SET_LOAD_CONFIRMATIONS': return { ...state, loadConfirmations: action.payload };
+        case 'SET_MANIFESTS': return { ...state, manifests: action.payload };
+        case 'SET_TRIP_SHEETS': return { ...state, tripSheets: action.payload };
+        case 'SET_INCIDENT_REPORTS': return { ...state, incidentReports: action.payload };
+        case 'SET_SUPPLIER_APPLICATIONS': return { ...state, supplierApplications: action.payload };
+        case 'SET_NOTIFICATIONS': return { ...state, notifications: action.payload };
+        case 'SET_MESSAGES': return { ...state, messages: action.payload };
+        case 'SET_ROUTES': return { ...state, routes: action.payload };
+        case 'SET_VEHICLE_COMPLIANCE_DOCS': return { ...state, vehicleComplianceDocs: action.payload };
         case 'ADD_USER': return { ...state, users: [...(state.users || []), { ...action.payload, permissions: [] }] };
         case 'SELECT_VEHICLE': return { ...state, selectedVehicleId: action.payload };
         case 'ADD_VEHICLE': return { ...state, vehicles: [{ id: generateId(), ...action.payload }, ...(state.vehicles || [])] };
@@ -134,11 +186,11 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'ADD_FUEL_ENTRY': {
             const { vehicleId, entry } = action.payload;
             const newEntry = { id: generateId(), vehicleId, ...entry };
-            
+
             let updatedBowsers = [...(state.bowsers || [])];
             if (entry.sourceBowserId) {
-                updatedBowsers = updatedBowsers.map(b => 
-                    b.id === entry.sourceBowserId 
+                updatedBowsers = updatedBowsers.map(b =>
+                    b.id === entry.sourceBowserId
                         ? { ...b, currentStock: b.currentStock - entry.liters }
                         : b
                 );
@@ -150,8 +202,8 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
                 }
                 return v;
             });
-            return { 
-                ...state, 
+            return {
+                ...state,
                 fuelEntries: [newEntry, ...(state.fuelEntries || [])],
                 vehicles: updatedVehicles,
                 bowsers: updatedBowsers
@@ -210,8 +262,8 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
                 }
                 return v;
             });
-            return { 
-                ...state, 
+            return {
+                ...state,
                 serviceEntries: [newEntry, ...(state.serviceEntries || [])],
                 vehicles: updatedVehicles
             };
@@ -342,9 +394,9 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_NAV_PREFERENCES': {
             return {
                 ...state,
-                users: (state.users || []).map(u => 
-                    u.email === action.payload.email 
-                        ? { ...u, navigationPreferences: action.payload.preferences } 
+                users: (state.users || []).map(u =>
+                    u.email === action.payload.email
+                        ? { ...u, navigationPreferences: action.payload.preferences }
                         : u
                 )
             };
@@ -359,17 +411,17 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
             const price = action.payload.costPerLiter;
             const rebate = action.payload.rebatePercentage || 0;
             const finalCost = price * (1 - (rebate / 100));
-            
-            const updatedBowsers = (state.bowsers || []).map(b => 
+
+            const updatedBowsers = (state.bowsers || []).map(b =>
                 b.id === bowserId ? { ...b, currentStock: b.currentStock + liters } : b
             );
-            
+
             const newRefill: BowserRefill = {
                 id: generateId(),
                 ...action.payload,
                 finalCostPerLiter: finalCost
             };
-            
+
             return {
                 ...state,
                 bowsers: updatedBowsers,
@@ -382,9 +434,9 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
             if (!oldRefill) return state;
 
             const updatedRefill = { ...oldRefill, ...updates };
-            
+
             const litersDiff = (updates.liters !== undefined ? updates.liters : oldRefill.liters) - oldRefill.liters;
-            const updatedBowsers = state.bowsers.map(b => 
+            const updatedBowsers = state.bowsers.map(b =>
                 b.id === oldRefill.bowserId ? { ...b, currentStock: b.currentStock + litersDiff } : b
             );
 
@@ -398,7 +450,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
             const refillToDelete = state.bowserRefills.find(r => r.id === action.payload);
             if (!refillToDelete) return state;
 
-            const updatedBowsers = state.bowsers.map(b => 
+            const updatedBowsers = state.bowsers.map(b =>
                 b.id === refillToDelete.bowserId ? { ...b, currentStock: b.currentStock - refillToDelete.liters } : b
             );
 
@@ -414,9 +466,206 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
 
 export const RawDataContext = createContext<{ state: AppState; dispatch: React.Dispatch<AppAction> } | undefined>(undefined);
 
+type Dispatch = React.Dispatch<AppAction>;
+
+// Fetches every table the app needs and dispatches per-table SET_* actions.
+// Branches load first so other mappers can resolve UUID -> Branch name.
+async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
+    try {
+        const branchesRes = await supabase.from('branches').select('id, name');
+        if (branchesRes.error) {
+            console.error('RawDataContext: failed to load branches', branchesRes.error);
+            return;
+        }
+        const branchById = new Map<string, Branch>(
+            (branchesRes.data || []).map(b => [b.id, b.name as Branch])
+        );
+        const ctx = { branchById };
+
+        const [
+            profiles, vehicles, fuelEntries, serviceEntries, otherCosts, recurringCosts,
+            revenueEntries, serviceIntervals, plannedServices, fuelPrices, bowsers,
+            bowserRefills, budgets, forecasts, jobCards, checklistTemplates,
+            checklistSubmissions, tires, tireMountHistory, tireInspections, parts,
+            purchaseRequests, purchaseOrders, hrCases, clients, suppliers,
+            supplierComplianceDocs, supplierRateCards, quotes, loadConfirmations,
+            manifests, tripSheets, incidentReports, supplierApplications, notifications,
+            messages, routes, vehicleComplianceDocs,
+        ] = await Promise.all([
+            supabase.from('profiles').select('*'),
+            supabase.from('vehicles').select('*'),
+            supabase.from('fuel_entries').select('*'),
+            supabase.from('service_entries').select('*'),
+            supabase.from('other_costs').select('*'),
+            supabase.from('recurring_costs').select('*'),
+            supabase.from('revenue_entries').select('*'),
+            supabase.from('service_intervals').select('*'),
+            supabase.from('planned_services').select('*'),
+            supabase.from('fuel_prices').select('*'),
+            supabase.from('bowsers').select('*'),
+            supabase.from('bowser_refills').select('*'),
+            supabase.from('budgets').select('*'),
+            supabase.from('forecasts').select('*'),
+            supabase.from('job_cards').select('*'),
+            supabase.from('checklist_templates').select('*'),
+            supabase.from('checklist_submissions').select('*'),
+            supabase.from('tires').select('*'),
+            supabase.from('tire_mount_history').select('*'),
+            supabase.from('tire_inspections').select('*'),
+            supabase.from('parts').select('*'),
+            supabase.from('purchase_requests').select('*'),
+            supabase.from('purchase_orders').select('*'),
+            supabase.from('hr_cases').select('*'),
+            supabase.from('clients').select('*'),
+            supabase.from('suppliers').select('*'),
+            supabase.from('supplier_compliance_docs').select('*'),
+            supabase.from('supplier_rate_cards').select('*'),
+            supabase.from('quotes').select('*'),
+            supabase.from('load_confirmations').select('*'),
+            supabase.from('manifests').select('*'),
+            supabase.from('trip_sheets').select('*'),
+            supabase.from('incident_reports').select('*'),
+            supabase.from('supplier_applications').select('*'),
+            supabase.from('notifications').select('*'),
+            supabase.from('messages').select('*'),
+            supabase.from('routes').select('*'),
+            supabase.from('vehicle_compliance_docs').select('*'),
+        ]);
+
+        const logIfError = (label: string, err: unknown) => {
+            if (err) console.error(`RawDataContext: ${label} fetch failed`, err);
+        };
+
+        logIfError('profiles', profiles.error);
+        logIfError('vehicles', vehicles.error);
+        logIfError('fuel_entries', fuelEntries.error);
+        logIfError('service_entries', serviceEntries.error);
+        logIfError('other_costs', otherCosts.error);
+        logIfError('recurring_costs', recurringCosts.error);
+        logIfError('revenue_entries', revenueEntries.error);
+        logIfError('service_intervals', serviceIntervals.error);
+        logIfError('planned_services', plannedServices.error);
+        logIfError('fuel_prices', fuelPrices.error);
+        logIfError('bowsers', bowsers.error);
+        logIfError('bowser_refills', bowserRefills.error);
+        logIfError('budgets', budgets.error);
+        logIfError('forecasts', forecasts.error);
+        logIfError('job_cards', jobCards.error);
+        logIfError('checklist_templates', checklistTemplates.error);
+        logIfError('checklist_submissions', checklistSubmissions.error);
+        logIfError('tires', tires.error);
+        logIfError('tire_mount_history', tireMountHistory.error);
+        logIfError('tire_inspections', tireInspections.error);
+        logIfError('parts', parts.error);
+        logIfError('purchase_requests', purchaseRequests.error);
+        logIfError('purchase_orders', purchaseOrders.error);
+        logIfError('hr_cases', hrCases.error);
+        logIfError('clients', clients.error);
+        logIfError('suppliers', suppliers.error);
+        logIfError('supplier_compliance_docs', supplierComplianceDocs.error);
+        logIfError('supplier_rate_cards', supplierRateCards.error);
+        logIfError('quotes', quotes.error);
+        logIfError('load_confirmations', loadConfirmations.error);
+        logIfError('manifests', manifests.error);
+        logIfError('trip_sheets', tripSheets.error);
+        logIfError('incident_reports', incidentReports.error);
+        logIfError('supplier_applications', supplierApplications.error);
+        logIfError('notifications', notifications.error);
+        logIfError('messages', messages.error);
+        logIfError('routes', routes.error);
+        logIfError('vehicle_compliance_docs', vehicleComplianceDocs.error);
+
+        // Build joins for nested data
+        const mountHistoryByTire = new Map<string, NonNullable<typeof tireMountHistory.data>>();
+        (tireMountHistory.data || []).forEach(row => {
+            const list = mountHistoryByTire.get(row.tire_id) || [];
+            list.push(row);
+            mountHistoryByTire.set(row.tire_id, list);
+        });
+
+        const complianceDocsBySupplier = new Map<string, ComplianceDoc[]>();
+        (supplierComplianceDocs.data || []).forEach(row => {
+            const mapped = mapSupplierComplianceDoc(row);
+            const list = complianceDocsBySupplier.get(row.supplier_id) || [];
+            list.push(mapped);
+            complianceDocsBySupplier.set(row.supplier_id, list);
+        });
+
+        const rateCardsBySupplier = new Map<string, Attachment[]>();
+        (supplierRateCards.data || []).forEach(row => {
+            const mapped = mapSupplierRateCard(row);
+            const list = rateCardsBySupplier.get(row.supplier_id) || [];
+            list.push(mapped);
+            rateCardsBySupplier.set(row.supplier_id, list);
+        });
+
+        if (profiles.data) dispatch({ type: 'SET_USERS', payload: profiles.data.map(r => mapProfile(r, ctx)) });
+        if (vehicles.data) dispatch({ type: 'SET_VEHICLES', payload: vehicles.data.map(r => mapVehicle(r, ctx)) });
+        if (fuelEntries.data) dispatch({ type: 'SET_FUEL_ENTRIES', payload: fuelEntries.data.map(mapFuelEntry) });
+        if (serviceEntries.data) dispatch({ type: 'SET_SERVICE_ENTRIES', payload: serviceEntries.data.map(mapServiceEntry) });
+        if (otherCosts.data) dispatch({ type: 'SET_OTHER_COSTS', payload: otherCosts.data.map(mapOtherCost) });
+        if (recurringCosts.data) dispatch({ type: 'SET_RECURRING_COSTS', payload: recurringCosts.data.map(mapRecurringCost) });
+        if (revenueEntries.data) dispatch({ type: 'SET_REVENUE_ENTRIES', payload: revenueEntries.data.map(mapRevenueEntry) });
+        if (serviceIntervals.data) dispatch({ type: 'SET_SERVICE_INTERVALS', payload: serviceIntervals.data.map(mapServiceInterval) });
+        if (plannedServices.data) dispatch({ type: 'SET_PLANNED_SERVICES', payload: plannedServices.data.map(mapPlannedService) });
+        if (fuelPrices.data) dispatch({ type: 'SET_FUEL_PRICE_RECORDS', payload: fuelPrices.data.map(mapFuelPrice) });
+        if (bowsers.data) dispatch({ type: 'SET_BOWSERS', payload: bowsers.data.map(mapBowser) });
+        if (bowserRefills.data) dispatch({ type: 'SET_BOWSER_REFILLS', payload: bowserRefills.data.map(mapBowserRefill) });
+        if (budgets.data) dispatch({ type: 'SET_BUDGETS', payload: budgets.data.map(mapBudget) });
+        if (forecasts.data) dispatch({ type: 'SET_FORECASTS', payload: forecasts.data.map(mapForecast) });
+        if (jobCards.data) dispatch({ type: 'SET_JOB_CARDS', payload: jobCards.data.map(mapJobCard) });
+        if (checklistTemplates.data) dispatch({ type: 'SET_CHECKLIST_TEMPLATES', payload: checklistTemplates.data.map(mapChecklistTemplate) });
+        if (checklistSubmissions.data) dispatch({ type: 'SET_CHECKLIST_SUBMISSIONS', payload: checklistSubmissions.data.map(mapChecklistSubmission) });
+        if (tires.data) dispatch({ type: 'SET_TIRES', payload: tires.data.map(r => mapTire(r, mountHistoryByTire)) });
+        if (tireInspections.data) dispatch({ type: 'SET_TIRE_INSPECTIONS', payload: tireInspections.data.map(mapTireInspection) });
+        if (parts.data) dispatch({ type: 'SET_PARTS', payload: parts.data.map(mapPart) });
+        if (purchaseRequests.data) dispatch({ type: 'SET_PURCHASE_REQUESTS', payload: purchaseRequests.data.map(mapPurchaseRequest) });
+        if (purchaseOrders.data) dispatch({ type: 'SET_PURCHASE_ORDERS', payload: purchaseOrders.data.map(mapPurchaseOrder) });
+        if (hrCases.data) dispatch({ type: 'SET_HR_CASES', payload: hrCases.data.map(mapHRCase) });
+        if (clients.data) dispatch({ type: 'SET_CLIENTS', payload: clients.data.map(mapClient) });
+        if (suppliers.data) dispatch({ type: 'SET_SUPPLIERS', payload: suppliers.data.map(r => mapSupplier(r, complianceDocsBySupplier, rateCardsBySupplier)) });
+        if (quotes.data) dispatch({ type: 'SET_QUOTES', payload: quotes.data.map(mapQuote) });
+        if (loadConfirmations.data) dispatch({ type: 'SET_LOAD_CONFIRMATIONS', payload: loadConfirmations.data.map(r => mapLoadConfirmation(r, ctx)) });
+        if (manifests.data) dispatch({ type: 'SET_MANIFESTS', payload: manifests.data.map(r => mapManifest(r, ctx)) });
+        if (tripSheets.data) dispatch({ type: 'SET_TRIP_SHEETS', payload: tripSheets.data.map(r => mapTripSheet(r, ctx)) });
+        if (incidentReports.data) dispatch({ type: 'SET_INCIDENT_REPORTS', payload: incidentReports.data.map(mapIncidentReport) });
+        if (supplierApplications.data) dispatch({ type: 'SET_SUPPLIER_APPLICATIONS', payload: supplierApplications.data.map(mapSupplierApplication) });
+        if (notifications.data) dispatch({ type: 'SET_NOTIFICATIONS', payload: notifications.data.map(mapNotification) });
+        if (messages.data) dispatch({ type: 'SET_MESSAGES', payload: messages.data.map(mapMessage) });
+        if (routes.data) dispatch({ type: 'SET_ROUTES', payload: routes.data.map(mapRoute) });
+        if (vehicleComplianceDocs.data) dispatch({ type: 'SET_VEHICLE_COMPLIANCE_DOCS', payload: vehicleComplianceDocs.data.map(mapVehicleComplianceDoc) });
+    } catch (err) {
+        console.error('RawDataContext: hydrate failed', err);
+    }
+}
+
 export const RawDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(dataReducer, getInitialState());
 
+    useEffect(() => {
+        let active = true;
+
+        const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!active) return;
+
+            if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session?.user)) {
+                dispatch({ type: 'RESET_ALL' });
+                return;
+            }
+
+            if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.user) {
+                await hydrateFromSupabase(dispatch);
+            }
+        });
+
+        return () => {
+            active = false;
+            sub.subscription.unsubscribe();
+        };
+    }, []);
+
+    // Persist to localStorage on every change. Removed in Commit D once
+    // writes go directly to Supabase and the cache is no longer useful.
     useEffect(() => {
         localStorage.setItem('fbn_fleet_app_state_v3_1', JSON.stringify(state));
     }, [state]);

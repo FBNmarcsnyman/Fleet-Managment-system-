@@ -13,17 +13,6 @@ interface AuthState {
 
 type LoginResult = { ok: true } | { ok: false; error: string };
 
-// Wrap a promise so it rejects after `ms` if it hasn't settled. Used to
-// surface stalled login awaits as visible errors instead of an infinite
-// "Signing in..." spinner.
-const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
-    Promise.race([
-        p,
-        new Promise<T>((_, reject) =>
-            setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
-        ),
-    ]);
-
 interface AuthContextType extends AuthState {
   handleLogin: (email: string, password: string) => Promise<LoginResult>;
   handleLogout: () => void;
@@ -92,20 +81,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const handleLogin = useCallback(async (email: string, password: string): Promise<LoginResult> => {
         console.log('[login] start');
+        // 30s global fetch timeout is enforced inside lib/supabase.ts (single
+        // source of truth). The try/catch here turns any thrown error from
+        // that timeout - or any other surprise - into a structured LoginResult
+        // so Login.tsx re-enables its button instead of leaving the spinner
+        // stuck.
         try {
-            const { data, error } = await withTimeout(
-                supabase.auth.signInWithPassword({ email, password }),
-                15000,
-                'signInWithPassword',
-            );
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) return { ok: false, error: error.message };
             if (!data.user) return { ok: false, error: 'No user returned from sign-in' };
             console.log('[login] signInWithPassword OK, fetching profile');
-            const mapped = await withTimeout(
-                fetchUserContext(data.user.id),
-                15000,
-                'fetchUserContext',
-            );
+            const mapped = await fetchUserContext(data.user.id);
             if (!mapped) return { ok: false, error: 'Signed in, but failed to load profile' };
             console.log('[login] profile fetched, setting currentUser');
             setState(prev => ({ ...prev, currentUser: mapped }));

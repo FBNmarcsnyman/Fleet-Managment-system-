@@ -102,7 +102,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     const hasPermission = useCallback((permission: Permission) => {
-        return state.currentUser?.permissions.includes(permission) ?? false;
+        if (!state.currentUser) return false;
+        // Admins implicitly hold every permission. Mirrors the brief's
+        // "Admins see all" rule (section 3) and matches RLS behavior server-side.
+        // Without this bypass, an Admin/Super Admin whose profiles.permissions
+        // array is empty in the DB (which is the current bootstrap state for
+        // Marc) gets zero nav items in the Header even though their role
+        // should grant full access.
+        if (state.currentUser.role === 'Super Admin' || state.currentUser.role === 'Admin') {
+            return true;
+        }
+        return state.currentUser.permissions.includes(permission);
     }, [state.currentUser]);
 
     const updateNavPreferences = useCallback((prefs: User['navigationPreferences']) => {

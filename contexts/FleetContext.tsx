@@ -139,17 +139,26 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         handleSelectVehicle: (id: string | null) => dispatch({ type: 'SELECT_VEHICLE', payload: id }),
 
         // -- Vehicles ---------------------------------------------------------
-        // Commit D: writes go to Supabase, then dispatch the mapped row to
-        // local state. Errors are logged; callers don't currently await.
-        handleAddVehicle: async (vehicle: Omit<Vehicle, 'id'>) => {
+        // Returns a structured result so callers (VehicleList.openAddAsset)
+        // can surface Supabase errors to the user instead of swallowing them.
+        // The catch block converts thrown errors (e.g. toVehicleInsert
+        // rejecting because branches haven't hydrated) into the same shape.
+        handleAddVehicle: async (vehicle: Omit<Vehicle, 'id'>): Promise<{ ok: true; vehicle: Vehicle } | { ok: false; error: string }> => {
             try {
                 const row = toVehicleInsert(vehicle, branchIdByName);
                 const { data, error } = await supabase
                     .from('vehicles').insert(row).select().single();
-                if (error) { console.error('[fleet] addVehicle failed:', error); return; }
-                dispatch({ type: 'ADD_VEHICLE', payload: mapVehicle(data, { branchById }) });
+                if (error) {
+                    console.error('[fleet] addVehicle failed:', error);
+                    return { ok: false, error: error.message };
+                }
+                const mapped = mapVehicle(data, { branchById });
+                dispatch({ type: 'ADD_VEHICLE', payload: mapped });
+                return { ok: true, vehicle: mapped };
             } catch (err) {
                 console.error('[fleet] addVehicle threw:', err);
+                const msg = err instanceof Error ? err.message : 'Unknown error';
+                return { ok: false, error: msg };
             }
         },
         handleBulkAddVehicles: async (vehicles: Omit<Vehicle, 'id'>[]) => {

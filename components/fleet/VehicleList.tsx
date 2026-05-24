@@ -17,7 +17,7 @@ const VehicleList: React.FC = () => {
         handleAddVehicle,
         handleBulkAddVehicles
     } = useVehicles();
-    const { showModal, hideModal } = useUIState();
+    const { showModal, hideModal, showToast } = useUIState();
     const [groupBy, setGroupBy] = useState<GroupByType>('branch');
 
     const groupedVehicles = useMemo(() => {
@@ -53,9 +53,16 @@ const VehicleList: React.FC = () => {
 
     const openAddAsset = () => {
         showModal('addVehicle', {
-            onSubmit: (data: any) => {
-                handleAddVehicle(data);
-                hideModal();
+            onSubmit: async (data: any) => {
+                const result = await handleAddVehicle(data);
+                if (result?.ok) {
+                    hideModal();
+                    showToast(`Vehicle "${result.vehicle.name}" created.`);
+                } else {
+                    // Surface the actual Supabase error so we stop guessing.
+                    // Modal stays open so the user can correct + retry.
+                    showToast(`Failed to create vehicle: ${result?.error ?? 'Unknown error'}`);
+                }
             },
             onCancel: hideModal
         });

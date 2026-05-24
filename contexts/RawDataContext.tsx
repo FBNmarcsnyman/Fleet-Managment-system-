@@ -471,12 +471,14 @@ type Dispatch = React.Dispatch<AppAction>;
 // Fetches every table the app needs and dispatches per-table SET_* actions.
 // Branches load first so other mappers can resolve UUID -> Branch name.
 async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
+    console.log('[hydrate] start');
     try {
         const branchesRes = await supabase.from('branches').select('id, name');
         if (branchesRes.error) {
-            console.error('RawDataContext: failed to load branches', branchesRes.error);
+            console.error('[hydrate] branches fetch failed, aborting', branchesRes.error);
             return;
         }
+        console.log('[hydrate] branches loaded:', branchesRes.data?.length ?? 0);
         const branchById = new Map<string, Branch>(
             (branchesRes.data || []).map(b => [b.id, b.name as Branch])
         );
@@ -531,6 +533,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             supabase.from('routes').select('*'),
             supabase.from('vehicle_compliance_docs').select('*'),
         ]);
+        console.log('[hydrate] Promise.all settled (37 tables)');
 
         const logIfError = (label: string, err: unknown) => {
             if (err) console.error(`RawDataContext: ${label} fetch failed`, err);
@@ -634,8 +637,9 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         if (messages.data) dispatch({ type: 'SET_MESSAGES', payload: messages.data.map(mapMessage) });
         if (routes.data) dispatch({ type: 'SET_ROUTES', payload: routes.data.map(mapRoute) });
         if (vehicleComplianceDocs.data) dispatch({ type: 'SET_VEHICLE_COMPLIANCE_DOCS', payload: vehicleComplianceDocs.data.map(mapVehicleComplianceDoc) });
+        console.log('[hydrate] end — dispatched all tables');
     } catch (err) {
-        console.error('RawDataContext: hydrate failed', err);
+        console.error('[hydrate] failed with thrown error', err);
     }
 }
 
@@ -663,12 +667,6 @@ export const RawDataProvider: React.FC<{ children: ReactNode }> = ({ children })
             sub.subscription.unsubscribe();
         };
     }, []);
-
-    // Persist to localStorage on every change. Removed in Commit D once
-    // writes go directly to Supabase and the cache is no longer useful.
-    useEffect(() => {
-        localStorage.setItem('fbn_fleet_app_state_v3_1', JSON.stringify(state));
-    }, [state]);
 
     const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
 

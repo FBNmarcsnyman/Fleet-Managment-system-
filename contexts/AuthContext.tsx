@@ -80,11 +80,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isAuthReady, setIsAuthReady] = useState(false);
 
     const handleLogin = useCallback(async (email: string, password: string): Promise<LoginResult> => {
+        console.log('[login] start');
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) return { ok: false, error: error.message };
         if (!data.user) return { ok: false, error: 'No user returned from sign-in' };
+        console.log('[login] signInWithPassword OK, fetching profile');
         const mapped = await fetchUserContext(data.user.id);
         if (!mapped) return { ok: false, error: 'Signed in, but failed to load profile' };
+        console.log('[login] profile fetched, setting currentUser');
         setState(prev => ({ ...prev, currentUser: mapped }));
         return { ok: true };
     }, []);

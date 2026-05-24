@@ -480,22 +480,28 @@ type Dispatch = React.Dispatch<AppAction>;
 async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
     console.log('[hydrate] start');
     try {
-        const branchesRes = await supabase.from('branches').select('id, name');
+        // Use `code` (e.g. 'FBN JHB') not `name` (e.g. 'FBN Johannesburg') -
+        // the TypeScript Branch union, the AddVehicleForm dropdown, and the
+        // BRANCHES constant all use the short codes. Reading `name` silently
+        // populated lookups with display strings that didn't match the
+        // codes, so vehicle insert's branch resolution always failed and
+        // every mapper returned the wrong Branch label for read rows.
+        const branchesRes = await supabase.from('branches').select('id, code');
         if (branchesRes.error) {
             console.error('[hydrate] branches fetch failed, aborting', branchesRes.error);
             return;
         }
         console.log('[hydrate] branches loaded:', branchesRes.data?.length ?? 0);
         const branchById = new Map<string, Branch>(
-            (branchesRes.data || []).map(b => [b.id, b.name as Branch])
+            (branchesRes.data || []).map(b => [b.id, b.code as Branch])
         );
         const ctx = { branchById };
 
-        // Store branches in state so write handlers can resolve Branch name -> UUID
+        // Store branches in state so write handlers can resolve Branch code -> UUID
         // when constructing insert/update payloads (e.g. vehicles.branch_id).
         dispatch({
             type: 'SET_BRANCHES',
-            payload: (branchesRes.data || []).map(b => ({ id: b.id, name: b.name as Branch })),
+            payload: (branchesRes.data || []).map(b => ({ id: b.id, name: b.code as Branch })),
         });
 
         const [

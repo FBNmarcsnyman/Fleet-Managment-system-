@@ -51,7 +51,9 @@ const mapProfileRow = (row: ProfileRow, branchById: Map<string, Branch>): User =
 const fetchUserContext = async (userId: string): Promise<User | null> => {
     const [profileRes, branchesRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('branches').select('id, name'),
+        // Use `code` (short, e.g. 'FBN JHB') - matches the TS Branch union.
+        // See matching comment in RawDataContext hydrateFromSupabase.
+        supabase.from('branches').select('id, code'),
     ]);
 
     if (profileRes.error || !profileRes.data) {
@@ -64,7 +66,7 @@ const fetchUserContext = async (userId: string): Promise<User | null> => {
     }
 
     const branchById = new Map<string, Branch>(
-        branchesRes.data.map(b => [b.id, b.name as Branch])
+        branchesRes.data.map(b => [b.id, b.code as Branch])
     );
     return mapProfileRow(profileRes.data, branchById);
 };

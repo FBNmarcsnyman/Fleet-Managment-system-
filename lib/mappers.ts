@@ -584,3 +584,98 @@ export const mapVehicleComplianceDoc = (row: Tables['vehicle_compliance_docs']['
     fileUrl: row.file_url ?? undefined,
     notes: row.notes ?? undefined,
 });
+
+// =============================================================================
+// Reverse mappers (domain -> DB Insert/Update). Used by write handlers in the
+// domain contexts when persisting to Supabase. Schema requires `organization_id`
+// on every insert (no DB default); the brief hardcodes FBN's tenant UUID until
+// multi-tenancy ships.
+// =============================================================================
+
+export const FBN_ORGANIZATION_ID = '00000000-0000-0000-0000-000000000001';
+
+export type BranchIdByName = Map<Branch, string>;
+
+const resolveBranchId = (branch: Branch, branchIdByName: BranchIdByName): string => {
+    const id = branchIdByName.get(branch);
+    if (!id) {
+        throw new Error(
+            `Cannot resolve branch "${branch}" to a UUID. Branches have not hydrated yet, ` +
+            `or the name does not match any row in the branches table.`,
+        );
+    }
+    return id;
+};
+
+// -- Vehicle -> vehicles row -------------------------------------------------
+export const toVehicleInsert = (
+    vehicle: Omit<Vehicle, 'id'>,
+    branchIdByName: BranchIdByName,
+): Tables['vehicles']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    branch_id: resolveBranchId(vehicle.branch, branchIdByName),
+    name: vehicle.name,
+    registration: vehicle.registration,
+    make: vehicle.make || null,
+    model: vehicle.model || null,
+    year: vehicle.year ?? null,
+    vin: vehicle.vin || null,
+    weight_category: vehicle.weightCategory || null,
+    status: vehicle.status,
+    purchase_price: vehicle.purchasePrice ?? null,
+    current_value: vehicle.currentValue ?? null,
+    linked_vehicle_id: vehicle.linkedVehicleId ?? null,
+    current_odometer: vehicle.currentOdometer ?? null,
+    current_hours: vehicle.currentHours ?? null,
+    assigned_driver_id: vehicle.assignedDriverId ?? null,
+    health_score: vehicle.healthScore ?? null,
+    pallet_spaces: vehicle.palletSpaces ?? null,
+    payload_kg: vehicle.payloadKg ?? null,
+    cubic_meters: vehicle.cubicMeters ?? null,
+    deck_meters: vehicle.deckMeters ?? null,
+    cost_per_km_target: vehicle.costPerKmTarget ?? null,
+    monthly_fixed_cost: vehicle.monthlyFixedCost ?? null,
+});
+
+export const toVehicleUpdate = (
+    updates: Partial<Vehicle>,
+    branchIdByName: BranchIdByName,
+): Tables['vehicles']['Update'] => {
+    const row: Tables['vehicles']['Update'] = {};
+    if (updates.branch !== undefined) row.branch_id = resolveBranchId(updates.branch, branchIdByName);
+    if (updates.name !== undefined) row.name = updates.name;
+    if (updates.registration !== undefined) row.registration = updates.registration;
+    if (updates.make !== undefined) row.make = updates.make;
+    if (updates.model !== undefined) row.model = updates.model;
+    if (updates.year !== undefined) row.year = updates.year;
+    if (updates.vin !== undefined) row.vin = updates.vin;
+    if (updates.weightCategory !== undefined) row.weight_category = updates.weightCategory;
+    if (updates.status !== undefined) row.status = updates.status;
+    if (updates.purchasePrice !== undefined) row.purchase_price = updates.purchasePrice;
+    if (updates.currentValue !== undefined) row.current_value = updates.currentValue;
+    if (updates.linkedVehicleId !== undefined) row.linked_vehicle_id = updates.linkedVehicleId ?? null;
+    if (updates.currentOdometer !== undefined) row.current_odometer = updates.currentOdometer;
+    if (updates.currentHours !== undefined) row.current_hours = updates.currentHours;
+    if (updates.assignedDriverId !== undefined) row.assigned_driver_id = updates.assignedDriverId ?? null;
+    if (updates.healthScore !== undefined) row.health_score = updates.healthScore;
+    if (updates.palletSpaces !== undefined) row.pallet_spaces = updates.palletSpaces;
+    if (updates.payloadKg !== undefined) row.payload_kg = updates.payloadKg;
+    if (updates.cubicMeters !== undefined) row.cubic_meters = updates.cubicMeters;
+    if (updates.deckMeters !== undefined) row.deck_meters = updates.deckMeters;
+    if (updates.costPerKmTarget !== undefined) row.cost_per_km_target = updates.costPerKmTarget;
+    if (updates.monthlyFixedCost !== undefined) row.monthly_fixed_cost = updates.monthlyFixedCost;
+    return row;
+};
+
+// -- FuelEntry -> fuel_entries row -------------------------------------------
+export const toFuelEntryInsert = (
+    entry: Omit<FuelEntry, 'id'>,
+): Tables['fuel_entries']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    vehicle_id: entry.vehicleId,
+    date: entry.date,
+    odometer: entry.odometer,
+    liters: entry.liters,
+    trip_distance_km: entry.tripDistance ?? null,
+    source_bowser_id: entry.sourceBowserId ?? null,
+});

@@ -34,6 +34,7 @@ export interface AppState {
     packagingTypes: string[];
     routes: Route[];
     vehicleComplianceDocs: VehicleComplianceDoc[];
+    branches: Array<{ id: string; name: Branch }>;
 }
 
 const getEmptyState = (): AppState => ({
@@ -44,7 +45,7 @@ const getEmptyState = (): AppState => ({
     purchaseOrders: [], hrCases: [], clients: [], suppliers: [], quotes: [], loadConfirmations: [],
     manifests: [], tripSheets: [], incidentReports: [], supplierApplications: [], notifications: [],
     messages: [], selectedVehicleId: null, commodities: COMMODITIES, packagingTypes: PACKAGING_TYPES,
-    routes: [], vehicleComplianceDocs: [],
+    routes: [], vehicleComplianceDocs: [], branches: [],
 });
 
 export const getInitialState = (): AppState => getEmptyState();
@@ -86,12 +87,13 @@ export type AppAction =
     | { type: 'SET_MESSAGES', payload: Message[] }
     | { type: 'SET_ROUTES', payload: Route[] }
     | { type: 'SET_VEHICLE_COMPLIANCE_DOCS', payload: VehicleComplianceDoc[] }
+    | { type: 'SET_BRANCHES', payload: Array<{ id: string; name: Branch }> }
     | { type: 'ADD_USER', payload: Omit<User, 'permissions'> }
     | { type: 'SELECT_VEHICLE', payload: string | null }
-    | { type: 'ADD_VEHICLE', payload: Omit<Vehicle, 'id'> }
-    | { type: 'BULK_ADD_VEHICLES', payload: Omit<Vehicle, 'id'>[] }
-    | { type: 'ADD_FUEL_ENTRY', payload: { vehicleId: string, entry: Omit<FuelEntry, 'id' | 'vehicleId'> } }
-    | { type: 'BULK_ADD_FUEL_ENTRIES', payload: Omit<FuelEntry, 'id'>[] }
+    | { type: 'ADD_VEHICLE', payload: Vehicle }
+    | { type: 'BULK_ADD_VEHICLES', payload: Vehicle[] }
+    | { type: 'ADD_FUEL_ENTRY', payload: { entry: FuelEntry } }
+    | { type: 'BULK_ADD_FUEL_ENTRIES', payload: FuelEntry[] }
     | { type: 'ADD_SERVICE_ENTRY', payload: { vehicleId: string, entry: Omit<ServiceEntry, 'id' | 'vehicleId'> } }
     | { type: 'ADD_OTHER_COST', payload: { vehicleId: string, cost: Omit<OtherCost, 'id' | 'vehicleId'> } }
     | { type: 'BULK_ADD_OTHER_COSTS', payload: Omit<OtherCost, 'id'>[] }
@@ -179,19 +181,24 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'SET_MESSAGES': return { ...state, messages: action.payload };
         case 'SET_ROUTES': return { ...state, routes: action.payload };
         case 'SET_VEHICLE_COMPLIANCE_DOCS': return { ...state, vehicleComplianceDocs: action.payload };
+        case 'SET_BRANCHES': return { ...state, branches: action.payload };
         case 'ADD_USER': return { ...state, users: [...(state.users || []), { ...action.payload, permissions: [] }] };
         case 'SELECT_VEHICLE': return { ...state, selectedVehicleId: action.payload };
-        case 'ADD_VEHICLE': return { ...state, vehicles: [{ id: generateId(), ...action.payload }, ...(state.vehicles || [])] };
-        case 'BULK_ADD_VEHICLES': return { ...state, vehicles: [...action.payload.map(v => ({ id: generateId(), ...v })), ...(state.vehicles || [])] };
+        // Post-Commit-D: ADD/BULK_ADD vehicle + fuel actions expect the DB-assigned
+        // id to already be in the payload (write handler does the Supabase insert
+        // first, maps the returned row, then dispatches). The reducer no longer
+        // generates ids for these entities.
+        case 'ADD_VEHICLE': return { ...state, vehicles: [action.payload, ...(state.vehicles || [])] };
+        case 'BULK_ADD_VEHICLES': return { ...state, vehicles: [...action.payload, ...(state.vehicles || [])] };
         case 'ADD_FUEL_ENTRY': {
-            const { vehicleId, entry } = action.payload;
-            const newEntry = { id: generateId(), vehicleId, ...entry };
+            const { entry: newEntry } = action.payload;
+            const { vehicleId } = newEntry;
 
             let updatedBowsers = [...(state.bowsers || [])];
-            if (entry.sourceBowserId) {
+            if (newEntry.sourceBowserId) {
                 updatedBowsers = updatedBowsers.map(b =>
-                    b.id === entry.sourceBowserId
-                        ? { ...b, currentStock: b.currentStock - entry.liters }
+                    b.id === newEntry.sourceBowserId
+                        ? { ...b, currentStock: b.currentStock - newEntry.liters }
                         : b
                 );
             }
@@ -210,7 +217,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
             };
         }
         case 'BULK_ADD_FUEL_ENTRIES': {
-            const newEntries = action.payload.map(e => ({ id: generateId(), ...e }));
+            const newEntries = action.payload;
             const bowserDeductions = new Map<string, number>();
             newEntries.forEach(e => {
                 if (e.sourceBowserId) {
@@ -483,6 +490,13 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             (branchesRes.data || []).map(b => [b.id, b.name as Branch])
         );
         const ctx = { branchById };
+
+        // Store branches in state so write handlers can resolve Branch name -> UUID
+        // when constructing insert/update payloads (e.g. vehicles.branch_id).
+        dispatch({
+            type: 'SET_BRANCHES',
+            payload: (branchesRes.data || []).map(b => ({ id: b.id, name: b.name as Branch })),
+        });
 
         const [
             profiles, vehicles, fuelEntries, serviceEntries, otherCosts, recurringCosts,

@@ -1,10 +1,14 @@
 
-import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { Vehicle, FuelEntry, JobCard, CalculatedFuelEntry, Tire, ServiceStatus } from '../types';
+import { Vehicle, FuelEntry, JobCard, CalculatedFuelEntry, Tire, ServiceStatus, Branch } from '../types';
 import { useServiceStatus } from '../hooks/useServiceStatus';
 import { addMonths, format } from 'date-fns';
+import { supabase } from '../lib/supabase';
+import {
+    mapVehicle, mapFuelEntry, toVehicleInsert, toVehicleUpdate, toFuelEntryInsert,
+} from '../lib/mappers';
 
 export const FleetContext = createContext<any>(undefined);
 
@@ -116,12 +120,115 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         return costs;
     }, [otherCosts, recurringCosts]);
 
+    // Latest-state ref so async write handlers can read current vehicles/bowsers
+    // without re-creating themselves on every state change (which would break
+    // useMemo identity downstream).
+    const stateRef = useRef(state);
+    stateRef.current = state;
+
+    const branchIdByName = useMemo<Map<Branch, string>>(
+        () => new Map((state.branches || []).map(b => [b.name, b.id])),
+        [state.branches],
+    );
+    const branchById = useMemo<Map<string, Branch>>(
+        () => new Map((state.branches || []).map(b => [b.id, b.name])),
+        [state.branches],
+    );
+
     const handlers = useMemo(() => ({
         handleSelectVehicle: (id: string | null) => dispatch({ type: 'SELECT_VEHICLE', payload: id }),
-        handleAddVehicle: (vehicle: any) => dispatch({ type: 'ADD_VEHICLE', payload: vehicle }),
-        handleBulkAddVehicles: (vehicles: any[]) => dispatch({ type: 'BULK_ADD_VEHICLES', payload: vehicles }),
-        handleAddFuelEntry: (vehicleId: string, entry: any) => dispatch({ type: 'ADD_FUEL_ENTRY', payload: { vehicleId, entry } }),
-        handleBulkAddFuelEntries: (entries: any[]) => dispatch({ type: 'BULK_ADD_FUEL_ENTRIES', payload: entries }),
+
+        // -- Vehicles ---------------------------------------------------------
+        // Commit D: writes go to Supabase, then dispatch the mapped row to
+        // local state. Errors are logged; callers don't currently await.
+        handleAddVehicle: async (vehicle: Omit<Vehicle, 'id'>) => {
+            try {
+                const row = toVehicleInsert(vehicle, branchIdByName);
+                const { data, error } = await supabase
+                    .from('vehicles').insert(row).select().single();
+                if (error) { console.error('[fleet] addVehicle failed:', error); return; }
+                dispatch({ type: 'ADD_VEHICLE', payload: mapVehicle(data, { branchById }) });
+            } catch (err) {
+                console.error('[fleet] addVehicle threw:', err);
+            }
+        },
+        handleBulkAddVehicles: async (vehicles: Omit<Vehicle, 'id'>[]) => {
+            try {
+                const rows = vehicles.map(v => toVehicleInsert(v, branchIdByName));
+                const { data, error } = await supabase
+                    .from('vehicles').insert(rows).select();
+                if (error) { console.error('[fleet] bulkAddVehicles failed:', error); return; }
+                dispatch({
+                    type: 'BULK_ADD_VEHICLES',
+                    payload: (data || []).map(r => mapVehicle(r, { branchById })),
+                });
+            } catch (err) {
+                console.error('[fleet] bulkAddVehicles threw:', err);
+            }
+        },
+        handleUpdateVehicle: async (vehicleId: string, updates: Partial<Vehicle>) => {
+            try {
+                const row = toVehicleUpdate(updates, branchIdByName);
+                const { error } = await supabase
+                    .from('vehicles').update(row).eq('id', vehicleId);
+                if (error) { console.error('[fleet] updateVehicle failed:', error); return; }
+                dispatch({ type: 'UPDATE_VEHICLE', payload: { vehicleId, updates } });
+            } catch (err) {
+                console.error('[fleet] updateVehicle threw:', err);
+            }
+        },
+
+        // -- Fuel entries -----------------------------------------------------
+        // Mirrors the reducer's cascade: bump vehicle odometer if greater,
+        // decrement bowser stock if a source bowser was named.
+        handleAddFuelEntry: async (vehicleId: string, entry: Omit<FuelEntry, 'id' | 'vehicleId'>) => {
+            try {
+                const insertRow = toFuelEntryInsert({ vehicleId, ...entry });
+                const { data: inserted, error: insertErr } = await supabase
+                    .from('fuel_entries').insert(insertRow).select().single();
+                if (insertErr) { console.error('[fleet] addFuelEntry failed:', insertErr); return; }
+
+                const cur = stateRef.current;
+                const vehicle = (cur.vehicles || []).find(v => v.id === vehicleId);
+                if (vehicle && (!vehicle.currentOdometer || entry.odometer > vehicle.currentOdometer)) {
+                    const { error: vErr } = await supabase
+                        .from('vehicles').update({ current_odometer: entry.odometer }).eq('id', vehicleId);
+                    if (vErr) console.error('[fleet] fuel-cascade vehicle odo update failed:', vErr);
+                }
+                if (entry.sourceBowserId) {
+                    const bowser = (cur.bowsers || []).find(b => b.id === entry.sourceBowserId);
+                    if (bowser) {
+                        const newStock = bowser.currentStock - entry.liters;
+                        const { error: bErr } = await supabase
+                            .from('bowsers').update({ current_stock_liters: newStock }).eq('id', entry.sourceBowserId);
+                        if (bErr) console.error('[fleet] fuel-cascade bowser stock update failed:', bErr);
+                    }
+                }
+
+                dispatch({ type: 'ADD_FUEL_ENTRY', payload: { entry: mapFuelEntry(inserted) } });
+            } catch (err) {
+                console.error('[fleet] addFuelEntry threw:', err);
+            }
+        },
+        handleBulkAddFuelEntries: async (entries: Omit<FuelEntry, 'id'>[]) => {
+            try {
+                const rows = entries.map(e => toFuelEntryInsert(e));
+                const { data, error } = await supabase
+                    .from('fuel_entries').insert(rows).select();
+                if (error) { console.error('[fleet] bulkAddFuelEntries failed:', error); return; }
+                // NOTE: Vehicle odometer and bowser stock cascading for bulk inserts
+                // happens in the reducer (local-only). Backfilling those side
+                // effects to Supabase for bulk imports is a follow-up.
+                dispatch({
+                    type: 'BULK_ADD_FUEL_ENTRIES',
+                    payload: (data || []).map(mapFuelEntry),
+                });
+            } catch (err) {
+                console.error('[fleet] bulkAddFuelEntries threw:', err);
+            }
+        },
+
+        // -- Not yet wired to Supabase (Commit E) -----------------------------
         handleAddServiceEntry: (vehicleId: string, entry: any) => dispatch({ type: 'ADD_SERVICE_ENTRY', payload: { vehicleId, entry } }),
         handleAddOtherCost: (vehicleId: string, cost: any) => dispatch({ type: 'ADD_OTHER_COST', payload: { vehicleId, cost } }),
         handleBulkAddOtherCosts: (costs: any[]) => dispatch({ type: 'BULK_ADD_OTHER_COSTS', payload: costs }),
@@ -129,7 +236,6 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         handleAddRevenue: (vehicleId: string, revenue: any) => dispatch({ type: 'ADD_REVENUE', payload: { vehicleId, revenue } }),
         handleAddServiceInterval: (vehicleId: string, interval: any) => dispatch({ type: 'ADD_SERVICE_INTERVAL', payload: { vehicleId, interval } }),
         handleDeleteServiceInterval: (id: string) => dispatch({ type: 'DELETE_SERVICE_INTERVAL', payload: id }),
-        handleUpdateVehicle: (vehicleId: string, updates: Partial<Vehicle>) => dispatch({ type: 'UPDATE_VEHICLE', payload: { vehicleId, updates } }),
         handleSetFuelPrice: (price: any) => dispatch({ type: 'SET_FUEL_PRICE', payload: price }),
         handleAddBowser: (bowser: any) => dispatch({ type: 'ADD_BOWSER', payload: bowser }),
         handleAddBowserRefill: (refill: any) => dispatch({ type: 'ADD_BOWSER_REFILL', payload: refill }),
@@ -137,7 +243,7 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         handleDeleteBowserRefill: (id: string) => dispatch({ type: 'DELETE_BOWSER_REFILL', payload: id }),
         handleAssignDriverToVehicle: (vehicleId: string, driverId: string | null) => dispatch({ type: 'ASSIGN_DRIVER_TO_VEHICLE', payload: { vehicleId, driverId } }),
         handleUpdateTire: (tire: Tire) => dispatch({ type: 'UPDATE_TIRE', payload: tire }),
-    }), [dispatch]);
+    }), [dispatch, branchIdByName, branchById]);
 
     const value = useMemo(() => ({
         ...state,

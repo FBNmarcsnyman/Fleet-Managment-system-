@@ -161,18 +161,21 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 return { ok: false, error: msg };
             }
         },
-        handleBulkAddVehicles: async (vehicles: Omit<Vehicle, 'id'>[]) => {
+        handleBulkAddVehicles: async (vehicles: Omit<Vehicle, 'id'>[]): Promise<{ ok: true; count: number } | { ok: false; error: string }> => {
             try {
                 const rows = vehicles.map(v => toVehicleInsert(v, branchIdByName));
                 const { data, error } = await supabase
                     .from('vehicles').insert(rows).select();
-                if (error) { console.error('[fleet] bulkAddVehicles failed:', error); return; }
-                dispatch({
-                    type: 'BULK_ADD_VEHICLES',
-                    payload: (data || []).map(r => mapVehicle(r, { branchById })),
-                });
+                if (error) {
+                    console.error('[fleet] bulkAddVehicles failed:', error);
+                    return { ok: false, error: error.message };
+                }
+                const mapped = (data || []).map(r => mapVehicle(r, { branchById }));
+                dispatch({ type: 'BULK_ADD_VEHICLES', payload: mapped });
+                return { ok: true, count: mapped.length };
             } catch (err) {
                 console.error('[fleet] bulkAddVehicles threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
         handleUpdateVehicle: async (vehicleId: string, updates: Partial<Vehicle>) => {
@@ -219,21 +222,24 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 console.error('[fleet] addFuelEntry threw:', err);
             }
         },
-        handleBulkAddFuelEntries: async (entries: Omit<FuelEntry, 'id'>[]) => {
+        handleBulkAddFuelEntries: async (entries: Omit<FuelEntry, 'id'>[]): Promise<{ ok: true; count: number } | { ok: false; error: string }> => {
             try {
                 const rows = entries.map(e => toFuelEntryInsert(e));
                 const { data, error } = await supabase
                     .from('fuel_entries').insert(rows).select();
-                if (error) { console.error('[fleet] bulkAddFuelEntries failed:', error); return; }
+                if (error) {
+                    console.error('[fleet] bulkAddFuelEntries failed:', error);
+                    return { ok: false, error: error.message };
+                }
                 // NOTE: Vehicle odometer and bowser stock cascading for bulk inserts
                 // happens in the reducer (local-only). Backfilling those side
                 // effects to Supabase for bulk imports is a follow-up.
-                dispatch({
-                    type: 'BULK_ADD_FUEL_ENTRIES',
-                    payload: (data || []).map(mapFuelEntry),
-                });
+                const mapped = (data || []).map(mapFuelEntry);
+                dispatch({ type: 'BULK_ADD_FUEL_ENTRIES', payload: mapped });
+                return { ok: true, count: mapped.length };
             } catch (err) {
                 console.error('[fleet] bulkAddFuelEntries threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
 

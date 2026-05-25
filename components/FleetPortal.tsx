@@ -123,8 +123,12 @@ const FleetPortal: React.FC = () => {
             });
 
             if (newEntries.length > 0) {
-                handleBulkAddFuelEntries(newEntries);
-                showToast(`Successfully synchronized ${newEntries.length} fuel entries from cloud.`);
+                const result = await handleBulkAddFuelEntries(newEntries);
+                if (result?.ok) {
+                    showToast(`Successfully synchronized ${result.count} fuel entries from cloud.`);
+                } else {
+                    showToast(`Fuel sync failed: ${result?.error ?? 'Unknown error'}`);
+                }
             } else {
                 showToast(`Sync finished: 0 new entries matched your fleet (${rows.length} rows processed). Check headers.`);
             }

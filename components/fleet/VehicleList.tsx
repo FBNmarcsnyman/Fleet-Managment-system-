@@ -70,9 +70,14 @@ const VehicleList: React.FC = () => {
 
     const openBulkImport = () => {
         showModal('bulkImportAssets', {
-            onImport: (data: any[]) => {
-                handleBulkAddVehicles(data);
+            onImport: async (data: any[]) => {
                 hideModal();
+                const result = await handleBulkAddVehicles(data);
+                if (result?.ok) {
+                    showToast(`Imported ${result.count} vehicle${result.count === 1 ? '' : 's'}.`);
+                } else {
+                    showToast(`Bulk import failed: ${result?.error ?? 'Unknown error'}`);
+                }
             },
             onClose: hideModal
         });
@@ -80,9 +85,14 @@ const VehicleList: React.FC = () => {
 
     const openConnectSheet = () => {
         showModal('connectAssetSheet', {
-            onImport: (data: any[]) => {
-                handleBulkAddVehicles(data);
+            onImport: async (data: any[]) => {
                 hideModal();
+                const result = await handleBulkAddVehicles(data);
+                if (result?.ok) {
+                    showToast(`Synced ${result.count} vehicle${result.count === 1 ? '' : 's'} from sheet.`);
+                } else {
+                    showToast(`Sheet sync failed: ${result?.error ?? 'Unknown error'}`);
+                }
             },
             onClose: hideModal
         });

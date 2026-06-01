@@ -44,7 +44,11 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
 const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, onSubmit, quoteData }) => {
     const { hideModal } = useUIState();
     const { commodities, packagingTypes, handleAddCommodity, handleAddPackagingType } = useFleetData();
-    const [quote, setQuote] = useState(() => getInitialState(quoteData, commodities, packagingTypes));
+    // Form state is the union of "new quote literal" and "loaded existing Quote".
+    // Typed as `any` here because CreateQuoteForm uses many internal `as any`
+    // casts and a fully typed shape requires a rewrite that's out of scope for
+    // the typing-cleanup push.
+    const [quote, setQuote] = useState<any>(() => getInitialState(quoteData, commodities, packagingTypes));
     
     const [showNewCommodityInput, setShowNewCommodityInput] = useState(false);
     const [newCommodity, setNewCommodity] = useState('');
@@ -55,9 +59,12 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     const transportSuppliers = suppliers.filter(s => s.type === 'Transport');
 
     useEffect(() => {
-        const total = quote.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+        const total: number = (quote.items as QuoteItem[]).reduce(
+            (sum: number, item: QuoteItem) => sum + (item.quantity * item.rate),
+            0,
+        );
         if (total !== quote.totalAmount) {
-            setQuote(prev => ({ ...prev, totalAmount: total }));
+            setQuote((prev: any) => ({ ...prev, totalAmount: total }));
         }
     }, [quote.items, quote.totalAmount]);
 

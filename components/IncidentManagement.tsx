@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useOperations, useVehicles, useAuth } from '../contexts/AppContexts';
-import { IncidentReport, IncidentQuote, Attachment } from '../types';
+import { IncidentReport, IncidentQuote, Attachment, Vehicle } from '../types';
 import Modal from './Modal';
 import EditIncidentModal from './EditIncidentModal';
 import { format } from 'date-fns';
@@ -14,7 +14,9 @@ const IncidentManagement: React.FC = () => {
     const [selectedIncident, setSelectedIncident] = useState<IncidentReport | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-    const vehicleMap = useMemo(() => new Map(vehicles.map(v => [v.id, v])), [vehicles]);
+    const vehicleMap = useMemo(() => new Map<string, Vehicle>(
+        (vehicles as Vehicle[]).map((v: Vehicle) => [v.id, v]),
+    ), [vehicles]);
 
     const handleUpdate = (updatedIncident: IncidentReport) => {
         handleUpdateIncident(updatedIncident);

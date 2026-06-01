@@ -11,7 +11,7 @@ interface AuthState {
   viewingClientAsAdmin: User | null;
 }
 
-type LoginResult = { ok: true } | { ok: false; error: string };
+export type LoginResult = { ok: true } | { ok: false; error: string };
 
 interface AuthContextType extends AuthState {
   handleLogin: (email: string, password: string) => Promise<LoginResult>;

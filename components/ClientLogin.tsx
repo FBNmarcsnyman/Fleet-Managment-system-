@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AppContexts';
+import type { LoginResult } from '../contexts/AuthContext';
 import { FuelIcon } from './icons/FuelIcon';
 
 const ClientLogin: React.FC = () => {
@@ -15,11 +16,10 @@ const ClientLogin: React.FC = () => {
         setError(null);
         setInfo(null);
         setSubmitting(true);
-        const result = await handleLogin(email, password);
-        if (!result.ok) {
-            setError(result.error);
-            setSubmitting(false);
-        }
+        const result: LoginResult = await handleLogin(email, password);
+        if (result.ok) return;
+        setError((result as Extract<LoginResult, { ok: false }>).error);
+        setSubmitting(false);
     };
 
     const handleForgot = async (e: React.MouseEvent) => {
@@ -30,9 +30,12 @@ const ClientLogin: React.FC = () => {
             setError('Enter your email above first.');
             return;
         }
-        const result = await resetPassword(email);
-        if (result.ok) setInfo('Password reset email sent. Check your inbox.');
-        else setError(result.error);
+        const result: LoginResult = await resetPassword(email);
+        if (result.ok) {
+            setInfo('Password reset email sent. Check your inbox.');
+            return;
+        }
+        setError((result as Extract<LoginResult, { ok: false }>).error);
     };
 
     return (

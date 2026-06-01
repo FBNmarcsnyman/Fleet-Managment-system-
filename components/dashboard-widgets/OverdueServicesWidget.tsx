@@ -4,7 +4,9 @@ import { Vehicle } from '../../types';
 
 const OverdueServicesWidget: React.FC = () => {
     const { vehicles = [], serviceStatuses = new Map() } = useVehicles();
-    const vehicleMap = useMemo(() => new Map((vehicles || []).map((v: Vehicle) => [v.id, v])), [vehicles]);
+    const vehicleMap = useMemo(() => new Map<string, Vehicle>(
+        (vehicles || []).map((v: Vehicle) => [v.id, v]),
+    ), [vehicles]);
 
     const overdueServices = useMemo(() => {
         const overdue: { vehicleName: string; details: string }[] = [];

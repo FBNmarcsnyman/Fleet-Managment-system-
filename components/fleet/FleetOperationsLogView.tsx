@@ -6,8 +6,12 @@ const FleetOperationsLogView: React.FC = () => {
     const { loadConfirmations = [], clients = [] } = useOperations();
     const { vehicles = [] } = useVehicles();
 
-    const vehicleMap = useMemo(() => new Map((vehicles || []).map(v => [v.id, v.registration])), [vehicles]);
-    const clientMap = useMemo(() => new Map((clients || []).map(c => [c.id, c.name])), [clients]);
+    const vehicleMap = useMemo(() => new Map<string, string>(
+        (vehicles || []).map((v: { id: string; registration: string }) => [v.id, v.registration]),
+    ), [vehicles]);
+    const clientMap = useMemo(() => new Map<string, string>(
+        (clients || []).map((c: { id: string; name: string }) => [c.id, c.name]),
+    ), [clients]);
 
     const sortedLogs = useMemo(() => {
         return [...(loadConfirmations || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

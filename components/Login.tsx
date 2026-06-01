@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AppContexts';
+import type { LoginResult } from '../contexts/AuthContext';
 import { FuelIcon } from './icons/FuelIcon';
 
 const Login: React.FC = () => {
@@ -16,12 +17,15 @@ const Login: React.FC = () => {
         setError(null);
         setInfo(null);
         setSubmitting(true);
-        const result = await handleLogin(email, password);
-        if (!result.ok) {
-            setError(result.error);
-            setSubmitting(false);
+        const result: LoginResult = await handleLogin(email, password);
+        if (result.ok) {
+            // AuthContext updates currentUser; App.tsx re-renders and unmounts Login.
+            return;
         }
-        // On success, AuthContext updates currentUser and App.tsx re-renders.
+        // Project tsconfig lacks `"strict": true`, so TS doesn't narrow the
+        // discriminated union after `if (result.ok)`. Cast explicitly.
+        setError((result as Extract<LoginResult, { ok: false }>).error);
+        setSubmitting(false);
     };
 
     const handleForgot = async (e: React.MouseEvent) => {
@@ -32,12 +36,12 @@ const Login: React.FC = () => {
             setError('Enter your email above first.');
             return;
         }
-        const result = await resetPassword(email);
+        const result: LoginResult = await resetPassword(email);
         if (result.ok) {
             setInfo('Password reset email sent. Check your inbox.');
-        } else {
-            setError(result.error);
+            return;
         }
+        setError((result as Extract<LoginResult, { ok: false }>).error);
     };
 
     return (

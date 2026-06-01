@@ -19,8 +19,12 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
     const { showModal } = useUIState();
     const [commHubData, setCommHubData] = useState<{ load: LoadConfirmation; client: Client; supplier?: Supplier } | null>(null);
     
-    const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
-    const supplierMap = useMemo(() => new Map(suppliers.map(s => [s.id, s])), [suppliers]);
+    const clientMap = useMemo(() => new Map<string, Client>(
+        (clients as Client[]).map((c: Client) => [c.id, c]),
+    ), [clients]);
+    const supplierMap = useMemo(() => new Map<string, Supplier>(
+        (suppliers as Supplier[]).map((s: Supplier) => [s.id, s]),
+    ), [suppliers]);
 
     const { unassigned, overdue, quotesToBook, loadsAwaitingPod } = useMemo(() => {
         return {

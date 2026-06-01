@@ -80,7 +80,9 @@ const WorkshopPortal: React.FC = () => {
         });
     };
 
-    const usedTemplateIds = useMemo(() => new Set((checklistSubmissions || []).map((s: ChecklistSubmission) => s.templateId)), [checklistSubmissions]);
+    const usedTemplateIds = useMemo(() => new Set<string>(
+        (checklistSubmissions || []).map((s: ChecklistSubmission) => s.templateId),
+    ), [checklistSubmissions]);
 
     const workshopSuppliers = (suppliers || []).filter((s: any) => s.type === 'Workshop');
 

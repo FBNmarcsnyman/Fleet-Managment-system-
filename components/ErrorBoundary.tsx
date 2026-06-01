@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
-    children: any;
+    children: ReactNode;
 }
 
 interface State {
     error: Error | null;
-    errorInfo: { componentStack?: string } | null;
+    errorInfo: ErrorInfo | null;
 }
 
 // Catches render-time exceptions anywhere in the tree. Without this, React 18
@@ -14,25 +14,14 @@ interface State {
 // "post-login hang" — the page just goes blank with no visible error unless
 // DevTools is already open. With this boundary, the crash surfaces on screen
 // and is logged with full stack info for diagnosis.
-//
-// Uses `declare` for inherited Component members since the project doesn't
-// install @types/react (adding it surfaces ~30 unrelated pre-existing type
-// errors). The runtime behavior is unaffected.
-export default class ErrorBoundary extends (React as any).Component {
-    declare props: Props;
-    declare state: State;
-    declare setState: (newState: Partial<State>) => void;
-
-    constructor(props: Props) {
-        super(props);
-        this.state = { error: null, errorInfo: null };
-    }
+export default class ErrorBoundary extends Component<Props, State> {
+    state: State = { error: null, errorInfo: null };
 
     static getDerivedStateFromError(error: Error): Partial<State> {
         return { error };
     }
 
-    componentDidCatch(error: Error, errorInfo: { componentStack?: string }) {
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.error('[ErrorBoundary] render crashed:', error);
         console.error('[ErrorBoundary] component stack:', errorInfo.componentStack);
         this.setState({ errorInfo });
@@ -45,7 +34,9 @@ export default class ErrorBoundary extends (React as any).Component {
     handleClearState = () => {
         try {
             localStorage.clear();
-        } catch {}
+        } catch {
+            // ignore - clearing localStorage can fail in privacy mode
+        }
         window.location.reload();
     };
 

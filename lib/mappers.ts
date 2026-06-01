@@ -800,6 +800,109 @@ export const toLoadConfirmationInsert = (
     load_spec: lc.loadSpec ?? null,
 });
 
+// -- JobCard -> job_cards row ------------------------------------------------
+export const toJobCardInsert = (jc: Omit<JobCard, 'id'>): Tables['job_cards']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    vehicle_id: jc.vehicleId,
+    item_description: jc.itemDescription,
+    type: jc.type,
+    status: jc.status,
+    priority: jc.priority,
+    severity: jc.severity,
+    submission_id: jc.submissionId ?? null,
+    checklist_item_id: jc.checklistItemId ?? null,
+    service_interval_id: jc.serviceIntervalId ?? null,
+    reporter_notes: jc.reporterNotes ?? null,
+    reporter_attachment_url: jc.reporterAttachment?.data ?? null,
+    assigned_to_user_id: jc.assignedToUserId ?? null,
+    reported_date: jc.reportedDate,
+    completion_date: jc.completionDate ?? null,
+    labor_hours: jc.laborHours ?? null,
+    notes: (jc.notes ?? null) as unknown as Tables['job_cards']['Insert']['notes'],
+    parts_used: (jc.partsUsed ?? null) as unknown as Tables['job_cards']['Insert']['parts_used'],
+    proposed_start_date: jc.proposedStartDate ?? null,
+    proposed_end_date: jc.proposedEndDate ?? null,
+});
+
+export const toJobCardUpdate = (updates: Partial<JobCard>): Tables['job_cards']['Update'] => {
+    const row: Tables['job_cards']['Update'] = {};
+    if (updates.itemDescription !== undefined) row.item_description = updates.itemDescription;
+    if (updates.type !== undefined) row.type = updates.type;
+    if (updates.status !== undefined) row.status = updates.status;
+    if (updates.priority !== undefined) row.priority = updates.priority;
+    if (updates.severity !== undefined) row.severity = updates.severity;
+    if (updates.reporterNotes !== undefined) row.reporter_notes = updates.reporterNotes ?? null;
+    if (updates.assignedToUserId !== undefined) row.assigned_to_user_id = updates.assignedToUserId ?? null;
+    if (updates.completionDate !== undefined) row.completion_date = updates.completionDate ?? null;
+    if (updates.laborHours !== undefined) row.labor_hours = updates.laborHours ?? null;
+    if (updates.notes !== undefined) row.notes = updates.notes as unknown as Tables['job_cards']['Update']['notes'];
+    if (updates.partsUsed !== undefined) row.parts_used = updates.partsUsed as unknown as Tables['job_cards']['Update']['parts_used'];
+    if (updates.proposedStartDate !== undefined) row.proposed_start_date = updates.proposedStartDate ?? null;
+    if (updates.proposedEndDate !== undefined) row.proposed_end_date = updates.proposedEndDate ?? null;
+    return row;
+};
+
+// -- Part -> parts row -------------------------------------------------------
+export const toPartInsert = (part: Omit<Part, 'id'>): Tables['parts']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    name: part.name,
+    part_number: part.partNumber ?? null,
+    supplier_id: part.supplierId ?? null,
+    quantity_in_stock: part.quantityInStock,
+    min_stock_level: part.minStockLevel,
+    cost: part.cost,
+    branch_id: part.branchId ?? null,
+});
+
+// -- PurchaseRequest -> purchase_requests row --------------------------------
+export const toPurchaseRequestInsert = (
+    req: Omit<PurchaseRequest, 'id' | 'requestedDate' | 'status'>,
+): Tables['purchase_requests']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    part_id: req.partId || null,
+    job_card_id: req.jobCardId ?? null,
+    quantity: req.quantity,
+    requested_by_user_id: req.requestedByUserId || null,
+    is_urgent: req.isUrgent,
+    status: 'Pending',
+    quotes: (req.quotes ?? null) as unknown as Tables['purchase_requests']['Insert']['quotes'],
+});
+
+// -- Tire -> tires row -------------------------------------------------------
+export const toTireUpdate = (tire: Tire): Tables['tires']['Update'] => ({
+    serial_number: tire.serialNumber,
+    brand: tire.brand || null,
+    size: tire.size || null,
+    type: tire.type,
+    purchase_date: tire.purchaseDate || null,
+    purchase_price: tire.purchasePrice ?? null,
+    status: tire.status,
+    assigned_vehicle_id: tire.assignedVehicleId ?? null,
+    assigned_position: tire.assignedPosition ?? null,
+    retread_details: (tire.retreadDetails ?? null) as unknown as Tables['tires']['Update']['retread_details'],
+});
+
+// -- PlannedService -> planned_services row ----------------------------------
+export const toPlannedServiceInsert = (ps: Omit<PlannedService, 'id'>): Tables['planned_services']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    vehicle_id: ps.vehicleId,
+    description: ps.description,
+    start_date: ps.startDate,
+    end_date: ps.endDate,
+});
+
+// -- ServiceInterval -> service_intervals row --------------------------------
+export const toServiceIntervalInsert = (
+    si: Omit<ServiceInterval, 'id'>,
+): Tables['service_intervals']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    vehicle_id: si.vehicleId,
+    description: si.description,
+    distance_interval: si.distanceInterval,
+    time_interval_days: si.timeIntervalDays,
+    hours_interval: si.hoursInterval,
+});
+
 export const toLoadConfirmationUpdate = (
     updates: Partial<LoadConfirmation>,
     branchIdByName: BranchIdByName,

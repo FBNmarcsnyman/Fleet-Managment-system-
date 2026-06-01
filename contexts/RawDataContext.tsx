@@ -109,7 +109,7 @@ export type AppAction =
     | { type: 'DELETE_BOWSER_REFILL', payload: string }
     | { type: 'ADD_BUDGET', payload: Omit<Budget, 'id'> }
     | { type: 'ADD_FORECAST', payload: Omit<Forecast, 'id'> }
-    | { type: 'CREATE_JOB_CARD', payload: Omit<JobCard, 'id'> }
+    | { type: 'CREATE_JOB_CARD', payload: JobCard }
     | { type: 'UPDATE_JOB_CARD', payload: { id: string, updates: Partial<JobCard> } }
     | { type: 'UPDATE_JOB_CARD_STATUS', payload: { id: string, status: JobCardStatus } }
     | { type: 'ADD_CHECKLIST_SUBMISSION', payload: any }
@@ -127,8 +127,8 @@ export type AppAction =
     | { type: 'CREATE_MANIFEST', payload: any }
     | { type: 'CREATE_TRIP_SHEET', payload: any }
     | { type: 'APPLY_AI_ASSIGNMENTS', payload: Partial<JobCard>[] }
-    | { type: 'ADD_PART', payload: Omit<Part, 'id'> }
-    | { type: 'CREATE_PURCHASE_REQUEST', payload: any }
+    | { type: 'ADD_PART', payload: Part }
+    | { type: 'CREATE_PURCHASE_REQUEST', payload: PurchaseRequest }
     | { type: 'CREATE_PURCHASE_ORDER', payload: PurchaseRequest }
     | { type: 'RECEIVE_GOODS', payload: PurchaseOrder }
     | { type: 'UPDATE_TIRE', payload: Tire }
@@ -282,7 +282,8 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'ADD_SERVICE_INTERVAL': return { ...state, serviceIntervals: [...(state.serviceIntervals || []), { id: generateId(), vehicleId: action.payload.vehicleId, ...action.payload.interval }] };
         case 'DELETE_SERVICE_INTERVAL': return { ...state, serviceIntervals: (state.serviceIntervals || []).filter(i => i.id !== action.payload) };
         case 'UPDATE_VEHICLE': return { ...state, vehicles: (state.vehicles || []).map(v => v.id === action.payload.vehicleId ? { ...v, ...action.payload.updates } : v) };
-        case 'CREATE_JOB_CARD': return { ...state, jobCards: [{ id: generateId(), ...action.payload }, ...(state.jobCards || [])] };
+        // Workshop writes (Push 3): payload arrives with DB-assigned ids.
+        case 'CREATE_JOB_CARD': return { ...state, jobCards: [action.payload, ...(state.jobCards || [])] };
         case 'UPDATE_JOB_CARD': return { ...state, jobCards: (state.jobCards || []).map(j => j.id === action.payload.id ? { ...j, ...action.payload.updates } : j) };
         case 'UPDATE_JOB_CARD_STATUS': return { ...state, jobCards: (state.jobCards || []).map(j => j.id === action.payload.id ? { ...j, status: action.payload.status } : j) };
         case 'ADD_CHECKLIST_SUBMISSION': {
@@ -352,8 +353,8 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_INCIDENT': return { ...state, incidentReports: (state.incidentReports || []).map(i => i.id === action.payload.id ? action.payload : i) };
         case 'ADD_INCIDENT_QUOTE': return { ...state, incidentReports: (state.incidentReports || []).map(i => i.id === action.payload.incidentId ? { ...i, quotes: [...(i.quotes || []), action.payload.quote] } : i) };
         case 'APPLY_AI_ASSIGNMENTS': return { ...state, jobCards: (state.jobCards || []).map(jc => { const s = action.payload.find((s: any) => s.id === jc.id); return s ? { ...jc, ...s } : jc; }) };
-        case 'ADD_PART': return {...state, parts: [...(state.parts || []), {id: generateId(), ...action.payload}]}
-        case 'CREATE_PURCHASE_REQUEST': return {...state, purchaseRequests: [...(state.purchaseRequests || []), {id: generateId(), requestedDate: new Date().toISOString(), status: 'Pending', ...action.payload}]};
+        case 'ADD_PART': return {...state, parts: [...(state.parts || []), action.payload]};
+        case 'CREATE_PURCHASE_REQUEST': return {...state, purchaseRequests: [...(state.purchaseRequests || []), action.payload]};
         case 'CREATE_PURCHASE_ORDER': {
             const request = action.payload as PurchaseRequest;
             const part = (state.parts || []).find(p => p.id === request.partId);

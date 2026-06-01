@@ -30,12 +30,31 @@ const QuotesView: React.FC<{
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [quotes, statusFilter]);
 
+    // Wrap the async handlers so the modal sees void-returning onSubmit
+    // (matches CreateQuoteForm's contract) but the Result surfaces as a toast.
     const handleCreateQuoteClick = () => {
-        showModal('createQuote', { clients, suppliers, onSubmit: handleCreateQuote });
+        showModal('createQuote', {
+            clients,
+            suppliers,
+            onSubmit: async (quote: any) => {
+                const result = await handleCreateQuote(quote);
+                if (result.ok) showToast(`Quote ${result.value!.quoteNumber} created.`);
+                else showToast(`Failed to create quote: ${result.error}`);
+            },
+        });
     };
-    
+
     const handleEditQuote = (quote: Quote) => {
-        showModal('editQuote', { quoteData: quote, clients, suppliers, onSubmit: handleUpdateQuote });
+        showModal('editQuote', {
+            quoteData: quote,
+            clients,
+            suppliers,
+            onSubmit: async (q: Quote) => {
+                const result = await handleUpdateQuote(q);
+                if (result.ok) showToast(`Quote ${q.quoteNumber} updated.`);
+                else showToast(`Failed to update quote: ${result.error}`);
+            },
+        });
     };
 
     const getStatusColor = (status: QuoteStatus) => ({

@@ -4,27 +4,34 @@ import { useOperations, useUIState } from '../../contexts/AppContexts';
 
 const AddClientForm: React.FC = () => {
     const { handleAddClient } = useOperations();
-    const { hideModal, modal } = useUIState();
+    const { hideModal, modal, showToast } = useUIState();
     const [name, setName] = useState('');
     const [contactPerson, setContactPerson] = useState('');
     const [contactEmail, setContactEmail] = useState('');
     const [contactPhone, setContactPhone] = useState('');
     const [address, setAddress] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name || !contactPerson || !contactEmail) {
             alert('Please fill in Name, Contact Person, and Email.');
             return;
         }
+        if (submitting) return;
+        setSubmitting(true);
         const newClient = { name, contactPerson, contactEmail, contactPhone, address };
-        const newClientId = handleAddClient(newClient);
-        
-        if (modal.payload?.onSuccess) {
-            modal.payload.onSuccess(newClientId);
+        const result = await handleAddClient(newClient);
+        setSubmitting(false);
+        if (!result.ok) {
+            showToast(`Failed to add client: ${result.error}`);
+            return; // keep modal open so user can correct + retry
         }
-        
+        if (modal.payload?.onSuccess) {
+            modal.payload.onSuccess(result.value!.id);
+        }
         hideModal();
+        showToast(`Client "${result.value!.name}" added.`);
     };
 
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";
@@ -42,8 +49,8 @@ const AddClientForm: React.FC = () => {
                 <textarea placeholder="Company Address" value={address} onChange={e => setAddress(e.target.value)} rows={3} className={inputClasses} />
             </div>
             <div className="flex justify-end space-x-4 mt-8">
-                <button type="button" onClick={hideModal} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button type="submit" className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg">Add Client</button>
+                <button type="button" onClick={hideModal} disabled={submitting} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={submitting} className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{submitting ? 'Adding…' : 'Add Client'}</button>
             </div>
         </form>
     );

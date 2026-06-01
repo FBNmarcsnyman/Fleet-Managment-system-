@@ -5,35 +5,43 @@ import { useOperations, useUIState } from '../../contexts/AppContexts';
 
 const AddSupplierForm: React.FC = () => {
     const { handleAddSupplier } = useOperations();
-    const { hideModal, modal } = useUIState();
+    const { hideModal, modal, showToast } = useUIState();
     const [name, setName] = useState('');
     const [contactPerson, setContactPerson] = useState('');
     const [contactEmail, setContactEmail] = useState('');
     const [contactPhone, setContactPhone] = useState('');
     const [address, setAddress] = useState('');
-    
+    const [submitting, setSubmitting] = useState(false);
+
     const defaultType = modal.payload?.defaultType || 'Workshop';
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name) {
             alert('Please fill in Supplier Name.');
             return;
         }
-        // Fix: Add complianceStatus: 'Pending' and missing properties complianceDocs, rateCards
-        const newSupplier: Omit<Supplier, 'id'> = { 
-            name, 
-            contactPerson, 
-            contactEmail, 
-            contactPhone, 
-            address, 
+        if (submitting) return;
+        setSubmitting(true);
+        const newSupplier: Omit<Supplier, 'id'> = {
+            name,
+            contactPerson,
+            contactEmail,
+            contactPhone,
+            address,
             type: defaultType,
             complianceStatus: 'Pending',
             complianceDocs: [],
-            rateCards: []
+            rateCards: [],
         };
-        handleAddSupplier(newSupplier);
+        const result = await handleAddSupplier(newSupplier);
+        setSubmitting(false);
+        if (!result.ok) {
+            showToast(`Failed to add supplier: ${result.error}`);
+            return;
+        }
         hideModal();
+        showToast(`${defaultType === 'Transport' ? 'Subcontractor' : 'Supplier'} "${result.value!.name}" added.`);
     };
 
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";
@@ -51,8 +59,8 @@ const AddSupplierForm: React.FC = () => {
                  <textarea placeholder="Address (Optional)" value={address} onChange={e => setAddress(e.target.value)} rows={3} className={inputClasses} />
             </div>
             <div className="flex justify-end space-x-4 mt-8">
-                <button type="button" onClick={hideModal} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button type="submit" className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg">Add {defaultType === 'Transport' ? 'Subcontractor' : 'Supplier'}</button>
+                <button type="button" onClick={hideModal} disabled={submitting} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={submitting} className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">{submitting ? 'Adding…' : `Add ${defaultType === 'Transport' ? 'Subcontractor' : 'Supplier'}`}</button>
             </div>
         </form>
     );

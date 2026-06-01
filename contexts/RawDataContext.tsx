@@ -113,17 +113,17 @@ export type AppAction =
     | { type: 'UPDATE_JOB_CARD', payload: { id: string, updates: Partial<JobCard> } }
     | { type: 'UPDATE_JOB_CARD_STATUS', payload: { id: string, status: JobCardStatus } }
     | { type: 'ADD_CHECKLIST_SUBMISSION', payload: any }
-    | { type: 'CREATE_QUOTE', payload: any }
+    | { type: 'CREATE_QUOTE', payload: Quote }
     | { type: 'UPDATE_QUOTE', payload: Quote }
-    | { type: 'CREATE_LOAD_CONFIRMATION', payload: any }
+    | { type: 'CREATE_LOAD_CONFIRMATION', payload: LoadConfirmation }
     | { type: 'UPDATE_LOAD_CONFIRMATION', payload: {id: string, updates: Partial<LoadConfirmation>}}
     | { type: 'ADD_INCIDENT', payload: any }
     | { type: 'UPDATE_INCIDENT', payload: any }
     | { type: 'ADD_INCIDENT_QUOTE', payload: { incidentId: string, quote: any } }
-    | { type: 'ADD_CLIENT', payload: Omit<Client, 'id'> & {id: string} }
-    | { type: 'ADD_SUPPLIER', payload: Omit<Supplier, 'id'> }
-    | { type: 'BULK_ADD_CLIENTS', payload: Omit<Client, 'id'>[] }
-    | { type: 'BULK_ADD_SUPPLIERS', payload: Omit<Supplier, 'id'>[] }
+    | { type: 'ADD_CLIENT', payload: Client }
+    | { type: 'ADD_SUPPLIER', payload: Supplier }
+    | { type: 'BULK_ADD_CLIENTS', payload: Client[] }
+    | { type: 'BULK_ADD_SUPPLIERS', payload: Supplier[] }
     | { type: 'CREATE_MANIFEST', payload: any }
     | { type: 'CREATE_TRIP_SHEET', payload: any }
     | { type: 'APPLY_AI_ASSIGNMENTS', payload: Partial<JobCard>[] }
@@ -337,13 +337,16 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
                 users: updatedUsers,
             };
         }
+        // Operations writes (Push 2): payloads now arrive with DB-assigned ids
+        // and DB-generated fields (quote_number, load_con_number, status defaults).
+        // The handler does the Supabase insert first and dispatches the mapped row.
         case 'ADD_CLIENT': return { ...state, clients: [...(state.clients || []), action.payload] };
-        case 'BULK_ADD_CLIENTS': return { ...state, clients: [...(state.clients || []), ...action.payload.map((c: any) => ({...c, id: generateId()}))]};
-        case 'ADD_SUPPLIER': return { ...state, suppliers: [...(state.suppliers || []), { id: generateId(), complianceStatus: 'Pending', ...action.payload }] };
-        case 'BULK_ADD_SUPPLIERS': return { ...state, suppliers: [...(state.suppliers || []), ...action.payload.map((s: any) => ({id: generateId(), complianceStatus: 'Pending', ...s}))]};
-        case 'CREATE_QUOTE': return { ...state, quotes: [{ ...action.payload, id: generateId(), quoteNumber: `QU-${Date.now()}`, status: 'Draft' }, ...(state.quotes || [])] };
+        case 'BULK_ADD_CLIENTS': return { ...state, clients: [...(state.clients || []), ...action.payload] };
+        case 'ADD_SUPPLIER': return { ...state, suppliers: [...(state.suppliers || []), action.payload] };
+        case 'BULK_ADD_SUPPLIERS': return { ...state, suppliers: [...(state.suppliers || []), ...action.payload] };
+        case 'CREATE_QUOTE': return { ...state, quotes: [action.payload, ...(state.quotes || [])] };
         case 'UPDATE_QUOTE': return { ...state, quotes: (state.quotes || []).map(q => q.id === action.payload.id ? action.payload : q) };
-        case 'CREATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: [{ ...action.payload, id: generateId(), loadConNumber: `LCN-${Date.now()}`, status: 'Booked', date: new Date().toISOString() }, ...(state.loadConfirmations || [])] };
+        case 'CREATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: [action.payload, ...(state.loadConfirmations || [])] };
         case 'UPDATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: (state.loadConfirmations || []).map(lc => lc.id === action.payload.id ? { ...lc, ...action.payload.updates } : lc) };
         case 'ADD_INCIDENT': return { ...state, incidentReports: [{ ...action.payload, id: generateId(), status: 'Reported', quotes: [], notes: '' }, ...(state.incidentReports || [])]};
         case 'UPDATE_INCIDENT': return { ...state, incidentReports: (state.incidentReports || []).map(i => i.id === action.payload.id ? action.payload : i) };

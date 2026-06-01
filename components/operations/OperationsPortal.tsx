@@ -18,10 +18,10 @@ const SubcontractorManagementView = lazy(() => import('./SupplierManagementView'
 
 const OperationsPortal: React.FC = () => {
     const { currentUser } = useAuth();
-    const { operationsSubView, handleOperationsSubViewChange, showModal } = useUIState();
-    const { 
+    const { operationsSubView, handleOperationsSubViewChange, showModal, showToast } = useUIState();
+    const {
         users, loadConfirmations, tripSheets, clients, suppliers, quotes, manifests,
-        handleUpdateLoadConfirmation, handleCreateQuote, handleCreateManifest, handleCreateTripSheet, handleCreateLoadConfirmation: createLoadCon 
+        handleUpdateLoadConfirmation, handleCreateQuote, handleCreateManifest, handleCreateTripSheet, handleCreateLoadConfirmation: createLoadCon
     } = useOperations();
     const { vehicles } = useVehicles();
 
@@ -38,9 +38,16 @@ const OperationsPortal: React.FC = () => {
         { view: 'quotes', label: 'Quotes' },
         { view: 'clients', label: 'Clients' },
     ];
-    
+
     const handleAssign = (lc: LoadConfirmation) => showModal('assignLoadCon', { loadCon: lc });
-    const handleNewBooking = () => showModal('createBooking', { clients, onSubmit: createLoadCon });
+    const handleNewBooking = () => showModal('createBooking', {
+        clients,
+        onSubmit: async (data: any) => {
+            const result = await createLoadCon(data);
+            if (result.ok) showToast(`Load Confirmation ${result.value!.loadConNumber} created.`);
+            else showToast(`Failed to create load confirmation: ${result.error}`);
+        },
+    });
 
 
     const renderView = () => {

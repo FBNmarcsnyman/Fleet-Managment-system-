@@ -679,3 +679,164 @@ export const toFuelEntryInsert = (
     trip_distance_km: entry.tripDistance ?? null,
     source_bowser_id: entry.sourceBowserId ?? null,
 });
+
+// -- Client -> clients row ---------------------------------------------------
+export const toClientInsert = (client: Omit<Client, 'id'>): Tables['clients']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    name: client.name,
+    contact_person: client.contactPerson || null,
+    contact_email: client.contactEmail || null,
+    contact_phone: client.contactPhone || null,
+    address: client.address || null,
+    sla_level: client.slaLevel ?? null,
+});
+
+// -- Supplier -> suppliers row -----------------------------------------------
+export const toSupplierInsert = (supplier: Omit<Supplier, 'id'>): Tables['suppliers']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    name: supplier.name,
+    type: supplier.type,
+    contact_person: supplier.contactPerson || null,
+    contact_email: supplier.contactEmail || null,
+    contact_phone: supplier.contactPhone || null,
+    address: supplier.address || null,
+    average_rating: supplier.averageRating ?? null,
+    compliance_status: supplier.complianceStatus,
+    expiry_date: supplier.expiryDate ?? null,
+    bee_status: supplier.beeStatus ?? null,
+    haz_compliant: supplier.hazCompliant ?? null,
+    specializations: supplier.specializations ?? null,
+    regions: supplier.regions ?? null,
+    fleet_size: supplier.fleetSize ?? null,
+    controller_contact: supplier.controllerContact ?? null,
+    accounts_contact: supplier.accountsContact ?? null,
+});
+
+// -- Quote -> quotes row -----------------------------------------------------
+// quote_number is required by the schema (no default); handler passes one
+// generated as `QU-${Date.now()}` to match the legacy reducer behavior.
+export const toQuoteInsert = (
+    quote: Omit<Quote, 'id' | 'quoteNumber' | 'status'>,
+    quoteNumber: string,
+): Tables['quotes']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    client_id: quote.clientId,
+    quote_number: quoteNumber,
+    date: quote.date,
+    expiry_date: quote.expiryDate || null,
+    items: (quote.items ?? []) as unknown as Tables['quotes']['Insert']['items'],
+    legs: (quote.legs ?? []) as unknown as Tables['quotes']['Insert']['legs'],
+    total_amount: quote.totalAmount,
+    status: 'Draft',
+    sent_to_client: quote.sentToClient ?? false,
+    customer_order_number: quote.customerOrderNumber ?? null,
+    notes: quote.notes ?? null,
+    special_requirements: quote.specialRequirements ?? null,
+    collection_date: quote.collectionDate ?? null,
+    subcontractor_quotes: (quote.subcontractorQuotes ?? []) as unknown as Tables['quotes']['Insert']['subcontractor_quotes'],
+    commodity: quote.commodity ?? null,
+    packaging: quote.packaging ?? null,
+    load_spec: quote.loadSpec ?? null,
+});
+
+export const toQuoteUpdate = (updates: Partial<Quote>): Tables['quotes']['Update'] => {
+    const row: Tables['quotes']['Update'] = {};
+    if (updates.status !== undefined) row.status = updates.status;
+    if (updates.sentToClient !== undefined) row.sent_to_client = updates.sentToClient;
+    if (updates.items !== undefined) row.items = updates.items as unknown as Tables['quotes']['Update']['items'];
+    if (updates.legs !== undefined) row.legs = updates.legs as unknown as Tables['quotes']['Update']['legs'];
+    if (updates.totalAmount !== undefined) row.total_amount = updates.totalAmount;
+    if (updates.customerOrderNumber !== undefined) row.customer_order_number = updates.customerOrderNumber ?? null;
+    if (updates.notes !== undefined) row.notes = updates.notes ?? null;
+    if (updates.specialRequirements !== undefined) row.special_requirements = updates.specialRequirements ?? null;
+    if (updates.collectionDate !== undefined) row.collection_date = updates.collectionDate ?? null;
+    if (updates.subcontractorQuotes !== undefined) row.subcontractor_quotes = updates.subcontractorQuotes as unknown as Tables['quotes']['Update']['subcontractor_quotes'];
+    if (updates.commodity !== undefined) row.commodity = updates.commodity ?? null;
+    if (updates.packaging !== undefined) row.packaging = updates.packaging ?? null;
+    if (updates.loadSpec !== undefined) row.load_spec = updates.loadSpec ?? null;
+    if (updates.date !== undefined) row.date = updates.date;
+    if (updates.expiryDate !== undefined) row.expiry_date = updates.expiryDate ?? null;
+    return row;
+};
+
+// -- LoadConfirmation -> load_confirmations row ------------------------------
+export const toLoadConfirmationInsert = (
+    lc: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'>,
+    loadConNumber: string,
+    branchIdByName: BranchIdByName,
+): Tables['load_confirmations']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    client_id: lc.clientId,
+    load_con_number: loadConNumber,
+    quote_id: lc.quoteId ?? null,
+    supplier_id: lc.supplierId ?? null,
+    items: (lc.items ?? []) as unknown as Tables['load_confirmations']['Insert']['items'],
+    legs: (lc.legs ?? []) as unknown as Tables['load_confirmations']['Insert']['legs'],
+    total_amount: lc.totalAmount,
+    supplier_rate: lc.supplierRate ?? null,
+    collection_branch_id: branchIdByName.get(lc.collectionBranch) ?? null,
+    destination_branch_id: branchIdByName.get(lc.destinationBranch) ?? null,
+    priority: lc.priority,
+    status: 'Booked',
+    collection_point: lc.collectionPoint || null,
+    delivery_point: lc.deliveryPoint || null,
+    collection_date: lc.collectionDate ?? null,
+    delivery_date: lc.deliveryDate ?? null,
+    vehicle_id: lc.vehicleId ?? null,
+    driver_id: lc.driverId ?? null,
+    payment_status: lc.paymentStatus ?? null,
+    customer_order_number: lc.customerOrderNumber ?? null,
+    invoice_number: lc.invoiceNumber ?? null,
+    invoice_date: lc.invoiceDate ?? null,
+    damage_report: lc.damageReport ?? null,
+    notes: (lc.notes ?? null) as unknown as Tables['load_confirmations']['Insert']['notes'],
+    delivery_area: lc.deliveryArea ?? null,
+    sent_to_supplier_date: lc.sentToSupplierDate ?? null,
+    subcontractor_vehicle_reg: lc.subcontractorVehicleReg ?? null,
+    subcontractor_driver_name: lc.subcontractorDriverName ?? null,
+    subcontractor_driver_cell: lc.subcontractorDriverCell ?? null,
+    commodity: lc.commodity ?? null,
+    packaging: lc.packaging ?? null,
+    load_spec: lc.loadSpec ?? null,
+});
+
+export const toLoadConfirmationUpdate = (
+    updates: Partial<LoadConfirmation>,
+    branchIdByName: BranchIdByName,
+): Tables['load_confirmations']['Update'] => {
+    const row: Tables['load_confirmations']['Update'] = {};
+    if (updates.clientId !== undefined) row.client_id = updates.clientId;
+    if (updates.quoteId !== undefined) row.quote_id = updates.quoteId ?? null;
+    if (updates.supplierId !== undefined) row.supplier_id = updates.supplierId ?? null;
+    if (updates.items !== undefined) row.items = updates.items as unknown as Tables['load_confirmations']['Update']['items'];
+    if (updates.legs !== undefined) row.legs = updates.legs as unknown as Tables['load_confirmations']['Update']['legs'];
+    if (updates.totalAmount !== undefined) row.total_amount = updates.totalAmount;
+    if (updates.supplierRate !== undefined) row.supplier_rate = updates.supplierRate ?? null;
+    if (updates.collectionBranch !== undefined) row.collection_branch_id = branchIdByName.get(updates.collectionBranch) ?? null;
+    if (updates.destinationBranch !== undefined) row.destination_branch_id = branchIdByName.get(updates.destinationBranch) ?? null;
+    if (updates.priority !== undefined) row.priority = updates.priority;
+    if (updates.status !== undefined) row.status = updates.status;
+    if (updates.collectionPoint !== undefined) row.collection_point = updates.collectionPoint || null;
+    if (updates.deliveryPoint !== undefined) row.delivery_point = updates.deliveryPoint || null;
+    if (updates.collectionDate !== undefined) row.collection_date = updates.collectionDate ?? null;
+    if (updates.deliveryDate !== undefined) row.delivery_date = updates.deliveryDate ?? null;
+    if (updates.vehicleId !== undefined) row.vehicle_id = updates.vehicleId ?? null;
+    if (updates.driverId !== undefined) row.driver_id = updates.driverId ?? null;
+    if (updates.paymentStatus !== undefined) row.payment_status = updates.paymentStatus ?? null;
+    if (updates.customerOrderNumber !== undefined) row.customer_order_number = updates.customerOrderNumber ?? null;
+    if (updates.invoiceNumber !== undefined) row.invoice_number = updates.invoiceNumber ?? null;
+    if (updates.invoiceDate !== undefined) row.invoice_date = updates.invoiceDate ?? null;
+    if (updates.damageReport !== undefined) row.damage_report = updates.damageReport ?? null;
+    if (updates.notes !== undefined) row.notes = updates.notes as unknown as Tables['load_confirmations']['Update']['notes'];
+    if (updates.deliveryArea !== undefined) row.delivery_area = updates.deliveryArea ?? null;
+    if (updates.sentToSupplierDate !== undefined) row.sent_to_supplier_date = updates.sentToSupplierDate ?? null;
+    if (updates.subcontractorVehicleReg !== undefined) row.subcontractor_vehicle_reg = updates.subcontractorVehicleReg ?? null;
+    if (updates.subcontractorDriverName !== undefined) row.subcontractor_driver_name = updates.subcontractorDriverName ?? null;
+    if (updates.subcontractorDriverCell !== undefined) row.subcontractor_driver_cell = updates.subcontractorDriverCell ?? null;
+    if (updates.commodity !== undefined) row.commodity = updates.commodity ?? null;
+    if (updates.packaging !== undefined) row.packaging = updates.packaging ?? null;
+    if (updates.loadSpec !== undefined) row.load_spec = updates.loadSpec ?? null;
+    if (updates.podPhoto?.data) row.pod_photo_url = updates.podPhoto.data;
+    if (updates.podSignature !== undefined) row.pod_signature_url = updates.podSignature ?? null;
+    return row;
+};

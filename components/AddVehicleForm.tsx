@@ -36,24 +36,31 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
     const [weightCategory, setWeightCategory] = useState(vehicleData?.weightCategory || VEHICLE_CATEGORIES[0]);
     const [purchasePrice, setPurchasePrice] = useState(vehicleData?.purchasePrice || 0);
     const [status, setStatus] = useState<VehicleStatus>(vehicleData?.status || 'On the road');
+    const [submitting, setSubmitting] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit({
-            name,
-            make,
-            model,
-            year,
-            registration,
-            vin,
-            branch,
-            weightCategory,
-            status,
-            purchasePrice,
-            currentHours: vehicleData?.currentHours,
-            assignedDriverId: vehicleData?.assignedDriverId,
-            linkedVehicleId: vehicleData?.linkedVehicleId,
-        });
+        if (submitting) return;
+        setSubmitting(true);
+        try {
+            await onSubmit({
+                name,
+                make,
+                model,
+                year,
+                registration,
+                vin,
+                branch,
+                weightCategory,
+                status,
+                purchasePrice,
+                currentHours: vehicleData?.currentHours,
+                assignedDriverId: vehicleData?.assignedDriverId,
+                linkedVehicleId: vehicleData?.linkedVehicleId,
+            });
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary transition-all";
@@ -111,9 +118,9 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
                 </div>
             </div>
             <div className="flex justify-end space-x-4 mt-8 pt-4 border-t border-gray-700">
-                <button type="button" onClick={onCancel} className="px-6 py-2 text-gray-400 hover:text-white font-semibold">Cancel</button>
-                <button type="submit" className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2.5 px-8 rounded-lg shadow-lg transition-all active:scale-95">
-                    {vehicleData ? 'Update Asset' : 'Register Asset'}
+                <button type="button" onClick={onCancel} disabled={submitting} className="px-6 py-2 text-gray-400 hover:text-white font-semibold disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={submitting} className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2.5 px-8 rounded-lg shadow-lg transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                    {submitting ? (vehicleData ? 'Updating…' : 'Saving…') : (vehicleData ? 'Update Asset' : 'Register Asset')}
                 </button>
             </div>
         </form>

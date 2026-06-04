@@ -800,6 +800,99 @@ export const toLoadConfirmationInsert = (
     load_spec: lc.loadSpec ?? null,
 });
 
+// -- HRCase -> hr_cases row --------------------------------------------------
+export const toHRCaseInsert = (c: Omit<HRCase, 'id'>): Tables['hr_cases']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    driver_id: c.driverId,
+    damage_reason: c.damageReason,
+    cost_to_recover: c.costToRecover,
+    incident_id: c.incidentId ?? null,
+    tire_id: c.tireId ?? null,
+    vehicle_id: c.vehicleId ?? null,
+    reported_date: c.reportedDate,
+    status: c.status,
+});
+
+export const toHRCaseUpdate = (c: HRCase): Tables['hr_cases']['Update'] => ({
+    driver_id: c.driverId,
+    damage_reason: c.damageReason,
+    cost_to_recover: c.costToRecover,
+    incident_id: c.incidentId ?? null,
+    tire_id: c.tireId ?? null,
+    vehicle_id: c.vehicleId ?? null,
+    status: c.status,
+});
+
+// -- IncidentReport -> incident_reports row ----------------------------------
+// File uploads to Storage are deferred; attachment_urls inserted as the
+// existing Attachment.data values (which currently hold base64 strings or
+// URLs depending on origin). When Storage wiring lands, replace those with
+// supabase.storage.upload() returned paths.
+export const toIncidentInsert = (
+    i: Omit<IncidentReport, 'id'>,
+): Tables['incident_reports']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    user_id: i.userId || null,
+    vehicle_id: i.vehicleId || null,
+    date: i.date,
+    incident_type: i.incidentType,
+    description: i.description,
+    third_party_involved: i.thirdPartyInvolved,
+    attachment_urls: (i.attachments || []).map(a => a.data).filter(Boolean),
+    status: i.status,
+    quotes: (i.quotes ?? null) as unknown as Tables['incident_reports']['Insert']['quotes'],
+    notes: i.notes ?? null,
+    at_fault_party: i.atFaultParty ?? null,
+    insurance_claim_number: i.insuranceClaimNumber ?? null,
+    saps_case_number: i.sapsCaseNumber ?? null,
+    final_repairer: i.finalRepairer ?? null,
+    final_repair_cost: i.finalRepairCost ?? null,
+    fine_number: i.fineNumber ?? null,
+    fine_amount: i.fineAmount ?? null,
+    violation_code: i.violationCode ?? null,
+});
+
+export const toIncidentUpdate = (i: IncidentReport): Tables['incident_reports']['Update'] => ({
+    date: i.date,
+    incident_type: i.incidentType,
+    description: i.description,
+    third_party_involved: i.thirdPartyInvolved,
+    attachment_urls: (i.attachments || []).map(a => a.data).filter(Boolean),
+    status: i.status,
+    quotes: (i.quotes ?? null) as unknown as Tables['incident_reports']['Update']['quotes'],
+    notes: i.notes ?? null,
+    at_fault_party: i.atFaultParty ?? null,
+    insurance_claim_number: i.insuranceClaimNumber ?? null,
+    saps_case_number: i.sapsCaseNumber ?? null,
+    final_repairer: i.finalRepairer ?? null,
+    final_repair_cost: i.finalRepairCost ?? null,
+    fine_number: i.fineNumber ?? null,
+    fine_amount: i.fineAmount ?? null,
+    violation_code: i.violationCode ?? null,
+});
+
+// -- Budget -> budgets row ---------------------------------------------------
+// target_type required by schema; default 'vehicle' until the Budget domain
+// gets an explicit target type field.
+export const toBudgetInsert = (b: Omit<Budget, 'id'>): Tables['budgets']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    target_id: b.targetId,
+    target_type: 'vehicle',
+    amount: b.amount,
+    start_date: b.startDate,
+    period: b.period,
+});
+
+// -- Forecast -> forecasts row -----------------------------------------------
+export const toForecastInsert = (f: Omit<Forecast, 'id'>): Tables['forecasts']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    target_id: f.targetId,
+    target_type: 'vehicle',
+    generated_date: f.generatedDate,
+    forecasted_costs: f.forecastedCosts as unknown as Tables['forecasts']['Insert']['forecasted_costs'],
+    insights: f.insights || null,
+});
+
 // -- ServiceEntry -> service_entries row -------------------------------------
 export const toServiceEntryInsert = (s: Omit<ServiceEntry, 'id'>): Tables['service_entries']['Insert'] => ({
     organization_id: FBN_ORGANIZATION_ID,

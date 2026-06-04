@@ -5,7 +5,7 @@ import {
   LoadConfirmation, Manifest, TripSheet, Client, Supplier, Quote, JobCard, ChecklistTemplate,
   ChecklistSubmission, Tire, TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase,
   PlannedService, Bowser, BowserRefill, FuelPriceRecord, Budget, Forecast, Notification, Message,
-  JobCardStatus, SupplierApplication, IncidentReport, Branch, Route, VehicleComplianceDoc,
+  JobCardStatus, SupplierApplication, IncidentReport, IncidentQuote, Branch, Route, VehicleComplianceDoc,
   ComplianceDoc, Attachment,
 } from '../types';
 import { COMMODITIES, PACKAGING_TYPES } from '../constants';
@@ -107,8 +107,8 @@ export type AppAction =
     | { type: 'ADD_BOWSER_REFILL', payload: Omit<BowserRefill, 'id' | 'finalCostPerLiter'> }
     | { type: 'UPDATE_BOWSER_REFILL', payload: { id: string, updates: Partial<BowserRefill> } }
     | { type: 'DELETE_BOWSER_REFILL', payload: string }
-    | { type: 'ADD_BUDGET', payload: Omit<Budget, 'id'> }
-    | { type: 'ADD_FORECAST', payload: Omit<Forecast, 'id'> }
+    | { type: 'ADD_BUDGET', payload: Budget }
+    | { type: 'ADD_FORECAST', payload: Forecast }
     | { type: 'CREATE_JOB_CARD', payload: JobCard }
     | { type: 'UPDATE_JOB_CARD', payload: { id: string, updates: Partial<JobCard> } }
     | { type: 'UPDATE_JOB_CARD_STATUS', payload: { id: string, status: JobCardStatus } }
@@ -117,9 +117,9 @@ export type AppAction =
     | { type: 'UPDATE_QUOTE', payload: Quote }
     | { type: 'CREATE_LOAD_CONFIRMATION', payload: LoadConfirmation }
     | { type: 'UPDATE_LOAD_CONFIRMATION', payload: {id: string, updates: Partial<LoadConfirmation>}}
-    | { type: 'ADD_INCIDENT', payload: any }
-    | { type: 'UPDATE_INCIDENT', payload: any }
-    | { type: 'ADD_INCIDENT_QUOTE', payload: { incidentId: string, quote: any } }
+    | { type: 'ADD_INCIDENT', payload: IncidentReport }
+    | { type: 'UPDATE_INCIDENT', payload: IncidentReport }
+    | { type: 'ADD_INCIDENT_QUOTE', payload: { incidentId: string, quote: IncidentQuote } }
     | { type: 'ADD_CLIENT', payload: Client }
     | { type: 'ADD_SUPPLIER', payload: Supplier }
     | { type: 'BULK_ADD_CLIENTS', payload: Client[] }
@@ -132,7 +132,7 @@ export type AppAction =
     | { type: 'CREATE_PURCHASE_ORDER', payload: PurchaseRequest }
     | { type: 'RECEIVE_GOODS', payload: PurchaseOrder }
     | { type: 'UPDATE_TIRE', payload: Tire }
-    | { type: 'ADD_HR_CASE', payload: Omit<HRCase, 'id'> }
+    | { type: 'ADD_HR_CASE', payload: HRCase }
     | { type: 'UPDATE_HR_CASE', payload: HRCase }
     | { type: 'ADD_PLANNED_SERVICE', payload: PlannedService }
     | { type: 'DELETE_PLANNED_SERVICE', payload: string }
@@ -354,7 +354,8 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_QUOTE': return { ...state, quotes: (state.quotes || []).map(q => q.id === action.payload.id ? action.payload : q) };
         case 'CREATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: [action.payload, ...(state.loadConfirmations || [])] };
         case 'UPDATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: (state.loadConfirmations || []).map(lc => lc.id === action.payload.id ? { ...lc, ...action.payload.updates } : lc) };
-        case 'ADD_INCIDENT': return { ...state, incidentReports: [{ ...action.payload, id: generateId(), status: 'Reported', quotes: [], notes: '' }, ...(state.incidentReports || [])]};
+        // Push 5: incident payloads now arrive with DB-assigned ids.
+        case 'ADD_INCIDENT': return { ...state, incidentReports: [action.payload, ...(state.incidentReports || [])] };
         case 'UPDATE_INCIDENT': return { ...state, incidentReports: (state.incidentReports || []).map(i => i.id === action.payload.id ? action.payload : i) };
         case 'ADD_INCIDENT_QUOTE': return { ...state, incidentReports: (state.incidentReports || []).map(i => i.id === action.payload.incidentId ? { ...i, quotes: [...(i.quotes || []), action.payload.quote] } : i) };
         case 'APPLY_AI_ASSIGNMENTS': return { ...state, jobCards: (state.jobCards || []).map(jc => { const s = action.payload.find((s: any) => s.id === jc.id); return s ? { ...jc, ...s } : jc; }) };
@@ -372,7 +373,10 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         }
         case 'RECEIVE_GOODS': return { ...state, purchaseOrders: (state.purchaseOrders || []).map(po => po.id === action.payload.id ? {...po, status: 'Received'} : po), parts: (state.parts || []).map(p => { const i = action.payload.items.find((i: any) => i.partId === p.id); return i ? { ...p, quantityInStock: p.quantityInStock + i.quantity } : p; }) };
         case 'UPDATE_TIRE': return {...state, tires: (state.tires || []).map(t => t.id === action.payload.id ? action.payload : t) };
-        case 'ADD_HR_CASE': return {...state, hrCases: [...(state.hrCases || []), {id: generateId(), ...action.payload}]};
+        // Push 5: management writes
+        case 'ADD_BUDGET': return { ...state, budgets: [...(state.budgets || []), action.payload] };
+        case 'ADD_FORECAST': return { ...state, forecasts: [...(state.forecasts || []), action.payload] };
+        case 'ADD_HR_CASE': return {...state, hrCases: [...(state.hrCases || []), action.payload]};
         case 'UPDATE_HR_CASE': return {...state, hrCases: (state.hrCases || []).map(c => c.id === action.payload.id ? action.payload : c)};
         case 'ADD_PLANNED_SERVICE': return {...state, plannedServices: [...(state.plannedServices || []), action.payload]};
         case 'DELETE_PLANNED_SERVICE': return {...state, plannedServices: (state.plannedServices || []).filter(p => p.id !== action.payload)};

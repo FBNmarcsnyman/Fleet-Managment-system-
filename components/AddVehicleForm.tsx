@@ -84,19 +84,37 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
     const [linkedVehicleId, setLinkedVehicleId] = useState<string>(vehicleData?.linkedVehicleId || '');
     const [submitting, setSubmitting] = useState(false);
 
-    // All other vehicles (eligible link candidates), sorted by registration
-    // for predictable dropdown ordering. The vehicle being edited is excluded.
+    // Eligible link candidates: only vehicles in the same category as the
+    // one being edited (so a trailer's picker isn't padded with every horse
+    // in the fleet). Plus the currently-linked vehicle if it's a different
+    // category — otherwise the dropdown would "lose" the existing link.
+    // For 1000-vehicle fleets this is the difference between a snappy modal
+    // and a freezing one, since `<select>` with thousands of options re-renders
+    // on every submit cycle.
     const linkCandidates = useMemo(() => {
-        return (vehicles as Vehicle[])
-            .filter(v => v.id !== vehicleData?.id)
+        const all = vehicles as Vehicle[];
+        const sameCategory = all
+            .filter(v => v.id !== vehicleData?.id && v.weightCategory === weightCategory)
             .sort((a, b) => a.registration.localeCompare(b.registration));
-    }, [vehicles, vehicleData?.id]);
+        // Keep the currently-set partner visible even if it's a different
+        // category (legacy or intentional cross-category links).
+        if (linkedVehicleId && !sameCategory.find(v => v.id === linkedVehicleId)) {
+            const current = all.find(v => v.id === linkedVehicleId);
+            if (current) return [current, ...sameCategory];
+        }
+        return sameCategory;
+    }, [vehicles, vehicleData?.id, weightCategory, linkedVehicleId]);
 
     // Suggest a pair when the registration is close to another vehicle's.
-    // Re-runs whenever the user retypes the reg field.
+    // Searches across ALL vehicles (not just same-category candidates) so
+    // suggestions can cross categories if that's what the regs imply.
     const suggestedPartner = useMemo(
-        () => findSimilarRegPartner(registration, linkCandidates, vehicleData?.id),
-        [registration, linkCandidates, vehicleData?.id],
+        () => findSimilarRegPartner(
+            registration,
+            (vehicles as Vehicle[]).filter(v => v.id !== vehicleData?.id),
+            vehicleData?.id,
+        ),
+        [registration, vehicles, vehicleData?.id],
     );
 
     const handleSubmit = async (e: React.FormEvent) => {

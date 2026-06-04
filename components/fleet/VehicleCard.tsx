@@ -22,8 +22,25 @@ const getHealthColor = (score: number) => {
 
 const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
     const { fuelEntries = [], serviceStatuses = new Map(), handleUpdateVehicle } = useVehicles();
-    const { showModal, hideModal } = useUIState();
+    const { showModal, hideModal, showToast } = useUIState();
     const { jobCards = [], handleCreateJobCard } = useWorkshop();
+
+    const openEditModal = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        showModal('addVehicle', {
+            vehicleData: vehicle,
+            onSubmit: async (data: any) => {
+                const result = await handleUpdateVehicle(vehicle.id, data);
+                if (result?.ok) {
+                    hideModal();
+                    showToast(`Vehicle "${vehicle.name}" updated.`);
+                } else {
+                    showToast(`Failed to update vehicle: ${result?.error ?? 'Unknown error'}`);
+                }
+            },
+            onCancel: hideModal,
+        });
+    };
 
     const cardData = useMemo(() => {
         const vehicleFuelEntries = (fuelEntries || []).filter((f: any) => f.vehicleId === vehicle.id);
@@ -94,6 +111,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
                     </div>
                 </div>
                  <div className="border-t border-gray-700/50 pt-2 flex justify-around">
+                    <button onClick={openEditModal} className="p-2 text-gray-500 hover:text-blue-400" title="Edit Asset"><EditIcon className="h-5 w-5" /></button>
                     <button onClick={(e) => { e.stopPropagation(); showModal('createJobCard', { vehicleId: vehicle.id, onSubmit: handleCreateJobCard, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="New Job Card"><ClipboardIcon className="h-5 w-5" /></button>
                     <button onClick={(e) => { e.stopPropagation(); showModal('assignDriver', { vehicle, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="Assign Driver"><UserIcon className="h-5 w-5" /></button>
                     <button onClick={(e) => { e.stopPropagation(); showModal('qrCode', { vehicle, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="View QR Code"><QrCodeIcon className="h-5 w-5" /></button>

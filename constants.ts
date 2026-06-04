@@ -3,6 +3,23 @@ import { Branch } from './types';
 
 export const BRANCHES: Branch[] = ['FBN JHB', 'FBN DBN', 'FBN CPT', 'LOADMASTER'];
 
+// Display order for the Asset List when grouped by category.
+// Marc's rule: motorized prime movers + rigids on top, trailers below,
+// misc at the bottom. Anything not in this list falls to the end.
+export const CATEGORY_ORDER: string[] = [
+    'Horse',
+    '15 TONNER',
+    '12 TONNER',
+    '8 TONNER',
+    '2 TONNER',
+    '1 TONNER',
+    'BAKKIE',
+    'Standard Trailer',
+    'Superlink Trailer',
+    'Forklift',
+    'Other',
+];
+
 export const DEFAULT_COST_CATEGORIES = [
     'Tolls',
     'Driver Salary',

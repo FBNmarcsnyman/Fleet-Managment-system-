@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Vehicle } from '../../types';
 import { useVehicles, useUIState } from '../../contexts/AppContexts';
+import { BRANCHES, CATEGORY_ORDER } from '../../constants';
 import VehicleCard from './VehicleCard';
 import VehicleDetail from './VehicleDetail';
 import { PlusIcon } from '../icons/PlusIcon';
@@ -8,6 +9,26 @@ import { UploadIcon } from '../icons/UploadIcon';
 import { LinkIcon } from '../icons/LinkIcon';
 
 type GroupByType = 'branch' | 'category';
+
+// Re-order a list so that vehicles linked via `linkedVehicleId` sit next
+// to each other (e.g. superlink 6m + 12m trailers as a pair). The first
+// vehicle of each pair keeps its original position; the partner is
+// inserted immediately after.
+const pairLinkedVehicles = (vehicles: Vehicle[]): Vehicle[] => {
+    const byId = new Map(vehicles.map(v => [v.id, v]));
+    const seen = new Set<string>();
+    const result: Vehicle[] = [];
+    for (const v of vehicles) {
+        if (seen.has(v.id)) continue;
+        result.push(v);
+        seen.add(v.id);
+        if (v.linkedVehicleId && byId.has(v.linkedVehicleId) && !seen.has(v.linkedVehicleId)) {
+            result.push(byId.get(v.linkedVehicleId)!);
+            seen.add(v.linkedVehicleId);
+        }
+    }
+    return result;
+};
 
 const VehicleList: React.FC = () => {
     const {
@@ -22,7 +43,7 @@ const VehicleList: React.FC = () => {
 
     const groupedVehicles = useMemo(() => {
         const activeVehicles = (vehicles || []).filter((v: Vehicle) => v.status !== 'Sold');
-        
+
         const groups = activeVehicles.reduce((acc, vehicle) => {
             const key = groupBy === 'branch' ? vehicle.branch : (vehicle.weightCategory || 'Uncategorized');
             if (!acc[key]) {
@@ -32,10 +53,22 @@ const VehicleList: React.FC = () => {
             return acc;
         }, {} as Record<string, Vehicle[]>);
 
-        const sortedGroupKeys = Object.keys(groups).sort();
-        
+        // Sort group keys by the explicit display order; anything unknown
+        // falls to the bottom in alpha order.
+        const orderList: string[] = groupBy === 'category' ? CATEGORY_ORDER : (BRANCHES as unknown as string[]);
+        const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+            const ai = orderList.indexOf(a);
+            const bi = orderList.indexOf(b);
+            if (ai === -1 && bi === -1) return a.localeCompare(b);
+            if (ai === -1) return 1;
+            if (bi === -1) return -1;
+            return ai - bi;
+        });
+
         return sortedGroupKeys.reduce((sortedObj, key) => {
-            sortedObj[key] = groups[key];
+            // Pair linked vehicles within each group so superlink trailer
+            // 6m + 12m partners appear adjacent.
+            sortedObj[key] = pairLinkedVehicles(groups[key]);
             return sortedObj;
         }, {} as Record<string, Vehicle[]>);
 

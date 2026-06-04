@@ -183,15 +183,21 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
-        handleUpdateVehicle: async (vehicleId: string, updates: Partial<Vehicle>) => {
+        handleUpdateVehicle: async (vehicleId: string, updates: Partial<Vehicle>): Promise<{ ok: true; vehicle: Vehicle } | { ok: false; error: string }> => {
             try {
                 const row = toVehicleUpdate(updates, branchIdByName);
-                const { error } = await supabase
-                    .from('vehicles').update(row).eq('id', vehicleId);
-                if (error) { console.error('[fleet] updateVehicle failed:', error); return; }
+                const { data, error } = await supabase
+                    .from('vehicles').update(row).eq('id', vehicleId).select().single();
+                if (error) {
+                    console.error('[fleet] updateVehicle failed:', error);
+                    return { ok: false, error: error.message };
+                }
+                const mapped = mapVehicle(data, { branchById });
                 dispatch({ type: 'UPDATE_VEHICLE', payload: { vehicleId, updates } });
+                return { ok: true, vehicle: mapped };
             } catch (err) {
                 console.error('[fleet] updateVehicle threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
 

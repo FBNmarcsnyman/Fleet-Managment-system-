@@ -800,6 +800,57 @@ export const toLoadConfirmationInsert = (
     load_spec: lc.loadSpec ?? null,
 });
 
+// -- ServiceEntry -> service_entries row -------------------------------------
+export const toServiceEntryInsert = (s: Omit<ServiceEntry, 'id'>): Tables['service_entries']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    vehicle_id: s.vehicleId,
+    date: s.date,
+    start_odometer: s.startOdometer ?? null,
+    end_odometer: s.endOdometer ?? null,
+    start_hours: s.startHours ?? null,
+    end_hours: s.endHours ?? null,
+    description: s.description,
+    cost: s.cost,
+    attachment_url: s.attachment?.data ?? null,
+    attachment_name: s.attachment?.name ?? null,
+});
+
+// -- OtherCost -> other_costs row --------------------------------------------
+export const toOtherCostInsert = (c: Omit<OtherCost, 'id'>): Tables['other_costs']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    vehicle_id: c.vehicleId || null,
+    date: c.date,
+    category: c.category,
+    amount: c.amount,
+});
+
+// -- RecurringCost -> recurring_costs row ------------------------------------
+export const toRecurringCostInsert = (c: Omit<RecurringCost, 'id'>): Tables['recurring_costs']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    vehicle_id: c.vehicleId || null,
+    category: c.category,
+    amount: c.amount,
+    frequency: c.frequency,
+    start_date: c.startDate,
+    end_date: c.endDate ?? null,
+});
+
+// -- RevenueEntry -> revenue_entries row -------------------------------------
+export const toRevenueEntryInsert = (r: Omit<RevenueEntry, 'id'>): Tables['revenue_entries']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    vehicle_id: r.vehicleId || null,
+    date: r.date,
+    description: r.description,
+    amount: r.amount,
+});
+
+// -- FuelPriceRecord -> fuel_prices row --------------------------------------
+export const toFuelPriceInsert = (f: Omit<FuelPriceRecord, 'id'>): Tables['fuel_prices']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    start_date: f.startDate,
+    price_per_liter: f.pricePerLiter,
+});
+
 // -- JobCard -> job_cards row ------------------------------------------------
 export const toJobCardInsert = (jc: Omit<JobCard, 'id'>): Tables['job_cards']['Insert'] => ({
     organization_id: FBN_ORGANIZATION_ID,

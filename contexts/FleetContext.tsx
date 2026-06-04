@@ -7,8 +7,13 @@ import { useServiceStatus } from '../hooks/useServiceStatus';
 import { addMonths, format } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import {
-    mapVehicle, mapFuelEntry, toVehicleInsert, toVehicleUpdate, toFuelEntryInsert,
+    mapVehicle, mapFuelEntry, mapServiceEntry, mapOtherCost, mapRecurringCost,
+    mapRevenueEntry, mapServiceInterval, mapFuelPrice,
+    toVehicleInsert, toVehicleUpdate, toFuelEntryInsert,
+    toServiceEntryInsert, toOtherCostInsert, toRecurringCostInsert,
+    toRevenueEntryInsert, toServiceIntervalInsert, toFuelPriceInsert,
 } from '../lib/mappers';
+import { ServiceEntry, OtherCost, RecurringCost, RevenueEntry, ServiceInterval, FuelPriceRecord } from '../types';
 
 export const FleetContext = createContext<any>(undefined);
 
@@ -243,15 +248,83 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             }
         },
 
-        // -- Not yet wired to Supabase (Commit E) -----------------------------
-        handleAddServiceEntry: (vehicleId: string, entry: any) => dispatch({ type: 'ADD_SERVICE_ENTRY', payload: { vehicleId, entry } }),
-        handleAddOtherCost: (vehicleId: string, cost: any) => dispatch({ type: 'ADD_OTHER_COST', payload: { vehicleId, cost } }),
-        handleBulkAddOtherCosts: (costs: any[]) => dispatch({ type: 'BULK_ADD_OTHER_COSTS', payload: costs }),
-        handleAddRecurringCost: (vehicleId: string, cost: any) => dispatch({ type: 'ADD_RECURRING_COST', payload: { vehicleId, cost } }),
-        handleAddRevenue: (vehicleId: string, revenue: any) => dispatch({ type: 'ADD_REVENUE', payload: { vehicleId, revenue } }),
-        handleAddServiceInterval: (vehicleId: string, interval: any) => dispatch({ type: 'ADD_SERVICE_INTERVAL', payload: { vehicleId, interval } }),
-        handleDeleteServiceInterval: (id: string) => dispatch({ type: 'DELETE_SERVICE_INTERVAL', payload: id }),
-        handleSetFuelPrice: (price: any) => dispatch({ type: 'SET_FUEL_PRICE', payload: price }),
+        // -- Push 4: services, costs, revenue, intervals, fuel prices --------
+        handleAddServiceEntry: async (vehicleId: string, entry: Omit<ServiceEntry, 'id' | 'vehicleId'>) => {
+            try {
+                const row = toServiceEntryInsert({ vehicleId, ...entry });
+                const { data, error } = await supabase.from('service_entries').insert(row).select().single();
+                if (error) { console.error('[fleet] addServiceEntry failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'ADD_SERVICE_ENTRY', payload: { entry: mapServiceEntry(data) } });
+                return { ok: true };
+            } catch (err) { console.error('[fleet] addServiceEntry threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleAddOtherCost: async (vehicleId: string, cost: Omit<OtherCost, 'id' | 'vehicleId'>) => {
+            try {
+                const row = toOtherCostInsert({ vehicleId, ...cost });
+                const { data, error } = await supabase.from('other_costs').insert(row).select().single();
+                if (error) { console.error('[fleet] addOtherCost failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'ADD_OTHER_COST', payload: { cost: mapOtherCost(data) } });
+                return { ok: true };
+            } catch (err) { console.error('[fleet] addOtherCost threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleBulkAddOtherCosts: async (costs: Omit<OtherCost, 'id'>[]) => {
+            try {
+                const rows = costs.map(toOtherCostInsert);
+                const { data, error } = await supabase.from('other_costs').insert(rows).select();
+                if (error) { console.error('[fleet] bulkAddOtherCosts failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'BULK_ADD_OTHER_COSTS', payload: (data || []).map(mapOtherCost) });
+                return { ok: true, count: (data || []).length };
+            } catch (err) { console.error('[fleet] bulkAddOtherCosts threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleAddRecurringCost: async (vehicleId: string, cost: Omit<RecurringCost, 'id' | 'vehicleId'>) => {
+            try {
+                const row = toRecurringCostInsert({ vehicleId, ...cost });
+                const { data, error } = await supabase.from('recurring_costs').insert(row).select().single();
+                if (error) { console.error('[fleet] addRecurringCost failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'ADD_RECURRING_COST', payload: { cost: mapRecurringCost(data) } });
+                return { ok: true };
+            } catch (err) { console.error('[fleet] addRecurringCost threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleAddRevenue: async (vehicleId: string, revenue: Omit<RevenueEntry, 'id' | 'vehicleId'>) => {
+            try {
+                const row = toRevenueEntryInsert({ vehicleId, ...revenue });
+                const { data, error } = await supabase.from('revenue_entries').insert(row).select().single();
+                if (error) { console.error('[fleet] addRevenue failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'ADD_REVENUE', payload: { revenue: mapRevenueEntry(data) } });
+                return { ok: true };
+            } catch (err) { console.error('[fleet] addRevenue threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleAddServiceInterval: async (vehicleId: string, interval: Omit<ServiceInterval, 'id' | 'vehicleId'>) => {
+            try {
+                const row = toServiceIntervalInsert({ vehicleId, ...interval });
+                const { data, error } = await supabase.from('service_intervals').insert(row).select().single();
+                if (error) { console.error('[fleet] addServiceInterval failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'ADD_SERVICE_INTERVAL', payload: { interval: mapServiceInterval(data) } });
+                return { ok: true };
+            } catch (err) { console.error('[fleet] addServiceInterval threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleDeleteServiceInterval: async (id: string) => {
+            try {
+                const { error } = await supabase.from('service_intervals').delete().eq('id', id);
+                if (error) { console.error('[fleet] deleteServiceInterval failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'DELETE_SERVICE_INTERVAL', payload: id });
+                return { ok: true };
+            } catch (err) { console.error('[fleet] deleteServiceInterval threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleSetFuelPrice: async (price: Omit<FuelPriceRecord, 'id'>) => {
+            try {
+                const row = toFuelPriceInsert(price);
+                const { data, error } = await supabase.from('fuel_prices').insert(row).select().single();
+                if (error) { console.error('[fleet] setFuelPrice failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'SET_FUEL_PRICE', payload: mapFuelPrice(data) });
+                return { ok: true };
+            } catch (err) { console.error('[fleet] setFuelPrice threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+
+        // -- Still local-only (deferred to Push 5 or later) -------------------
+        // Bowsers + refills have cascade to bowsers.current_stock_liters that
+        // needs careful handling. Driver assignment touches vehicles + profiles
+        // both ways. Tire update lives in WorkshopContext (already wired).
         handleAddBowser: (bowser: any) => dispatch({ type: 'ADD_BOWSER', payload: bowser }),
         handleAddBowserRefill: (refill: any) => dispatch({ type: 'ADD_BOWSER_REFILL', payload: refill }),
         handleUpdateBowserRefill: (id: string, updates: any) => dispatch({ type: 'UPDATE_BOWSER_REFILL', payload: { id, updates } }),

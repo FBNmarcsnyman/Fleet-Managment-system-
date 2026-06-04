@@ -94,15 +94,15 @@ export type AppAction =
     | { type: 'BULK_ADD_VEHICLES', payload: Vehicle[] }
     | { type: 'ADD_FUEL_ENTRY', payload: { entry: FuelEntry } }
     | { type: 'BULK_ADD_FUEL_ENTRIES', payload: FuelEntry[] }
-    | { type: 'ADD_SERVICE_ENTRY', payload: { vehicleId: string, entry: Omit<ServiceEntry, 'id' | 'vehicleId'> } }
-    | { type: 'ADD_OTHER_COST', payload: { vehicleId: string, cost: Omit<OtherCost, 'id' | 'vehicleId'> } }
-    | { type: 'BULK_ADD_OTHER_COSTS', payload: Omit<OtherCost, 'id'>[] }
-    | { type: 'ADD_RECURRING_COST', payload: { vehicleId: string, cost: Omit<RecurringCost, 'id' | 'vehicleId'> } }
-    | { type: 'ADD_REVENUE', payload: { vehicleId: string, revenue: Omit<RevenueEntry, 'id' | 'vehicleId'> } }
-    | { type: 'ADD_SERVICE_INTERVAL', payload: { vehicleId: string, interval: Omit<ServiceInterval, 'id' | 'vehicleId'> } }
+    | { type: 'ADD_SERVICE_ENTRY', payload: { entry: ServiceEntry } }
+    | { type: 'ADD_OTHER_COST', payload: { cost: OtherCost } }
+    | { type: 'BULK_ADD_OTHER_COSTS', payload: OtherCost[] }
+    | { type: 'ADD_RECURRING_COST', payload: { cost: RecurringCost } }
+    | { type: 'ADD_REVENUE', payload: { revenue: RevenueEntry } }
+    | { type: 'ADD_SERVICE_INTERVAL', payload: { interval: ServiceInterval } }
     | { type: 'DELETE_SERVICE_INTERVAL', payload: string }
     | { type: 'UPDATE_VEHICLE', payload: { vehicleId: string, updates: Partial<Vehicle> } }
-    | { type: 'SET_FUEL_PRICE', payload: Omit<FuelPriceRecord, 'id'> }
+    | { type: 'SET_FUEL_PRICE', payload: FuelPriceRecord }
     | { type: 'ADD_BOWSER', payload: Omit<Bowser, 'id'> }
     | { type: 'ADD_BOWSER_REFILL', payload: Omit<BowserRefill, 'id' | 'finalCostPerLiter'> }
     | { type: 'UPDATE_BOWSER_REFILL', payload: { id: string, updates: Partial<BowserRefill> } }
@@ -134,7 +134,7 @@ export type AppAction =
     | { type: 'UPDATE_TIRE', payload: Tire }
     | { type: 'ADD_HR_CASE', payload: Omit<HRCase, 'id'> }
     | { type: 'UPDATE_HR_CASE', payload: HRCase }
-    | { type: 'ADD_PLANNED_SERVICE', payload: Omit<PlannedService, 'id'> }
+    | { type: 'ADD_PLANNED_SERVICE', payload: PlannedService }
     | { type: 'DELETE_PLANNED_SERVICE', payload: string }
     | { type: 'ASSIGN_DRIVER_TO_VEHICLE', payload: { vehicleId: string, driverId: string | null } }
     | { type: 'ADD_MESSAGE', payload: { vehicleId: string, message: Omit<Message, 'id' | 'vehicleId'> } }
@@ -253,9 +253,14 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
                 bowsers: updatedBowsers
             };
         }
+        // Push 4: payloads now arrive with DB-assigned ids (handler does
+        // the supabase write first and dispatches the mapped row).
         case 'ADD_SERVICE_ENTRY': {
-            const vehicleId = action.payload.vehicleId;
-            const newEntry = { id: generateId(), vehicleId, ...action.payload.entry };
+            const newEntry = action.payload.entry;
+            const vehicleId = newEntry.vehicleId;
+            // Side effect: bump vehicle odometer / hours if greater. Mirrors
+            // the legacy reducer behavior; the Supabase cascade for vehicles
+            // table is a follow-up.
             const updatedVehicles = (state.vehicles || []).map(v => {
                 if (v.id === vehicleId) {
                     const updates: Partial<Vehicle> = {};
@@ -275,11 +280,11 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
                 vehicles: updatedVehicles
             };
         }
-        case 'ADD_OTHER_COST': return { ...state, otherCosts: [...(state.otherCosts || []), { id: generateId(), vehicleId: action.payload.vehicleId, ...action.payload.cost }] };
-        case 'BULK_ADD_OTHER_COSTS': return { ...state, otherCosts: [...(state.otherCosts || []), ...action.payload.map(c => ({ id: generateId(), ...c }))] };
-        case 'ADD_RECURRING_COST': return { ...state, recurringCosts: [...(state.recurringCosts || []), { id: generateId(), vehicleId: action.payload.vehicleId, ...action.payload.cost }] };
-        case 'ADD_REVENUE': return { ...state, revenueEntries: [...(state.revenueEntries || []), { id: generateId(), vehicleId: action.payload.vehicleId, ...action.payload.revenue }] };
-        case 'ADD_SERVICE_INTERVAL': return { ...state, serviceIntervals: [...(state.serviceIntervals || []), { id: generateId(), vehicleId: action.payload.vehicleId, ...action.payload.interval }] };
+        case 'ADD_OTHER_COST': return { ...state, otherCosts: [...(state.otherCosts || []), action.payload.cost] };
+        case 'BULK_ADD_OTHER_COSTS': return { ...state, otherCosts: [...(state.otherCosts || []), ...action.payload] };
+        case 'ADD_RECURRING_COST': return { ...state, recurringCosts: [...(state.recurringCosts || []), action.payload.cost] };
+        case 'ADD_REVENUE': return { ...state, revenueEntries: [...(state.revenueEntries || []), action.payload.revenue] };
+        case 'ADD_SERVICE_INTERVAL': return { ...state, serviceIntervals: [...(state.serviceIntervals || []), action.payload.interval] };
         case 'DELETE_SERVICE_INTERVAL': return { ...state, serviceIntervals: (state.serviceIntervals || []).filter(i => i.id !== action.payload) };
         case 'UPDATE_VEHICLE': return { ...state, vehicles: (state.vehicles || []).map(v => v.id === action.payload.vehicleId ? { ...v, ...action.payload.updates } : v) };
         // Workshop writes (Push 3): payload arrives with DB-assigned ids.
@@ -369,7 +374,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_TIRE': return {...state, tires: (state.tires || []).map(t => t.id === action.payload.id ? action.payload : t) };
         case 'ADD_HR_CASE': return {...state, hrCases: [...(state.hrCases || []), {id: generateId(), ...action.payload}]};
         case 'UPDATE_HR_CASE': return {...state, hrCases: (state.hrCases || []).map(c => c.id === action.payload.id ? action.payload : c)};
-        case 'ADD_PLANNED_SERVICE': return {...state, plannedServices: [...(state.plannedServices || []), {id: generateId(), ...action.payload}]};
+        case 'ADD_PLANNED_SERVICE': return {...state, plannedServices: [...(state.plannedServices || []), action.payload]};
         case 'DELETE_PLANNED_SERVICE': return {...state, plannedServices: (state.plannedServices || []).filter(p => p.id !== action.payload)};
         case 'ADD_MESSAGE': return { ...state, messages: [...(state.messages || []), { id: generateId(), vehicleId: action.payload.vehicleId, ...action.payload.message }] };
         case 'ASSIGN_DRIVER_TO_VEHICLE': {
@@ -415,7 +420,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'ADD_SUPPLIER_APPLICATION': return { ...state, supplierApplications: [{ id: generateId(), submittedDate: new Date().toISOString(), status: 'Pending', ...action.payload }, ...(state.supplierApplications || [])] };
         case 'ADD_COMMODITY': return { ...state, commodities: [...(state.commodities || []), action.payload] };
         case 'ADD_PACKAGING_TYPE': return { ...state, packagingTypes: [...(state.packagingTypes || []), action.payload] };
-        case 'SET_FUEL_PRICE': return { ...state, fuelPriceRecords: [...(state.fuelPriceRecords || []), { id: generateId(), ...action.payload }] };
+        case 'SET_FUEL_PRICE': return { ...state, fuelPriceRecords: [...(state.fuelPriceRecords || []), action.payload] };
         case 'ADD_BOWSER': return { ...state, bowsers: [...(state.bowsers || []), { id: generateId(), ...action.payload }] };
         case 'ADD_BOWSER_REFILL': {
             const { bowserId, liters } = action.payload;

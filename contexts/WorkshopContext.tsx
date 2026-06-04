@@ -2,11 +2,12 @@
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { JobCard, JobCardStatus, PurchaseRequest, PurchaseOrder, Part, Tire } from '../types';
+import { JobCard, JobCardStatus, PurchaseRequest, PurchaseOrder, Part, Tire, PlannedService } from '../types';
 import { supabase } from '../lib/supabase';
 import {
     toJobCardInsert, toJobCardUpdate, toPartInsert, toPurchaseRequestInsert, toTireUpdate,
-    mapJobCard, mapPart, mapPurchaseRequest,
+    toPlannedServiceInsert,
+    mapJobCard, mapPart, mapPurchaseRequest, mapPlannedService,
 } from '../lib/mappers';
 
 export const WorkshopContext = createContext<any>(undefined);
@@ -110,12 +111,37 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
             }
         },
 
+        // -- Planned Services -------------------------------------------------
+        handleAddPlannedService: async (service: Omit<PlannedService, 'id'>): Promise<Result<PlannedService>> => {
+            try {
+                const row = toPlannedServiceInsert(service);
+                const { data, error } = await supabase
+                    .from('planned_services').insert(row).select().single();
+                if (error) { console.error('[workshop] addPlannedService failed:', error); return { ok: false, error: error.message }; }
+                const mapped = mapPlannedService(data);
+                dispatch({ type: 'ADD_PLANNED_SERVICE', payload: mapped });
+                return { ok: true, value: mapped };
+            } catch (err) {
+                console.error('[workshop] addPlannedService threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        handleDeletePlannedService: async (id: string): Promise<Result<void>> => {
+            try {
+                const { error } = await supabase.from('planned_services').delete().eq('id', id);
+                if (error) { console.error('[workshop] deletePlannedService failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'DELETE_PLANNED_SERVICE', payload: id });
+                return { ok: true };
+            } catch (err) {
+                console.error('[workshop] deletePlannedService threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+
         // -- Still local-only (deferred to later push) ------------------------
         applyAiAssignments: (suggestions: Partial<JobCard>[]) => dispatch({ type: 'APPLY_AI_ASSIGNMENTS', payload: suggestions }),
         handleCreatePurchaseOrder: (req: PurchaseRequest) => dispatch({ type: 'CREATE_PURCHASE_ORDER', payload: req }),
         handleReceiveGoods: (order: PurchaseOrder) => dispatch({ type: 'RECEIVE_GOODS', payload: order }),
-        handleAddPlannedService: (service: any) => dispatch({ type: 'ADD_PLANNED_SERVICE', payload: service }),
-        handleDeletePlannedService: (id: string) => dispatch({ type: 'DELETE_SERVICE_INTERVAL', payload: id }),
     }), [dispatch]);
 
     const value = useMemo(() => ({ ...state, ...handlers, users }), [state, handlers, users]);

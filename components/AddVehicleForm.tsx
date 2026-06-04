@@ -1,7 +1,51 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Vehicle, Branch, VehicleStatus } from '../types';
 import { BRANCHES } from '../constants';
+import { useVehicles } from '../contexts/AppContexts';
+
+// --- Linked-vehicle helpers --------------------------------------------------
+// Strip whitespace and non-alphanumerics, uppercase. Compares two regs as if
+// you'd written them without the spacing/province quirks.
+const normReg = (s: string): string => s.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+// Hamming-like distance for same-length normalised regs. Returns Infinity for
+// unequal lengths (too different) and exits early when diffs exceed 2. Lower
+// number = more similar. 0 = identical, 1 = one character apart (typical
+// consecutive-number trailer pair, e.g. ABC123GP / ABC124GP).
+const regSimilarityScore = (a: string, b: string): number => {
+    if (a.length !== b.length) return Infinity;
+    let diffs = 0;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+            diffs++;
+            if (diffs > 2) return Infinity;
+        }
+    }
+    return diffs;
+};
+
+// Find the most similar vehicle (by normalised registration) among the
+// candidates, excluding the vehicle being edited. Only returns a match when
+// the registrations differ by 1 or 2 characters (anything more is too noisy).
+const findSimilarRegPartner = (
+    targetReg: string,
+    candidates: Vehicle[],
+    excludeId?: string,
+): Vehicle | null => {
+    const target = normReg(targetReg);
+    if (!target) return null;
+    let best: { v: Vehicle; score: number } | null = null;
+    for (const c of candidates) {
+        if (c.id === excludeId) continue;
+        const score = regSimilarityScore(target, normReg(c.registration));
+        if (score >= 1 && (!best || score < best.score)) {
+            best = { v: c, score };
+            if (score === 1) break; // one-char-diff is the best practical match
+        }
+    }
+    return best?.v ?? null;
+};
 
 interface AddVehicleFormProps {
     vehicleData?: Vehicle;
@@ -26,6 +70,7 @@ const VEHICLE_CATEGORIES = [
 const VEHICLE_STATUSES: VehicleStatus[] = ['On the road', 'In for service', 'Off the road', 'Sold'];
 
 const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, onCancel }) => {
+    const { vehicles = [] } = useVehicles();
     const [name, setName] = useState(vehicleData?.name || '');
     const [make, setMake] = useState(vehicleData?.make || '');
     const [model, setModel] = useState(vehicleData?.model || '');
@@ -36,7 +81,23 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
     const [weightCategory, setWeightCategory] = useState(vehicleData?.weightCategory || VEHICLE_CATEGORIES[0]);
     const [purchasePrice, setPurchasePrice] = useState(vehicleData?.purchasePrice || 0);
     const [status, setStatus] = useState<VehicleStatus>(vehicleData?.status || 'On the road');
+    const [linkedVehicleId, setLinkedVehicleId] = useState<string>(vehicleData?.linkedVehicleId || '');
     const [submitting, setSubmitting] = useState(false);
+
+    // All other vehicles (eligible link candidates), sorted by registration
+    // for predictable dropdown ordering. The vehicle being edited is excluded.
+    const linkCandidates = useMemo(() => {
+        return (vehicles as Vehicle[])
+            .filter(v => v.id !== vehicleData?.id)
+            .sort((a, b) => a.registration.localeCompare(b.registration));
+    }, [vehicles, vehicleData?.id]);
+
+    // Suggest a pair when the registration is close to another vehicle's.
+    // Re-runs whenever the user retypes the reg field.
+    const suggestedPartner = useMemo(
+        () => findSimilarRegPartner(registration, linkCandidates, vehicleData?.id),
+        [registration, linkCandidates, vehicleData?.id],
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -56,7 +117,7 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
                 purchasePrice,
                 currentHours: vehicleData?.currentHours,
                 assignedDriverId: vehicleData?.assignedDriverId,
-                linkedVehicleId: vehicleData?.linkedVehicleId,
+                linkedVehicleId: linkedVehicleId || undefined,
             });
         } finally {
             setSubmitting(false);
@@ -115,6 +176,32 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
                 <div>
                     <label className={labelClasses}>Purchase Price (R)</label>
                     <input type="number" placeholder="0" value={purchasePrice} onChange={e => setPurchasePrice(parseFloat(e.target.value))} required className={inputClasses} />
+                </div>
+                {/* Pair / Superlink link — show for any vehicle. Trailers benefit
+                    most (6m + 12m), but it's optional for everything. */}
+                <div className="col-span-2">
+                    <label className={labelClasses}>Linked Vehicle (Pair / Superlink Partner)</label>
+                    <select
+                        value={linkedVehicleId}
+                        onChange={e => setLinkedVehicleId(e.target.value)}
+                        className={inputClasses}
+                    >
+                        <option value="">— None —</option>
+                        {linkCandidates.map(v => (
+                            <option key={v.id} value={v.id}>
+                                {v.name} ({v.registration}){v.id === suggestedPartner?.id ? '  ★ similar reg' : ''}
+                            </option>
+                        ))}
+                    </select>
+                    {suggestedPartner && suggestedPartner.id !== linkedVehicleId && (
+                        <button
+                            type="button"
+                            onClick={() => setLinkedVehicleId(suggestedPartner.id)}
+                            className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
+                        >
+                            Use suggested pair: {suggestedPartner.name} ({suggestedPartner.registration})
+                        </button>
+                    )}
                 </div>
             </div>
             <div className="flex justify-end space-x-4 mt-8 pt-4 border-t border-gray-700">

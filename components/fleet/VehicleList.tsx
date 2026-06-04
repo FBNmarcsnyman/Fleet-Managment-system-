@@ -8,6 +8,24 @@ import { PlusIcon } from '../icons/PlusIcon';
 import { UploadIcon } from '../icons/UploadIcon';
 import { LinkIcon } from '../icons/LinkIcon';
 
+// Trailer-style categories where auto-pairing makes sense.
+const TRAILER_CATEGORIES = new Set(['Standard Trailer', 'Superlink Trailer']);
+
+// Reg-similarity helpers (mirrors the form-level logic). One-char difference
+// between two normalised regs = treat as a pair candidate.
+const normReg = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '');
+const regDistance = (a: string, b: string): number => {
+    if (a.length !== b.length) return Infinity;
+    let d = 0;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) {
+            d++;
+            if (d > 2) return Infinity;
+        }
+    }
+    return d;
+};
+
 type GroupByType = 'branch' | 'category';
 
 // Re-order a list so that vehicles linked via `linkedVehicleId` sit next
@@ -36,7 +54,8 @@ const VehicleList: React.FC = () => {
         selectedVehicleId,
         handleSelectVehicle,
         handleAddVehicle,
-        handleBulkAddVehicles
+        handleBulkAddVehicles,
+        handleUpdateVehicle
     } = useVehicles();
     const { showModal, hideModal, showToast } = useUIState();
     const [groupBy, setGroupBy] = useState<GroupByType>('branch');
@@ -116,6 +135,62 @@ const VehicleList: React.FC = () => {
         });
     };
 
+    // One-click pass over the fleet: find unlinked trailers whose registrations
+    // differ by exactly one character (typical SA superlink pair convention)
+    // and persist linkedVehicleId on each pair via Supabase. Existing links
+    // are left alone.
+    const handleAutoPairTrailers = async () => {
+        const trailers = (vehicles as Vehicle[])
+            .filter(v => TRAILER_CATEGORIES.has(v.weightCategory || ''))
+            .filter(v => !v.linkedVehicleId);
+        if (trailers.length < 2) {
+            showToast('No unpaired trailers found to auto-pair.');
+            return;
+        }
+        // Build pairs greedily. Each trailer can only be in one pair.
+        const used = new Set<string>();
+        const pairs: Array<[Vehicle, Vehicle]> = [];
+        for (const t of trailers) {
+            if (used.has(t.id)) continue;
+            const tn = normReg(t.registration);
+            let best: { partner: Vehicle; d: number } | null = null;
+            for (const c of trailers) {
+                if (c.id === t.id || used.has(c.id)) continue;
+                const d = regDistance(tn, normReg(c.registration));
+                if (d === 1) {
+                    best = { partner: c, d };
+                    break; // distance-1 is as good as it gets
+                }
+                if (d === 2 && !best) best = { partner: c, d };
+            }
+            if (best) {
+                pairs.push([t, best.partner]);
+                used.add(t.id);
+                used.add(best.partner.id);
+            }
+        }
+        if (pairs.length === 0) {
+            showToast('No similar-registration trailer pairs detected.');
+            return;
+        }
+        // Persist: set linkedVehicleId on the first trailer of each pair.
+        // The display-sort (pairLinkedVehicles) is unidirectional-aware so
+        // one-way linkage is enough.
+        let okCount = 0;
+        const failures: string[] = [];
+        for (const [a, b] of pairs) {
+            const result = await handleUpdateVehicle(a.id, { linkedVehicleId: b.id });
+            if (result?.ok) okCount++;
+            else failures.push(`${a.registration}: ${result?.error ?? 'unknown'}`);
+        }
+        if (failures.length === 0) {
+            showToast(`Auto-paired ${okCount} trailer${okCount === 1 ? '' : 's'}.`);
+        } else {
+            showToast(`Paired ${okCount}, ${failures.length} failed. Check console.`);
+            console.error('[fleet] auto-pair failures:', failures);
+        }
+    };
+
     const openConnectSheet = () => {
         showModal('connectAssetSheet', {
             onImport: async (data: any[]) => {
@@ -141,6 +216,9 @@ const VehicleList: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    <button onClick={handleAutoPairTrailers} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-purple-400 rounded-xl border border-purple-500/20 transition-all" title="Pair trailers whose registrations differ by one character (typical SA superlink convention)">
+                        <LinkIcon className="h-4 w-4 mr-2" /> Auto-pair Trailers
+                    </button>
                     <button onClick={openConnectSheet} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-green-400 rounded-xl border border-green-500/20 transition-all">
                         <LinkIcon className="h-4 w-4 mr-2" /> Live Sheet
                     </button>

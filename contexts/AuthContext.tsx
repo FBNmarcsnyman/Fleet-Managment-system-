@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, ReactNode } from 'react';
 import { User, Permission, Branch } from '../types';
 import { useCommonData } from './CommonDataContext';
 import { supabase } from '../lib/supabase';
@@ -80,6 +80,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
     const [currentViewOverride] = useState<string | null>(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
+    // Distinguishes "user clicked Logout" (intentional) from "session expired
+    // in the background" (implicit). The latter happens after Marc leaves the
+    // tab idle for an hour+; the supabase-js client and the JS tab context
+    // can end up in a wedged state where the next signInWithPassword hangs.
+    // We force a hard reload after implicit signout to get a clean slate.
+    const intentionalLogoutRef = useRef(false);
 
     const handleLogin = useCallback(async (email: string, password: string): Promise<LoginResult> => {
         console.log('[login] start');
@@ -106,6 +112,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     const handleLogout = useCallback(() => {
+        intentionalLogoutRef.current = true;
         void supabase.auth.signOut();
         setState({ currentUser: null, viewingClientAsAdmin: null });
     }, []);
@@ -167,6 +174,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (event === 'SIGNED_OUT') {
                 setState({ currentUser: null, viewingClientAsAdmin: null });
+                // Implicit signout (session expired while idle) typically
+                // leaves the page's JS context in a state where the next
+                // signInWithPassword hangs. Marc hits this every time he
+                // walks away from the tab and comes back. Force a hard
+                // reload so the next login attempt starts fresh.
+                // Don't reload if the user clicked Logout themselves -
+                // that should just drop them on the Login form normally.
+                if (!intentionalLogoutRef.current) {
+                    window.location.reload();
+                }
+                intentionalLogoutRef.current = false;
             }
         });
 

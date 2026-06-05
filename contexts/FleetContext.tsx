@@ -185,6 +185,14 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         },
         handleUpdateVehicle: async (vehicleId: string, updates: Partial<Vehicle>): Promise<{ ok: true; vehicle: Vehicle } | { ok: false; error: string }> => {
             try {
+                // Capture pre-state BEFORE the write so we can cascade
+                // linkedVehicleId changes onto the partner side(s). Reads
+                // are from stateRef (latest reducer state) so concurrent
+                // bulk applies see each other.
+                const preVehicles = stateRef.current.vehicles || [];
+                const self = preVehicles.find(v => v.id === vehicleId);
+                const previousPartnerId = self?.linkedVehicleId;
+
                 const row = toVehicleUpdate(updates, branchIdByName);
                 const { data, error } = await supabase
                     .from('vehicles').update(row).eq('id', vehicleId).select().single();
@@ -194,6 +202,59 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 }
                 const mapped = mapVehicle(data, { branchById });
                 dispatch({ type: 'UPDATE_VEHICLE', payload: { vehicleId, updates } });
+
+                // Bi-directional pairing: writing A.linkedVehicleId = B must
+                // also write B.linkedVehicleId = A so the pair is symmetric
+                // in the DB. We also break any prior asymmetric links:
+                //  - if A used to point at C, clear C.linkedVehicleId
+                //  - if B used to point at D, clear D.linkedVehicleId
+                // Cascade failures are logged but do NOT fail the primary
+                // update - the user's intent on A is already persisted.
+                if (Object.prototype.hasOwnProperty.call(updates, 'linkedVehicleId')) {
+                    const newPartnerId = updates.linkedVehicleId ?? null;
+                    const newPartner = newPartnerId ? preVehicles.find(v => v.id === newPartnerId) : null;
+                    const newPartnerOldLink = newPartner?.linkedVehicleId;
+
+                    type Cascade = { id: string; link: string | null };
+                    const cascades: Cascade[] = [];
+
+                    // Old partner of A loses its back-link (if it was actually
+                    // pointing back at A and isn't the new partner).
+                    if (previousPartnerId && previousPartnerId !== newPartnerId) {
+                        const oldPartner = preVehicles.find(v => v.id === previousPartnerId);
+                        if (oldPartner?.linkedVehicleId === vehicleId) {
+                            cascades.push({ id: previousPartnerId, link: null });
+                        }
+                    }
+                    // New partner's prior link (some third vehicle) loses ITS
+                    // back-link, so we don't strand a one-way pointer.
+                    if (newPartnerOldLink && newPartnerOldLink !== vehicleId) {
+                        const stranded = preVehicles.find(v => v.id === newPartnerOldLink);
+                        if (stranded?.linkedVehicleId === newPartnerId) {
+                            cascades.push({ id: newPartnerOldLink, link: null });
+                        }
+                    }
+                    // Finally: set the new back-link on the new partner.
+                    if (newPartnerId && newPartner?.linkedVehicleId !== vehicleId) {
+                        cascades.push({ id: newPartnerId, link: vehicleId });
+                    }
+
+                    for (const c of cascades) {
+                        const { error: cErr } = await supabase
+                            .from('vehicles')
+                            .update({ linked_vehicle_id: c.link })
+                            .eq('id', c.id);
+                        if (cErr) {
+                            console.error('[fleet] linked-vehicle cascade failed for', c, cErr);
+                        } else {
+                            dispatch({
+                                type: 'UPDATE_VEHICLE',
+                                payload: { vehicleId: c.id, updates: { linkedVehicleId: c.link ?? undefined } },
+                            });
+                        }
+                    }
+                }
+
                 return { ok: true, vehicle: mapped };
             } catch (err) {
                 console.error('[fleet] updateVehicle threw:', err);

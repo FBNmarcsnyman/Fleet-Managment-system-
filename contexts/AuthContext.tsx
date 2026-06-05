@@ -95,6 +95,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // so Login.tsx re-enables its button instead of leaving the spinner
         // stuck.
         try {
+            // Defensive signOut: if a prior INITIAL_SESSION hydration hung,
+            // the supabase-js auth client holds an internal lock that queues
+            // every subsequent call (including this signInWithPassword) until
+            // the original promise resolves. Marc hits this when his tab has
+            // been idle and the stored session is wedged. Calling signOut
+            // first releases the lock and clears the bad session, so the new
+            // login proceeds against a clean client. Mark the signOut as
+            // intentional so the SIGNED_OUT listener doesn't reload the page
+            // mid-login (which would loop the user back to a blank login form).
+            console.log('[login] pre-signOut to clear any wedged session');
+            intentionalLogoutRef.current = true;
+            try { await supabase.auth.signOut(); } catch (e) { console.warn('[login] pre-signOut threw (ok to ignore):', e); }
+
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) return { ok: false, error: error.message };
             if (!data.user) return { ok: false, error: 'No user returned from sign-in' };
@@ -152,6 +165,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // One-shot hygiene: drop the mock-auth localStorage key from any prior session
         localStorage.removeItem('currentUserEmail');
 
+        // Hard fallback: if INITIAL_SESSION never fires (extremely wedged
+        // client), force isAuthReady true after 12s so the login form is
+        // always usable as a recovery path.
+        const readyFallback = setTimeout(() => {
+            if (active) {
+                console.warn('[auth] INITIAL_SESSION fallback fired - flipping isAuthReady');
+                setIsAuthReady(true);
+            }
+        }, 12000);
+
         const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!active) return;
 
@@ -163,7 +186,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // fallback. The listener now provides defense-in-depth.
             if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
                 if (session?.user) {
-                    const mapped = await fetchUserContext(session.user.id);
+                    // Race the profile fetch against a 10s timeout. If the
+                    // stored session is wedged, fetchUserContext can hang
+                    // indefinitely - that used to leave isAuthReady stuck
+                    // false (login form unresponsive). We always flip
+                    // isAuthReady, even on timeout, so the login form is
+                    // available as a recovery path.
+                    const mapped = await Promise.race<User | null>([
+                        fetchUserContext(session.user.id),
+                        new Promise<null>(resolve => setTimeout(() => {
+                            console.warn('[auth] profile fetch timed out during', event);
+                            resolve(null);
+                        }, 10000)),
+                    ]);
                     if (active && mapped) {
                         setState(prev => ({ ...prev, currentUser: mapped }));
                     }
@@ -190,6 +225,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         return () => {
             active = false;
+            clearTimeout(readyFallback);
             sub.subscription.unsubscribe();
         };
     }, []);

@@ -4,6 +4,7 @@ import { BRANCHES, VEHICLE_CATEGORIES, VEHICLE_STATUSES, CATEGORY_ORDER } from '
 import { useVehicles, useUIState } from '../../contexts/AppContexts';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { TrashIcon } from '../icons/TrashIcon';
+import { LinkIcon } from '../icons/LinkIcon';
 
 type EditableField = 'branch' | 'weightCategory' | 'status' | 'linkedVehicleId';
 
@@ -11,21 +12,15 @@ const FleetAssetAdmin: React.FC = () => {
     const { vehicles = [], handleUpdateVehicle } = useVehicles();
     const { showToast } = useUIState();
 
-    // Pending (unsaved) edits, keyed by vehicle id.
     const [edits, setEdits] = useState<Record<string, Partial<Vehicle>>>({});
-    // Vehicles currently being persisted; their row shows a spinner.
     const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
-    // Multi-select for bulk actions.
     const [selected, setSelected] = useState<Set<string>>(new Set());
-    // Bulk action bar state.
     const [bulkField, setBulkField] = useState<EditableField | ''>('');
     const [bulkValue, setBulkValue] = useState<string>('');
     const [applyingBulk, setApplyingBulk] = useState(false);
-    // Filter input.
     const [filter, setFilter] = useState('');
 
-    // Active (non-Sold) vehicles, sorted by CATEGORY_ORDER then by name within
-    // category so trailers cluster, horses cluster, etc.
+    // Active (non-Sold) vehicles, sorted by CATEGORY_ORDER then by name.
     const sortedVehicles = useMemo(() => {
         const active = (vehicles as Vehicle[]).filter(v => v.status !== 'Sold');
         return [...active].sort((a, b) => {
@@ -38,7 +33,6 @@ const FleetAssetAdmin: React.FC = () => {
         });
     }, [vehicles]);
 
-    // Free-text filter on name + registration.
     const filteredVehicles = useMemo(() => {
         if (!filter.trim()) return sortedVehicles;
         const needle = filter.toLowerCase();
@@ -50,20 +44,29 @@ const FleetAssetAdmin: React.FC = () => {
         );
     }, [sortedVehicles, filter]);
 
-    // Linked-partner candidates: for each vehicle, list other vehicles in the
-    // same weight category. Precomputed for the whole table so we don't
-    // re-filter inside each row's render.
-    const candidatesByCategory = useMemo(() => {
-        const map = new Map<string, Vehicle[]>();
-        for (const v of vehicles as Vehicle[]) {
-            const key = v.weightCategory || '';
-            const list = map.get(key) ?? [];
-            list.push(v);
-            map.set(key, list);
+    // Group consecutive paired vehicles into single visual rows. Walk the
+    // sorted list; whenever a vehicle's saved partner is also in the active
+    // list and not yet rendered, fold them together. We intentionally use the
+    // *saved* linkedVehicleId (not the dirty edit value) so the row doesn't
+    // jump while Marc is mid-typing a pairing change.
+    const groups = useMemo(() => {
+        const out: Vehicle[][] = [];
+        const seen = new Set<string>();
+        const byId = new Map<string, Vehicle>((vehicles as Vehicle[]).map(v => [v.id, v]));
+        for (const v of filteredVehicles) {
+            if (seen.has(v.id)) continue;
+            const partner = v.linkedVehicleId ? byId.get(v.linkedVehicleId) : undefined;
+            if (partner && partner.status !== 'Sold' && !seen.has(partner.id)) {
+                out.push([v, partner]);
+                seen.add(v.id);
+                seen.add(partner.id);
+            } else {
+                out.push([v]);
+                seen.add(v.id);
+            }
         }
-        for (const list of map.values()) list.sort((a, b) => a.registration.localeCompare(b.registration));
-        return map;
-    }, [vehicles]);
+        return out;
+    }, [filteredVehicles, vehicles]);
 
     const liveValue = <K extends keyof Vehicle>(v: Vehicle, field: K): Vehicle[K] => {
         const pending = edits[v.id]?.[field];
@@ -71,11 +74,7 @@ const FleetAssetAdmin: React.FC = () => {
     };
 
     const setEdit = (id: string, field: keyof Vehicle, value: any) => {
-        setEdits(prev => {
-            const current = prev[id] ?? {};
-            const next = { ...current, [field]: value };
-            return { ...prev, [id]: next };
-        });
+        setEdits(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), [field]: value } }));
     };
 
     const clearEdit = (id: string) => {
@@ -115,16 +114,14 @@ const FleetAssetAdmin: React.FC = () => {
     };
 
     const toggleSelectAll = () => {
-        if (selected.size === filteredVehicles.length) {
+        const allIds = filteredVehicles.map(v => v.id);
+        if (selected.size === allIds.length) {
             setSelected(new Set());
         } else {
-            setSelected(new Set(filteredVehicles.map(v => v.id)));
+            setSelected(new Set(allIds));
         }
     };
 
-    // Bulk apply: write the chosen value to every selected vehicle via
-    // sequential Supabase updates. Sequential keeps Supabase happy (no
-    // connection blast) and lets us report per-row failures.
     const applyBulk = async () => {
         console.log('[admin] applyBulk invoked', { bulkField, bulkValue, selectedCount: selected.size, applyingBulk });
         if (applyingBulk) { showToast('Already applying - please wait.'); return; }
@@ -161,6 +158,112 @@ const FleetAssetAdmin: React.FC = () => {
         if (bulkField === 'status') return VEHICLE_STATUSES;
         return [];
     }, [bulkField]);
+
+    // Partner picker options for a given vehicle: ALL other vehicles, sorted
+    // with same-category first (so a Standard Trailer sees other Standard
+    // Trailers + Superlinks at the top), then everything else by category
+    // order. Previously this was restricted to same-category only, which
+    // hid the 6m/12m pairing case Marc actually needs.
+    const partnerOptions = (forVehicle: Vehicle): Vehicle[] => {
+        const liveCategory = liveValue(forVehicle, 'weightCategory') as string;
+        const others = (vehicles as Vehicle[]).filter(v => v.id !== forVehicle.id);
+        return others.sort((a, b) => {
+            const aSame = a.weightCategory === liveCategory ? 0 : 1;
+            const bSame = b.weightCategory === liveCategory ? 0 : 1;
+            if (aSame !== bSame) return aSame - bSame;
+            const ai = CATEGORY_ORDER.indexOf(a.weightCategory || '');
+            const bi = CATEGORY_ORDER.indexOf(b.weightCategory || '');
+            const aiSafe = ai === -1 ? CATEGORY_ORDER.length : ai;
+            const biSafe = bi === -1 ? CATEGORY_ORDER.length : bi;
+            if (aiSafe !== biSafe) return aiSafe - biSafe;
+            return a.registration.localeCompare(b.registration);
+        });
+    };
+
+    // Render a single editable vehicle "slice" - the inner cells for one
+    // vehicle, suitable for stacking inside a grouped (paired) row.
+    const renderSlice = (v: Vehicle) => {
+        const category = liveValue(v, 'weightCategory') as string;
+        const currentLinkedId = liveValue(v, 'linkedVehicleId') as string | undefined;
+        const options = partnerOptions(v);
+        const dirty = isDirty(v.id);
+        const saving = savingIds.has(v.id);
+        return {
+            checkbox: (
+                <input
+                    type="checkbox"
+                    checked={selected.has(v.id)}
+                    onChange={() => toggleSelect(v.id)}
+                    className="cursor-pointer"
+                />
+            ),
+            name: <span className={`font-bold text-white whitespace-nowrap ${dirty ? 'text-yellow-300' : ''}`}>{v.name}</span>,
+            reg: <span className="font-mono text-gray-300 whitespace-nowrap">{v.registration}</span>,
+            makeModel: <span className="text-gray-400 whitespace-nowrap text-xs">{v.make} {v.model}</span>,
+            year: <span className="text-gray-400 text-xs">{v.year}</span>,
+            branch: (
+                <select
+                    value={liveValue(v, 'branch') as Branch}
+                    onChange={e => setEdit(v.id, 'branch', e.target.value)}
+                    className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
+                >
+                    {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+            ),
+            category: (
+                <select
+                    value={category}
+                    onChange={e => setEdit(v.id, 'weightCategory', e.target.value)}
+                    className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
+                >
+                    {VEHICLE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+            ),
+            status: (
+                <select
+                    value={liveValue(v, 'status') as VehicleStatus}
+                    onChange={e => setEdit(v.id, 'status', e.target.value)}
+                    className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
+                >
+                    {VEHICLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+            ),
+            partner: (
+                <select
+                    value={currentLinkedId || ''}
+                    onChange={e => setEdit(v.id, 'linkedVehicleId', e.target.value || undefined)}
+                    className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
+                >
+                    <option value="">— None —</option>
+                    {options.map(p => (
+                        <option key={p.id} value={p.id}>
+                            {p.name} ({p.registration}) · {p.weightCategory}
+                        </option>
+                    ))}
+                </select>
+            ),
+            actions: saving ? (
+                <span className="text-blue-400 text-xs">…</span>
+            ) : dirty ? (
+                <div className="flex gap-1">
+                    <button
+                        onClick={() => saveRow(v.id)}
+                        title="Save changes"
+                        className="p-1 rounded bg-green-600 hover:bg-green-500 text-white"
+                    >
+                        <CheckCircleIcon className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onClick={() => clearEdit(v.id)}
+                        title="Discard changes"
+                        className="p-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                    >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                    </button>
+                </div>
+            ) : null,
+        };
+    };
 
     return (
         <div className="bg-gray-800/40 rounded-2xl border border-gray-700/50 p-4 space-y-4">
@@ -239,97 +342,71 @@ const FleetAssetAdmin: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredVehicles.map(v => {
-                            const category = liveValue(v, 'weightCategory') as string;
-                            const partnerCandidates = (candidatesByCategory.get(category) || []).filter(c => c.id !== v.id);
-                            // Keep currently-linked partner visible even if it
-                            // doesn't share the (possibly newly-edited) category.
-                            const currentLinkedId = liveValue(v, 'linkedVehicleId') as string | undefined;
-                            const knownInList = partnerCandidates.some(c => c.id === currentLinkedId);
-                            const visiblePartners = (!knownInList && currentLinkedId)
-                                ? [
-                                    (vehicles as Vehicle[]).find(c => c.id === currentLinkedId)!,
-                                    ...partnerCandidates,
-                                ].filter(Boolean)
-                                : partnerCandidates;
-                            const dirty = isDirty(v.id);
-                            const saving = savingIds.has(v.id);
+                        {groups.map(group => {
+                            const isPair = group.length === 2;
+                            const anyDirty = group.some(v => isDirty(v.id));
+                            const slices = group.map(renderSlice);
+                            const rowClasses = [
+                                'border-b border-gray-700/50 hover:bg-gray-800/50',
+                                isPair ? 'bg-blue-900/10 border-l-4 border-l-blue-500/60' : '',
+                                anyDirty ? 'bg-yellow-900/10' : '',
+                            ].join(' ');
                             return (
-                                <tr key={v.id} className={`border-b border-gray-700/50 hover:bg-gray-800/50 ${dirty ? 'bg-yellow-900/10' : ''}`}>
-                                    <td className="p-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={selected.has(v.id)}
-                                            onChange={() => toggleSelect(v.id)}
-                                            className="cursor-pointer"
-                                        />
+                                <tr key={group[0].id} className={rowClasses}>
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id}>{s.checkbox}</div>)}
+                                        </div>
                                     </td>
-                                    <td className="p-2 font-bold text-white whitespace-nowrap">{v.name}</td>
-                                    <td className="p-2 font-mono text-gray-300 whitespace-nowrap">{v.registration}</td>
-                                    <td className="p-2 text-gray-400 whitespace-nowrap">{v.make} {v.model}</td>
-                                    <td className="p-2 text-gray-400">{v.year}</td>
-                                    <td className="p-2">
-                                        <select
-                                            value={liveValue(v, 'branch') as Branch}
-                                            onChange={e => setEdit(v.id, 'branch', e.target.value)}
-                                            className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
-                                        >
-                                            {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
-                                        </select>
-                                    </td>
-                                    <td className="p-2">
-                                        <select
-                                            value={category}
-                                            onChange={e => setEdit(v.id, 'weightCategory', e.target.value)}
-                                            className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
-                                        >
-                                            {VEHICLE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    </td>
-                                    <td className="p-2">
-                                        <select
-                                            value={liveValue(v, 'status') as VehicleStatus}
-                                            onChange={e => setEdit(v.id, 'status', e.target.value)}
-                                            className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
-                                        >
-                                            {VEHICLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                    </td>
-                                    <td className="p-2">
-                                        <select
-                                            value={currentLinkedId || ''}
-                                            onChange={e => setEdit(v.id, 'linkedVehicleId', e.target.value || undefined)}
-                                            className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
-                                        >
-                                            <option value="">— None —</option>
-                                            {visiblePartners.map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.name} ({p.registration})
-                                                </option>
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => (
+                                                <div key={group[i].id} className="flex items-center gap-1">
+                                                    {isPair && <LinkIcon className="h-3 w-3 text-blue-400 flex-shrink-0" />}
+                                                    {s.name}
+                                                </div>
                                             ))}
-                                        </select>
+                                        </div>
                                     </td>
-                                    <td className="p-2">
-                                        {saving ? (
-                                            <span className="text-blue-400 text-xs">…</span>
-                                        ) : dirty ? (
-                                            <div className="flex gap-1">
-                                                <button
-                                                    onClick={() => saveRow(v.id)}
-                                                    title="Save changes"
-                                                    className="p-1 rounded bg-green-600 hover:bg-green-500 text-white"
-                                                >
-                                                    <CheckCircleIcon className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => clearEdit(v.id)}
-                                                    title="Discard changes"
-                                                    className="p-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
-                                                >
-                                                    <TrashIcon className="h-3.5 w-3.5" />
-                                                </button>
-                                            </div>
-                                        ) : null}
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id}>{s.reg}</div>)}
+                                        </div>
+                                    </td>
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id}>{s.makeModel}</div>)}
+                                        </div>
+                                    </td>
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id}>{s.year}</div>)}
+                                        </div>
+                                    </td>
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id}>{s.branch}</div>)}
+                                        </div>
+                                    </td>
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id}>{s.category}</div>)}
+                                        </div>
+                                    </td>
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id}>{s.status}</div>)}
+                                        </div>
+                                    </td>
+                                    <td className="p-2 align-top min-w-[200px]">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id}>{s.partner}</div>)}
+                                        </div>
+                                    </td>
+                                    <td className="p-2 align-top">
+                                        <div className="flex flex-col gap-2">
+                                            {slices.map((s, i) => <div key={group[i].id} className="h-7 flex items-center">{s.actions}</div>)}
+                                        </div>
                                     </td>
                                 </tr>
                             );

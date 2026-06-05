@@ -122,6 +122,19 @@ const FleetAssetAdmin: React.FC = () => {
         }
     };
 
+    // Per-call timeout: a single wedged Supabase update won't drag the whole
+    // batch past this. The global supabase fetch timeout is 30s; we cut over
+    // sooner so a bulk-apply of 20 vehicles can't sit on a "spinning" button
+    // for 10 minutes if one row is misbehaving.
+    const BULK_PER_CALL_TIMEOUT_MS = 12000;
+    const withTimeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T | { ok: false; error: string }> =>
+        Promise.race([
+            p,
+            new Promise<{ ok: false; error: string }>(resolve =>
+                setTimeout(() => resolve({ ok: false, error: `Timed out after ${ms}ms (${label})` }), ms),
+            ),
+        ]) as Promise<T | { ok: false; error: string }>;
+
     const applyBulk = async () => {
         console.log('[admin] applyBulk invoked', { bulkField, bulkValue, selectedCount: selected.size, applyingBulk });
         if (applyingBulk) { showToast('Already applying - please wait.'); return; }
@@ -129,16 +142,34 @@ const FleetAssetAdmin: React.FC = () => {
         if (!bulkField) { showToast('Pick a field to update.'); return; }
         if (!bulkValue) { showToast('Pick a value to apply.'); return; }
         setApplyingBulk(true);
-        showToast(`Applying ${bulkField} = "${bulkValue}" to ${selected.size} vehicle${selected.size === 1 ? '' : 's'}...`);
         const ids = Array.from(selected);
+        showToast(`Applying ${bulkField} = "${bulkValue}" to ${ids.length} vehicle${ids.length === 1 ? '' : 's'}...`);
+
+        // Parallel writes via Promise.allSettled so a single wedged row can't
+        // block the others. Each call is wrapped in a 12s timeout so we
+        // always return - no permanently-spinning Apply button.
+        const tasks = ids.map(id => {
+            console.log('[admin] updating', id, { [bulkField]: bulkValue });
+            return withTimeout(
+                handleUpdateVehicle(id, { [bulkField]: bulkValue } as Partial<Vehicle>),
+                BULK_PER_CALL_TIMEOUT_MS,
+                id,
+            ).then(result => ({ id, result }));
+        });
+        const settled = await Promise.allSettled(tasks);
+
         let ok = 0;
         const failures: string[] = [];
-        for (const id of ids) {
-            console.log('[admin] updating', id, { [bulkField]: bulkValue });
-            const result = await handleUpdateVehicle(id, { [bulkField]: bulkValue } as Partial<Vehicle>);
-            if (result?.ok) ok++;
-            else failures.push(`${id}: ${result?.error ?? 'unknown'}`);
+        for (const s of settled) {
+            if (s.status === 'rejected') {
+                failures.push(`unknown: ${s.reason}`);
+                continue;
+            }
+            const { id, result } = s.value;
+            if (result && (result as { ok: boolean }).ok) ok++;
+            else failures.push(`${id}: ${(result as { error?: string })?.error ?? 'unknown'}`);
         }
+
         setApplyingBulk(false);
         setSelected(new Set());
         setBulkField('');

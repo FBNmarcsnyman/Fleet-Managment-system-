@@ -126,12 +126,18 @@ const FleetAssetAdmin: React.FC = () => {
     // sequential Supabase updates. Sequential keeps Supabase happy (no
     // connection blast) and lets us report per-row failures.
     const applyBulk = async () => {
-        if (!bulkField || !bulkValue || selected.size === 0 || applyingBulk) return;
+        console.log('[admin] applyBulk invoked', { bulkField, bulkValue, selectedCount: selected.size, applyingBulk });
+        if (applyingBulk) { showToast('Already applying - please wait.'); return; }
+        if (selected.size === 0) { showToast('Select at least one row first.'); return; }
+        if (!bulkField) { showToast('Pick a field to update.'); return; }
+        if (!bulkValue) { showToast('Pick a value to apply.'); return; }
         setApplyingBulk(true);
+        showToast(`Applying ${bulkField} = "${bulkValue}" to ${selected.size} vehicle${selected.size === 1 ? '' : 's'}...`);
         const ids = Array.from(selected);
         let ok = 0;
         const failures: string[] = [];
         for (const id of ids) {
+            console.log('[admin] updating', id, { [bulkField]: bulkValue });
             const result = await handleUpdateVehicle(id, { [bulkField]: bulkValue } as Partial<Vehicle>);
             if (result?.ok) ok++;
             else failures.push(`${id}: ${result?.error ?? 'unknown'}`);
@@ -140,10 +146,11 @@ const FleetAssetAdmin: React.FC = () => {
         setSelected(new Set());
         setBulkField('');
         setBulkValue('');
+        console.log('[admin] bulk done', { ok, failed: failures.length, failures });
         if (failures.length === 0) {
             showToast(`Updated ${ok} vehicle${ok === 1 ? '' : 's'}.`);
         } else {
-            showToast(`Updated ${ok}, ${failures.length} failed - see console.`);
+            showToast(`Updated ${ok}, ${failures.length} failed - check console.`);
             console.error('[admin] bulk update failures:', failures);
         }
     };
@@ -192,7 +199,7 @@ const FleetAssetAdmin: React.FC = () => {
                         </select>
                         <button
                             onClick={applyBulk}
-                            disabled={!bulkField || !bulkValue || applyingBulk}
+                            disabled={applyingBulk}
                             className="text-xs font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-md"
                         >
                             {applyingBulk ? 'Applying…' : 'Apply'}

@@ -86,6 +86,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // can end up in a wedged state where the next signInWithPassword hangs.
     // We force a hard reload after implicit signout to get a clean slate.
     const intentionalLogoutRef = useRef(false);
+    // Mirror of state.currentUser, readable inside the onAuthStateChange
+    // listener closure (which only captures state once at mount). Used by
+    // the SIGNED_IN fallback to decide whether handleLogin already loaded
+    // the profile.
+    const currentUserRef = useRef<User | null>(state.currentUser);
+    currentUserRef.current = state.currentUser;
 
     const handleLogin = useCallback(async (email: string, password: string): Promise<LoginResult> => {
         console.log('[login] start');
@@ -203,20 +209,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!active) return;
 
-            // Both INITIAL_SESSION (page load with stored session) and SIGNED_IN
-            // (fresh login) need to hydrate currentUser from profiles. Without
-            // SIGNED_IN handling, the only path that sets currentUser on a
-            // fresh login was handleLogin's manual setState - if any await in
-            // that path stalled, the UI was stuck on Login forever with no
-            // fallback. The listener now provides defense-in-depth.
-            if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+            // INITIAL_SESSION is the page-load path: hydrate currentUser
+            // from the stored session if one exists. SIGNED_IN is handled
+            // explicitly by handleLogin (it sets currentUser there) so we
+            // SKIP it here - running a duplicate fetchUserContext on
+            // SIGNED_IN was racing handleLogin and wedging the supabase-js
+            // auth lock, which then caused subsequent calls (including the
+            // RawDataContext hydrate) to hang. defense-in-depth: if the
+            // listener fires SIGNED_IN and we somehow have no currentUser
+            // yet (handleLogin not on the stack), still hydrate as a
+            // fallback.
+            if (event === 'INITIAL_SESSION') {
                 if (session?.user) {
-                    // Race the profile fetch against a 10s timeout. If the
-                    // stored session is wedged, fetchUserContext can hang
-                    // indefinitely - that used to leave isAuthReady stuck
-                    // false (login form unresponsive). We always flip
-                    // isAuthReady, even on timeout, so the login form is
-                    // available as a recovery path.
                     const mapped = await Promise.race<User | null>([
                         fetchUserContext(session.user.id),
                         new Promise<null>(resolve => setTimeout(() => {
@@ -228,7 +232,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         setState(prev => ({ ...prev, currentUser: mapped }));
                     }
                 }
-                if (active && event === 'INITIAL_SESSION') setIsAuthReady(true);
+                if (active) setIsAuthReady(true);
+                return;
+            }
+
+            if (event === 'SIGNED_IN') {
+                // handleLogin already covers the fresh-login case. If we got
+                // here without a currentUser (e.g. a token refresh emitted
+                // SIGNED_IN), fetch the profile as a fallback. Skip otherwise
+                // to avoid duplicate calls wedging the auth lock.
+                if (session?.user && !currentUserRef.current) {
+                    const mapped = await fetchUserContext(session.user.id);
+                    if (active && mapped) {
+                        setState(prev => ({ ...prev, currentUser: mapped }));
+                    }
+                }
                 return;
             }
 

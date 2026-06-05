@@ -490,8 +490,30 @@ type Dispatch = React.Dispatch<AppAction>;
 
 // Fetches every table the app needs and dispatches per-table SET_* actions.
 // Branches load first so other mappers can resolve UUID -> Branch name.
+// Module-level guard: prevents concurrent hydrate runs from racing each
+// other into the supabase-js auth lock. When SIGNED_IN fires multiple
+// times in quick succession (e.g. signInWithPassword + a token-refresh
+// immediately after), only one hydrate runs to completion.
+let hydrateInFlight = false;
+
 async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
+    if (hydrateInFlight) {
+        console.log('[hydrate] already in flight, skipping duplicate call');
+        return;
+    }
     console.log('[hydrate] start');
+    // Confirm the session is actually populated before issuing any
+    // authed queries. Without this check, the first SIGNED_IN listener
+    // fires before supabase-js has attached the JWT to the rest client,
+    // every query 401s, and the whole hydrate aborts on the first
+    // branches fetch. getSession reads from in-memory state so it does
+    // NOT add network latency.
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session?.access_token) {
+        console.warn('[hydrate] no access_token yet, deferring');
+        return;
+    }
+    hydrateInFlight = true;
     try {
         // Use `code` (e.g. 'FBN JHB') not `name` (e.g. 'FBN Johannesburg') -
         // the TypeScript Branch union, the AddVehicleForm dropdown, and the
@@ -673,6 +695,8 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         console.log('[hydrate] end — dispatched all tables');
     } catch (err) {
         console.error('[hydrate] failed with thrown error', err);
+    } finally {
+        hydrateInFlight = false;
     }
 }
 

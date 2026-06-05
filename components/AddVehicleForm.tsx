@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Vehicle, Branch, VehicleStatus } from '../types';
-import { BRANCHES } from '../constants';
+import { BRANCHES, VEHICLE_CATEGORIES, VEHICLE_STATUSES } from '../constants';
 import { useVehicles } from '../contexts/AppContexts';
 
 // --- Linked-vehicle helpers --------------------------------------------------
@@ -53,21 +53,8 @@ interface AddVehicleFormProps {
     onCancel: () => void;
 }
 
-const VEHICLE_CATEGORIES = [
-    'Horse',
-    'Standard Trailer',
-    'Superlink Trailer',
-    '8 TONNER',
-    '12 TONNER',
-    '15 TONNER',
-    '1 TONNER',
-    '2 TONNER',
-    'BAKKIE',
-    'Forklift',
-    'Other'
-];
-
-const VEHICLE_STATUSES: VehicleStatus[] = ['On the road', 'In for service', 'Off the road', 'Sold'];
+// VEHICLE_CATEGORIES and VEHICLE_STATUSES now live in constants.ts so
+// FleetAssetAdmin's inline editor can reuse them. Kept inline imports above.
 
 const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, onCancel }) => {
     const { vehicles = [] } = useVehicles();

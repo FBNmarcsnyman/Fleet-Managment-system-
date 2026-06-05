@@ -9,9 +9,10 @@ import FleetDashboard from './fleet/FleetDashboard';
 import FleetMaintenanceView from './fleet/FleetMaintenanceView';
 import FleetChecklistView from './fleet/FleetChecklistView';
 import FleetOperationsLogView from './fleet/FleetOperationsLogView';
+import FleetAssetAdmin from './fleet/FleetAssetAdmin';
 import { FuelEntry } from '../types';
 
-type FleetView = 'dashboard' | 'vehicles' | 'fuelAndCosts' | 'maintenance' | 'checklists' | 'operationsLog';
+type FleetView = 'dashboard' | 'vehicles' | 'admin' | 'fuelAndCosts' | 'maintenance' | 'checklists' | 'operationsLog';
 
 const FleetPortal: React.FC = () => {
     const { fleetSubView, handleFleetSubViewChange, showModal, showToast, hideModal } = useUIState();
@@ -26,6 +27,7 @@ const FleetPortal: React.FC = () => {
     const navItems = [
         { view: 'dashboard', label: 'Dashboard' },
         { view: 'vehicles', label: 'Asset List' },
+        { view: 'admin', label: 'Asset Admin' },
         { view: 'fuelAndCosts', label: 'Fuel & Costs' },
         { view: 'maintenance', label: 'Maintenance' },
         { view: 'checklists', label: 'Checklists' },
@@ -156,6 +158,8 @@ const FleetPortal: React.FC = () => {
         switch (fleetSubView as FleetView) {
             case 'vehicles':
                 return <VehicleList />;
+            case 'admin':
+                return <FleetAssetAdmin />;
             case 'fuelAndCosts':
                 return <FuelManagement
                     vehicles={vehicles}

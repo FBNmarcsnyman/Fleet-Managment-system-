@@ -1,7 +1,31 @@
 
-import { Branch } from './types';
+import { Branch, VehicleStatus } from './types';
 
 export const BRANCHES: Branch[] = ['FBN JHB', 'FBN DBN', 'FBN CPT', 'LOADMASTER'];
+
+// Weight categories used in AddVehicleForm dropdowns and the FleetAssetAdmin
+// inline editor. Order roughly follows operational priority (prime movers
+// first, trailers in the middle, misc at the end).
+export const VEHICLE_CATEGORIES: string[] = [
+    'Horse',
+    'Standard Trailer',
+    'Superlink Trailer',
+    '8 TONNER',
+    '12 TONNER',
+    '15 TONNER',
+    '1 TONNER',
+    '2 TONNER',
+    'BAKKIE',
+    'Forklift',
+    'Other',
+];
+
+export const VEHICLE_STATUSES: VehicleStatus[] = [
+    'On the road',
+    'In for service',
+    'Off the road',
+    'Sold',
+];
 
 // Display order for the Asset List when grouped by category.
 // Marc's rule: motorized prime movers + rigids on top, trailers below,

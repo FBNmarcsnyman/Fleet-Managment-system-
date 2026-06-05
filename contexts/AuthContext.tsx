@@ -95,20 +95,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // so Login.tsx re-enables its button instead of leaving the spinner
         // stuck.
         try {
-            // Defensive signOut: if a prior INITIAL_SESSION hydration hung,
-            // the supabase-js auth client holds an internal lock that queues
-            // every subsequent call (including this signInWithPassword) until
-            // the original promise resolves. Marc hits this when his tab has
-            // been idle and the stored session is wedged. Calling signOut
-            // first releases the lock and clears the bad session, so the new
-            // login proceeds against a clean client. Mark the signOut as
-            // intentional so the SIGNED_OUT listener doesn't reload the page
-            // mid-login (which would loop the user back to a blank login form).
-            console.log('[login] pre-signOut to clear any wedged session');
-            intentionalLogoutRef.current = true;
-            try { await supabase.auth.signOut(); } catch (e) { console.warn('[login] pre-signOut threw (ok to ignore):', e); }
+            // Defensive storage nuke: when the supabase-js auth client is
+            // wedged (e.g. INITIAL_SESSION hydration hung on a stale token),
+            // its internal serialization lock makes every subsequent auth
+            // call - INCLUDING signOut - queue behind the original hung
+            // promise forever. Awaiting signOut here would itself hang.
+            //
+            // Instead, we synchronously strip the sb-<project>-auth-token*
+            // entries straight out of localStorage. Supabase-js re-reads
+            // storage on its next auth call; with nothing there it treats
+            // the user as unauthenticated and signInWithPassword proceeds
+            // against a clean slate. No await needed = no lock to wait on.
+            console.log('[login] clearing any cached supabase auth storage');
+            try {
+                const keysToDrop: string[] = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && (k.startsWith('sb-') || k.includes('supabase'))) keysToDrop.push(k);
+                }
+                for (const k of keysToDrop) localStorage.removeItem(k);
+                console.log('[login] cleared', keysToDrop.length, 'auth keys');
+            } catch (e) {
+                console.warn('[login] storage clear threw (ok to ignore):', e);
+            }
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            // Race signInWithPassword against a 15s ceiling. The global
+            // fetch timeout (30s) only fires once the request reaches the
+            // network layer; if supabase-js queues this call behind a
+            // wedged auth lock, it never reaches fetch and the global
+            // timeout never trips. This ceiling guarantees the spinner
+            // clears so Marc gets a clear error and a chance to retry.
+            type SignInResult = Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>;
+            const signInPromise = supabase.auth.signInWithPassword({ email, password });
+            const timeoutPromise = new Promise<SignInResult>(resolve =>
+                setTimeout(() => resolve({
+                    data: { user: null, session: null },
+                    error: { name: 'TimeoutError', message: 'Sign-in did not respond within 15s. Refresh the page (Ctrl+F5) and try again.' } as any,
+                } as SignInResult), 15000),
+            );
+            const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
             if (error) return { ok: false, error: error.message };
             if (!data.user) return { ok: false, error: 'No user returned from sign-in' };
             console.log('[login] signInWithPassword OK, fetching profile');

@@ -228,8 +228,23 @@ const FleetAssetAdmin: React.FC = () => {
                     className="cursor-pointer"
                 />
             ),
-            name: <span className={`font-bold text-white whitespace-nowrap ${dirty ? 'text-yellow-300' : ''}`}>{v.name}</span>,
-            reg: <span className="font-mono text-gray-300 whitespace-nowrap">{v.registration}</span>,
+            name: (
+                <input
+                    type="text"
+                    value={liveValue(v, 'name') as string}
+                    onChange={e => setEdit(v.id, 'name', e.target.value)}
+                    className={`bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-32 font-bold ${dirty ? 'border-yellow-500/50' : ''}`}
+                />
+            ),
+            reg: (
+                <input
+                    type="text"
+                    value={liveValue(v, 'registration') as string}
+                    onChange={e => setEdit(v.id, 'registration', e.target.value)}
+                    className="bg-gray-900 text-gray-200 p-1 rounded border border-gray-700 text-xs font-mono w-32"
+                    placeholder="e.g. ND123ABC"
+                />
+            ),
             makeModel: <span className="text-gray-400 whitespace-nowrap text-xs">{v.make} {v.model}</span>,
             year: <span className="text-gray-400 text-xs">{v.year}</span>,
             branch: (
@@ -242,13 +257,30 @@ const FleetAssetAdmin: React.FC = () => {
                 </select>
             ),
             category: (
-                <select
-                    value={category}
-                    onChange={e => setEdit(v.id, 'weightCategory', e.target.value)}
-                    className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
-                >
-                    {VEHICLE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div className="flex flex-col gap-1">
+                    <select
+                        value={category}
+                        onChange={e => setEdit(v.id, 'weightCategory', e.target.value)}
+                        className="bg-gray-900 text-white p-1 rounded border border-gray-700 text-xs w-full"
+                    >
+                        {VEHICLE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    {/* Trailers only: deck length (6 or 12) so the
+                        Superlink pair view can order lead-then-rear and
+                        badge each trailer. Hidden for horses, rigids etc. */}
+                    {category.toLowerCase().includes('trailer') && (
+                        <select
+                            value={(liveValue(v, 'deckMeters') as number | undefined) ?? ''}
+                            onChange={e => setEdit(v.id, 'deckMeters', e.target.value ? parseFloat(e.target.value) : undefined)}
+                            className="bg-gray-900 text-gray-300 p-1 rounded border border-gray-700 text-[10px] w-full"
+                            title="Deck length"
+                        >
+                            <option value="">— deck length —</option>
+                            <option value="6">6 m (lead)</option>
+                            <option value="12">12 m (rear)</option>
+                        </select>
+                    )}
+                </div>
             ),
             status: (
                 <select

@@ -42,6 +42,11 @@ const PerformancePill: React.FC<{ label: string; value: string; color: string; i
 );
 
 const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean; }> = ({ vehicle, isEmbedded = false }) => {
+    // Trailers don't have their own engine so fuel consumption, average
+    // L/100km, and "Log Fuel" don't make sense for them - fuel burns on
+    // the horse pulling them. We still surface mileage (odometer for
+    // service intervals), services, tires, revenue, costs, and checklists.
+    const isTrailer = (vehicle.weightCategory || '').toLowerCase().includes('trailer');
     const [activeTab, setActiveTab] = useState<DetailViewTab>('overview');
     const { currentUser } = useAuth();
     const { 
@@ -153,7 +158,9 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
 
                 <div className="flex flex-wrap gap-4 mb-8">
                     <PerformancePill label="Running CPK" value={`R ${performance.avgCpk.toFixed(2)}`} color="bg-emerald-600" icon={ChartBarIcon} />
-                    <PerformancePill label="Avg Consumption" value={`${performance.avgConsumption.toFixed(1)} L/100km`} color="bg-orange-600" icon={FuelIcon} />
+                    {!isTrailer && (
+                        <PerformancePill label="Avg Consumption" value={`${performance.avgConsumption.toFixed(1)} L/100km`} color="bg-orange-600" icon={FuelIcon} />
+                    )}
                     <PerformancePill label="Current Odometer" value={`${performance.latestOdo.toLocaleString()} km`} color="bg-blue-600" icon={SpeedometerIcon} />
                 </div>
 
@@ -178,7 +185,9 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
                 <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
                     <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        <button onClick={() => openModal('addFuel', handleAddFuelEntry)} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg text-sm">Log Fuel</button>
+                        {!isTrailer && (
+                            <button onClick={() => openModal('addFuel', handleAddFuelEntry)} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg text-sm">Log Fuel</button>
+                        )}
                         <button onClick={() => openModal('addService', handleAddServiceEntry)} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg text-sm">Log Service</button>
                         <button onClick={() => openModal('addRevenue', handleAddRevenue)} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-lg text-sm">Log Revenue</button>
                         <button onClick={openCreateJobCardModal} className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-3 rounded-lg text-sm">New Job Card</button>
@@ -294,10 +303,10 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
         <div className="space-y-6">
             {!isEmbedded && <button onClick={() => handleSelectVehicle(null)} className="flex items-center text-brand-secondary hover:text-blue-400 font-semibold mb-2"><BackIcon className="h-5 w-5 mr-2" /> Back to Fleet List</button>}
             
-            <div className="flex items-center space-x-1 border-b border-gray-700">
+            <div className="flex items-center space-x-1 border-b border-gray-700 overflow-x-auto no-scrollbar">
                 <TabButton tab="overview" label="Overview" icon={EyeIcon} />
                 <TabButton tab="financials" label="Financials" icon={ChartBarIcon} />
-                <TabButton tab="performance" label="Performance" icon={FuelIcon} />
+                {!isTrailer && <TabButton tab="performance" label="Performance" icon={FuelIcon} />}
                 <TabButton tab="maintenance" label="Maintenance" icon={WrenchIcon} />
                 <TabButton tab="checklists" label="Checklists" icon={ClipboardDocumentListIcon} />
                 <TabButton tab="operations" label="Operations Log" icon={RouteIcon} />

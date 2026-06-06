@@ -29,6 +29,9 @@ const FleetAssetAdmin: React.FC = () => {
 
     const [edits, setEdits] = useState<Record<string, Partial<Vehicle>>>({});
     const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+    // Per-row save failures - stick around until the user retries or
+    // dismisses, so a failed save can never silently vanish like a toast.
+    const [failedSaves, setFailedSaves] = useState<Record<string, string>>({});
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [bulkField, setBulkField] = useState<EditableField | ''>('');
     const [bulkValue, setBulkValue] = useState<string>('');
@@ -39,16 +42,16 @@ const FleetAssetAdmin: React.FC = () => {
     const [branchTab, setBranchTab] = useState<Branch | 'All'>('All');
     const [groupTab, setGroupTab] = useState<string>('All');
 
-    // Active (non-Sold) vehicles, sorted by CATEGORY_ORDER then by name.
+    // Active (non-Sold) vehicles, sorted by fleet number (the `name`
+    // field, e.g. T-1, T-2, FJ-01) using numeric collation so T-2 comes
+    // before T-10 instead of after T-1, T-10, T-11. Category grouping is
+    // handled by the type tabs at the top of the screen, so the primary
+    // sort below is purely fleet-number order within the active filter -
+    // matching how Marc reads the fleet list day-to-day.
     const sortedVehicles = useMemo(() => {
         const active = (vehicles as Vehicle[]).filter(v => v.status !== 'Sold');
         return [...active].sort((a, b) => {
-            const ai = CATEGORY_ORDER.indexOf(a.weightCategory || '');
-            const bi = CATEGORY_ORDER.indexOf(b.weightCategory || '');
-            const aiSafe = ai === -1 ? CATEGORY_ORDER.length : ai;
-            const biSafe = bi === -1 ? CATEGORY_ORDER.length : bi;
-            if (aiSafe !== biSafe) return aiSafe - biSafe;
-            return a.name.localeCompare(b.name);
+            return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
         });
     }, [vehicles]);
 
@@ -122,7 +125,16 @@ const FleetAssetAdmin: React.FC = () => {
     const saveRow = async (id: string) => {
         const updates = edits[id];
         if (!updates) return;
+        // Clear any prior failure marker; we'll re-set it below if this
+        // save also fails.
+        setFailedSaves(prev => {
+            if (!prev[id]) return prev;
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
         setSavingIds(prev => new Set(prev).add(id));
+        console.log('[admin] saving row', id, updates);
         const result = await handleUpdateVehicle(id, updates);
         setSavingIds(prev => {
             const next = new Set(prev);
@@ -130,11 +142,27 @@ const FleetAssetAdmin: React.FC = () => {
             return next;
         });
         if (result?.ok) {
+            console.log('[admin] saved', id, '->', result.vehicle);
             clearEdit(id);
             showToast(`Saved ${result.vehicle?.name ?? id}.`);
         } else {
-            showToast(`Save failed: ${result?.error ?? 'Unknown error'}`);
+            const errMsg = result?.error ?? 'Unknown error';
+            console.error('[admin] save failed for', id, errMsg);
+            // Keep the dirty edit so the user can retry, AND record the
+            // failure on the row itself. Toast still fires but the
+            // persistent row-level marker is what guarantees Marc sees
+            // it before navigating away.
+            setFailedSaves(prev => ({ ...prev, [id]: errMsg }));
+            showToast(`Save failed: ${errMsg}`);
         }
+    };
+
+    const dismissFailure = (id: string) => {
+        setFailedSaves(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
     };
 
     const toggleSelect = (id: string) => {
@@ -510,10 +538,12 @@ const FleetAssetAdmin: React.FC = () => {
                         {groups.map(group => {
                             const isPair = group.length === 2;
                             const anyDirty = group.some(v => isDirty(v.id));
+                            const anyFailed = group.some(v => failedSaves[v.id]);
                             const slices = group.map(renderSlice);
                             const rowClasses = [
                                 'border-b border-gray-700/50 hover:bg-gray-800/50',
-                                isPair ? 'bg-blue-900/10 border-l-4 border-l-blue-500/60' : '',
+                                anyFailed ? 'bg-red-900/20 border-l-4 border-l-red-500' : '',
+                                isPair && !anyFailed ? 'bg-blue-900/10 border-l-4 border-l-blue-500/60' : '',
                                 anyDirty ? 'bg-yellow-900/10' : '',
                             ].join(' ');
                             return (
@@ -565,6 +595,38 @@ const FleetAssetAdmin: React.FC = () => {
                                     </td>
                                 </tr>
                             );
+                        }).flatMap((rowEl, idx) => {
+                            // Render a failure banner row right under any row
+                            // that has at least one per-vehicle failedSaves
+                            // entry. Persistent (no auto-dismiss) so saves
+                            // can never silently revert without Marc seeing.
+                            const group = groups[idx];
+                            const failedVehicles = group.filter(v => failedSaves[v.id]);
+                            if (failedVehicles.length === 0) return [rowEl];
+                            return [
+                                rowEl,
+                                <tr key={`${group[0].id}-err`} className="bg-red-900/30 border-b border-red-700/40">
+                                    <td colSpan={8} className="p-2">
+                                        <div className="flex items-start gap-3">
+                                            <span className="text-red-300 font-bold text-xs uppercase tracking-widest">⚠ Save failed</span>
+                                            <div className="flex-1 text-xs text-red-100">
+                                                {failedVehicles.map(v => (
+                                                    <div key={v.id} className="flex items-center gap-2">
+                                                        <span className="font-bold">{v.name}:</span>
+                                                        <span>{failedSaves[v.id]}</span>
+                                                        <button
+                                                            onClick={() => dismissFailure(v.id)}
+                                                            className="ml-auto text-[10px] underline hover:text-white"
+                                                        >
+                                                            dismiss
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>,
+                            ];
                         })}
                         {filteredVehicles.length === 0 && (
                             <tr>

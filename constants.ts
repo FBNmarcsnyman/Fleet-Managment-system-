@@ -6,9 +6,19 @@ export const BRANCHES: Branch[] = ['FBN JHB', 'FBN DBN', 'FBN CPT', 'LOADMASTER'
 // Weight categories used in AddVehicleForm dropdowns and the FleetAssetAdmin
 // inline editor. Order roughly follows operational priority (prime movers
 // first, trailers in the middle, misc at the end).
+// Trailer types changed 2026-06: Marc dropped the generic "Standard Trailer"
+// and split into Triaxle (5 length variants from 13m to 15m) and Skeleton
+// (6m and 12m for superlink pairs). Superlink Trailer kept as a separate
+// option for legacy/other configurations.
 export const VEHICLE_CATEGORIES: string[] = [
     'Horse',
-    'Standard Trailer',
+    'Triaxle 13m',
+    'Triaxle 13.5m',
+    'Triaxle 14m',
+    'Triaxle 14.5m',
+    'Triaxle 15m',
+    'Skeleton 6m',
+    'Skeleton 12m',
     'Superlink Trailer',
     '8 TONNER',
     '12 TONNER',
@@ -18,6 +28,16 @@ export const VEHICLE_CATEGORIES: string[] = [
     'BAKKIE',
     'Forklift',
     'Other',
+];
+
+// Logical groupings used by Asset Admin tabs. Each maps to the categories
+// that should show under that group filter.
+export const VEHICLE_CATEGORY_GROUPS: { label: string; categories: string[] }[] = [
+    { label: 'Horses', categories: ['Horse'] },
+    { label: 'Trailers', categories: ['Triaxle 13m', 'Triaxle 13.5m', 'Triaxle 14m', 'Triaxle 14.5m', 'Triaxle 15m', 'Skeleton 6m', 'Skeleton 12m', 'Superlink Trailer'] },
+    { label: 'Rigids', categories: ['15 TONNER', '12 TONNER', '8 TONNER', '2 TONNER', '1 TONNER'] },
+    { label: 'Bakkies', categories: ['BAKKIE'] },
+    { label: 'Other', categories: ['Forklift', 'Other'] },
 ];
 
 export const VEHICLE_STATUSES: VehicleStatus[] = [
@@ -38,7 +58,13 @@ export const CATEGORY_ORDER: string[] = [
     '2 TONNER',
     '1 TONNER',
     'BAKKIE',
-    'Standard Trailer',
+    'Skeleton 6m',
+    'Skeleton 12m',
+    'Triaxle 13m',
+    'Triaxle 13.5m',
+    'Triaxle 14m',
+    'Triaxle 14.5m',
+    'Triaxle 15m',
     'Superlink Trailer',
     'Forklift',
     'Other',

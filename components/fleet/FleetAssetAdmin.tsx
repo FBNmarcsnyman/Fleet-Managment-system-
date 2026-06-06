@@ -1,12 +1,27 @@
 import React, { useMemo, useState } from 'react';
 import { Vehicle, Branch, VehicleStatus } from '../../types';
-import { BRANCHES, VEHICLE_CATEGORIES, VEHICLE_STATUSES, CATEGORY_ORDER } from '../../constants';
+import { BRANCHES, VEHICLE_CATEGORIES, VEHICLE_STATUSES, CATEGORY_ORDER, VEHICLE_CATEGORY_GROUPS } from '../../constants';
 import { useVehicles, useUIState } from '../../contexts/AppContexts';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { TrashIcon } from '../icons/TrashIcon';
 import { LinkIcon } from '../icons/LinkIcon';
 
 type EditableField = 'branch' | 'weightCategory' | 'status' | 'linkedVehicleId';
+
+// Pulls the deck length (in metres) out of a vehicle. Tries the explicit
+// deckMeters field first, then falls back to parsing the digits out of the
+// category string ("Skeleton 6m" -> 6, "Triaxle 13.5m" -> 13.5). Returns
+// undefined if neither is set.
+const getTrailerLength = (v: Vehicle): number | undefined => {
+    if (typeof v.deckMeters === 'number' && v.deckMeters > 0) return v.deckMeters;
+    const m = (v.weightCategory || '').match(/(\d+(?:\.\d+)?)\s*m\b/i);
+    return m ? parseFloat(m[1]) : undefined;
+};
+
+// True if this vehicle's category is any trailer variant.
+const isTrailer = (v: Vehicle): boolean =>
+    (v.weightCategory || '').toLowerCase().includes('trailer') ||
+    /^(skeleton|triaxle)/i.test(v.weightCategory || '');
 
 const FleetAssetAdmin: React.FC = () => {
     const { vehicles = [], handleUpdateVehicle } = useVehicles();
@@ -19,6 +34,10 @@ const FleetAssetAdmin: React.FC = () => {
     const [bulkValue, setBulkValue] = useState<string>('');
     const [applyingBulk, setApplyingBulk] = useState(false);
     const [filter, setFilter] = useState('');
+    // Branch + category-group tabs at the top, mirroring how Marc thinks of
+    // the fleet (by depot first, then by what kind of asset).
+    const [branchTab, setBranchTab] = useState<Branch | 'All'>('All');
+    const [groupTab, setGroupTab] = useState<string>('All');
 
     // Active (non-Sold) vehicles, sorted by CATEGORY_ORDER then by name.
     const sortedVehicles = useMemo(() => {
@@ -33,16 +52,29 @@ const FleetAssetAdmin: React.FC = () => {
         });
     }, [vehicles]);
 
+    // Categories that belong to the currently-selected group tab. Empty
+    // array (and groupTab === 'All') means no group restriction.
+    const groupCategories = useMemo(() => {
+        if (groupTab === 'All') return null;
+        const found = VEHICLE_CATEGORY_GROUPS.find(g => g.label === groupTab);
+        return found?.categories ?? null;
+    }, [groupTab]);
+
     const filteredVehicles = useMemo(() => {
-        if (!filter.trim()) return sortedVehicles;
-        const needle = filter.toLowerCase();
-        return sortedVehicles.filter(v =>
-            v.name.toLowerCase().includes(needle) ||
-            v.registration.toLowerCase().includes(needle) ||
-            (v.weightCategory || '').toLowerCase().includes(needle) ||
-            v.branch.toLowerCase().includes(needle),
-        );
-    }, [sortedVehicles, filter]);
+        let list = sortedVehicles;
+        if (branchTab !== 'All') list = list.filter(v => v.branch === branchTab);
+        if (groupCategories) list = list.filter(v => groupCategories.includes(v.weightCategory || ''));
+        if (filter.trim()) {
+            const needle = filter.toLowerCase();
+            list = list.filter(v =>
+                v.name.toLowerCase().includes(needle) ||
+                v.registration.toLowerCase().includes(needle) ||
+                (v.weightCategory || '').toLowerCase().includes(needle) ||
+                v.branch.toLowerCase().includes(needle),
+            );
+        }
+        return list;
+    }, [sortedVehicles, branchTab, groupCategories, filter]);
 
     // Group consecutive paired vehicles into single visual rows. Walk the
     // sorted list; whenever a vehicle's saved partner is also in the active
@@ -190,18 +222,43 @@ const FleetAssetAdmin: React.FC = () => {
         return [];
     }, [bulkField]);
 
-    // Partner picker options for a given vehicle: ALL other vehicles, sorted
-    // with same-category first (so a Standard Trailer sees other Standard
-    // Trailers + Superlinks at the top), then everything else by category
-    // order. Previously this was restricted to same-category only, which
-    // hid the 6m/12m pairing case Marc actually needs.
+    // Partner picker options for a given vehicle.
+    //
+    // For a Skeleton 6m -> only Skeleton 12m candidates are shown (and vice
+    // versa). For a Skeleton 12m -> only 6m candidates. Marc's superlink
+    // pairs are always 6m + 12m so this prevents accidental pairings like
+    // two 6m trailers. Same-branch candidates come first within the result
+    // so the operations team can pair within a depot by default.
+    //
+    // For any other vehicle (Triaxle, Horse, etc.) we don't filter by
+    // length - just list all other vehicles, same-category first.
     const partnerOptions = (forVehicle: Vehicle): Vehicle[] => {
         const liveCategory = liveValue(forVehicle, 'weightCategory') as string;
-        const others = (vehicles as Vehicle[]).filter(v => v.id !== forVehicle.id);
-        return others.sort((a, b) => {
+        const liveBranch = liveValue(forVehicle, 'branch') as Branch;
+        const myLength = getTrailerLength({ ...forVehicle, weightCategory: liveCategory } as Vehicle);
+
+        let candidates = (vehicles as Vehicle[]).filter(v => v.id !== forVehicle.id);
+
+        // Skeleton pairing rule: a 6m must pair with a 12m, never another 6m.
+        if (myLength === 6 || myLength === 12) {
+            const complementaryLength = myLength === 6 ? 12 : 6;
+            candidates = candidates.filter(v => {
+                if (!isTrailer(v)) return false;
+                const len = getTrailerLength(v);
+                return len === complementaryLength;
+            });
+        }
+
+        return candidates.sort((a, b) => {
+            // Same branch first
+            const aBr = a.branch === liveBranch ? 0 : 1;
+            const bBr = b.branch === liveBranch ? 0 : 1;
+            if (aBr !== bBr) return aBr - bBr;
+            // Then same category
             const aSame = a.weightCategory === liveCategory ? 0 : 1;
             const bSame = b.weightCategory === liveCategory ? 0 : 1;
             if (aSame !== bSame) return aSame - bSame;
+            // Then by category order
             const ai = CATEGORY_ORDER.indexOf(a.weightCategory || '');
             const bi = CATEGORY_ORDER.indexOf(b.weightCategory || '');
             const aiSafe = ai === -1 ? CATEGORY_ORDER.length : ai;
@@ -265,10 +322,13 @@ const FleetAssetAdmin: React.FC = () => {
                     >
                         {VEHICLE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    {/* Trailers only: deck length (6 or 12) so the
-                        Superlink pair view can order lead-then-rear and
-                        badge each trailer. Hidden for horses, rigids etc. */}
-                    {category.toLowerCase().includes('trailer') && (
+                    {/* Deck-length override - only shown for ambiguous
+                        legacy trailer categories ("Superlink Trailer")
+                        where the length is not already in the name. The
+                        new Skeleton 6m / Skeleton 12m / Triaxle Nm
+                        categories encode length directly so this picker
+                        would be redundant for them. */}
+                    {category === 'Superlink Trailer' && (
                         <select
                             value={(liveValue(v, 'deckMeters') as number | undefined) ?? ''}
                             onChange={e => setEdit(v.id, 'deckMeters', e.target.value ? parseFloat(e.target.value) : undefined)}
@@ -328,8 +388,52 @@ const FleetAssetAdmin: React.FC = () => {
         };
     };
 
+    // Per-branch and per-group row counts for the tab labels. Computed
+    // against sortedVehicles (pre-tab filtering) so the counts always
+    // reflect the underlying fleet, not the currently-narrowed view.
+    const branchCounts = useMemo(() => {
+        const m = new Map<string, number>();
+        for (const v of sortedVehicles) m.set(v.branch, (m.get(v.branch) ?? 0) + 1);
+        return m;
+    }, [sortedVehicles]);
+    const groupCounts = useMemo(() => {
+        const m = new Map<string, number>();
+        for (const g of VEHICLE_CATEGORY_GROUPS) {
+            const count = sortedVehicles.filter(v => g.categories.includes(v.weightCategory || '')).length;
+            m.set(g.label, count);
+        }
+        return m;
+    }, [sortedVehicles]);
+
+    const TabBtn: React.FC<{ active: boolean; label: string; count?: number; onClick: () => void }> = ({ active, label, count, onClick }) => (
+        <button
+            onClick={onClick}
+            className={`px-3 py-1.5 text-xs font-bold rounded-md whitespace-nowrap transition-all ${active ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+        >
+            {label}{count !== undefined && <span className="ml-1.5 text-[10px] opacity-70">({count})</span>}
+        </button>
+    );
+
     return (
         <div className="bg-gray-800/40 rounded-2xl border border-gray-700/50 p-4 space-y-4">
+            {/* Branch tabs - row 1 */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-gray-700/50 pb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 mr-2">Branch:</span>
+                <TabBtn active={branchTab === 'All'} label="All" count={sortedVehicles.length} onClick={() => setBranchTab('All')} />
+                {BRANCHES.map(b => (
+                    <TabBtn key={b} active={branchTab === b} label={b} count={branchCounts.get(b) ?? 0} onClick={() => setBranchTab(b)} />
+                ))}
+            </div>
+
+            {/* Category-group tabs - row 2 */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar border-b border-gray-700/50 pb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 mr-2">Type:</span>
+                <TabBtn active={groupTab === 'All'} label="All" onClick={() => setGroupTab('All')} />
+                {VEHICLE_CATEGORY_GROUPS.map(g => (
+                    <TabBtn key={g.label} active={groupTab === g.label} label={g.label} count={groupCounts.get(g.label) ?? 0} onClick={() => setGroupTab(g.label)} />
+                ))}
+            </div>
+
             {/* Controls: filter + bulk-action bar */}
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <input
@@ -395,8 +499,6 @@ const FleetAssetAdmin: React.FC = () => {
                             </th>
                             <th className="p-2">Name</th>
                             <th className="p-2">Registration</th>
-                            <th className="p-2">Make / Model</th>
-                            <th className="p-2">Year</th>
                             <th className="p-2">Branch</th>
                             <th className="p-2">Category</th>
                             <th className="p-2">Status</th>
@@ -438,16 +540,6 @@ const FleetAssetAdmin: React.FC = () => {
                                     </td>
                                     <td className="p-2 align-top">
                                         <div className="flex flex-col gap-2">
-                                            {slices.map((s, i) => <div key={group[i].id}>{s.makeModel}</div>)}
-                                        </div>
-                                    </td>
-                                    <td className="p-2 align-top">
-                                        <div className="flex flex-col gap-2">
-                                            {slices.map((s, i) => <div key={group[i].id}>{s.year}</div>)}
-                                        </div>
-                                    </td>
-                                    <td className="p-2 align-top">
-                                        <div className="flex flex-col gap-2">
                                             {slices.map((s, i) => <div key={group[i].id}>{s.branch}</div>)}
                                         </div>
                                     </td>
@@ -476,7 +568,7 @@ const FleetAssetAdmin: React.FC = () => {
                         })}
                         {filteredVehicles.length === 0 && (
                             <tr>
-                                <td colSpan={10} className="text-center text-gray-500 py-8 italic">
+                                <td colSpan={8} className="text-center text-gray-500 py-8 italic">
                                     {filter ? 'No vehicles match the filter.' : 'No vehicles in the fleet yet.'}
                                 </td>
                             </tr>

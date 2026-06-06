@@ -38,12 +38,30 @@ const fetchWithTimeout: typeof fetch = async (input, init) => {
   }
 };
 
+// Root cause of the "sign in hangs after page reload" loop Marc has been
+// hitting for a week: supabase-js's default auth lock (NavigatorLock) uses
+// the browser's Web Locks API to serialize auth operations across tabs.
+// When the page reloads mid-operation (token refresh, signInWithPassword,
+// initial session probe), the lock can persist in the browser's lock
+// registry, and the next supabase client instance waits on it FOREVER.
+//
+// All previous fixes (storage scrub, 15s sign-in race, 12s isAuthReady
+// fallback, in-flight hydrate guard) were band-aids around this deadlock.
+// This is the actual fix: a no-op lock that just runs the callback. For a
+// single-page browser app the cross-tab serialization the default lock
+// provides is theoretical (we don't open the app in two tabs); the
+// deadlock is real and repeatable.
+//
+// Refs: github.com/supabase/supabase-js#869 and many similar issues.
+const noopLock = async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => fn();
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
+    lock: noopLock,
   },
   global: {
     fetch: fetchWithTimeout,

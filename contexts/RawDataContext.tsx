@@ -496,24 +496,36 @@ type Dispatch = React.Dispatch<AppAction>;
 // immediately after), only one hydrate runs to completion.
 let hydrateInFlight = false;
 
+// Retry helper for the very first authed fetch after sign-in. The
+// supabase-js rest client occasionally still has a stale token attached
+// for a few hundred milliseconds after SIGNED_IN fires; the first query
+// 401s but the next retry succeeds once the JWT has propagated. Three
+// attempts at 250ms / 750ms / 2000ms covers the worst case I've seen
+// without dragging out the happy path.
+const fetchBranchesWithRetry = async (): Promise<{ data: { id: string; code: string }[] | null; error: unknown }> => {
+    const delays = [0, 250, 750, 2000];
+    let lastError: unknown = null;
+    for (let i = 0; i < delays.length; i++) {
+        if (delays[i] > 0) await new Promise(r => setTimeout(r, delays[i]));
+        const res = await supabase.from('branches').select('id, code');
+        if (!res.error && res.data) return res;
+        lastError = res.error;
+        const status = (res.error as { status?: number; code?: string } | null)?.status;
+        // Only retry on 401 (token-not-yet-attached). Other errors are
+        // genuine - permission, schema, network - retrying won't help.
+        if (status !== 401) return res as any;
+        console.warn(`[hydrate] branches 401 on attempt ${i + 1}/${delays.length}, will retry`);
+    }
+    return { data: null, error: lastError };
+};
+
 async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
     if (hydrateInFlight) {
         console.log('[hydrate] already in flight, skipping duplicate call');
         return;
     }
-    console.log('[hydrate] start');
-    // Confirm the session is actually populated before issuing any
-    // authed queries. Without this check, the first SIGNED_IN listener
-    // fires before supabase-js has attached the JWT to the rest client,
-    // every query 401s, and the whole hydrate aborts on the first
-    // branches fetch. getSession reads from in-memory state so it does
-    // NOT add network latency.
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session?.access_token) {
-        console.warn('[hydrate] no access_token yet, deferring');
-        return;
-    }
     hydrateInFlight = true;
+    console.log('[hydrate] start');
     try {
         // Use `code` (e.g. 'FBN JHB') not `name` (e.g. 'FBN Johannesburg') -
         // the TypeScript Branch union, the AddVehicleForm dropdown, and the
@@ -521,9 +533,9 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         // populated lookups with display strings that didn't match the
         // codes, so vehicle insert's branch resolution always failed and
         // every mapper returned the wrong Branch label for read rows.
-        const branchesRes = await supabase.from('branches').select('id, code');
-        if (branchesRes.error) {
-            console.error('[hydrate] branches fetch failed, aborting', branchesRes.error);
+        const branchesRes = await fetchBranchesWithRetry();
+        if (branchesRes.error || !branchesRes.data) {
+            console.error('[hydrate] branches fetch failed after retries, aborting', branchesRes.error);
             return;
         }
         console.log('[hydrate] branches loaded:', branchesRes.data?.length ?? 0);

@@ -29,3 +29,16 @@ supabase/.branches/
 
 # Claude Code per-session settings
 .claude/
+
+# Service-account credentials. NEVER commit these - anyone with the JSON
+# can impersonate the service account and read every Drive resource it has
+# access to. The fuel-log crawler reads from this folder at runtime.
+API KEYS/
+*.iam.gserviceaccount.com.json
+gcp-service-account*.json
+
+# Generated parser output - can contain driver names + vehicle regs +
+# internal cost data. Regenerable by re-running the crawler+builder.
+scripts/fuel-log-crawler-report.json
+scripts/fuel-log-builder-output.json
+scripts/drive-folder-map.json

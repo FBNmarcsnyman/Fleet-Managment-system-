@@ -42,3 +42,4 @@ gcp-service-account*.json
 scripts/fuel-log-crawler-report.json
 scripts/fuel-log-builder-output.json
 scripts/drive-folder-map.json
+scripts/fuel-log-matcher-report.json

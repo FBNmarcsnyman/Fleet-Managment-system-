@@ -33,8 +33,10 @@ const KEY_PATH = path.resolve(__dirname, '../API KEYS/my-project-1539177112819-5
 const INPUT = path.resolve(__dirname, './fuel-log-builder-output.json');
 const REPORT_OUT = path.resolve(__dirname, './fuel-log-matcher-report.json');
 
-// Target Sheet: "FBN Fuel Log Clean - 2026-06-07"
-const TARGET_SHEET_ID = '1Y8naCZCFnj8xSZIJg6JW01VykMkm0C0bhu7gkWnGTNI';
+// Target Sheet: latest "FBN Fuel Log Clean - <date>" published by
+// fuel-log-publisher.mjs. Update this when republishing with a new
+// scope/date so the Matching Review tab lands on the right Sheet.
+const TARGET_SHEET_ID = '10PR-KTrsoRJuTOFFNtR9JfXJQOZpILoGy8nMCIZjAAM';
 
 // Supabase config. Secret key is read from API KEYS/supabase-secret.txt
 // (gitignored) or from the SUPABASE_SECRET env var. NEVER hardcode it

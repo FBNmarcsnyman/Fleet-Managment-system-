@@ -16,8 +16,11 @@ const auth = new google.auth.GoogleAuth({
 });
 const client = await auth.getClient();
 const drive = google.drive({ version: 'v3', auth: client });
-await drive.files.delete({
-    fileId: '14cWVrD_IFPqZSJkfxefED2U-vkRqaSGklrFY07m6B0w',
-    supportsAllDrives: true,
-});
-console.log('Deleted half-written sheet 14cWVrD_IFPqZSJkfxefED2U-vkRqaSGklrFY07m6B0w');
+// Generic cleanup: pass the Sheet ID to remove as the first CLI arg.
+const fileId = process.argv[2];
+if (!fileId) {
+    console.error('Usage: node scripts/delete-failed-sheet.mjs <fileId>');
+    process.exit(1);
+}
+await drive.files.delete({ fileId, supportsAllDrives: true });
+console.log(`Deleted sheet ${fileId}`);

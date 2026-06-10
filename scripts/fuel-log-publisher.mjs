@@ -34,16 +34,37 @@ const auth = new google.auth.GoogleAuth({
     ],
 });
 
+// Column layout (1-indexed):
+//   A  Date
+//   B  Branch
+//   C  Fleet Number
+//   D  Vehicle Registration   <- rows sorted by this then Date asc
+//   E  Driver
+//   F  Opening Odo            <- formula: previous row's Closing if same vehicle
+//   G  Closing Odo            <- the recorded reading
+//   H  Trip KM                <- formula: G - F
+//   I  Litres
+//   J  L/100km                <- formula: I / H * 100
+//   K  Source                 (BOWSER / PUMP / REB)
+//   L  Rand Value
+//   M  R/L                    <- formula: L / I
+//   N  Source File
+//   O  Source Tab
+//   P  Source Row
 const FUEL_LOG_HEADERS = [
     'Date',
     'Branch',
     'Fleet Number',
     'Vehicle Registration',
     'Driver',
-    'Odometer',
+    'Opening Odo',
+    'Closing Odo',
+    'Trip KM',
     'Litres',
+    'L/100km',
     'Source',
     'Rand Value',
+    'R/L',
     'Source File',
     'Source Tab',
     'Source Row',
@@ -65,17 +86,34 @@ const BOWSER_LEDGER_HEADERS = [
     'Source Row',
 ];
 
-function fuelRowToCells(r) {
+function fuelRowToCells(r, sheetRowNum) {
+    // Opening = previous row's Closing if same vehicle reg, else blank.
+    // Sheet is sorted by vehicle reg + date so the "previous row" check
+    // is just the row above. First row of data (sheetRowNum === 2) has
+    // no previous so opening is blank.
+    const openingFormula = sheetRowNum >= 3
+        ? `=IF(D${sheetRowNum}=D${sheetRowNum - 1}, G${sheetRowNum - 1}, "")`
+        : '';
+    // Trip KM = Closing - Opening when both present.
+    const tripFormula = `=IF(AND(F${sheetRowNum}<>"", G${sheetRowNum}<>""), G${sheetRowNum}-F${sheetRowNum}, "")`;
+    // L/100km = Litres / Trip KM * 100 when trip > 0.
+    const consumptionFormula = `=IFERROR(IF(AND(H${sheetRowNum}>0, I${sheetRowNum}>0), I${sheetRowNum}/H${sheetRowNum}*100, ""), "")`;
+    // R/L = Rand Value / Litres when both present.
+    const rPerLFormula = `=IFERROR(IF(AND(I${sheetRowNum}>0, L${sheetRowNum}>0), L${sheetRowNum}/I${sheetRowNum}, ""), "")`;
     return [
         r.date ?? '',
         r.branch ?? '',
         r.fleetNumber ?? '',
         r.vehicleReg ?? '',
         r.driver ?? '',
+        openingFormula,
         r.odometer ?? '',
+        tripFormula,
         r.litres ?? '',
+        consumptionFormula,
         r.source ?? '',
         r.randValue ?? '',
+        rPerLFormula,
         r.sourceFile ?? '',
         r.sourceTab ?? '',
         r.sourceRow ?? '',
@@ -164,20 +202,34 @@ async function main() {
 
     const CHUNK = 2000;
 
-    console.log(`Writing Fuel Log: ${data.fuelLog.length} rows...`);
+    // Sort by vehicle registration (normalised: strip spaces + uppercase
+    // for stable grouping when source data has inconsistent spacing)
+    // then by date ascending. Each vehicle's fills end up contiguous and
+    // chronological, which is what makes the Opening Odo / Trip KM /
+    // L/100km formulas work row-to-row.
+    const normReg = s => (s ?? '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const sortedFuelLog = [...data.fuelLog].sort((a, b) => {
+        const ra = normReg(a.vehicleReg);
+        const rb = normReg(b.vehicleReg);
+        if (ra !== rb) return ra.localeCompare(rb);
+        return (a.date ?? '').localeCompare(b.date ?? '');
+    });
+    console.log(`Writing Fuel Log: ${sortedFuelLog.length} rows (sorted by vehicle + date)...`);
     await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: 'Fuel Log!A1',
-        valueInputOption: 'RAW',
+        valueInputOption: 'USER_ENTERED',
         requestBody: { values: [FUEL_LOG_HEADERS] },
     });
-    for (let i = 0; i < data.fuelLog.length; i += CHUNK) {
-        const slice = data.fuelLog.slice(i, i + CHUNK).map(fuelRowToCells);
+    for (let i = 0; i < sortedFuelLog.length; i += CHUNK) {
+        const slice = sortedFuelLog.slice(i, i + CHUNK).map((r, idx) => fuelRowToCells(r, 2 + i + idx));
         const startRow = 2 + i;
         await sheets.spreadsheets.values.update({
             spreadsheetId,
             range: `Fuel Log!A${startRow}`,
-            valueInputOption: 'RAW',
+            // USER_ENTERED so formulas (=IF(...) etc.) get parsed, not
+            // stored as literal strings. RAW would keep "=IF..." as text.
+            valueInputOption: 'USER_ENTERED',
             requestBody: { values: slice },
         });
         console.log(`  Fuel Log rows ${i + 1}-${i + slice.length} written.`);

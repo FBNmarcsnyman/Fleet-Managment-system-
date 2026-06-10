@@ -44,10 +44,12 @@ const EXCLUDED_PATH_SUBSTRINGS = [
     '/MARTI DOCS/My Documents',
     '/OLD FLINERS',
 ];
-// Date cutoff: files modified before this are skipped. Marc dialled this
-// in to "last year to date" on 2026-06-08 because the 3-year scope was
-// too much to review (1655 rows needing eyeball).
-const MODIFIED_AFTER = '2025-06-08';
+// Date cutoff: files modified before this are skipped. Marc keeps
+// tightening this as the review surface needs to shrink:
+//   2023-06-06 (3yr)  was too much (7,470 rows + 90 regs to triage)
+//   2025-06-08 (1yr)  still too much (4,117 rows + 71 regs to triage)
+//   2026-03-09 (3mo)  current - aiming for ~1,000 rows + cleaner data
+const MODIFIED_AFTER = '2026-03-09';
 
 // Concurrent downloads. 5 in flight keeps the Drive API happy and gets
 // through ~150 files in a few minutes instead of an hour.

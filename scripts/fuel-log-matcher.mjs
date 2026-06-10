@@ -36,7 +36,7 @@ const REPORT_OUT = path.resolve(__dirname, './fuel-log-matcher-report.json');
 // Target Sheet: latest "FBN Fuel Log Clean - <date>" published by
 // fuel-log-publisher.mjs. Update this when republishing with a new
 // scope/date so the Matching Review tab lands on the right Sheet.
-const TARGET_SHEET_ID = '10PR-KTrsoRJuTOFFNtR9JfXJQOZpILoGy8nMCIZjAAM';
+const TARGET_SHEET_ID = '1BytnoSq0GPPJPqbjYFo9D7gcLuKMnzWL3PkgHa2OmyM';
 
 // Supabase config. Secret key is read from API KEYS/supabase-secret.txt
 // (gitignored) or from the SUPABASE_SECRET env var. NEVER hardcode it

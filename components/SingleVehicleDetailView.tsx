@@ -9,7 +9,8 @@ import { WrenchIcon } from './icons/WrenchIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import CostBreakdownChart from './charts/CostBreakdownChart';
 import VehicleCostTrendChart from './charts/VehicleCostTrendChart';
-import FuelConsumptionAnalysis from './FuelConsumptionAnalysis';
+import VehicleFuelPerformance from './fleet/VehicleFuelPerformance';
+import VehicleFuelLog from './fleet/VehicleFuelLog';
 import VehicleChat from './VehicleChat';
 // Fix: Import the AIInsights component which was being used in the 'ai' tab but was missing an import
 import AIInsights from './AIInsights';
@@ -20,7 +21,7 @@ import { RouteIcon } from './icons/RouteIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { SpeedometerIcon } from './icons/SpeedometerIcon';
 
-type DetailViewTab = 'overview' | 'financials' | 'performance' | 'maintenance' | 'checklists' | 'operations' | 'ai';
+type DetailViewTab = 'overview' | 'financials' | 'performance' | 'fuel' | 'maintenance' | 'checklists' | 'operations' | 'ai';
 
 const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
     <div className="flex justify-between border-b border-gray-700/50 py-2">
@@ -208,7 +209,8 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
                         <div className="bg-gray-800 p-6 rounded-lg shadow-lg"><h3 className="text-xl font-semibold text-white mb-4">Cost Breakdown</h3><CostBreakdownChart fuelData={vehicleData.fuel} otherData={vehicleData.otherCosts} serviceData={vehicleData.services} /></div>
                     </div>
                 );
-            case 'performance': return <FuelConsumptionAnalysis calculatedFuelData={vehicleData.calculatedFuel} />;
+            case 'performance': return <VehicleFuelPerformance vehicle={vehicle} calculatedFuelData={vehicleData.calculatedFuel} />;
+            case 'fuel': return <VehicleFuelLog vehicle={vehicle} fuelEntries={vehicleData.fuel} />;
             case 'maintenance':
                 return (
                     <div className="space-y-6">
@@ -307,6 +309,7 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
                 <TabButton tab="overview" label="Overview" icon={EyeIcon} />
                 <TabButton tab="financials" label="Financials" icon={ChartBarIcon} />
                 {!isTrailer && <TabButton tab="performance" label="Performance" icon={FuelIcon} />}
+                {!isTrailer && <TabButton tab="fuel" label="Fuel Log" icon={FuelIcon} />}
                 <TabButton tab="maintenance" label="Maintenance" icon={WrenchIcon} />
                 <TabButton tab="checklists" label="Checklists" icon={ClipboardDocumentListIcon} />
                 <TabButton tab="operations" label="Operations Log" icon={RouteIcon} />

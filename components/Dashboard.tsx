@@ -11,6 +11,7 @@ import JobCardsPriorityWidget from './dashboard-widgets/JobCardsPriorityWidget';
 import OverdueServicesWidget from './dashboard-widgets/OverdueServicesWidget';
 import FuelPriceTickerWidget from './dashboard-widgets/FuelPriceTickerWidget';
 import BowserStatusWidget from './dashboard-widgets/BowserStatusWidget';
+import FuelAnalyticsWidget from './dashboard-widgets/FuelAnalyticsWidget';
 import AddWidgetModal from './dashboard-widgets/AddWidgetModal';
 import { PlusIcon } from './icons/PlusIcon';
 
@@ -25,6 +26,7 @@ const WIDGET_CONFIG: Record<WidgetType, { name: string; component: React.FC<any>
     'OVERDUE_SERVICES_LIST': { name: 'Overdue Services', component: OverdueServicesWidget, defaultSize: 'col-span-12' },
     'FUEL_PRICE_TICKER': { name: 'Latest Fuel Price', component: FuelPriceTickerWidget, defaultSize: 'col-span-12 md:col-span-3' },
     'BOWSER_STATUS': { name: 'Bowser Fuel Levels', component: BowserStatusWidget, defaultSize: 'col-span-12 md:col-span-3' },
+    'FUEL_ANALYTICS': { name: 'Fuel Analytics', component: FuelAnalyticsWidget, defaultSize: 'col-span-12 md:col-span-8' },
 };
 
 const DEFAULT_LAYOUT: { type: WidgetType; size: string; }[] = [
@@ -32,6 +34,7 @@ const DEFAULT_LAYOUT: { type: WidgetType; size: string; }[] = [
     { type: 'FINANCIAL_SUMMARY_STATS', size: 'col-span-12' },
     { type: 'BOWSER_STATUS', size: 'col-span-12 md:col-span-4' },
     { type: 'MONTHLY_FINANCIALS_CHART', size: 'col-span-12 md:col-span-8' },
+    { type: 'FUEL_ANALYTICS', size: 'col-span-12 md:col-span-8' },
     { type: 'JOB_PRIORITY_CHART', size: 'col-span-12 md:col-span-4' },
     { type: 'OVERDUE_SERVICES_LIST', size: 'col-span-12 md:col-span-6' },
     { type: 'TOP_PROFIT_VEHICLES', size: 'col-span-12 md:col-span-6' },

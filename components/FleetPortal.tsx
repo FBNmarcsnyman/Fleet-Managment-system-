@@ -201,6 +201,22 @@ const FleetPortal: React.FC = () => {
                     </button>
                 ))}
             </div>
+            {fleetSubView === 'vehicles' && (
+                <div className="flex flex-wrap gap-3 mb-4">
+                    <button
+                        onClick={() => showModal('bulkAssignDrivers')}
+                        className="px-4 py-2 text-sm font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-500 transition"
+                    >
+                        Bulk Assign Drivers
+                    </button>
+                    <button
+                        onClick={() => showModal('bulkFuelImport')}
+                        className="px-4 py-2 text-sm font-semibold rounded-xl bg-green-600 text-white hover:bg-green-500 transition"
+                    >
+                        Fuel Import / Validator
+                    </button>
+                </div>
+            )}
             {renderView()}
         </div>
     );

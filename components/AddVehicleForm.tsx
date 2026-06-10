@@ -68,6 +68,7 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
     const [weightCategory, setWeightCategory] = useState(vehicleData?.weightCategory || VEHICLE_CATEGORIES[0]);
     const [purchasePrice, setPurchasePrice] = useState(vehicleData?.purchasePrice || 0);
     const [status, setStatus] = useState<VehicleStatus>(vehicleData?.status || 'On the road');
+    const [assignedDriverId, setAssignedDriverId] = useState<string>(vehicleData?.assignedDriverId || '');
     const [linkedVehicleId, setLinkedVehicleId] = useState<string>(vehicleData?.linkedVehicleId || '');
     const [submitting, setSubmitting] = useState(false);
 

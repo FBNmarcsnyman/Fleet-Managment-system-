@@ -1,0 +1,316 @@
+{
+  "totalRows": 1167,
+  "uniqueRegistrations": 45,
+  "matchedRows": 1129,
+  "matchedRegistrations": [
+    {
+      "csvRegistration": "DR 46 YZ GP",
+      "count": 57,
+      "vehicle": "FJ-12 (DR46YZGP)",
+      "vehicleId": "4d6399d5-a326-44a3-8cd6-52f6ebe53b72",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BM 40 FJ ZN",
+      "count": 52,
+      "vehicle": "LM-02 (BM40FJZN (ND471559))",
+      "vehicleId": "ebb54120-2459-4146-8b6f-fba6cfafc732",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BN 98 YZ ZN",
+      "count": 49,
+      "vehicle": "FJ-20 (BN98YZZN (ND910029))",
+      "vehicleId": "25e3ccbe-3afd-424c-a07f-13e51d4e8aa7",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CJ 74 HJ ZN",
+      "count": 48,
+      "vehicle": "LM-03 (CJ74HJZN (ND520346))",
+      "vehicleId": "cc7edf11-d973-46e5-8b64-f6c57a335b90",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CH 09 DX ZN",
+      "count": 47,
+      "vehicle": "FJ-08 (CH09DXZN (ND661014))",
+      "vehicleId": "f80c22e0-83f5-4e27-b096-314200694799",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CL 97 WC ZN",
+      "count": 46,
+      "vehicle": "FJ-03 (CL97WCZN)",
+      "vehicleId": "9e2426ae-74b9-4f6f-8e56-e4da2ee6c02a",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 LL ZN",
+      "count": 45,
+      "vehicle": "FD-08 (DD12LLZN)",
+      "vehicleId": "b0fbeaea-9308-49a3-b45e-8a3d062d9d2b",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CJ 74 MP ZN",
+      "count": 44,
+      "vehicle": "LM-06 (CJ74MPZN (ND158419))",
+      "vehicleId": "e8959d26-d9ae-448d-b799-c6536ee8e57b",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 NN ZN",
+      "count": 42,
+      "vehicle": "LM-04 (DD12NNZN (ND821434))",
+      "vehicleId": "78c43cb1-915e-4d0a-bc40-7d4ffb1eb55e",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CR 26 PV ZN",
+      "count": 40,
+      "vehicle": "LM-01 (CR26PVZN (ND649940))",
+      "vehicleId": "6bae9436-24e3-469b-b29d-04ce8d161adf",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CH 09 GJ ZN",
+      "count": 39,
+      "vehicle": "LM-05 (CH09GJZN (ND485250))",
+      "vehicleId": "f75cf91a-100e-420b-bddd-46108cd48262",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DB 45 HT ZN",
+      "count": 39,
+      "vehicle": "FJ-04 (DB45HTZN (ND460266))",
+      "vehicleId": "5e7fcb25-75cf-4499-9284-b5490ec16569",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BN 99 CV ZN",
+      "count": 36,
+      "vehicle": "FJ-01 (BN99CVZN (ND680598))",
+      "vehicleId": "14d36d6f-3d05-40f7-86bb-5264fec7f036",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CB 99 DJ ZN",
+      "count": 36,
+      "vehicle": "FJ-14 (CB99DJZN (ND724606))",
+      "vehicleId": "27705d48-1062-4380-8225-b5e813b356ce",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "42 XY ZN",
+      "count": 34,
+      "vehicle": "FD-01 (BS42XYZN)",
+      "vehicleId": "1d30cbbc-84f4-42ee-bb85-5dc869575d21",
+      "how": "suffix"
+    },
+    {
+      "csvRegistration": "DR 50 ZN GP",
+      "count": 34,
+      "vehicle": "FJ-13 (DR50ZNGP)",
+      "vehicleId": "8a570305-e78e-4122-9b10-5e2ad5d2a4a1",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BM 40 FL ZN",
+      "count": 32,
+      "vehicle": "FJ-09 (BM40FLZN (ND639503))",
+      "vehicleId": "e4c2fd44-4b59-4799-a33e-ca35ef946742",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BS 43 BH ZN",
+      "count": 30,
+      "vehicle": "FJ-11 (BS43BHZN (ND165673))",
+      "vehicleId": "1ec2c8e1-5dd2-45d2-9fc1-eae62a746e65",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BN 99 CD ZN",
+      "count": 28,
+      "vehicle": "FJ-19 (BN99CDZN (ND834669))",
+      "vehicleId": "1d0692c4-20c0-4c65-a266-2af55438c208",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CH 09 CR ZN",
+      "count": 27,
+      "vehicle": "FJ-15 (CH09CRZN (ND424972))",
+      "vehicleId": "56b17cb6-6e93-404a-8cdf-7b508cfb2d71",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CN 75 KR ZN",
+      "count": 27,
+      "vehicle": "FJ-18 (CN75KRZN (ND749349))",
+      "vehicleId": "9400720f-c0fa-4ee7-8c0f-76bc9e9dff25",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "CR 26 RB ZN",
+      "count": 27,
+      "vehicle": "FJ-10 (CR26RBZN (ND639506))",
+      "vehicleId": "98f2c299-0b50-4848-98f9-4e140d4153e2",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 LT ZN",
+      "count": 25,
+      "vehicle": "FJ-05 (DD12LTZN (ND891915))",
+      "vehicleId": "62b4180a-5b2f-41c4-9232-9e4914ac8730",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 NR ZN",
+      "count": 24,
+      "vehicle": "FJ-07 (DD12NRZN (ND744020))",
+      "vehicleId": "2db481e2-17a1-4402-88bb-dfa6c1a85c2b",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BN 98 ZN ZN",
+      "count": 22,
+      "vehicle": "FJ-16 (BN98ZNZN (ND46871))",
+      "vehicleId": "19053aa9-3053-45e8-bae7-97ed2780a032",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BAOLI 3T NO 10",
+      "count": 19,
+      "vehicle": "FL-02 (No. 10)",
+      "vehicleId": "2105e168-16a7-411f-aaeb-32a26f3293ed",
+      "how": "forklift-number"
+    },
+    {
+      "csvRegistration": "CD 82 TZ ZN",
+      "count": 18,
+      "vehicle": "FD-17 (CD82TZZN)",
+      "vehicleId": "a56759bd-b9cf-496f-bc66-2b7aae3becc1",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "MANHAND 4T NO 8",
+      "count": 17,
+      "vehicle": "FL-01 (No. 8)",
+      "vehicleId": "6fb3d11d-58d3-43eb-9c1b-76c22da9eb5b",
+      "how": "forklift-number"
+    },
+    {
+      "csvRegistration": "74 PD ZN",
+      "count": 16,
+      "vehicle": "FD-04 (CJ74PDZN)",
+      "vehicleId": "4e13be4d-a8af-4d5d-9ae8-a390423c4ec9",
+      "how": "suffix"
+    },
+    {
+      "csvRegistration": "BN 98 VH ZN",
+      "count": 16,
+      "vehicle": "FD-07 (BN98VHZN)",
+      "vehicleId": "ede89ed1-eabb-4d1a-8353-a2a63c8efa07",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "BS 42 ZB ZN",
+      "count": 14,
+      "vehicle": "FD-03 (BS42ZBZN)",
+      "vehicleId": "f06f22fc-ee73-4f93-b42a-f9feeb2a9c4c",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 LD ZN",
+      "count": 14,
+      "vehicle": "FD-05 (DD12LDZN)",
+      "vehicleId": "f56e5961-7912-4cab-826a-7047db0bd419",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 MH ZN",
+      "count": 14,
+      "vehicle": "FJ-06 (DD12MHZN (ND363005))",
+      "vehicleId": "3f2c502e-0f3e-43c3-a7c7-6a88b14f0e1d",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "YCZ 633 GP",
+      "count": 13,
+      "vehicle": "FJ-17 (YCZ633GP)",
+      "vehicleId": "5902d8b0-9159-4b39-b6a3-ce111571064d",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 RL ZN",
+      "count": 12,
+      "vehicle": "FD-18 (DD12RLZN)",
+      "vehicleId": "57bb4aeb-97a1-48d3-b452-a54b4fc64d94",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 MM ZN",
+      "count": 11,
+      "vehicle": "FD-06 (DD12MMZN)",
+      "vehicleId": "20de116f-c952-47b7-af12-fad157c78dcb",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DG 52 JN ZN",
+      "count": 11,
+      "vehicle": "FD-12 (DG52JNZN)",
+      "vehicleId": "1004a152-f178-49f4-907a-6f8f975abedb",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "DD 12 NG ZN",
+      "count": 8,
+      "vehicle": "FD-02 (DD12NGZN)",
+      "vehicleId": "79c7966f-b9f0-4e05-a51f-ffff55aece67",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "LIONLIFT 2,5T NO 12",
+      "count": 7,
+      "vehicle": "FL-03 (No. 12)",
+      "vehicleId": "74b93096-0ad1-44f0-9ce9-7ab66ef99bde",
+      "how": "forklift-number"
+    },
+    {
+      "csvRegistration": "CJ 74 NJ ZN",
+      "count": 6,
+      "vehicle": "FJ-02 (CJ74NJZN (ND799798))",
+      "vehicleId": "c8a693c7-c5ab-452d-94d0-39dc667a7383",
+      "how": "exact"
+    },
+    {
+      "csvRegistration": "12 RL ZN",
+      "count": 3,
+      "vehicle": "FD-18 (DD12RLZN)",
+      "vehicleId": "57bb4aeb-97a1-48d3-b452-a54b4fc64d94",
+      "how": "suffix"
+    }
+  ],
+  "unmatchedRegistrations": [
+    {
+      "registration": "CL 98 DB ZN",
+      "count": 21,
+      "ambiguous": null
+    },
+    {
+      "registration": "CJ 74 RF ZN",
+      "count": 11,
+      "ambiguous": null
+    },
+    {
+      "registration": "DV 19 VB ZN",
+      "count": 4,
+      "ambiguous": null
+    },
+    {
+      "registration": "BZ 24 KW ZN",
+      "count": 2,
+      "ambiguous": null
+    }
+  ]
+}

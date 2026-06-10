@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Vehicle } from '../types';
 import { useAuth, useVehicles } from '../contexts/AppContexts';
+import { formatRegistration } from '../lib/vehicleRegistration';
 
 interface AssignDriverModalProps {
     vehicle: Vehicle;
@@ -8,11 +9,12 @@ interface AssignDriverModalProps {
 }
 
 const AssignDriverModal: React.FC<AssignDriverModalProps> = ({ vehicle, onCancel }) => {
-    const { users } = useVehicles();
-    const { handleAssignDriverToVehicle } = useVehicles();
+    const { users, handleAssignDriverToVehicle } = useVehicles();
     const [selectedDriverId, setSelectedDriverId] = useState(vehicle.assignedDriverId || '');
 
-    const availableDrivers = users.filter((u: any) => u.role === 'Driver' || u.role === 'Staff');
+    const availableDrivers = users
+        .filter((u: any) => u.role === 'Driver' || u.role === 'Staff')
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -25,7 +27,7 @@ const AssignDriverModal: React.FC<AssignDriverModalProps> = ({ vehicle, onCancel
     return (
         <form onSubmit={handleSubmit}>
             <h2 className="text-2xl font-bold mb-4 text-white">Assign Driver</h2>
-            <p className="text-gray-400 mb-6">Select a driver for vehicle <strong className="text-white">{vehicle.name} ({vehicle.registration})</strong>.</p>
+            <p className="text-gray-400 mb-6">Select a driver for vehicle <strong className="text-white">{vehicle.name} ({formatRegistration(vehicle.registration)})</strong>.</p>
             
             <select
                 value={selectedDriverId}

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Vehicle, JobCard } from '../../types';
+import { formatRegistration } from '../../lib/vehicleRegistration';
 import { CarIcon } from '../icons/CarIcon';
 import { BellAlertIcon } from '../icons/BellAlertIcon';
 import { SpeedometerIcon } from '../icons/SpeedometerIcon';
@@ -21,7 +22,7 @@ const getHealthColor = (score: number) => {
 };
 
 const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
-    const { fuelEntries = [], serviceStatuses = new Map(), handleUpdateVehicle } = useVehicles();
+    const { fuelEntries = [], serviceStatuses = new Map(), handleUpdateVehicle, users = [] } = useVehicles();
     const { showModal, hideModal, showToast } = useUIState();
     const { jobCards = [], handleCreateJobCard } = useWorkshop();
 
@@ -66,7 +67,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
                         </div>
                         <div>
                             <h3 className="text-lg font-black text-white leading-tight">{vehicle.name}</h3>
-                            <p className="text-gray-500 text-xs font-mono tracking-tighter mt-0.5">{vehicle.registration}</p>
+                            <p className="text-gray-500 text-xs font-mono tracking-tighter mt-0.5"><span className="font-bold text-white">{formatRegistration(vehicle.registration)}</span></p>
                         </div>
                     </div>
                     {/* Health Score Badge */}
@@ -97,25 +98,31 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
                 </div>
             </div>
 
-            <div>
-                <div className="bg-gray-900/40 rounded-xl p-3 mb-4">
-                     <div className="flex justify-between items-center text-xs">
-                        <div className="flex items-center text-gray-500 uppercase font-black tracking-widest">
-                            <SpeedometerIcon className="h-4 w-4 mr-2" />
-                            <span>Odometer</span>
-                        </div>
-                        <span className="text-sm font-black text-gray-200">
-                            {cardData.latestOdometer ? cardData.latestOdometer.toLocaleString() : 'N/A'} 
-                            <span className="text-[10px] font-normal text-gray-500 ml-1">KM</span>
-                        </span>
+            <div className="bg-gray-900/40 rounded-xl p-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs text-gray-400">
+                    <div>
+                        <div className="uppercase tracking-widest font-black mb-1 text-[10px] text-gray-500">Driver</div>
+                        <div className="text-sm text-gray-100">{vehicle.assignedDriverId ? (users.find(u => u.email === vehicle.assignedDriverId)?.name ?? vehicle.assignedDriverId) : 'Unassigned'}</div>
+                    </div>
+                    <div>
+                        <div className="uppercase tracking-widest font-black mb-1 text-[10px] text-gray-500">Make</div>
+                        <div className="text-sm text-gray-100">{vehicle.make || 'Unknown'}</div>
+                    </div>
+                    <div>
+                        <div className="uppercase tracking-widest font-black mb-1 text-[10px] text-gray-500">Model</div>
+                        <div className="text-sm text-gray-100">{vehicle.model || 'Unknown'}</div>
+                    </div>
+                    <div>
+                        <div className="uppercase tracking-widest font-black mb-1 text-[10px] text-gray-500">Size</div>
+                        <div className="text-sm text-gray-100">{vehicle.weightCategory || 'N/A'}</div>
                     </div>
                 </div>
-                 <div className="border-t border-gray-700/50 pt-2 flex justify-around">
-                    <button onClick={openEditModal} className="p-2 text-gray-500 hover:text-blue-400" title="Edit Asset"><EditIcon className="h-5 w-5" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); showModal('createJobCard', { vehicleId: vehicle.id, onSubmit: handleCreateJobCard, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="New Job Card"><ClipboardIcon className="h-5 w-5" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); showModal('assignDriver', { vehicle, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="Assign Driver"><UserIcon className="h-5 w-5" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); showModal('qrCode', { vehicle, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="View QR Code"><QrCodeIcon className="h-5 w-5" /></button>
-                </div>
+            </div>
+            <div className="border-t border-gray-700/50 pt-2 flex justify-around">
+                <button onClick={openEditModal} className="p-2 text-gray-500 hover:text-blue-400" title="Edit asset / reassign fleet number"><EditIcon className="h-5 w-5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); showModal('createJobCard', { vehicleId: vehicle.id, onSubmit: handleCreateJobCard, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="New Job Card"><ClipboardIcon className="h-5 w-5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); showModal('assignDriver', { vehicle, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="Assign Driver"><UserIcon className="h-5 w-5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); showModal('qrCode', { vehicle, onCancel: hideModal }); }} className="p-2 text-gray-500 hover:text-white" title="View QR Code"><QrCodeIcon className="h-5 w-5" /></button>
             </div>
         </div>
     );

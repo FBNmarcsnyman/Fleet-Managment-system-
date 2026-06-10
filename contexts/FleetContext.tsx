@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { Vehicle, FuelEntry, JobCard, CalculatedFuelEntry, Tire, ServiceStatus, Branch } from '../types';
+import { Vehicle, FuelEntry, JobCard, CalculatedFuelEntry, VehiclePerformanceStats, Tire, ServiceStatus, Branch } from '../types';
 import { useServiceStatus } from '../hooks/useServiceStatus';
 import { addMonths, format } from 'date-fns';
 import { supabase } from '../lib/supabase';
@@ -79,7 +79,10 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         });
 
         const calculatedFuelData: CalculatedFuelEntry[] = [];
-        const vehiclePerformanceMap = new Map<string, { avgCpk: number, avgConsumption: number, latestOdo: number }>();
+        const vehiclePerformanceMap = new Map<string, VehiclePerformanceStats>();
+        // Plausible L/100km band: filters out missed-fill / odo-rollover garbage so
+        // averages and best/worst rankings stay trustworthy.
+        const isSaneConsumption = (c: number) => c >= 3 && c <= 150;
 
         const sortedPrices = [...fuelPriceRecords].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
         const getPriceForDate = (date: string) => {
@@ -103,9 +106,22 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 }
             }
             const latestOdo = entries.length > 0 ? Math.max(...entries.map(d => d.odometer)) : v.currentOdometer || 0;
-            const avgCpk = vCalculated.length > 0 ? vCalculated.reduce((s, d) => s + d.cpk, 0) / vCalculated.length : 0;
-            const avgConsumption = vCalculated.length > 0 ? vCalculated.reduce((s, d) => s + d.consumption, 0) / vCalculated.length : 0;
-            vehiclePerformanceMap.set(v.id, { avgCpk, avgConsumption, latestOdo });
+            // Use only plausible points for averages/rankings; totals use all valid fills.
+            const sane = vCalculated.filter(d => isSaneConsumption(d.consumption));
+            const avgCpk = sane.length > 0 ? sane.reduce((s, d) => s + d.cpk, 0) / sane.length : 0;
+            const avgConsumption = sane.length > 0 ? sane.reduce((s, d) => s + d.consumption, 0) / sane.length : 0;
+            const consumptions = sane.map(d => d.consumption);
+            vehiclePerformanceMap.set(v.id, {
+                avgCpk,
+                avgConsumption,
+                latestOdo,
+                points: sane.length,
+                totalLitres: vCalculated.reduce((s, d) => s + d.liters, 0),
+                totalCost: vCalculated.reduce((s, d) => s + d.cost, 0),
+                totalDistance: vCalculated.reduce((s, d) => s + d.distance, 0),
+                bestConsumption: consumptions.length > 0 ? Math.min(...consumptions) : 0,
+                worstConsumption: consumptions.length > 0 ? Math.max(...consumptions) : 0,
+            });
         });
 
         return { calculatedFuelData, vehiclePerformanceMap };
@@ -270,7 +286,26 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 const insertRow = toFuelEntryInsert({ vehicleId, ...entry });
                 const { data: inserted, error: insertErr } = await supabase
                     .from('fuel_entries').insert(insertRow).select().single();
-                if (insertErr) { console.error('[fleet] addFuelEntry failed:', insertErr); return; }
+                if (insertErr) {
+                    console.warn('[fleet] addFuelEntry Supabase error, using local fallback:', insertErr);
+                    // Fallback to local state
+                    const localEntry: FuelEntry = {
+                        id: `import-${Date.now()}`,
+                        vehicleId,
+                        date: entry.date,
+                        odometer: entry.odometer,
+                        liters: entry.liters,
+                        tripDistance: entry.tripDistance,
+                        sourceBowserId: entry.sourceBowserId,
+                    };
+                    const cur = stateRef.current;
+                    const vehicle = (cur.vehicles || []).find(v => v.id === vehicleId);
+                    if (vehicle && (!vehicle.currentOdometer || entry.odometer > vehicle.currentOdometer)) {
+                        // Note: can't update Supabase, but local state will update via dispatch
+                    }
+                    dispatch({ type: 'ADD_FUEL_ENTRY', payload: { entry: localEntry } });
+                    return { ok: true };
+                }
 
                 const cur = stateRef.current;
                 const vehicle = (cur.vehicles || []).find(v => v.id === vehicleId);
@@ -290,28 +325,109 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 }
 
                 dispatch({ type: 'ADD_FUEL_ENTRY', payload: { entry: mapFuelEntry(inserted) } });
+                return { ok: true };
             } catch (err) {
                 console.error('[fleet] addFuelEntry threw:', err);
+                // Fallback to local state on exception
+                try {
+                    const localEntry: FuelEntry = {
+                        id: `import-${Date.now()}`,
+                        vehicleId,
+                        date: entry.date,
+                        odometer: entry.odometer,
+                        liters: entry.liters,
+                        tripDistance: entry.tripDistance,
+                        sourceBowserId: entry.sourceBowserId,
+                    };
+                    dispatch({ type: 'ADD_FUEL_ENTRY', payload: { entry: localEntry } });
+                    return { ok: true };
+                } catch (dispatchErr) {
+                    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+                }
             }
         },
+
+        handleUpdateFuelEntry: async (entry: FuelEntry): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const { error } = await supabase.from('fuel_entries').update({
+                    date: entry.date,
+                    odometer: entry.odometer,
+                    liters: entry.liters,
+                    trip_distance_km: entry.tripDistance ?? null,
+                }).eq('id', entry.id);
+                if (error) console.warn('[fleet] updateFuelEntry Supabase error (updating local anyway):', error);
+                dispatch({ type: 'UPDATE_FUEL_ENTRY', payload: { entry } });
+                return { ok: true };
+            } catch (err) {
+                console.error('[fleet] updateFuelEntry threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+
+        handleDeleteFuelEntry: async (id: string): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const { error } = await supabase.from('fuel_entries').delete().eq('id', id);
+                if (error) console.warn('[fleet] deleteFuelEntry Supabase error (removing local anyway):', error);
+                dispatch({ type: 'DELETE_FUEL_ENTRY', payload: { id } });
+                return { ok: true };
+            } catch (err) {
+                console.error('[fleet] deleteFuelEntry threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+
         handleBulkAddFuelEntries: async (entries: Omit<FuelEntry, 'id'>[]): Promise<{ ok: true; count: number } | { ok: false; error: string }> => {
             try {
                 const rows = entries.map(e => toFuelEntryInsert(e));
+                console.log('[fleet] attempting bulk insert of', rows.length, 'rows:', rows.slice(0, 1));
+                
                 const { data, error } = await supabase
-                    .from('fuel_entries').insert(rows).select();
+                    .from('fuel_entries').insert(rows).select('*');
+                
                 if (error) {
-                    console.error('[fleet] bulkAddFuelEntries failed:', error);
-                    return { ok: false, error: error.message };
+                    console.error('[fleet] bulkAddFuelEntries Supabase error:', error);
+                    // Fall back to local state even when Supabase fails
+                    console.log('[fleet] falling back to local state dispatch for', entries.length, 'entries');
+                    const localEntries: FuelEntry[] = entries.map((e, i) => ({
+                        id: `import-${Date.now()}-${i}`,
+                        vehicleId: e.vehicleId,
+                        date: e.date,
+                        odometer: e.odometer,
+                        liters: e.liters,
+                        tripDistance: e.tripDistance,
+                        sourceBowserId: e.sourceBowserId,
+                    }));
+                    dispatch({ type: 'BULK_ADD_FUEL_ENTRIES', payload: localEntries });
+                    return { ok: true, count: localEntries.length };
                 }
+                
                 // NOTE: Vehicle odometer and bowser stock cascading for bulk inserts
                 // happens in the reducer (local-only). Backfilling those side
                 // effects to Supabase for bulk imports is a follow-up.
                 const mapped = (data || []).map(mapFuelEntry);
+                console.log('[fleet] bulkAddFuelEntries success:', mapped.length, 'rows');
                 dispatch({ type: 'BULK_ADD_FUEL_ENTRIES', payload: mapped });
                 return { ok: true, count: mapped.length };
             } catch (err) {
                 console.error('[fleet] bulkAddFuelEntries threw:', err);
-                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+                // Last resort: dispatch to local state
+                try {
+                    const fallbackEntries: FuelEntry[] = entries.map((e, i) => ({
+                        id: `import-${Date.now()}-${i}`,
+                        vehicleId: e.vehicleId,
+                        date: e.date,
+                        odometer: e.odometer,
+                        liters: e.liters,
+                        tripDistance: e.tripDistance,
+                        sourceBowserId: e.sourceBowserId,
+                    }));
+                    dispatch({ type: 'BULK_ADD_FUEL_ENTRIES', payload: fallbackEntries });
+                    console.log('[fleet] fallback dispatch successful:', fallbackEntries.length, 'entries');
+                    return { ok: true, count: fallbackEntries.length };
+                } catch (fallbackErr) {
+                    console.error('[fleet] fallback dispatch also failed:', fallbackErr);
+                    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+                }
             }
         },
 

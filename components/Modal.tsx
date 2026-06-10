@@ -28,7 +28,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, size = 'md' })
             onClick={onClose}
         >
             <div
-                className={`bg-gray-800 rounded-lg shadow-2xl p-6 sm:p-8 w-full ${sizeClasses[size]} m-4 relative transform transition-all duration-300 scale-95 max-h-[90vh] overflow-y-auto`}
+                className={`bg-gray-800 rounded-lg shadow-2xl p-6 sm:p-8 w-full max-w-[95vw] ${sizeClasses[size]} m-4 relative transform transition-all duration-300 scale-95 max-h-[95vh] overflow-y-auto`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <button

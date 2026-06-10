@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
 import { useVehicles, useWorkshop } from '../../contexts/AppContexts';
 import StatCard from '../StatCard';
+import FuelConsumptionAnalysis from '../FuelConsumptionAnalysis';
+import FleetFuelAnalytics from './FleetFuelAnalytics';
 import { Vehicle } from '../../types';
 import { BRANCHES } from '../../constants';
 
 const FleetDashboard: React.FC = () => {
-    const { vehicles = [] } = useVehicles();
+    const { vehicles = [], calculatedFuelData = [] } = useVehicles();
     const { jobCards = [] } = useWorkshop();
 
     const stats = useMemo(() => {
@@ -68,6 +70,16 @@ const FleetDashboard: React.FC = () => {
                         )}
                     </div>
                 </div>
+            </div>
+
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h3 className="text-xl font-bold text-white mb-5">Fleet Fuel Analytics</h3>
+                <FleetFuelAnalytics />
+            </div>
+
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h3 className="text-xl font-bold text-white mb-5">Fleet Fuel Trends Over Time</h3>
+                <FuelConsumptionAnalysis calculatedFuelData={calculatedFuelData} />
             </div>
         </div>
     );

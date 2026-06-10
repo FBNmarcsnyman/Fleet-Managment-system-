@@ -71,11 +71,14 @@ const SupplierLoadConPDFModal = lazy(() => import('./components/operations/Suppl
 const ViewPodModal = lazy(() => import('./components/operations/ViewPodModal'));
 const InvoicePDFModal = lazy(() => import('./components/operations/InvoicePDFModal'));
 const MoveBranchModal = lazy(() => import('./components/fleet/MoveBranchModal'));
+const AssignDriverModal = lazy(() => import('./components/AssignDriverModal'));
 const SetBudgetModal = lazy(() => import('./components/finance/SetBudgetModal'));
 const AITriageModal = lazy(() => import('./components/workshop/AITriageModal'));
 const JobCardDetailModal = lazy(() => import('./components/workshop/JobCardDetailModal'));
 const SupplierApplicationDetailModal = lazy(() => import('./components/operations/SupplierApplicationDetailModal'));
 const BulkImportAssetsModal = lazy(() => import('./components/fleet/BulkImportAssetsModal'));
+const BulkAssignDriversModal = lazy(() => import('./components/fleet/BulkAssignDriversModal'));
+const BulkFuelImportModal = lazy(() => import('./components/fleet/BulkFuelImportModal'));
 const ConnectAssetSheetModal = lazy(() => import('./components/fleet/ConnectAssetSheetModal'));
 const BulkImportCostsModal = lazy(() => import('./components/fleet/BulkImportCostsModal'));
 const QuickBooksSyncModal = lazy(() => import('./components/fleet/QuickBooksSyncModal'));
@@ -123,11 +126,14 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     viewPod: ViewPodModal,
     invoicePdf: InvoicePDFModal,
     moveBranch: MoveBranchModal,
+    assignDriver: AssignDriverModal,
     setBudget: SetBudgetModal,
     aiTriage: AITriageModal,
     jobCardDetail: JobCardDetailModal,
     supplierApplicationDetail: SupplierApplicationDetailModal,
     bulkImportAssets: BulkImportAssetsModal,
+    bulkAssignDrivers: BulkAssignDriversModal,
+    bulkFuelImport: BulkFuelImportModal,
     connectAssetSheet: ConnectAssetSheetModal,
     bulkImportCosts: BulkImportCostsModal,
     quickbooksSync: QuickBooksSyncModal,
@@ -149,6 +155,9 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     connectAssetSheet: '2xl',
     bulkImportCosts: '2xl',
     quickbooksSync: '2xl',
+    assignDriver: 'md',
+    bulkAssignDrivers: 'md',
+    bulkFuelImport: '5xl',
 };
 
 

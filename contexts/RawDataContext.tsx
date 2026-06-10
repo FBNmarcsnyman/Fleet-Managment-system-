@@ -93,6 +93,8 @@ export type AppAction =
     | { type: 'ADD_VEHICLE', payload: Vehicle }
     | { type: 'BULK_ADD_VEHICLES', payload: Vehicle[] }
     | { type: 'ADD_FUEL_ENTRY', payload: { entry: FuelEntry } }
+    | { type: 'UPDATE_FUEL_ENTRY', payload: { entry: FuelEntry } }
+    | { type: 'DELETE_FUEL_ENTRY', payload: { id: string } }
     | { type: 'BULK_ADD_FUEL_ENTRIES', payload: FuelEntry[] }
     | { type: 'ADD_SERVICE_ENTRY', payload: { entry: ServiceEntry } }
     | { type: 'ADD_OTHER_COST', payload: { cost: OtherCost } }
@@ -214,6 +216,20 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
                 fuelEntries: [newEntry, ...(state.fuelEntries || [])],
                 vehicles: updatedVehicles,
                 bowsers: updatedBowsers
+            };
+        }
+        case 'UPDATE_FUEL_ENTRY': {
+            const { entry } = action.payload;
+            return {
+                ...state,
+                fuelEntries: (state.fuelEntries || []).map(f => (f.id === entry.id ? entry : f)),
+            };
+        }
+        case 'DELETE_FUEL_ENTRY': {
+            const { id } = action.payload;
+            return {
+                ...state,
+                fuelEntries: (state.fuelEntries || []).filter(f => f.id !== id),
             };
         }
         case 'BULK_ADD_FUEL_ENTRIES': {

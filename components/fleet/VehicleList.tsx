@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Vehicle } from '../../types';
+import { Vehicle, Branch } from '../../types';
 import { useVehicles, useUIState } from '../../contexts/AppContexts';
 import { BRANCHES, CATEGORY_ORDER } from '../../constants';
 import VehicleCard from './VehicleCard';
@@ -7,6 +7,25 @@ import VehicleDetail from './VehicleDetail';
 import { PlusIcon } from '../icons/PlusIcon';
 import { UploadIcon } from '../icons/UploadIcon';
 import { LinkIcon } from '../icons/LinkIcon';
+
+const BRANCH_DISPLAY_NAMES: Record<Branch, string> = {
+    'FBN JHB': 'JHB Fleet',
+    'FBN DBN': 'DBN Fleet',
+    'FBN CPT': 'CPT Fleet',
+    'LOADMASTER': 'LM Fleet',
+};
+
+const BRANCH_SORT_ORDER: Branch[] = ['LOADMASTER', 'FBN DBN', 'FBN JHB'];
+
+const branchLabel = (branch: Branch) => BRANCH_DISPLAY_NAMES[branch];
+const trailerGroupLabel = (branch: Branch) => `${BRANCH_DISPLAY_NAMES[branch].replace(/ Fleet$/, '')} Trailers`;
+
+const isTrailerCategory = (category: string | undefined) => {
+    if (!category) return false;
+    return /trailer|triaxle|skeleton/i.test(category);
+};
+
+const sortVehiclesByRegistration = (vehicles: Vehicle[]) => [...vehicles].sort((a, b) => a.registration.localeCompare(b.registration));
 
 // Trailer-style categories where auto-pairing makes sense.
 const TRAILER_CATEGORIES = new Set(['Standard Trailer', 'Superlink Trailer']);
@@ -27,6 +46,7 @@ const regDistance = (a: string, b: string): number => {
 };
 
 type GroupByType = 'branch' | 'category';
+type BranchFilter = Branch | 'All';
 
 // Re-order a list so that vehicles linked via `linkedVehicleId` sit next
 // to each other (e.g. superlink 6m + 12m trailers as a pair). The first
@@ -59,12 +79,17 @@ const VehicleList: React.FC = () => {
     } = useVehicles();
     const { showModal, hideModal, showToast } = useUIState();
     const [groupBy, setGroupBy] = useState<GroupByType>('branch');
+    const [branchFilter, setBranchFilter] = useState<BranchFilter>('All');
 
     const groupedVehicles = useMemo(() => {
-        const activeVehicles = (vehicles || []).filter((v: Vehicle) => v.status !== 'Sold');
+        const activeVehicles: Vehicle[] = (vehicles || []).filter((v: Vehicle) => v.status !== 'Sold');
 
-        const groups = activeVehicles.reduce((acc, vehicle) => {
-            const key = groupBy === 'branch' ? vehicle.branch : (vehicle.weightCategory || 'Uncategorized');
+        const filteredVehicles: Vehicle[] = activeVehicles.filter((v: Vehicle) => branchFilter === 'All' || v.branch === branchFilter);
+
+        const groups = filteredVehicles.reduce((acc: Record<string, Vehicle[]>, vehicle: Vehicle) => {
+            const key = groupBy === 'branch'
+                ? (isTrailerCategory(vehicle.weightCategory) ? trailerGroupLabel(vehicle.branch) : branchLabel(vehicle.branch))
+                : (vehicle.weightCategory || 'Uncategorized');
             if (!acc[key]) {
                 acc[key] = [];
             }
@@ -72,9 +97,23 @@ const VehicleList: React.FC = () => {
             return acc;
         }, {} as Record<string, Vehicle[]>);
 
-        // Sort group keys by the explicit display order; anything unknown
-        // falls to the bottom in alpha order.
-        const orderList: string[] = groupBy === 'category' ? CATEGORY_ORDER : (BRANCHES as unknown as string[]);
+        if (groupBy === 'branch') {
+            const sortedGroupKeys: string[] = [];
+            for (const branch of BRANCH_SORT_ORDER) {
+                const fleetKey = branchLabel(branch);
+                const trailerKey = trailerGroupLabel(branch);
+                if (groups[fleetKey]) sortedGroupKeys.push(fleetKey);
+                if (groups[trailerKey]) sortedGroupKeys.push(trailerKey);
+            }
+            const remaining = Object.keys(groups).filter(k => !sortedGroupKeys.includes(k)).sort();
+            const allKeys = [...sortedGroupKeys, ...remaining];
+            return allKeys.reduce((sortedObj, key) => {
+                sortedObj[key] = pairLinkedVehicles(sortVehiclesByRegistration(groups[key]));
+                return sortedObj;
+            }, {} as Record<string, Vehicle[]>);
+        }
+
+        const orderList: string[] = CATEGORY_ORDER;
         const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
             const ai = orderList.indexOf(a);
             const bi = orderList.indexOf(b);
@@ -85,13 +124,11 @@ const VehicleList: React.FC = () => {
         });
 
         return sortedGroupKeys.reduce((sortedObj, key) => {
-            // Pair linked vehicles within each group so superlink trailer
-            // 6m + 12m partners appear adjacent.
-            sortedObj[key] = pairLinkedVehicles(groups[key]);
+            sortedObj[key] = pairLinkedVehicles(sortVehiclesByRegistration(groups[key]));
             return sortedObj;
         }, {} as Record<string, Vehicle[]>);
 
-    }, [vehicles, groupBy]);
+    }, [vehicles, groupBy, branchFilter]);
 
     if (selectedVehicleId) {
         return <VehicleDetail />;
@@ -215,19 +252,36 @@ const VehicleList: React.FC = () => {
                     <GroupButton type="category" label="Category" />
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <button onClick={handleAutoPairTrailers} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-purple-400 rounded-xl border border-purple-500/20 transition-all" title="Pair trailers whose registrations differ by one character (typical SA superlink convention)">
-                        <LinkIcon className="h-4 w-4 mr-2" /> Auto-pair Trailers
-                    </button>
-                    <button onClick={openConnectSheet} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-green-400 rounded-xl border border-green-500/20 transition-all">
-                        <LinkIcon className="h-4 w-4 mr-2" /> Live Sheet
-                    </button>
-                    <button onClick={openBulkImport} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-blue-400 rounded-xl border border-blue-500/20 transition-all">
-                        <UploadIcon className="h-4 w-4 mr-2" /> Bulk Import
-                    </button>
-                    <button onClick={openAddAsset} className="flex items-center px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-900/30 transition-all active:scale-95">
-                        <PlusIcon className="h-4 w-4 mr-2" /> Add Asset
-                    </button>
+                <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
+                    {groupBy === 'branch' && (
+                        <div className="flex items-center gap-2 bg-gray-900/60 rounded-xl border border-gray-700 px-3 py-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Branch</label>
+                            <select
+                                value={branchFilter}
+                                onChange={e => setBranchFilter(e.target.value as BranchFilter)}
+                                className="bg-gray-900 border border-gray-700 text-gray-200 text-sm rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="All">All branches</option>
+                                {BRANCH_SORT_ORDER.map(branch => (
+                                    <option key={branch} value={branch}>{branch === 'LOADMASTER' ? 'LM' : branch.replace('FBN ', '')}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={handleAutoPairTrailers} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-purple-400 rounded-xl border border-purple-500/20 transition-all" title="Pair trailers whose registrations differ by one character (typical SA superlink convention)">
+                            <LinkIcon className="h-4 w-4 mr-2" /> Auto-pair Trailers
+                        </button>
+                        <button onClick={openConnectSheet} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-green-400 rounded-xl border border-green-500/20 transition-all">
+                            <LinkIcon className="h-4 w-4 mr-2" /> Live Sheet
+                        </button>
+                        <button onClick={openBulkImport} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-blue-400 rounded-xl border border-blue-500/20 transition-all">
+                            <UploadIcon className="h-4 w-4 mr-2" /> Bulk Import
+                        </button>
+                        <button onClick={openAddAsset} className="flex items-center px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-900/30 transition-all active:scale-95">
+                            <PlusIcon className="h-4 w-4 mr-2" /> Add Asset
+                        </button>
+                    </div>
                 </div>
             </div>
 

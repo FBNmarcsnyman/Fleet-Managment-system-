@@ -12,7 +12,8 @@ export type WidgetType =
   | 'JOB_PRIORITY_CHART'
   | 'OVERDUE_SERVICES_LIST'
   | 'FUEL_PRICE_TICKER'
-  | 'BOWSER_STATUS';
+  | 'BOWSER_STATUS'
+  | 'FUEL_ANALYTICS';
 
 export interface Vehicle {
   id: string;
@@ -61,6 +62,18 @@ export interface CalculatedFuelEntry extends FuelEntry {
     consumption: number;
     cost: number;
     cpk: number;
+}
+
+export interface VehiclePerformanceStats {
+    avgCpk: number;
+    avgConsumption: number;
+    latestOdo: number;
+    points: number;          // number of valid consumption data points
+    totalLitres: number;
+    totalCost: number;
+    totalDistance: number;
+    bestConsumption: number; // lowest L/100km (most efficient fill)
+    worstConsumption: number;// highest L/100km (least efficient fill)
 }
 
 export interface ServiceEntry {

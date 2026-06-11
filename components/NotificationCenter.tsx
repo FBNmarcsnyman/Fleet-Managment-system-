@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNotifications, useUIState } from '../contexts/AppContexts';
 import { Notification, NotificationType } from '../types';
+import { useLiveAlerts } from '../hooks/useLiveAlerts';
 import { formatDistanceToNow } from 'date-fns';
 import { WrenchIcon } from './icons/WrenchIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
@@ -15,6 +16,9 @@ interface NotificationCenterProps {
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
     const { notifications, handleDismissNotification, handleDismissAllNotifications } = useNotifications();
     const { handleViewChange } = useUIState();
+    const liveAlerts = useLiveAlerts();
+    const liveIds = new Set(liveAlerts.map(a => a.id));
+    const combined = [...liveAlerts, ...notifications];
 
     const handleAct = (notification: Notification) => {
         handleViewChange(notification.link.view);
@@ -39,8 +43,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
                 <button onClick={handleDismissAllNotifications} className="text-xs text-blue-400 hover:text-white">Dismiss All</button>
             </div>
             <div className="max-h-96 overflow-y-auto">
-                {notifications.length > 0 ? (
-                    notifications.map(notification => (
+                {combined.length > 0 ? (
+                    combined.map(notification => (
                         <div key={notification.id} className="p-3 border-b border-gray-700/50 hover:bg-gray-700">
                             <div onClick={() => handleAct(notification)} className="cursor-pointer">
                                 <div className="flex items-start space-x-3">
@@ -49,9 +53,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
                                         <p className="text-sm text-gray-200">{notification.message}</p>
                                         <p className="text-xs text-gray-500 mt-1">{formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}</p>
                                     </div>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDismissNotification(notification.id); }} className="text-gray-500 hover:text-white flex-shrink-0">
-                                        <XIcon className="h-4 w-4" />
-                                    </button>
+                                    {liveIds.has(notification.id) ? (
+                                        <span className="text-[9px] uppercase tracking-wider text-gray-500 flex-shrink-0 mt-1" title="Live status — clears when resolved">live</span>
+                                    ) : (
+                                        <button onClick={(e) => { e.stopPropagation(); handleDismissNotification(notification.id); }} className="text-gray-500 hover:text-white flex-shrink-0">
+                                            <XIcon className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

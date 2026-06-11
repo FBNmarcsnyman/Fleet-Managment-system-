@@ -15,6 +15,7 @@ import { useUIState, useAuth, useOperations, useNotifications, useVehicles, useW
 import { BellIcon } from '../icons/BellIcon';
 import { SearchIcon } from '../icons/SearchIcon';
 import NotificationCenter from '../NotificationCenter';
+import { useLiveAlerts } from '../../hooks/useLiveAlerts';
 
 export const ALL_NAV_ITEMS: { view: ViewType, label: string, icon: React.ElementType, permission: Permission }[] = [
     { view: 'management', label: 'Management', icon: DashboardIcon, permission: 'access_management' },
@@ -220,6 +221,7 @@ const Header: React.FC = () => {
     const { currentView, isOnline, handleViewChange } = useUIState();
     const { unassignedJobCount = 0 } = useOperations();
     const { notifications = [] } = useNotifications();
+    const liveAlerts = useLiveAlerts();
     const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
     const pendingSyncCount = 0;
 
@@ -294,8 +296,8 @@ const Header: React.FC = () => {
                                 title="Notifications"
                             >
                                 <BellIcon className="h-6 w-6" />
-                                {notifications.length > 0 && (
-                                    <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-gray-900 shadow-sm"></span>
+                                {(notifications.length + liveAlerts.length) > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-gray-900 shadow-sm">{notifications.length + liveAlerts.length}</span>
                                 )}
                             </button>
                             {isNotificationCenterOpen && <NotificationCenter onClose={() => setIsNotificationCenterOpen(false)} />}

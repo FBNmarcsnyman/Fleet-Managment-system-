@@ -3,11 +3,11 @@ import React, { createContext, useContext, useMemo, useRef, ReactNode } from 're
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { JobCard, JobCardStatus, PurchaseRequest, PurchaseOrder, Part, Tire, PlannedService } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, runWrite } from '../lib/supabase';
 import {
     toJobCardInsert, toJobCardUpdate, toPartInsert, toPurchaseRequestInsert, toTireUpdate,
-    toPlannedServiceInsert,
-    mapJobCard, mapPart, mapPurchaseRequest, mapPlannedService,
+    toPlannedServiceInsert, toPurchaseOrderInsert,
+    mapJobCard, mapPart, mapPurchaseRequest, mapPlannedService, mapPurchaseOrder,
 } from '../lib/mappers';
 
 export const WorkshopContext = createContext<any>(undefined);
@@ -161,10 +161,52 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
             }
         },
 
-        // -- Still local-only (deferred to later push) ------------------------
+        // Procurement: create a PO from an approved request, and receive goods
+        // (both persist to Supabase, mirroring the parts-stock cascade).
+        handleCreatePurchaseOrder: async (req: PurchaseRequest): Promise<Result<void>> => {
+            try {
+                const cur = stateRef.current;
+                const part = (cur.parts || []).find((p: any) => p.id === req.partId);
+                const quote = req.quotes?.[0];
+                const unitCost = quote ? quote.amount / req.quantity : (part?.cost || 0);
+                const totalCost = quote ? quote.amount : unitCost * req.quantity;
+                const supplierId = quote?.supplierId || part?.supplierId || (cur.suppliers || []).find((s: any) => s.type === 'Workshop')?.id || '';
+                const poInput: Omit<PurchaseOrder, 'id'> = {
+                    poNumber: `PO-${Date.now().toString().slice(-6)}`,
+                    purchaseRequestId: req.id,
+                    supplierId,
+                    orderDate: new Date().toISOString(),
+                    items: [{ partId: req.partId, quantity: req.quantity, unitCost }],
+                    totalCost,
+                    status: 'Ordered',
+                };
+                const { data, error } = await runWrite(() => supabase.from('purchase_orders').insert(toPurchaseOrderInsert(poInput)).select().single());
+                if (error || !data) { console.error('[workshop] createPurchaseOrder failed:', error); return { ok: false, error: error?.message || 'Could not create the purchase order.' }; }
+                const { error: rErr } = await supabase.from('purchase_requests').update({ status: 'Ordered' }).eq('id', req.id);
+                if (rErr) console.error('[workshop] purchase request status update failed:', rErr);
+                dispatch({ type: 'CREATE_PURCHASE_ORDER', payload: { persisted: mapPurchaseOrder(data) } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleReceiveGoods: async (order: PurchaseOrder): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('purchase_orders').update({ status: 'Received' }).eq('id', order.id).select().single());
+                if (error) { console.error('[workshop] receiveGoods failed:', error); return { ok: false, error: error.message }; }
+                const cur = stateRef.current;
+                for (const item of (order.items || [])) {
+                    const part = (cur.parts || []).find((p: any) => p.id === item.partId);
+                    if (part) {
+                        const { error: pErr } = await supabase.from('parts').update({ quantity_in_stock: (part.quantityInStock || 0) + item.quantity }).eq('id', item.partId);
+                        if (pErr) console.error('[workshop] part stock update failed:', pErr);
+                    }
+                }
+                dispatch({ type: 'RECEIVE_GOODS', payload: order });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // AI triage suggestions stay local-only (applied per job card via the
+        // workshop board, which persists individually).
         applyAiAssignments: (suggestions: Partial<JobCard>[]) => dispatch({ type: 'APPLY_AI_ASSIGNMENTS', payload: suggestions }),
-        handleCreatePurchaseOrder: (req: PurchaseRequest) => dispatch({ type: 'CREATE_PURCHASE_ORDER', payload: req }),
-        handleReceiveGoods: (order: PurchaseOrder) => dispatch({ type: 'RECEIVE_GOODS', payload: order }),
     }), [dispatch]);
 
     const value = useMemo(() => ({ ...state, ...handlers, users }), [state, handlers, users]);

@@ -375,6 +375,17 @@ export const mapPurchaseOrder = (row: Tables['purchase_orders']['Row']): Purchas
     status: row.status as PurchaseOrder['status'],
 });
 
+export const toPurchaseOrderInsert = (po: Omit<PurchaseOrder, 'id'>): Tables['purchase_orders']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    po_number: po.poNumber,
+    purchase_request_id: po.purchaseRequestId || null,
+    supplier_id: po.supplierId || null,
+    order_date: po.orderDate,
+    items: po.items as unknown as Tables['purchase_orders']['Insert']['items'],
+    total_cost: po.totalCost,
+    status: po.status,
+});
+
 // -- hr_cases → HRCase -------------------------------------------------------
 export const mapHRCase = (row: Tables['hr_cases']['Row']): HRCase => ({
     id: row.id,

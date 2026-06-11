@@ -131,7 +131,7 @@ export type AppAction =
     | { type: 'APPLY_AI_ASSIGNMENTS', payload: Partial<JobCard>[] }
     | { type: 'ADD_PART', payload: Part }
     | { type: 'CREATE_PURCHASE_REQUEST', payload: PurchaseRequest }
-    | { type: 'CREATE_PURCHASE_ORDER', payload: PurchaseRequest }
+    | { type: 'CREATE_PURCHASE_ORDER', payload: PurchaseRequest | { persisted: PurchaseOrder } }
     | { type: 'RECEIVE_GOODS', payload: PurchaseOrder }
     | { type: 'UPDATE_TIRE', payload: Tire }
     | { type: 'ADD_HR_CASE', payload: HRCase }
@@ -380,6 +380,15 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'ADD_PART': return {...state, parts: [...(state.parts || []), action.payload]};
         case 'CREATE_PURCHASE_REQUEST': return {...state, purchaseRequests: [...(state.purchaseRequests || []), action.payload]};
         case 'CREATE_PURCHASE_ORDER': {
+            // Preferred path: the handler persisted the PO and passes it back.
+            const persistedPo = (action.payload as any)?.persisted as PurchaseOrder | undefined;
+            if (persistedPo) {
+                return {
+                    ...state,
+                    purchaseOrders: [...(state.purchaseOrders || []), persistedPo],
+                    purchaseRequests: (state.purchaseRequests || []).map(r => r.id === persistedPo.purchaseRequestId ? { ...r, status: 'Ordered' } : r),
+                };
+            }
             const request = action.payload as PurchaseRequest;
             const part = (state.parts || []).find(p => p.id === request.partId);
             const quote = request.quotes?.[0];

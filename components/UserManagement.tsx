@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { useWorkshop } from '../contexts/AppContexts';
+import { useCommonData } from '../contexts/AppContexts';
 import Modal from './Modal';
 import AddUserForm from './AddUserForm';
 import { PlusIcon } from './icons/PlusIcon';
 import { User } from '../types';
 
 const UserManagement: React.FC = () => {
-    const { users, handleAddUser } = useWorkshop();
+    const { users, handleAddUser } = useCommonData();
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
 
-    const handleSubmitNewUser = (user: Omit<User, 'permissions' | 'assignedVehicleIds'>) => {
-        handleAddUser(user);
+    const handleSubmitNewUser = async (user: Omit<User, 'permissions' | 'assignedVehicleIds'>) => {
+        const res = await handleAddUser(user);
+        if (!res.ok) { alert(`Could not add the user: ${res.error || 'unknown error'}`); return; }
         setIsAddUserModalOpen(false);
+        alert(`User created.\n\nEmail: ${user.email}\nTemporary password: ${res.tempPassword}\n\nShare these with them — they can change the password after logging in.`);
     };
 
     return (

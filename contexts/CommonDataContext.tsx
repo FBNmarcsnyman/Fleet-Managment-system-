@@ -2,12 +2,13 @@
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { User, Notification, Message } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface CommonDataContextType {
     users: User[];
     notifications: Notification[];
     messages: Message[];
-    handleAddUser: (user: any) => void;
+    handleAddUser: (user: any) => Promise<{ ok: boolean; error?: string; tempPassword?: string }>;
     handleSendMessage: (vehicleId: string, message: any) => void;
     handleUpdateNavPreferences: (email: string, preferences: any) => void;
     handleDismissNotification: (id: string) => void;
@@ -26,7 +27,33 @@ export const CommonDataProvider: React.FC<{ children: ReactNode }> = ({ children
         users: state.users || [],
         notifications: state.notifications || [],
         messages: state.messages || [],
-        handleAddUser: (user: any) => dispatch({ type: 'ADD_USER', payload: user }),
+        // Creates a real login + profile via the secure admin-create-user edge
+        // function (service role, admin-only), then reflects it in local state.
+        handleAddUser: async (user: any): Promise<{ ok: boolean; error?: string; tempPassword?: string }> => {
+            try {
+                const { data, error } = await supabase.functions.invoke('admin-create-user', { body: user });
+                if (error) {
+                    let msg = error.message;
+                    try { const ctx = await (error as any).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* ignore */ }
+                    return { ok: false, error: msg || 'Could not create the user.' };
+                }
+                if (data?.error) return { ok: false, error: data.error };
+                dispatch({ type: 'ADD_USER', payload: {
+                    name: data?.name ?? user.name,
+                    email: data?.email ?? user.email,
+                    role: data?.role ?? user.role,
+                    assignedBranches: user.assignedBranches ?? [],
+                    assignedVehicleIds: [],
+                    licenseNumber: user.licenseNumber,
+                    licenseExpiry: user.licenseExpiry,
+                    pdpExpiry: user.pdpExpiry,
+                    isActive: true,
+                } });
+                return { ok: true, tempPassword: data?.tempPassword };
+            } catch (err) {
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
         handleSendMessage: (vehicleId: string, message: any) => dispatch({ type: 'ADD_MESSAGE', payload: { vehicleId, message } }),
         handleUpdateNavPreferences: (email: string, preferences: any) => dispatch({ type: 'UPDATE_NAV_PREFERENCES', payload: { email, preferences } }),
         // Local-only for now: dismiss filters the notification out of state.

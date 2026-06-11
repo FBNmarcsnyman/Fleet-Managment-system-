@@ -162,6 +162,7 @@ export interface User {
         order: ViewType[];
         hidden: ViewType[];
     };
+    isActive?: boolean;
 }
 
 export type ViewType =

@@ -46,6 +46,7 @@ const mapProfileRow = (row: ProfileRow, branchById: Map<string, Branch>): User =
     clientId: row.client_id ?? undefined,
     supplierId: row.supplier_id ?? undefined,
     navigationPreferences: (row.navigation_preferences as User['navigationPreferences']) ?? undefined,
+    isActive: (row as { is_active?: boolean }).is_active ?? true,
 });
 
 const fetchUserContext = async (userId: string): Promise<User | null> => {
@@ -145,6 +146,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.log('[login] signInWithPassword OK, fetching profile');
             const mapped = await fetchUserContext(data.user.id);
             if (!mapped) return { ok: false, error: 'Signed in, but failed to load profile' };
+            if (mapped.isActive === false) {
+                void supabase.auth.signOut();
+                return { ok: false, error: 'Your account has been deactivated. Please contact your administrator.' };
+            }
             console.log('[login] profile fetched, setting currentUser');
             setState(prev => ({ ...prev, currentUser: mapped }));
             return { ok: true };
@@ -229,7 +234,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         }, 10000)),
                     ]);
                     if (active && mapped) {
-                        setState(prev => ({ ...prev, currentUser: mapped }));
+                        if (mapped.isActive === false) {
+                            void supabase.auth.signOut();
+                        } else {
+                            setState(prev => ({ ...prev, currentUser: mapped }));
+                        }
                     }
                 }
                 if (active) setIsAuthReady(true);
@@ -244,7 +253,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 if (session?.user && !currentUserRef.current) {
                     const mapped = await fetchUserContext(session.user.id);
                     if (active && mapped) {
-                        setState(prev => ({ ...prev, currentUser: mapped }));
+                        if (mapped.isActive === false) {
+                            void supabase.auth.signOut();
+                        } else {
+                            setState(prev => ({ ...prev, currentUser: mapped }));
+                        }
                     }
                 }
                 return;

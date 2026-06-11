@@ -3,7 +3,7 @@ import { User, Role, Branch } from '../types';
 import { BRANCHES } from '../constants';
 
 interface AddUserFormProps {
-    onSubmit: (user: Omit<User, 'permissions' | 'assignedVehicleIds' | 'clientId' | 'supplierId'>) => void;
+    onSubmit: (user: Omit<User, 'permissions' | 'assignedVehicleIds' | 'clientId' | 'supplierId'>) => void | Promise<any>;
     onCancel: () => void;
 }
 
@@ -32,13 +32,16 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onSubmit, onCancel }) => {
         setEmail(value);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const [saving, setSaving] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (emailError || !name || !email) {
             alert('Please fill all required fields correctly.');
             return;
         }
-        onSubmit({
+        setSaving(true);
+        await onSubmit({
             name,
             email,
             role,
@@ -47,6 +50,7 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onSubmit, onCancel }) => {
             licenseExpiry: role === 'Staff' ? licenseExpiry : undefined,
             pdpExpiry: role === 'Staff' ? pdpExpiry : undefined,
         });
+        setSaving(false);
     };
 
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";
@@ -101,7 +105,7 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onSubmit, onCancel }) => {
             </div>
             <div className="flex justify-end space-x-4 mt-8">
                 <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
-                <button type="submit" className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg transition duration-300">Add User</button>
+                <button type="submit" disabled={saving} className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-60">{saving ? 'Adding…' : 'Add User'}</button>
             </div>
         </form>
     );

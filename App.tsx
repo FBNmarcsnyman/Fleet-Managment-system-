@@ -162,7 +162,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
 
 
 const App: React.FC = () => {
-    const { currentUser, currentViewOverride } = useAuth();
+    const { currentUser, currentViewOverride, hasPermission } = useAuth();
     const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast } = useUIState();
     const { quotes, clients, handleAcceptQuote, handleRejectQuote, handleAddChecklistSubmission } = useOperations();
     const { vehicles, users, checklistTemplates } = useVehicles();
@@ -231,9 +231,13 @@ const App: React.FC = () => {
     if (currentUser.role === 'Driver') return <DriverDashboard />;
 
 
+    // The management dashboard is for admins/managers only. Anyone without the
+    // permission who lands here (e.g. a Staff default view) is shown the fleet
+    // view instead of the company-wide management overview.
+    const managementView = hasPermission('access_management') ? <ManagementPortal /> : <FleetPortal />;
     const renderView = () => {
         switch (currentView) {
-            case 'management': return <ManagementPortal />;
+            case 'management': return managementView;
             case 'fleet': return <FleetPortal />;
             case 'operations': return <OperationsPortal />;
             case 'workshop': return <WorkshopPortal />;
@@ -243,7 +247,7 @@ const App: React.FC = () => {
             case 'userManagement': return <UserManagement />;
             case 'settings': return <Settings />;
             case 'driverDashboard': return <DriverDashboard />;
-            default: return <ManagementPortal />;
+            default: return managementView;
         }
     };
 

@@ -13,7 +13,8 @@ export type WidgetType =
   | 'OVERDUE_SERVICES_LIST'
   | 'FUEL_PRICE_TICKER'
   | 'BOWSER_STATUS'
-  | 'FUEL_ANALYTICS';
+  | 'FUEL_ANALYTICS'
+  | 'COMPLIANCE_EXPIRY';
 
 export interface Vehicle {
   id: string;

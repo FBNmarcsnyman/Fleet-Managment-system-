@@ -9,6 +9,7 @@ import {
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
+    toJobCardInsert, mapJobCard,
 } from '../lib/mappers';
 
 export const OperationsContext = createContext<any>(undefined);
@@ -188,6 +189,11 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleAssignLoadConfirmation: async (loadConId: string, vehicleId: string, driverId: string): Promise<Result<void>> => {
             try {
+                // Tier 2: an off-road (or sold) vehicle can't be dispatched.
+                const veh = (stateRef.current.vehicles || []).find((v: any) => v.id === vehicleId);
+                if (veh && veh.status !== 'On the road') {
+                    return { ok: false, error: `${veh.name} is "${veh.status}" and can't be allocated to a trip.` };
+                }
                 const { error } = await supabase
                     .from('load_confirmations')
                     .update({ vehicle_id: vehicleId, driver_id: driverId, status: 'Driver Assigned' })
@@ -248,6 +254,40 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     if (vErr) console.error('[ops] checklist vehicle odo/hours bump failed:', vErr);
                 }
                 dispatch({ type: 'ADD_CHECKLIST_SUBMISSION', payload: { persisted: mapChecklistSubmission(data), vehicleId: submission.vehicleId, currentUser, odometer, hours: submission.hours } });
+
+                // Tier 2 — close the inspection→maintenance loop:
+                // every failed item flagged for a job card becomes a workshop job,
+                // and a critical fault takes the vehicle off the road immediately.
+                const results = submission.allResults ?? submission.results ?? [];
+                const flagged = results.filter((r: any) => r.status === 'Fail' && r.createJobCard);
+                let anyCritical = false;
+                for (const item of flagged) {
+                    const severity = item.severity || item.priority || 'Medium';
+                    const priority = item.priority || item.severity || 'Medium';
+                    if (severity === 'Critical' || priority === 'Critical') anyCritical = true;
+                    const jcInput: any = {
+                        vehicleId: submission.vehicleId,
+                        submissionId: data.id,
+                        checklistItemId: item.itemId,
+                        itemDescription: item.item,
+                        reporterNotes: item.notes || '',
+                        type: 'Repair',
+                        status: 'Reported',
+                        priority,
+                        severity,
+                        reportedDate: new Date().toISOString(),
+                    };
+                    const { data: jcData, error: jcErr } = await runWrite(() =>
+                        supabase.from('job_cards').insert(toJobCardInsert(jcInput)).select().single());
+                    if (jcErr || !jcData) { console.error('[ops] auto job-card create failed:', jcErr); continue; }
+                    dispatch({ type: 'CREATE_JOB_CARD', payload: mapJobCard(jcData) });
+                }
+                if (anyCritical) {
+                    const { error: stErr } = await supabase.from('vehicles').update({ status: 'Off the road' }).eq('id', submission.vehicleId);
+                    if (stErr) console.error('[ops] critical off-road status update failed:', stErr);
+                    else dispatch({ type: 'UPDATE_VEHICLE', payload: { vehicleId: submission.vehicleId, updates: { status: 'Off the road' } } });
+                }
+
                 return { ok: true };
             } catch (err) {
                 console.error('[ops] addChecklistSubmission threw:', err);

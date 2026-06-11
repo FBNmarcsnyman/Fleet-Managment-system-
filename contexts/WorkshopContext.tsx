@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { JobCard, JobCardStatus, PurchaseRequest, PurchaseOrder, Part, Tire, PlannedService } from '../types';
@@ -20,6 +20,27 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (!raw || !common) return <>{children}</>;
     const { state, dispatch } = raw;
     const { users } = common;
+    const stateRef = useRef(state);
+    stateRef.current = state;
+
+    // Tier 2: when a job card is resolved, return the vehicle to the road —
+    // but only if it was a critical fault and no other open critical job
+    // cards remain on that vehicle.
+    const returnVehicleToRoadIfClear = async (jobCardId: string, newStatus: JobCardStatus) => {
+        if (newStatus !== 'Resolved') return;
+        const cards = stateRef.current.jobCards || [];
+        const jc = cards.find((j: any) => j.id === jobCardId);
+        if (!jc || (jc.severity !== 'Critical' && jc.priority !== 'Critical')) return;
+        const otherOpenCritical = cards.some((j: any) =>
+            j.id !== jobCardId && j.vehicleId === jc.vehicleId && j.status !== 'Resolved' &&
+            (j.severity === 'Critical' || j.priority === 'Critical'));
+        if (otherOpenCritical) return;
+        const vehicle = (stateRef.current.vehicles || []).find((v: any) => v.id === jc.vehicleId);
+        if (!vehicle || vehicle.status !== 'Off the road') return;
+        const { error } = await supabase.from('vehicles').update({ status: 'On the road' }).eq('id', jc.vehicleId);
+        if (error) console.error('[workshop] return-to-road update failed:', error);
+        else dispatch({ type: 'UPDATE_VEHICLE', payload: { vehicleId: jc.vehicleId, updates: { status: 'On the road' } } });
+    };
 
     const handlers = useMemo(() => ({
         // -- Job Cards --------------------------------------------------------
@@ -44,6 +65,7 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
                     .from('job_cards').update(row).eq('id', id);
                 if (error) { console.error('[workshop] updateJobCard failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_JOB_CARD', payload: { id, updates } });
+                if (updates.status) await returnVehicleToRoadIfClear(id, updates.status);
                 return { ok: true };
             } catch (err) {
                 console.error('[workshop] updateJobCard threw:', err);
@@ -56,6 +78,7 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
                     .from('job_cards').update({ status }).eq('id', id);
                 if (error) { console.error('[workshop] updateJobCardStatus failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_JOB_CARD_STATUS', payload: { id, status } });
+                await returnVehicleToRoadIfClear(id, status);
                 return { ok: true };
             } catch (err) {
                 console.error('[workshop] updateJobCardStatus threw:', err);

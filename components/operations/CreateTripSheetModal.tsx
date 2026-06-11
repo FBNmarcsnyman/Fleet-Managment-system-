@@ -32,7 +32,7 @@ const CreateTripSheetModal: React.FC<CreateTripSheetModalProps> = ({ availableLo
         onSubmit({ vehicleId, driverId, loadConIds: selectedLoadIds, branch: selectedBranch });
     };
 
-    const localVehicles = vehicles.filter(v => ['BAKKIE', '1 TONNER', '2 TONNER', '5 TONNER', '8 TONNER', '12 TONNER', '15 TONNER'].includes(v.weightCategory));
+    const localVehicles = vehicles.filter(v => v.status === 'On the road' && ['BAKKIE', '1 TONNER', '2 TONNER', '5 TONNER', '8 TONNER', '12 TONNER', '15 TONNER'].includes(v.weightCategory));
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";
 
     const getGoodsSummary = (lc: LoadConfirmation) => {

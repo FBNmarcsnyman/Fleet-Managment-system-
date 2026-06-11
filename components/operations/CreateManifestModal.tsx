@@ -69,7 +69,7 @@ const CreateManifestModal: React.FC<CreateManifestModalProps> = ({ availableLoad
                 </div>
                 <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} required className={inputClasses}>
                     <option value="" disabled>-- Select Linehaul Truck --</option>
-                    {vehicles.filter(v => v.weightCategory === 'Horse').map(v => <option key={v.id} value={v.id}>{v.registration} ({v.name})</option>)}
+                    {vehicles.filter(v => v.weightCategory === 'Horse' && v.status === 'On the road').map(v => <option key={v.id} value={v.id}>{v.registration} ({v.name})</option>)}
                 </select>
                 <select value={driverId} onChange={e => setDriverId(e.target.value)} required className={inputClasses}>
                     <option value="" disabled>-- Select Driver --</option>

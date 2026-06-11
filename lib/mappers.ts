@@ -190,6 +190,25 @@ export const mapBowserRefill = (row: Tables['bowser_refills']['Row']): BowserRef
     referenceNumber: row.reference_number,
 });
 
+export const toBowserInsert = (b: Omit<Bowser, 'id'>): Tables['bowsers']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    name: b.name,
+    capacity_liters: b.capacity,
+    current_stock_liters: b.currentStock,
+});
+
+export const toBowserRefillInsert = (r: Omit<BowserRefill, 'id'>): Tables['bowser_refills']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    bowser_id: r.bowserId,
+    date: r.date,
+    liters: r.liters,
+    cost_per_liter: r.costPerLiter,
+    final_cost_per_liter: r.finalCostPerLiter,
+    reference_number: r.referenceNumber,
+    supplier: r.supplier ?? null,
+    rebate_percentage: r.rebatePercentage ?? null,
+});
+
 // -- budgets → Budget --------------------------------------------------------
 export const mapBudget = (row: Tables['budgets']['Row']): Budget => ({
     id: row.id,
@@ -254,6 +273,31 @@ export const mapChecklistSubmission = (row: Tables['checklist_submissions']['Row
     status: row.status,
     reviewedBy: row.reviewed_by_id ?? undefined,
     reviewedAt: row.reviewed_at ?? undefined,
+});
+
+export const toChecklistSubmissionInsert = (s: {
+    templateId: string;
+    templateName: string;
+    vehicleId: string;
+    userId: string;
+    userName: string;
+    odometer: number;
+    hours?: number;
+    results: ChecklistItemResult[];
+    date?: string;
+    status?: ChecklistSubmission['status'];
+}): Tables['checklist_submissions']['Insert'] => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    template_id: s.templateId,
+    template_name: s.templateName,
+    vehicle_id: s.vehicleId,
+    user_id: s.userId,
+    user_name: s.userName,
+    date: s.date ?? new Date().toISOString(),
+    odometer: s.odometer,
+    hours: s.hours ?? null,
+    results: s.results as unknown as Tables['checklist_submissions']['Insert']['results'],
+    status: s.status ?? 'Submitted',
 });
 
 // -- tires → Tire (mountHistory joined separately) ---------------------------

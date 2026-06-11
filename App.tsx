@@ -202,8 +202,9 @@ const App: React.FC = () => {
                     vehicle={checklistFlow.vehicle}
                     currentUser={checklistFlow.user}
                     templates={checklistTemplates}
-                    onSubmit={(data) => {
-                        handleAddChecklistSubmission(data, checklistFlow.user);
+                    onSubmit={async (data) => {
+                        const res = await handleAddChecklistSubmission(data, checklistFlow.user);
+                        if (res && res.ok === false) { showToast(`Could not submit checklist: ${res.error || 'unknown error'}`); return; }
                         showToast('Checklist successfully submitted!');
                         setChecklistFlow(null);
                         window.history.pushState({}, '', window.location.pathname);

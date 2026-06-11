@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        // Allow the app to be reached through a Cloudflare quick tunnel
+        // (https://*.trycloudflare.com) for sharing with the team. Vite 6
+        // blocks unknown Host headers by default; this whitelists the tunnel.
+        allowedHosts: ['.trycloudflare.com'],
         // Force the browser to never cache dev-server responses. Without this,
         // hot-reloads across context-shape changes (UIContext, AuthContext,
         // FleetContext) leave the browser with a stale module graph that

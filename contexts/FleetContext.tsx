@@ -12,6 +12,7 @@ import {
     toVehicleInsert, toVehicleUpdate, toFuelEntryInsert,
     toServiceEntryInsert, toOtherCostInsert, toRecurringCostInsert,
     toRevenueEntryInsert, toServiceIntervalInsert, toFuelPriceInsert,
+    toBowserInsert, toBowserRefillInsert, mapBowser, mapBowserRefill, toTireUpdate,
 } from '../lib/mappers';
 import { ServiceEntry, OtherCost, RecurringCost, RevenueEntry, ServiceInterval, FuelPriceRecord } from '../types';
 
@@ -483,16 +484,79 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             } catch (err) { console.error('[fleet] setFuelPrice threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
 
-        // -- Still local-only (deferred to Push 5 or later) -------------------
-        // Bowsers + refills have cascade to bowsers.current_stock_liters that
-        // needs careful handling. Driver assignment touches vehicles + profiles
-        // both ways. Tire update lives in WorkshopContext (already wired).
-        handleAddBowser: (bowser: any) => dispatch({ type: 'ADD_BOWSER', payload: bowser }),
-        handleAddBowserRefill: (refill: any) => dispatch({ type: 'ADD_BOWSER_REFILL', payload: refill }),
-        handleUpdateBowserRefill: (id: string, updates: any) => dispatch({ type: 'UPDATE_BOWSER_REFILL', payload: { id, updates } }),
-        handleDeleteBowserRefill: (id: string) => dispatch({ type: 'DELETE_BOWSER_REFILL', payload: id }),
+        // Bowsers + refills: persist to Supabase, then mirror the stock cascade
+        // (bowsers.current_stock_liters) both in the DB and local state.
+        handleAddBowser: async (bowser: any): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const { data, error } = await runWrite(() => supabase.from('bowsers').insert(toBowserInsert(bowser)).select().single());
+                if (error || !data) { console.error('[fleet] addBowser failed:', error); return { ok: false, error: error?.message || 'Could not save the bowser.' }; }
+                dispatch({ type: 'ADD_BOWSER', payload: mapBowser(data) });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleAddBowserRefill: async (refill: any): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const finalCostPerLiter = (refill.costPerLiter || 0) * (1 - ((refill.rebatePercentage || 0) / 100));
+                const { data, error } = await runWrite(() => supabase.from('bowser_refills').insert(toBowserRefillInsert({ ...refill, finalCostPerLiter })).select().single());
+                if (error || !data) { console.error('[fleet] addBowserRefill failed:', error); return { ok: false, error: error?.message || 'Could not save the refill.' }; }
+                const bowser = (stateRef.current.bowsers || []).find((b: any) => b.id === refill.bowserId);
+                if (bowser) {
+                    const { error: bErr } = await supabase.from('bowsers').update({ current_stock_liters: bowser.currentStock + refill.liters }).eq('id', refill.bowserId);
+                    if (bErr) console.error('[fleet] bowser stock cascade (add) failed:', bErr);
+                }
+                dispatch({ type: 'ADD_BOWSER_REFILL', payload: mapBowserRefill(data) });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleUpdateBowserRefill: async (id: string, updates: any): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const old = (stateRef.current.bowserRefills || []).find((r: any) => r.id === id);
+                if (!old) return { ok: false, error: 'Refill not found.' };
+                const newCost = updates.costPerLiter ?? old.costPerLiter;
+                const newRebate = updates.rebatePercentage ?? old.rebatePercentage ?? 0;
+                const finalCostPerLiter = newCost * (1 - newRebate / 100);
+                const updRow: any = { final_cost_per_liter: finalCostPerLiter };
+                if (updates.liters !== undefined) updRow.liters = updates.liters;
+                if (updates.costPerLiter !== undefined) updRow.cost_per_liter = updates.costPerLiter;
+                if (updates.rebatePercentage !== undefined) updRow.rebate_percentage = updates.rebatePercentage;
+                if (updates.supplier !== undefined) updRow.supplier = updates.supplier;
+                if (updates.date !== undefined) updRow.date = updates.date;
+                if (updates.referenceNumber !== undefined) updRow.reference_number = updates.referenceNumber;
+                const { error } = await runWrite(() => supabase.from('bowser_refills').update(updRow).eq('id', id).select().single());
+                if (error) { console.error('[fleet] updateBowserRefill failed:', error); return { ok: false, error: error.message }; }
+                const litersDiff = (updates.liters !== undefined ? updates.liters : old.liters) - old.liters;
+                if (litersDiff !== 0) {
+                    const bowser = (stateRef.current.bowsers || []).find((b: any) => b.id === old.bowserId);
+                    if (bowser) await supabase.from('bowsers').update({ current_stock_liters: bowser.currentStock + litersDiff }).eq('id', old.bowserId);
+                }
+                dispatch({ type: 'UPDATE_BOWSER_REFILL', payload: { id, updates: { ...updates, finalCostPerLiter } } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleDeleteBowserRefill: async (id: string): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const refill = (stateRef.current.bowserRefills || []).find((r: any) => r.id === id);
+                const { error } = await runWrite(() => supabase.from('bowser_refills').delete().eq('id', id).select());
+                if (error) { console.error('[fleet] deleteBowserRefill failed:', error); return { ok: false, error: error.message }; }
+                if (refill) {
+                    const bowser = (stateRef.current.bowsers || []).find((b: any) => b.id === refill.bowserId);
+                    if (bowser) await supabase.from('bowsers').update({ current_stock_liters: bowser.currentStock - refill.liters }).eq('id', refill.bowserId);
+                }
+                dispatch({ type: 'DELETE_BOWSER_REFILL', payload: id });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Driver assignment stays local-only by request (the column is a profile-id
+        // FK; the lightweight name model is a separate future change).
         handleAssignDriverToVehicle: (vehicleId: string, driverId: string | null) => dispatch({ type: 'ASSIGN_DRIVER_TO_VEHICLE', payload: { vehicleId, driverId } }),
-        handleUpdateTire: (tire: Tire) => dispatch({ type: 'UPDATE_TIRE', payload: tire }),
+        handleUpdateTire: async (tire: Tire): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('tires').update(toTireUpdate(tire)).eq('id', tire.id).select().single());
+                if (error) { console.error('[fleet] updateTire failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_TIRE', payload: tire });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
     }), [dispatch, branchIdByName, branchById]);
 
     const value = useMemo(() => ({

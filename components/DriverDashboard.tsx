@@ -13,8 +13,8 @@ type DriverView = 'dashboard' | 'checklist' | 'incident';
 const DriverDashboard: React.FC = () => {
     const { currentUser, handleLogout } = useAuth();
     const { vehicles = [] } = useVehicles();
-    const { loadConfirmations = [], handleUpdateLoadConfirmation } = useOperations();
-    const { checklistTemplates = [], handleAddChecklistSubmission } = useWorkshop();
+    const { loadConfirmations = [], handleUpdateLoadConfirmation, handleAddChecklistSubmission } = useOperations();
+    const { checklistTemplates = [] } = useWorkshop();
     const [view, setView] = useState<DriverView>('dashboard');
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
     const [jobToUpdate, setJobToUpdate] = useState<any>(null);
@@ -57,10 +57,11 @@ const DriverDashboard: React.FC = () => {
                     vehicle={selectedVehicle}
                     currentUser={currentUser}
                     templates={checklistTemplates || []}
-                    onSubmit={(data) => { 
-                        handleAddChecklistSubmission(data);
-                        alert('Checklist Submitted!'); 
-                        handleBackToDashboard(); 
+                    onSubmit={async (data) => {
+                        const res = await handleAddChecklistSubmission(data, currentUser);
+                        if (res && res.ok === false) { alert(`Could not submit checklist: ${res.error || 'unknown error'}`); return; }
+                        alert('Checklist Submitted!');
+                        handleBackToDashboard();
                     }}
                     onCancel={handleBackToDashboard}
                     isStandalonePage

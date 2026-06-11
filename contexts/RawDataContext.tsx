@@ -308,8 +308,10 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_JOB_CARD': return { ...state, jobCards: (state.jobCards || []).map(j => j.id === action.payload.id ? { ...j, ...action.payload.updates } : j) };
         case 'UPDATE_JOB_CARD_STATUS': return { ...state, jobCards: (state.jobCards || []).map(j => j.id === action.payload.id ? { ...j, status: action.payload.status } : j) };
         case 'ADD_CHECKLIST_SUBMISSION': {
-            const { vehicleId, currentUser, odometer, hours } = action.payload;
-            const newSubmission: ChecklistSubmission = {
+            const { vehicleId, currentUser, odometer, hours, persisted } = action.payload;
+            // `persisted` is the Supabase-saved row (preferred). Fall back to a
+            // locally-built submission only if a caller hasn't persisted yet.
+            const newSubmission: ChecklistSubmission = persisted ?? {
                 id: generateId(),
                 vehicleId: vehicleId,
                 userId: currentUser.email,

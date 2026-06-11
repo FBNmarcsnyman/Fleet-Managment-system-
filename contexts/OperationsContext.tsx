@@ -3,11 +3,12 @@ import React, { createContext, useContext, useMemo, useRef, ReactNode } from 're
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, runWrite } from '../lib/supabase';
 import {
     toClientInsert, toSupplierInsert, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
+    toChecklistSubmissionInsert, mapChecklistSubmission,
 } from '../lib/mappers';
 
 export const OperationsContext = createContext<any>(undefined);
@@ -214,15 +215,52 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             }
         },
 
+        // Persists the inspection to Supabase, then updates local state with the
+        // saved row. Never reports success unless the write actually landed.
+        handleAddChecklistSubmission: async (submission: any, currentUser: User): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                if (!currentUser) return { ok: false, error: 'No signed-in user — cannot record who did the inspection.' };
+                const odometer = submission.odometer ?? 0;
+                const insertRow = toChecklistSubmissionInsert({
+                    templateId: submission.templateId,
+                    templateName: submission.templateName,
+                    vehicleId: submission.vehicleId,
+                    userId: currentUser.email,
+                    userName: currentUser.name,
+                    odometer,
+                    hours: submission.hours,
+                    results: submission.allResults ?? submission.results ?? [],
+                });
+                const { data, error } = await runWrite(() =>
+                    supabase.from('checklist_submissions').insert(insertRow).select().single());
+                if (error || !data) {
+                    console.error('[ops] addChecklistSubmission failed:', error);
+                    return { ok: false, error: error?.message || 'The checklist could not be saved.' };
+                }
+                // Best-effort: keep the vehicle's odometer/hours current.
+                const cur = stateRef.current;
+                const vehicle = (cur.vehicles || []).find((v: any) => v.id === submission.vehicleId);
+                const vUpdates: any = {};
+                if (vehicle && (!vehicle.currentOdometer || odometer > vehicle.currentOdometer)) vUpdates.current_odometer = odometer;
+                if (vehicle && submission.hours && (!vehicle.currentHours || submission.hours > vehicle.currentHours)) vUpdates.current_hours = submission.hours;
+                if (Object.keys(vUpdates).length > 0) {
+                    const { error: vErr } = await supabase.from('vehicles').update(vUpdates).eq('id', submission.vehicleId);
+                    if (vErr) console.error('[ops] checklist vehicle odo/hours bump failed:', vErr);
+                }
+                dispatch({ type: 'ADD_CHECKLIST_SUBMISSION', payload: { persisted: mapChecklistSubmission(data), vehicleId: submission.vehicleId, currentUser, odometer, hours: submission.hours } });
+                return { ok: true };
+            } catch (err) {
+                console.error('[ops] addChecklistSubmission threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+
         // -- Deferred to later push (still local-only) ------------------------
-        // Manifests, trip sheets, supplier applications, and the checklist
-        // submission cascade are not yet wired to Supabase. They mutate local
-        // state only via the reducer, so any UI flows touching them won't
-        // persist across reloads yet.
+        // Manifests, trip sheets, and supplier applications are not yet wired to
+        // Supabase. They mutate local state only via the reducer.
         handleCreateManifest: (payload: any) => dispatch({ type: 'CREATE_MANIFEST', payload }),
         handleCreateTripSheet: (payload: any) => dispatch({ type: 'CREATE_TRIP_SHEET', payload }),
         handleAddSupplierApplication: (data: any) => dispatch({ type: 'ADD_SUPPLIER_APPLICATION', payload: data }),
-        handleAddChecklistSubmission: (submission: any, currentUser: User) => dispatch({ type: 'ADD_CHECKLIST_SUBMISSION', payload: { ...submission, currentUser } }),
     }), [dispatch, branchIdByName, branchById]);
 
     const value = useMemo(() => ({ ...state, ...derived, ...handlers, users }), [state, derived, handlers, users]);

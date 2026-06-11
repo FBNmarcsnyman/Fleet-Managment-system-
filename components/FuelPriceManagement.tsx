@@ -4,14 +4,15 @@ import { FuelPriceRecord } from '../types';
 
 interface FuelPriceManagementProps {
     prices: FuelPriceRecord[];
-    onSetPrice: (price: Omit<FuelPriceRecord, 'id'>) => void;
+    onSetPrice: (price: Omit<FuelPriceRecord, 'id'>) => void | Promise<{ ok: boolean; error?: string }>;
 }
 
 const FuelPriceManagement: React.FC<FuelPriceManagementProps> = ({ prices, onSetPrice }) => {
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [pricePerLiter, setPricePerLiter] = useState('');
+    const [saving, setSaving] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!startDate || !pricePerLiter) {
             alert('Please select a date and enter a price.');
@@ -22,7 +23,13 @@ const FuelPriceManagement: React.FC<FuelPriceManagementProps> = ({ prices, onSet
             alert('Please enter a valid, positive price.');
             return;
         }
-        onSetPrice({ startDate, pricePerLiter: price });
+        setSaving(true);
+        const result = await onSetPrice({ startDate, pricePerLiter: price });
+        setSaving(false);
+        if (result && result.ok === false) {
+            alert(`Could not save the fuel price: ${result.error || 'unknown error'}`);
+            return;
+        }
         setPricePerLiter('');
     };
 
@@ -55,8 +62,8 @@ const FuelPriceManagement: React.FC<FuelPriceManagementProps> = ({ prices, onSet
                             />
                         </div>
                         <div className="pt-2">
-                             <button type="submit" className="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                                Set Price
+                             <button type="submit" disabled={saving} className="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-60">
+                                {saving ? 'Saving…' : 'Set Price'}
                             </button>
                         </div>
                     </form>

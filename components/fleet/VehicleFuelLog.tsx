@@ -81,7 +81,7 @@ const VehicleFuelLog: React.FC<Props> = ({ vehicle, fuelEntries }) => {
         const err = validate(draft);
         if (err) { alert(err); return; }
         setBusy(true);
-        await handleUpdateFuelEntry({
+        const res = await handleUpdateFuelEntry({
             id,
             vehicleId: vehicle.id,
             date: draft.date,
@@ -90,6 +90,7 @@ const VehicleFuelLog: React.FC<Props> = ({ vehicle, fuelEntries }) => {
             tripDistance: draft.tripDistance ? Number(draft.tripDistance) : undefined,
         });
         setBusy(false);
+        if (res && res.ok === false) { alert(`Could not save the change: ${res.error || 'unknown error'}`); return; }
         cancel();
     };
 
@@ -97,21 +98,23 @@ const VehicleFuelLog: React.FC<Props> = ({ vehicle, fuelEntries }) => {
         const err = validate(draft);
         if (err) { alert(err); return; }
         setBusy(true);
-        await handleAddFuelEntry(vehicle.id, {
+        const res = await handleAddFuelEntry(vehicle.id, {
             date: draft.date,
             odometer: Number(draft.odometer),
             liters: Number(draft.liters),
             tripDistance: draft.tripDistance ? Number(draft.tripDistance) : undefined,
         });
         setBusy(false);
+        if (res && res.ok === false) { alert(`Could not save the fuel entry: ${res.error || 'unknown error'}`); return; }
         cancel();
     };
 
     const remove = async (e: FuelEntry) => {
         if (!window.confirm(`Delete the fuel entry on ${(e.date || '').split('T')[0]} (${e.liters} L @ ${e.odometer.toLocaleString()} km)?`)) return;
         setBusy(true);
-        await handleDeleteFuelEntry(e.id);
+        const res = await handleDeleteFuelEntry(e.id);
         setBusy(false);
+        if (res && res.ok === false) { alert(`Could not delete the entry: ${res.error || 'unknown error'}`); }
     };
 
     const inputCls = 'w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:outline-none focus:ring-1 focus:ring-brand-secondary text-sm';

@@ -1,0 +1,30 @@
+{
+  "note": "Backup of vehicle registrations before stripping the historic (ND...) plate on 2026-06-10. 'old' is the original value in vehicles.registration; 'new' is the cleaned value. To restore, set registration = old for the matching id.",
+  "vehicles": [
+    {"id":"14d36d6f-3d05-40f7-86bb-5264fec7f036","old":"BN99CVZN (ND680598)","new":"BN99CVZN"},
+    {"id":"5e7fcb25-75cf-4499-9284-b5490ec16569","old":"DB45HTZN (ND460266)","new":"DB45HTZN"},
+    {"id":"62b4180a-5b2f-41c4-9232-9e4914ac8730","old":"DD12LTZN (ND891915)","new":"DD12LTZN"},
+    {"id":"3f2c502e-0f3e-43c3-a7c7-6a88b14f0e1d","old":"DD12MHZN (ND363005)","new":"DD12MHZN"},
+    {"id":"2db481e2-17a1-4402-88bb-dfa6c1a85c2b","old":"DD12NRZN (ND744020)","new":"DD12NRZN"},
+    {"id":"f80c22e0-83f5-4e27-b096-314200694799","old":"CH09DXZN (ND661014)","new":"CH09DXZN"},
+    {"id":"e4c2fd44-4b59-4799-a33e-ca35ef946742","old":"BM40FLZN (ND639503)","new":"BM40FLZN"},
+    {"id":"98f2c299-0b50-4848-98f9-4e140d4153e2","old":"CR26RBZN (ND639506)","new":"CR26RBZN"},
+    {"id":"1ec2c8e1-5dd2-45d2-9fc1-eae62a746e65","old":"BS43BHZN (ND165673)","new":"BS43BHZN"},
+    {"id":"27705d48-1062-4380-8225-b5e813b356ce","old":"CB99DJZN (ND724606)","new":"CB99DJZN"},
+    {"id":"56b17cb6-6e93-404a-8cdf-7b508cfb2d71","old":"CH09CRZN (ND424972)","new":"CH09CRZN"},
+    {"id":"19053aa9-3053-45e8-bae7-97ed2780a032","old":"BN98ZNZN (ND46871)","new":"BN98ZNZN"},
+    {"id":"9400720f-c0fa-4ee7-8c0f-76bc9e9dff25","old":"CN75KRZN (ND749349)","new":"CN75KRZN"},
+    {"id":"1d0692c4-20c0-4c65-a266-2af55438c208","old":"BN99CDZN (ND834669)","new":"BN99CDZN"},
+    {"id":"25e3ccbe-3afd-424c-a07f-13e51d4e8aa7","old":"BN98YZZN (ND910029)","new":"BN98YZZN"},
+    {"id":"e8959d26-d9ae-448d-b799-c6536ee8e57b","old":"CJ74MPZN (ND158419)","new":"CJ74MPZN"},
+    {"id":"f75cf91a-100e-420b-bddd-46108cd48262","old":"CH09GJZN (ND485250)","new":"CH09GJZN"},
+    {"id":"78c43cb1-915e-4d0a-bc40-7d4ffb1eb55e","old":"DD12NNZN (ND821434)","new":"DD12NNZN"},
+    {"id":"ebb54120-2459-4146-8b6f-fba6cfafc732","old":"BM40FJZN (ND471559)","new":"BM40FJZN"},
+    {"id":"6bae9436-24e3-469b-b29d-04ce8d161adf","old":"CR26PVZN (ND649940)","new":"CR26PVZN"},
+    {"id":"6061d550-40fd-47ef-9a4f-137c44558188","old":"BN98ZZZN (ND478395)","new":"BN98ZZZN"},
+    {"id":"c8a693c7-c5ab-452d-94d0-39dc667a7383","old":"CJ74NJZN (ND799798)","new":"CJ74NJZN"},
+    {"id":"4bfb10a9-c80a-4646-ab6c-11d31314719e","old":"BN99BPZN (ND462028)","new":"BN99BPZN"},
+    {"id":"789d76f0-9d76-4c97-baf5-c029e5330e14","old":"FBN ZN (ND380105)","new":"FBN ZN"},
+    {"id":"cc7edf11-d973-46e5-8b64-f6c57a335b90","old":"CJ74HJZN (ND520346)","new":"CJ74HJZN"}
+  ]
+}

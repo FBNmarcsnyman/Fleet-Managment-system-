@@ -5,7 +5,7 @@ import { CommonDataContext } from './CommonDataContext';
 import { Vehicle, FuelEntry, JobCard, CalculatedFuelEntry, VehiclePerformanceStats, Tire, ServiceStatus, Branch } from '../types';
 import { useServiceStatus } from '../hooks/useServiceStatus';
 import { addMonths, format } from 'date-fns';
-import { supabase } from '../lib/supabase';
+import { supabase, runWrite } from '../lib/supabase';
 import {
     mapVehicle, mapFuelEntry, mapServiceEntry, mapOtherCost, mapRecurringCost,
     mapRevenueEntry, mapServiceInterval, mapFuelPrice,
@@ -284,29 +284,17 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         handleAddFuelEntry: async (vehicleId: string, entry: Omit<FuelEntry, 'id' | 'vehicleId'>) => {
             try {
                 const insertRow = toFuelEntryInsert({ vehicleId, ...entry });
-                const { data: inserted, error: insertErr } = await supabase
-                    .from('fuel_entries').insert(insertRow).select().single();
-                if (insertErr) {
-                    console.warn('[fleet] addFuelEntry Supabase error, using local fallback:', insertErr);
-                    // Fallback to local state
-                    const localEntry: FuelEntry = {
-                        id: `import-${Date.now()}`,
-                        vehicleId,
-                        date: entry.date,
-                        odometer: entry.odometer,
-                        liters: entry.liters,
-                        tripDistance: entry.tripDistance,
-                        sourceBowserId: entry.sourceBowserId,
-                    };
-                    const cur = stateRef.current;
-                    const vehicle = (cur.vehicles || []).find(v => v.id === vehicleId);
-                    if (vehicle && (!vehicle.currentOdometer || entry.odometer > vehicle.currentOdometer)) {
-                        // Note: can't update Supabase, but local state will update via dispatch
-                    }
-                    dispatch({ type: 'ADD_FUEL_ENTRY', payload: { entry: localEntry } });
-                    return { ok: true };
+                // Refreshes the session and retries once if the first write is
+                // rejected because the login token went stale.
+                const { data: inserted, error: insertErr } = await runWrite(() =>
+                    supabase.from('fuel_entries').insert(insertRow).select().single());
+                if (insertErr || !inserted) {
+                    // Surface the real failure — never pretend a save succeeded.
+                    console.error('[fleet] addFuelEntry failed:', insertErr);
+                    return { ok: false, error: insertErr?.message || 'The fuel entry could not be saved. Please try again.' };
                 }
 
+                // Best-effort cascades (don't fail the save if these don't stick).
                 const cur = stateRef.current;
                 const vehicle = (cur.vehicles || []).find(v => v.id === vehicleId);
                 if (vehicle && (!vehicle.currentOdometer || entry.odometer > vehicle.currentOdometer)) {
@@ -328,34 +316,22 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 return { ok: true };
             } catch (err) {
                 console.error('[fleet] addFuelEntry threw:', err);
-                // Fallback to local state on exception
-                try {
-                    const localEntry: FuelEntry = {
-                        id: `import-${Date.now()}`,
-                        vehicleId,
-                        date: entry.date,
-                        odometer: entry.odometer,
-                        liters: entry.liters,
-                        tripDistance: entry.tripDistance,
-                        sourceBowserId: entry.sourceBowserId,
-                    };
-                    dispatch({ type: 'ADD_FUEL_ENTRY', payload: { entry: localEntry } });
-                    return { ok: true };
-                } catch (dispatchErr) {
-                    return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
-                }
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
 
         handleUpdateFuelEntry: async (entry: FuelEntry): Promise<{ ok: boolean; error?: string }> => {
             try {
-                const { error } = await supabase.from('fuel_entries').update({
+                const { error } = await runWrite(() => supabase.from('fuel_entries').update({
                     date: entry.date,
                     odometer: entry.odometer,
                     liters: entry.liters,
                     trip_distance_km: entry.tripDistance ?? null,
-                }).eq('id', entry.id);
-                if (error) console.warn('[fleet] updateFuelEntry Supabase error (updating local anyway):', error);
+                }).eq('id', entry.id).select().single());
+                if (error) {
+                    console.error('[fleet] updateFuelEntry failed:', error);
+                    return { ok: false, error: error.message || 'The change could not be saved.' };
+                }
                 dispatch({ type: 'UPDATE_FUEL_ENTRY', payload: { entry } });
                 return { ok: true };
             } catch (err) {
@@ -366,8 +342,11 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
 
         handleDeleteFuelEntry: async (id: string): Promise<{ ok: boolean; error?: string }> => {
             try {
-                const { error } = await supabase.from('fuel_entries').delete().eq('id', id);
-                if (error) console.warn('[fleet] deleteFuelEntry Supabase error (removing local anyway):', error);
+                const { error } = await runWrite(() => supabase.from('fuel_entries').delete().eq('id', id).select());
+                if (error) {
+                    console.error('[fleet] deleteFuelEntry failed:', error);
+                    return { ok: false, error: error.message || 'The entry could not be deleted.' };
+                }
                 dispatch({ type: 'DELETE_FUEL_ENTRY', payload: { id } });
                 return { ok: true };
             } catch (err) {
@@ -497,8 +476,8 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         handleSetFuelPrice: async (price: Omit<FuelPriceRecord, 'id'>) => {
             try {
                 const row = toFuelPriceInsert(price);
-                const { data, error } = await supabase.from('fuel_prices').insert(row).select().single();
-                if (error) { console.error('[fleet] setFuelPrice failed:', error); return { ok: false, error: error.message }; }
+                const { data, error } = await runWrite(() => supabase.from('fuel_prices').insert(row).select().single());
+                if (error || !data) { console.error('[fleet] setFuelPrice failed:', error); return { ok: false, error: error?.message || 'The fuel price could not be saved.' }; }
                 dispatch({ type: 'SET_FUEL_PRICE', payload: mapFuelPrice(data) });
                 return { ok: true };
             } catch (err) { console.error('[fleet] setFuelPrice threw:', err); return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }

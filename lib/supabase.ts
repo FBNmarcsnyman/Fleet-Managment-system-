@@ -67,3 +67,43 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     fetch: fetchWithTimeout,
   },
 });
+
+// A write can silently fail when the access token has gone stale (laptop
+// asleep, tab open for hours): the database sees no authenticated user, so
+// row-level security rejects the row. These are the error shapes that mean
+// "your session, not your data" — used to decide whether a one-time session
+// refresh + retry is worth attempting.
+export const isAuthLikeError = (error: any): boolean => {
+  if (!error) return false;
+  const code = String(error.code ?? error.status ?? '');
+  const msg = String(error.message ?? '').toLowerCase();
+  return (
+    code === '401' ||
+    code === '403' ||
+    code === '42501' ||      // postgres: insufficient_privilege (RLS denial)
+    code === 'PGRST301' ||   // postgrest: JWT expired / not authenticated
+    msg.includes('jwt') ||
+    msg.includes('token is expired') ||
+    msg.includes('not authenticated') ||
+    msg.includes('row-level security') ||
+    msg.includes('row level security')
+  );
+};
+
+// Runs a Supabase write; if it fails with an auth/session error, refreshes the
+// session once and retries. Accepts the Supabase query builder (a thenable),
+// so `op` is typed as PromiseLike rather than a strict Promise.
+export const runWrite = async (
+  op: () => PromiseLike<{ data: any; error: any }>,
+): Promise<{ data: any; error: any }> => {
+  let res = await op();
+  if (res.error && isAuthLikeError(res.error)) {
+    try {
+      await supabase.auth.refreshSession();
+    } catch (e) {
+      console.warn('[supabase] session refresh failed during write retry:', e);
+    }
+    res = await op();
+  }
+  return res;
+};

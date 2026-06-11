@@ -67,7 +67,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
                         </div>
                         <div>
                             <h3 className="text-lg font-black text-white leading-tight">{vehicle.name}</h3>
-                            <p className="text-gray-500 text-xs font-mono tracking-tighter mt-0.5"><span className="font-bold text-white">{formatRegistration(vehicle.registration)}</span></p>
+                            <p className="mt-1"><span className="inline-block font-mono font-bold text-sm text-white tracking-wide bg-gray-700/60 px-2 py-0.5 rounded">{formatRegistration(vehicle.registration)}</span></p>
                         </div>
                     </div>
                     {/* Health Score Badge */}

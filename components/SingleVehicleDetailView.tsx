@@ -11,6 +11,7 @@ import CostBreakdownChart from './charts/CostBreakdownChart';
 import VehicleCostTrendChart from './charts/VehicleCostTrendChart';
 import VehicleFuelPerformance from './fleet/VehicleFuelPerformance';
 import VehicleFuelLog from './fleet/VehicleFuelLog';
+import { formatRegistration } from '../lib/vehicleRegistration';
 import VehicleChat from './VehicleChat';
 // Fix: Import the AIInsights component which was being used in the 'ai' tab but was missing an import
 import AIInsights from './AIInsights';
@@ -111,11 +112,18 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
         return { totalCost, totalRevenue, netProfit };
     }, [vehicleData]);
 
-    const openModal = (type: string, handler: (...args: any[]) => void) => {
+    const openModal = (type: string, handler: (...args: any[]) => any) => {
         showModal(type, {
-            onSubmit: (data: any) => { handler(vehicle.id, data); hideModal(); },
+            onSubmit: async (data: any) => {
+                const result = await handler(vehicle.id, data);
+                if (result && result.ok === false) {
+                    alert(`Could not save: ${result.error || 'unknown error'}`);
+                    return; // keep the form open so the entry isn't lost
+                }
+                hideModal();
+            },
             onCancel: hideModal,
-            vehicleId: vehicle.id, 
+            vehicleId: vehicle.id,
         });
     };
     
@@ -139,7 +147,10 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
                 <div className="flex justify-between items-start mb-6">
                     <div>
-                        <h2 className="text-3xl font-black text-white">{vehicle.name} <span className="text-lg font-normal text-gray-500">({vehicle.registration})</span></h2>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <h2 className="text-3xl font-black text-white">{vehicle.name}</h2>
+                            <span className="font-mono font-bold text-lg text-white tracking-wide bg-gray-700/70 px-3 py-1 rounded-md border border-gray-600">{formatRegistration(vehicle.registration)}</span>
+                        </div>
                         <div className="flex gap-2 mt-2">
                              <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 bg-blue-900/20 px-2 py-1 rounded border border-blue-500/10">
                                 {vehicle.branch}

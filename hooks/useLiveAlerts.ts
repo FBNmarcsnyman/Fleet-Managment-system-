@@ -10,7 +10,7 @@ import { Notification, ViewType } from '../types';
  * automatically once the underlying issue is resolved.
  */
 export const useLiveAlerts = (): Notification[] => {
-    const { vehicles = [], jobCards = [], serviceStatuses = [], users = [], vehicleComplianceDocs = [] } = useVehicles() as any;
+    const { vehicles = [], jobCards = [], serviceStatuses, users = [], vehicleComplianceDocs = [] } = useVehicles() as any;
 
     return useMemo(() => {
         const alerts: Notification[] = [];
@@ -25,8 +25,17 @@ export const useLiveAlerts = (): Notification[] => {
         (jobCards || []).filter((j: any) => (j.severity === 'Critical' || j.priority === 'Critical') && j.status !== 'Resolved')
             .forEach((j: any) => add(`jc-${j.id}`, 'JOB_CARD', `Critical job open: ${j.itemDescription}`, 'workshop'));
 
-        (serviceStatuses || []).filter((s: any) => s.status === 'Overdue')
-            .forEach((s: any, i: number) => add(`svc-${s.vehicleId || ''}-${s.description || i}`, 'SERVICE', `Service overdue: ${s.description}`, 'workshop'));
+        // serviceStatuses is a Map<vehicleId, ServiceStatus[]> — flatten it.
+        const vName = new Map((vehicles || []).map((v: any) => [v.id, v.name]));
+        if (serviceStatuses && typeof serviceStatuses.forEach === 'function') {
+            serviceStatuses.forEach((list: any[], vehicleId: string) => {
+                (list || []).forEach((s: any, i: number) => {
+                    if (s.status === 'Overdue') {
+                        add(`svc-${vehicleId}-${s.description || i}`, 'SERVICE', `${vName.get(vehicleId) || 'Vehicle'}: ${s.description} service overdue`, 'workshop');
+                    }
+                });
+            });
+        }
 
         const flagDoc = (id: string, label: string, date: string, view: ViewType) => {
             const days = differenceInDays(new Date(date), today);

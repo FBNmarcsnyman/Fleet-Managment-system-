@@ -24,7 +24,8 @@ import DriverDashboard from './components/DriverDashboard';
 import ClientPortal from './components/ClientPortal';
 import SupplierPortal from './components/SupplierPortal';
 
-import Header from './components/shared/Header';
+import Sidebar from './components/shared/Sidebar';
+import Topbar from './components/shared/Topbar';
 import LiveAssistant from './components/LiveAssistant';
 import Modal from './components/Modal';
 import Toast from './components/Toast';
@@ -265,11 +266,14 @@ const App: React.FC = () => {
     };
 
     return (
-        <div className="bg-gray-900 min-h-screen">
-            <Header />
-            <main className="w-full max-w-8xl mx-auto px-4 md:px-6 lg:px-8 py-8">
-                {renderView()}
-            </main>
+        <div className="bg-gray-900 min-h-screen flex">
+            <Sidebar />
+            <div className="flex-1 flex flex-col min-w-0">
+                <Topbar />
+                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-8">
+                    {renderView()}
+                </main>
+            </div>
             <LiveAssistant isOpen={isLiveAssistantOpen} onClose={() => setIsLiveAssistantOpen(false)} />
             <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 text-white">Loading Modal...</div>}>
                 <Modal 

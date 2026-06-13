@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { NOTIFICATION_TRIGGERS } from '../constants';
 import { useAuth } from '../contexts/AppContexts';
-import { ALL_NAV_ITEMS } from './shared/Header';
+import { ALL_NAV_ITEMS } from './shared/navConfig';
 import { ArrowUpIcon } from './icons/ArrowUpIcon';
 import { ArrowDownIcon } from './icons/ArrowDownIcon';
 import { EyeIcon } from './icons/EyeIcon';

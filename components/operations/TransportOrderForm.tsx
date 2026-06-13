@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Client, Branch } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
 
 interface TransportOrderFormProps {
     onSubmit: (data: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'>) => Promise<any> | void;
@@ -112,17 +113,42 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
     const toggleEquipment = (e: string) =>
         setEquipmentRequired(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e]);
 
+    // Most-frequent value for a field across this client's past loadcons.
+    const modeForClient = (name: string, key: string): string => {
+        const past = (loadConfirmations as any[]).filter(l => (l.clientName || '').toLowerCase() === name.toLowerCase());
+        const counts = new Map<string, number>();
+        past.forEach(l => { const v = (l[key] || '').toString().trim(); if (v) counts.set(v, (counts.get(v) || 0) + 1); });
+        let best = '', n = 0;
+        counts.forEach((c, v) => { if (c > n) { n = c; best = v; } });
+        return best;
+    };
+
     const onClientNameChange = (name: string) => {
         setClientName(name);
         const c = (clients as any[]).find(c => (c.name || '').toLowerCase() === name.toLowerCase());
         setExistingClientId(c ? c.id : '');
-        if (c?.email && !clientEmail) setClientEmail(c.email);
+        if ((c?.contactEmail || c?.email)) setClientEmail(c.contactEmail || c.email);
+        // Prefill the rest with this client's most-used details (only empty fields).
+        const fill = (cur: string, setter: (v: string) => void, key: string) => { if (!cur) { const v = modeForClient(name, key); if (v) setter(v); } };
+        fill(collectionPoint, setCollectionPoint, 'collectionPoint');
+        fill(deliveryPoint, setDeliveryPoint, 'deliveryPoint');
+        fill(collectionContact, setCollectionContact, 'collectionContact');
+        fill(collectionTelephone, setCollectionTelephone, 'collectionTelephone');
+        fill(deliveryContact, setDeliveryContact, 'deliveryContact');
+        fill(deliveryTelephone, setDeliveryTelephone, 'deliveryTelephone');
+        fill(route, setRoute, 'route');
+        fill(commodity, setCommodity, 'commodity');
+        fill(packaging, setPackaging, 'packaging');
+        fill(loadType, setLoadType, 'loadType');
     };
 
     const onSubbieNameChange = (name: string) => {
         setSubcontractorName(name);
         const s = (suppliers as any[]).find(s => (s.name || '').toLowerCase() === name.toLowerCase());
-        if (s?.email && !subcontractorEmail) setSubcontractorEmail(s.email);
+        if (s) {
+            if (s.contactEmail && !subcontractorEmail) setSubcontractorEmail(s.contactEmail);
+            if (s.contactPerson && !forAttention) setForAttention(s.contactPerson);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -239,7 +265,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                     <Section title="Collection">
                         <div className="space-y-3">
                             <div><label className={labelCls}>Collection Address *</label>
-                                <input value={collectionPoint} onChange={e => setCollectionPoint(e.target.value)} className={inputCls} required /></div>
+                                <AddressAutocompleteInput value={collectionPoint} onChange={setCollectionPoint} placeholder="Search Google Maps address…" required className={inputCls} /></div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div><label className={labelCls}>Contact</label><input value={collectionContact} onChange={e => setCollectionContact(e.target.value)} className={inputCls} /></div>
                                 <div><label className={labelCls}>Telephone</label><input value={collectionTelephone} onChange={e => setCollectionTelephone(e.target.value)} className={inputCls} /></div>
@@ -251,7 +277,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                     <Section title="Delivery">
                         <div className="space-y-3">
                             <div><label className={labelCls}>Delivery Address *</label>
-                                <input value={deliveryPoint} onChange={e => setDeliveryPoint(e.target.value)} className={inputCls} required /></div>
+                                <AddressAutocompleteInput value={deliveryPoint} onChange={setDeliveryPoint} placeholder="Search Google Maps address…" required className={inputCls} /></div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div><label className={labelCls}>Contact</label><input value={deliveryContact} onChange={e => setDeliveryContact(e.target.value)} className={inputCls} /></div>
                                 <div><label className={labelCls}>Telephone</label><input value={deliveryTelephone} onChange={e => setDeliveryTelephone(e.target.value)} className={inputCls} /></div>

@@ -202,6 +202,18 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         else if (supRow) dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) });
                     }
                 }
+
+                // Remember the client in the client database too (create only if new).
+                const cName = (data.clientName || '').trim();
+                if (cName && !data.clientId) {
+                    const cExists = (stateRef.current.clients || []).some((c: any) => (c.name || '').toLowerCase() === cName.toLowerCase());
+                    if (!cExists) {
+                        const clientInput: any = { name: cName, contactPerson: '', contactEmail: data.clientEmail || '', contactPhone: '', address: '' };
+                        const { data: cRow, error: cErr } = await supabase.from('clients').insert(toClientInsert(clientInput)).select().single();
+                        if (cErr) console.error('[ops] auto-create client failed:', cErr);
+                        else if (cRow) dispatch({ type: 'ADD_CLIENT', payload: mapClient(cRow) });
+                    }
+                }
                 return { ok: true, value: mapped };
             } catch (err) {
                 console.error('[ops] createLoadConfirmation threw:', err);

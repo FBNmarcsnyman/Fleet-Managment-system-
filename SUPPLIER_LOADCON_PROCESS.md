@@ -41,6 +41,15 @@ One load entry produces **two separate documents/emails**, and **neither party s
 - The capture form collects **everything** (client + client rate **and** subcontractor + transport rate); the two documents each redact the other side. This protects the FBN margin automatically.
 - On creation: email the **LoadCon to the subcontractor** and the **Client Order to the client** (client email captured on the form).
 
+### Third document — Online POD / Delivery Note (sign & return)
+A **rate-free Delivery Note / POD** (matches the supplied FBN Delivery Note template) is generated from the same load data — load ref, collection/delivery addresses + contacts, cust order no, offloading date, quantity, load type, commodity/packaging, weight, volume, special instructions, plus a **receiver signature** block (print name, date, time, company stamp).
+- It carries **no rates**, so it's safe to send to the **driver or subcontractor**.
+- Delivered via the **driver trip link** (Phase C): at offloading the receiver **signs on the phone screen**; the driver can also snap the physical signed copy.
+- On sign: the signed POD is **saved back** to the load (`pod_signature_url` / `pod_photo_url`), status → **POD Submitted**, and it auto-forwards to `pods@fbntransport.co.za` and the client.
+- Reuse existing pieces: `components/PODSignatureModal.tsx`, `components/DriverPODModal.tsx`, and the `pod_signature_url` / `pod_photo_url` fields.
+
+So **one load entry → three documents**: LoadCon (subbie, transport rate), Client Order (client, client rate), Delivery Note/POD (rate-free, signed by receiver and returned).
+
 ## The journey — your steps mapped to the system
 
 | # | Your step | System status | Who updates it | What the agent sends | Data captured |

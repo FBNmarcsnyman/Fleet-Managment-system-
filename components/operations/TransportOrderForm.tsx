@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Client, Branch } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 
 interface TransportOrderFormProps {
-    // The portal passes the create handler through the modal payload.
     onSubmit: (data: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'>) => Promise<any> | void;
 }
 
@@ -12,17 +11,48 @@ const ROUTES = ['DBN - JHB', 'JHB - DBN', 'DBN - EL - DBN', 'DBN - PE - DBN', 'D
 const LOAD_TYPES = ['LCL', 'PART LOAD', '6M', '12M', 'TRI AXLE', 'LINK', '6M CONTAINER', '12M CONTAINER'];
 const PACKAGING = ['PALLETS', 'CARTONS', 'CASES', 'COILS', 'DRUMS', 'BAGS', 'BUNDLES', 'LOOSE', 'LENGTHS', 'FULL LOAD', '6M CONTAINER', 'BULK'];
 const EQUIPMENT = ['Straps', 'Corner Plates', 'Tarps', 'Nets', 'Chains', 'Rubber Mats', 'Dunnage', 'Container Locks', 'Labour'];
+// FBN representatives — management can extend this list later from settings.
+const FBN_REPS = ['Vinesh', 'Saiesh', 'Lawrence', 'Craig', 'Lourenzo', 'Ramon', 'Shoes', 'Jared', 'Marc', 'Len'];
 
 const arrangingToBranch = (a: string): Branch =>
     a === 'FBNJHB' ? 'FBN JHB' : a === 'FBN CPT' ? 'FBN CPT' : 'FBN DBN';
 
+// Merge a base list (table) with names actually used on past loadcons, ranked
+// most-used first, so the dropdowns "learn" your real clients/subcontractors.
+const rankNames = (base: (string | undefined)[], used: (string | undefined)[]): string[] => {
+    const count = new Map<string, number>();
+    used.forEach(n => { const v = (n || '').trim(); if (v) count.set(v, (count.get(v) || 0) + 1); });
+    const all = new Set<string>([...base.map(b => (b || '').trim()).filter(Boolean), ...count.keys()]);
+    return [...all].sort((a, b) => (count.get(b) || 0) - (count.get(a) || 0) || a.localeCompare(b));
+};
+
+const inputCls = "w-full bg-gray-900/60 text-white p-2.5 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent text-sm transition";
+const labelCls = "block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1";
+
+// Defined at module scope (NOT inside the form) so inputs keep focus while typing.
+const Section: React.FC<{ title: string; accent?: string; children: React.ReactNode }> = ({ title, accent = 'bg-gray-600', children }) => (
+    <div className="bg-gray-800/50 rounded-2xl border border-gray-700/60 p-5">
+        <h3 className="flex items-center text-xs font-black text-gray-300 uppercase tracking-[0.18em] mb-4">
+            <span className={`w-1.5 h-4 rounded-full mr-2.5 ${accent}`} />{title}
+        </h3>
+        {children}
+    </div>
+);
+
 const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => {
     const { hideModal } = useUIState();
-    const { clients = [] } = useOperations() as { clients: Client[] };
+    const { clients = [], suppliers = [], loadConfirmations = [] } = useOperations() as any;
     const { currentUser } = useAuth();
 
     const today = new Date().toISOString().split('T')[0];
     const [saving, setSaving] = useState(false);
+
+    const clientSuggestions = useMemo(
+        () => rankNames((clients as any[]).map(c => c.name), (loadConfirmations as any[]).map(l => l.clientName)),
+        [clients, loadConfirmations]);
+    const subbieSuggestions = useMemo(
+        () => rankNames((suppliers as any[]).map(s => s.name), (loadConfirmations as any[]).map(l => l.subcontractorName)),
+        [suppliers, loadConfirmations]);
 
     // Order
     const [arrangingBranch, setArrangingBranch] = useState(ARRANGING_BRANCHES[0]);
@@ -82,23 +112,18 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
     const toggleEquipment = (e: string) =>
         setEquipmentRequired(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e]);
 
-    const onPickClient = (id: string) => {
-        setExistingClientId(id);
-        const c = clients.find(c => c.id === id);
-        if (c) { setClientName(c.name); }
+    const onClientNameChange = (name: string) => {
+        setClientName(name);
+        const c = (clients as any[]).find(c => (c.name || '').toLowerCase() === name.toLowerCase());
+        setExistingClientId(c ? c.id : '');
+        if (c?.email && !clientEmail) setClientEmail(c.email);
     };
 
-    const input = "w-full bg-gray-900/60 text-white p-2.5 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent text-sm transition";
-    const label = "block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1";
-
-    const Section: React.FC<{ title: string; accent?: string; children: React.ReactNode }> = ({ title, accent = 'bg-gray-600', children }) => (
-        <div className="bg-gray-800/50 rounded-2xl border border-gray-700/60 p-5">
-            <h3 className="flex items-center text-xs font-black text-gray-300 uppercase tracking-[0.18em] mb-4">
-                <span className={`w-1.5 h-4 rounded-full mr-2.5 ${accent}`} />{title}
-            </h3>
-            {children}
-        </div>
-    );
+    const onSubbieNameChange = (name: string) => {
+        setSubcontractorName(name);
+        const s = (suppliers as any[]).find(s => (s.name || '').toLowerCase() === name.toLowerCase());
+        if (s?.email && !subcontractorEmail) setSubcontractorEmail(s.email);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -122,7 +147,6 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             customerOrderNumber: customerOrderNumber || undefined,
             commodity: commodity || undefined,
             packaging: packaging || undefined,
-            // Transport Order fields
             arrangingBranch,
             loadRefNo: loadRefNo || undefined,
             clientName,
@@ -173,20 +197,24 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             <div className="space-y-5 max-h-[74vh] overflow-y-auto pr-3 custom-scrollbar">
                 <Section title="Order Details" accent="bg-brand-secondary">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label className={label}>Arranging Branch</label>
-                            <select value={arrangingBranch} onChange={e => setArrangingBranch(e.target.value)} className={input}>
+                        <div><label className={labelCls}>Arranging Branch</label>
+                            <select value={arrangingBranch} onChange={e => setArrangingBranch(e.target.value)} className={inputCls}>
                                 {ARRANGING_BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                             </select></div>
-                        <div><label className={label}>Load Ref No (FBN DI / Manifest)</label>
-                            <input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={input} placeholder="e.g. DI12345" /></div>
-                        <div><label className={label}>FBN Representative</label>
-                            <input value={fbnRepresentative} onChange={e => setFbnRepresentative(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Route</label>
-                            <select value={route} onChange={e => setRoute(e.target.value)} className={input}>
+                        <div><label className={labelCls}>Load Ref No (FBN DI / Manifest)</label>
+                            <input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={inputCls} placeholder="e.g. DI12345" /></div>
+                        <div><label className={labelCls}>FBN Representative</label>
+                            <select value={fbnRepresentative} onChange={e => setFbnRepresentative(e.target.value)} className={inputCls}>
+                                {!FBN_REPS.includes(fbnRepresentative) && fbnRepresentative && <option value={fbnRepresentative}>{fbnRepresentative}</option>}
+                                <option value="">-- Select --</option>
+                                {FBN_REPS.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select></div>
+                        <div><label className={labelCls}>Route</label>
+                            <select value={route} onChange={e => setRoute(e.target.value)} className={inputCls}>
                                 <option value="">-- Select --</option>{ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
                             </select></div>
-                        <div><label className={label}>Priority</label>
-                            <select value={priority} onChange={e => setPriority(e.target.value as any)} className={input}>
+                        <div><label className={labelCls}>Priority</label>
+                            <select value={priority} onChange={e => setPriority(e.target.value as any)} className={inputCls}>
                                 <option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option>
                             </select></div>
                     </div>
@@ -194,45 +222,41 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
 
                 <Section title="Client  ·  goes on the Client Order only" accent="bg-blue-500">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className={label}>Link existing client (optional)</label>
-                            <select value={existingClientId} onChange={e => onPickClient(e.target.value)} className={input}>
-                                <option value="">-- New / free text --</option>
-                                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select></div>
-                        <div><label className={label}>Client Name *</label>
-                            <input value={clientName} onChange={e => setClientName(e.target.value)} className={input} required /></div>
-                        <div><label className={label}>Client Email</label>
-                            <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={input} placeholder="for the client order" /></div>
-                        <div><label className={label}>Customer Order No</label>
-                            <input value={customerOrderNumber} onChange={e => setCustomerOrderNumber(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Client Rate (excl VAT) *</label>
+                        <div><label className={labelCls}>Client Name *</label>
+                            <input list="clientList" value={clientName} onChange={e => onClientNameChange(e.target.value)} className={inputCls} required placeholder="start typing — picks from your clients" />
+                            <datalist id="clientList">{clientSuggestions.map(n => <option key={n} value={n} />)}</datalist></div>
+                        <div><label className={labelCls}>Client Email</label>
+                            <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inputCls} placeholder="for the client order" /></div>
+                        <div><label className={labelCls}>Customer Order No</label>
+                            <input value={customerOrderNumber} onChange={e => setCustomerOrderNumber(e.target.value)} className={inputCls} /></div>
+                        <div><label className={labelCls}>Client Rate (excl VAT) *</label>
                             <div className="relative"><span className="absolute left-3 top-2.5 text-blue-400 font-mono text-xs">R</span>
-                                <input type="number" step="0.01" value={clientRate} onChange={e => setClientRate(e.target.value)} className={`${input} pl-7`} required /></div></div>
+                                <input type="number" step="0.01" value={clientRate} onChange={e => setClientRate(e.target.value)} className={`${inputCls} pl-7`} required /></div></div>
                     </div>
                 </Section>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                     <Section title="Collection">
                         <div className="space-y-3">
-                            <div><label className={label}>Collection Address *</label>
-                                <input value={collectionPoint} onChange={e => setCollectionPoint(e.target.value)} className={input} required /></div>
+                            <div><label className={labelCls}>Collection Address *</label>
+                                <input value={collectionPoint} onChange={e => setCollectionPoint(e.target.value)} className={inputCls} required /></div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div><label className={label}>Contact</label><input value={collectionContact} onChange={e => setCollectionContact(e.target.value)} className={input} /></div>
-                                <div><label className={label}>Telephone</label><input value={collectionTelephone} onChange={e => setCollectionTelephone(e.target.value)} className={input} /></div>
-                                <div><label className={label}>Loading Date</label><input type="date" value={collectionDate} onChange={e => setCollectionDate(e.target.value)} className={input} /></div>
-                                <div><label className={label}>Loading Time</label><input type="time" value={loadingTime} onChange={e => setLoadingTime(e.target.value)} className={input} /></div>
+                                <div><label className={labelCls}>Contact</label><input value={collectionContact} onChange={e => setCollectionContact(e.target.value)} className={inputCls} /></div>
+                                <div><label className={labelCls}>Telephone</label><input value={collectionTelephone} onChange={e => setCollectionTelephone(e.target.value)} className={inputCls} /></div>
+                                <div><label className={labelCls}>Loading Date</label><input type="date" value={collectionDate} onChange={e => setCollectionDate(e.target.value)} className={inputCls} /></div>
+                                <div><label className={labelCls}>Loading Time</label><input type="time" value={loadingTime} onChange={e => setLoadingTime(e.target.value)} className={inputCls} /></div>
                             </div>
                         </div>
                     </Section>
                     <Section title="Delivery">
                         <div className="space-y-3">
-                            <div><label className={label}>Delivery Address *</label>
-                                <input value={deliveryPoint} onChange={e => setDeliveryPoint(e.target.value)} className={input} required /></div>
+                            <div><label className={labelCls}>Delivery Address *</label>
+                                <input value={deliveryPoint} onChange={e => setDeliveryPoint(e.target.value)} className={inputCls} required /></div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div><label className={label}>Contact</label><input value={deliveryContact} onChange={e => setDeliveryContact(e.target.value)} className={input} /></div>
-                                <div><label className={label}>Telephone</label><input value={deliveryTelephone} onChange={e => setDeliveryTelephone(e.target.value)} className={input} /></div>
-                                <div><label className={label}>Offloading Date</label><input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} className={input} /></div>
-                                <div><label className={label}>Offloading Time</label><input type="time" value={offloadingTime} onChange={e => setOffloadingTime(e.target.value)} className={input} /></div>
+                                <div><label className={labelCls}>Contact</label><input value={deliveryContact} onChange={e => setDeliveryContact(e.target.value)} className={inputCls} /></div>
+                                <div><label className={labelCls}>Telephone</label><input value={deliveryTelephone} onChange={e => setDeliveryTelephone(e.target.value)} className={inputCls} /></div>
+                                <div><label className={labelCls}>Offloading Date</label><input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} className={inputCls} /></div>
+                                <div><label className={labelCls}>Offloading Time</label><input type="time" value={offloadingTime} onChange={e => setOffloadingTime(e.target.value)} className={inputCls} /></div>
                             </div>
                         </div>
                     </Section>
@@ -240,54 +264,56 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
 
                 <Section title="Cargo">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div><label className={label}>Load Type</label>
-                            <select value={loadType} onChange={e => setLoadType(e.target.value)} className={input}><option value="">--</option>{LOAD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                        <div><label className={label}>Quantity</label><input value={quantity} onChange={e => setQuantity(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Commodity</label><input value={commodity} onChange={e => setCommodity(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Packaging</label>
-                            <select value={packaging} onChange={e => setPackaging(e.target.value)} className={input}><option value="">--</option>{PACKAGING.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
-                        <div><label className={label}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Volume / Cubes</label><input value={volume} onChange={e => setVolume(e.target.value)} className={input} /></div>
-                        <div className="col-span-2"><label className={label}>Cargo Value (GIT)</label>
+                        <div><label className={labelCls}>Load Type</label>
+                            <select value={loadType} onChange={e => setLoadType(e.target.value)} className={inputCls}><option value="">--</option>{LOAD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                        <div><label className={labelCls}>Quantity</label><input value={quantity} onChange={e => setQuantity(e.target.value)} className={inputCls} /></div>
+                        <div><label className={labelCls}>Commodity</label><input value={commodity} onChange={e => setCommodity(e.target.value)} className={inputCls} /></div>
+                        <div><label className={labelCls}>Packaging</label>
+                            <select value={packaging} onChange={e => setPackaging(e.target.value)} className={inputCls}><option value="">--</option>{PACKAGING.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+                        <div><label className={labelCls}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value)} className={inputCls} /></div>
+                        <div><label className={labelCls}>Volume / Cubes</label><input value={volume} onChange={e => setVolume(e.target.value)} className={inputCls} /></div>
+                        <div className="col-span-2"><label className={labelCls}>Cargo Value (GIT)</label>
                             <div className="relative"><span className="absolute left-3 top-2.5 text-gray-500 font-mono text-xs">R</span>
-                                <input type="number" value={cargoValue} onChange={e => setCargoValue(e.target.value)} className={`${input} pl-7`} /></div></div>
+                                <input type="number" value={cargoValue} onChange={e => setCargoValue(e.target.value)} className={`${inputCls} pl-7`} /></div></div>
                     </div>
                     <div className="mt-4">
-                        <label className={label}>Equipment Required</label>
+                        <label className={labelCls}>Equipment Required</label>
                         <div className="flex flex-wrap gap-2">
-                            {EQUIPMENT.map(e => (
-                                <button type="button" key={e} onClick={() => toggleEquipment(e)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${equipmentRequired.includes(e) ? 'bg-brand-secondary text-white border-brand-secondary' : 'bg-gray-900/40 text-gray-300 border-gray-700 hover:border-gray-500'}`}>
-                                    {e}
+                            {EQUIPMENT.map(eq => (
+                                <button type="button" key={eq} onClick={() => toggleEquipment(eq)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${equipmentRequired.includes(eq) ? 'bg-brand-secondary text-white border-brand-secondary' : 'bg-gray-900/40 text-gray-300 border-gray-700 hover:border-gray-500'}`}>
+                                    {eq}
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <div className="mt-4"><label className={label}>Special Instructions</label>
-                        <textarea value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)} rows={2} className={input} /></div>
+                    <div className="mt-4"><label className={labelCls}>Special Instructions</label>
+                        <textarea value={specialInstructions} onChange={e => setSpecialInstructions(e.target.value)} rows={2} className={inputCls} /></div>
                     <details className="mt-4">
                         <summary className="text-xs font-bold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white">Container details (if applicable)</summary>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-                            <div><label className={label}>Container No</label><input value={containerNo} onChange={e => setContainerNo(e.target.value)} className={input} /></div>
-                            <div><label className={label}>Operator</label><input value={containerOperator} onChange={e => setContainerOperator(e.target.value)} className={input} /></div>
-                            <div><label className={label}>Seal No</label><input value={containerSealNo} onChange={e => setContainerSealNo(e.target.value)} className={input} /></div>
-                            <div><label className={label}>Turn-in Address</label><input value={containerTurnInAddress} onChange={e => setContainerTurnInAddress(e.target.value)} className={input} /></div>
+                            <div><label className={labelCls}>Container No</label><input value={containerNo} onChange={e => setContainerNo(e.target.value)} className={inputCls} /></div>
+                            <div><label className={labelCls}>Operator</label><input value={containerOperator} onChange={e => setContainerOperator(e.target.value)} className={inputCls} /></div>
+                            <div><label className={labelCls}>Seal No</label><input value={containerSealNo} onChange={e => setContainerSealNo(e.target.value)} className={inputCls} /></div>
+                            <div><label className={labelCls}>Turn-in Address</label><input value={containerTurnInAddress} onChange={e => setContainerTurnInAddress(e.target.value)} className={inputCls} /></div>
                         </div>
                     </details>
                 </Section>
 
                 <Section title="Subcontractor  ·  goes on the LoadCon only" accent="bg-amber-500">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label className={label}>Subcontractor *</label><input value={subcontractorName} onChange={e => setSubcontractorName(e.target.value)} className={input} required /></div>
-                        <div><label className={label}>For Attention</label><input value={forAttention} onChange={e => setForAttention(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Subcontractor Email</label><input type="email" value={subcontractorEmail} onChange={e => setSubcontractorEmail(e.target.value)} className={input} placeholder="loadcon goes here" /></div>
-                        <div><label className={label}>Reg + Driver Name</label><input value={subcontractorDriverName} onChange={e => setSubcontractorDriverName(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Driver Cell</label><input value={subcontractorDriverCell} onChange={e => setSubcontractorDriverCell(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Transport Rate (excl VAT) *</label>
+                        <div><label className={labelCls}>Subcontractor *</label>
+                            <input list="subbieList" value={subcontractorName} onChange={e => onSubbieNameChange(e.target.value)} className={inputCls} required placeholder="start typing — remembers past subbies" />
+                            <datalist id="subbieList">{subbieSuggestions.map(n => <option key={n} value={n} />)}</datalist></div>
+                        <div><label className={labelCls}>For Attention</label><input value={forAttention} onChange={e => setForAttention(e.target.value)} className={inputCls} /></div>
+                        <div><label className={labelCls}>Subcontractor Email</label><input type="email" value={subcontractorEmail} onChange={e => setSubcontractorEmail(e.target.value)} className={inputCls} placeholder="loadcon goes here" /></div>
+                        <div><label className={labelCls}>Reg + Driver Name</label><input value={subcontractorDriverName} onChange={e => setSubcontractorDriverName(e.target.value)} className={inputCls} /></div>
+                        <div><label className={labelCls}>Driver Cell</label><input value={subcontractorDriverCell} onChange={e => setSubcontractorDriverCell(e.target.value)} className={inputCls} /></div>
+                        <div><label className={labelCls}>Transport Rate (excl VAT) *</label>
                             <div className="relative"><span className="absolute left-3 top-2.5 text-amber-400 font-mono text-xs">R</span>
-                                <input type="number" step="0.01" value={transportRate} onChange={e => setTransportRate(e.target.value)} className={`${input} pl-7`} required /></div></div>
-                        <div><label className={label}>POD Email</label><input type="email" value={podEmail} onChange={e => setPodEmail(e.target.value)} className={input} /></div>
-                        <div><label className={label}>Copy Email (CC)</label><input type="email" value={ccEmail} onChange={e => setCcEmail(e.target.value)} className={input} /></div>
+                                <input type="number" step="0.01" value={transportRate} onChange={e => setTransportRate(e.target.value)} className={`${inputCls} pl-7`} required /></div></div>
+                        <div><label className={labelCls}>POD Email</label><input type="email" value={podEmail} onChange={e => setPodEmail(e.target.value)} className={inputCls} /></div>
+                        <div><label className={labelCls}>Copy Email (CC)</label><input type="email" value={ccEmail} onChange={e => setCcEmail(e.target.value)} className={inputCls} /></div>
                     </div>
                 </Section>
             </div>

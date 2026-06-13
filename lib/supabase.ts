@@ -68,6 +68,22 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// Upload a file to a Supabase Storage bucket and return its public URL.
+// Used for driver licences (and reusable for PODs / supplier docs later).
+export const uploadFile = async (
+  bucket: string,
+  path: string,
+  file: File,
+): Promise<{ url: string | null; error: string | null }> => {
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    upsert: true,
+    contentType: file.type || undefined,
+  });
+  if (error) return { url: null, error: error.message };
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return { url: data.publicUrl, error: null };
+};
+
 // A write can silently fail when the access token has gone stale (laptop
 // asleep, tab open for hours): the database sees no authenticated user, so
 // row-level security rejects the row. These are the error shapes that mean

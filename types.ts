@@ -62,6 +62,7 @@ export interface Driver {
   branch?: string;
   isActive: boolean;
   notes?: string;
+  licenceDocUrl?: string;
 }
 
 export interface FuelEntry {

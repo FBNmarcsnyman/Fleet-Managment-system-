@@ -427,6 +427,7 @@ export const mapDriver = (row: any): Driver => ({
     branch: row.branch ?? undefined,
     isActive: row.is_active ?? true,
     notes: row.notes ?? undefined,
+    licenceDocUrl: row.licence_doc_url ?? undefined,
 });
 
 export const toDriverInsert = (d: Omit<Driver, 'id'>): Record<string, any> => ({
@@ -442,6 +443,7 @@ export const toDriverInsert = (d: Omit<Driver, 'id'>): Record<string, any> => ({
     branch: d.branch || null,
     is_active: d.isActive ?? true,
     notes: d.notes || null,
+    licence_doc_url: d.licenceDocUrl || null,
 });
 
 export const toDriverUpdate = (u: Partial<Driver>): Record<string, any> => {
@@ -457,6 +459,7 @@ export const toDriverUpdate = (u: Partial<Driver>): Record<string, any> => {
     if (u.branch !== undefined) row.branch = u.branch || null;
     if (u.isActive !== undefined) row.is_active = u.isActive;
     if (u.notes !== undefined) row.notes = u.notes || null;
+    if (u.licenceDocUrl !== undefined) row.licence_doc_url = u.licenceDocUrl || null;
     return row;
 };
 

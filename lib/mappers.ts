@@ -1231,6 +1231,16 @@ export const toLoadConfirmationUpdate = (
     if (updates.subcontractorVehicleReg !== undefined) row.subcontractor_vehicle_reg = updates.subcontractorVehicleReg ?? null;
     if (updates.subcontractorDriverName !== undefined) row.subcontractor_driver_name = updates.subcontractorDriverName ?? null;
     if (updates.subcontractorDriverCell !== undefined) row.subcontractor_driver_cell = updates.subcontractorDriverCell ?? null;
+    // Transport Order document fields — needed so assigning a subbie (and later
+    // edits) persist the details that print on the LoadCon / Client Order.
+    if (updates.subcontractorName !== undefined) row.subcontractor_name = updates.subcontractorName ?? null;
+    if (updates.subcontractorEmail !== undefined) row.subcontractor_email = updates.subcontractorEmail ?? null;
+    if (updates.forAttention !== undefined) row.for_attention = updates.forAttention ?? null;
+    if (updates.podEmail !== undefined) row.pod_email = updates.podEmail ?? null;
+    if (updates.ccEmail !== undefined) row.cc_email = updates.ccEmail ?? null;
+    if (updates.clientName !== undefined) row.client_name = updates.clientName ?? null;
+    if (updates.clientContact !== undefined) row.client_contact = updates.clientContact ?? null;
+    if (updates.clientEmail !== undefined) row.client_email = updates.clientEmail ?? null;
     if (updates.commodity !== undefined) row.commodity = updates.commodity ?? null;
     if (updates.packaging !== undefined) row.packaging = updates.packaging ?? null;
     if (updates.loadSpec !== undefined) row.load_spec = updates.loadSpec ?? null;

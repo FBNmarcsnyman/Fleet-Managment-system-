@@ -95,9 +95,19 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
             return;
         }
 
-        handleUpdateLoadConfirmation(loadCon.id, { 
-            supplierId, 
+        // Auto-populate the LoadCon document fields from the chosen subcontractor
+        // (company, controller + email) so the LoadCon is ready to send to them —
+        // no need to re-enter the details that are already on the supplier record.
+        const primaryContact = selectedSupplier?.contacts?.[0];
+        const subEmail = primaryContact?.email || selectedSupplier?.contactEmail || '';
+        const subAttention = primaryContact?.name || selectedSupplier?.contactPerson || '';
+
+        handleUpdateLoadConfirmation(loadCon.id, {
+            supplierId,
             supplierRate: parseFloat(supplierRate),
+            subcontractorName: selectedSupplier?.name,
+            subcontractorEmail: subEmail || undefined,
+            forAttention: subAttention || undefined,
             subcontractorVehicleReg: subVehicleReg,
             subcontractorDriverName: subDriverName,
             subcontractorDriverCell: subDriverCell,
@@ -105,8 +115,8 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
             vehicleId: undefined, // Clear internal fleet info if moving to subbie
             driverId: undefined
         });
-        
-        showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}.`);
+
+        showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}. LoadCon ready to send.`);
         hideModal();
     };
 

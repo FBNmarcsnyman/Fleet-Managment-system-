@@ -211,17 +211,12 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         handleCreateLoadConfirmation: async (data: any): Promise<Result<LoadConfirmation>> => {
             try {
                 const loadConNumber = `LCN-${Date.now()}`;
-                const row = toLoadConfirmationInsert(data, loadConNumber, branchIdByName);
-                const { data: inserted, error } = await supabase
-                    .from('load_confirmations').insert(row).select().single();
-                if (error) { console.error('[ops] createLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
-                const mapped = mapLoadConfirmation(inserted, { branchById });
-                dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });
 
-                // Remember the subcontractor in the supplier database. New subbie →
-                // create with this contact. Existing → merge the chosen contact into
-                // its saved contacts so the dropdown grows (never overwrites edits).
+                // Resolve the subcontractor FIRST (find or create) so the new load is
+                // linked to it and counts as already assigned for dispatch — a
+                // Transport Order with a subbie shouldn't ask you to assign again.
                 const subName = (data.subcontractorName || '').trim();
+                let resolvedSupplierId = (data.supplierId || '').trim();
                 if (subName) {
                     const subContact = { name: data.forAttention || '', email: data.subcontractorEmail || '', phone: data.subcontractorDriverCell || '' };
                     const existingSub = (stateRef.current.suppliers || []).find((s: any) => (s.name || '').toLowerCase() === subName.toLowerCase());
@@ -240,8 +235,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         };
                         const { data: supRow, error: supErr } = await supabase.from('suppliers').insert(toSupplierInsert(supplierInput)).select().single();
                         if (supErr) console.error('[ops] auto-create subcontractor failed:', supErr);
-                        else if (supRow) dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) });
+                        else if (supRow) { resolvedSupplierId = supRow.id; dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) }); }
                     } else {
+                        resolvedSupplierId = existingSub.id;
                         const mergedContacts = mergeContact(existingSub.contacts, subContact);
                         if (mergedContacts) {
                             const updates = { contacts: mergedContacts };
@@ -251,6 +247,18 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         }
                     }
                 }
+
+                const row = toLoadConfirmationInsert(data, loadConNumber, branchIdByName);
+                // A subbie + a buy-rate means it's allocated for dispatch already.
+                if (resolvedSupplierId) {
+                    row.supplier_id = resolvedSupplierId;
+                    row.status = 'Driver Assigned';
+                }
+                const { data: inserted, error } = await supabase
+                    .from('load_confirmations').insert(row).select().single();
+                if (error) { console.error('[ops] createLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
+                const mapped = mapLoadConfirmation(inserted, { branchById });
+                dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });
 
                 // Remember the client in the client database the same way: create new,
                 // or merge the chosen contact person + email into an existing client.

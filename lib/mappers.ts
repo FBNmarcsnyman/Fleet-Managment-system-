@@ -797,6 +797,23 @@ export const toSupplierInsert = (supplier: Omit<Supplier, 'id'>): Tables['suppli
     accounts_contact: supplier.accountsContact ?? null,
 });
 
+export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Update'] => {
+    const row: Tables['suppliers']['Update'] = {};
+    if (u.name !== undefined) row.name = u.name;
+    if (u.type !== undefined) row.type = u.type;
+    if (u.contactPerson !== undefined) row.contact_person = u.contactPerson || null;
+    if (u.contactEmail !== undefined) row.contact_email = u.contactEmail || null;
+    if (u.contactPhone !== undefined) row.contact_phone = u.contactPhone || null;
+    if (u.address !== undefined) row.address = u.address || null;
+    if (u.controllerContact !== undefined) row.controller_contact = u.controllerContact || null;
+    if (u.accountsContact !== undefined) row.accounts_contact = u.accountsContact || null;
+    if (u.beeStatus !== undefined) row.bee_status = u.beeStatus || null;
+    if (u.regions !== undefined) row.regions = u.regions || null;
+    if (u.fleetSize !== undefined) row.fleet_size = u.fleetSize || null;
+    if (u.complianceStatus !== undefined) row.compliance_status = u.complianceStatus;
+    return row;
+};
+
 // -- Quote -> quotes row -----------------------------------------------------
 // quote_number is required by the schema (no default); handler passes one
 // generated as `QU-${Date.now()}` to match the legacy reducer behavior.

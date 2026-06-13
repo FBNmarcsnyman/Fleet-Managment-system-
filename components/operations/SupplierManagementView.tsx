@@ -22,6 +22,10 @@ const SubcontractorManagementView: React.FC = () => {
         showModal('addSupplier', { defaultType: 'Transport' });
     };
 
+    const handleEdit = (supplier: Supplier) => {
+        showModal('addSupplier', { supplier });
+    };
+
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
             <div className="flex justify-between items-center mb-4">
@@ -42,6 +46,7 @@ const SubcontractorManagementView: React.FC = () => {
                             <th className="p-2 text-gray-400">Company Name</th>
                             <th className="p-2 text-gray-400">Contact Person</th>
                             <th className="p-2 text-gray-400">Contact Details</th>
+                            <th className="p-2 text-gray-400 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -50,8 +55,14 @@ const SubcontractorManagementView: React.FC = () => {
                                 <td className="p-2 font-semibold text-white">{supplier.name}</td>
                                 <td className="p-2">{supplier.contactPerson}</td>
                                 <td className="p-2">{supplier.contactEmail} / {supplier.contactPhone}</td>
+                                <td className="p-2 text-right">
+                                    <button onClick={() => handleEdit(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold">Edit</button>
+                                </td>
                             </tr>
                         ))}
+                        {subcontractors.length === 0 && (
+                            <tr><td colSpan={4} className="p-6 text-center text-gray-500">No subcontractors yet. They're added automatically when you create a Transport Order, or add one manually.</td></tr>
+                        )}
                     </tbody>
                 </table>
             </div>

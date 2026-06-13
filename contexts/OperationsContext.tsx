@@ -5,7 +5,7 @@ import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch } from '../types';
 import { supabase, runWrite } from '../lib/supabase';
 import {
-    toClientInsert, toSupplierInsert, toQuoteInsert, toQuoteUpdate,
+    toClientInsert, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
@@ -83,6 +83,17 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true, value: mapped };
             } catch (err) {
                 console.error('[ops] addSupplier threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        handleUpdateSupplier: async (id: string, updates: Partial<Supplier>): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('suppliers').update(toSupplierUpdate(updates)).eq('id', id).select().single());
+                if (error) { console.error('[ops] updateSupplier failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_SUPPLIER', payload: { id, updates } });
+                return { ok: true };
+            } catch (err) {
+                console.error('[ops] updateSupplier threw:', err);
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },

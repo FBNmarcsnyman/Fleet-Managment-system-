@@ -124,6 +124,7 @@ export type AppAction =
     | { type: 'ADD_INCIDENT_QUOTE', payload: { incidentId: string, quote: IncidentQuote } }
     | { type: 'ADD_CLIENT', payload: Client }
     | { type: 'ADD_SUPPLIER', payload: Supplier }
+    | { type: 'UPDATE_SUPPLIER', payload: { id: string, updates: Partial<Supplier> } }
     | { type: 'BULK_ADD_CLIENTS', payload: Client[] }
     | { type: 'BULK_ADD_SUPPLIERS', payload: Supplier[] }
     | { type: 'CREATE_MANIFEST', payload: any }
@@ -367,6 +368,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'ADD_CLIENT': return { ...state, clients: [...(state.clients || []), action.payload] };
         case 'BULK_ADD_CLIENTS': return { ...state, clients: [...(state.clients || []), ...action.payload] };
         case 'ADD_SUPPLIER': return { ...state, suppliers: [...(state.suppliers || []), action.payload] };
+        case 'UPDATE_SUPPLIER': return { ...state, suppliers: (state.suppliers || []).map(s => s.id === action.payload.id ? { ...s, ...action.payload.updates } : s) };
         case 'BULK_ADD_SUPPLIERS': return { ...state, suppliers: [...(state.suppliers || []), ...action.payload] };
         case 'CREATE_QUOTE': return { ...state, quotes: [action.payload, ...(state.quotes || [])] };
         case 'UPDATE_QUOTE': return { ...state, quotes: (state.quotes || []).map(q => q.id === action.payload.id ? action.payload : q) };

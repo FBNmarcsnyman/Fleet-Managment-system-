@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Supplier } from '../../types';
+import { Supplier, Contact } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
+import ContactsEditor from './ContactsEditor';
 
 const AddSupplierForm: React.FC = () => {
     const { handleAddSupplier, handleUpdateSupplier } = useOperations();
@@ -11,6 +12,7 @@ const AddSupplierForm: React.FC = () => {
     const [contactPerson, setContactPerson] = useState(editing?.contactPerson || '');
     const [contactEmail, setContactEmail] = useState(editing?.contactEmail || '');
     const [contactPhone, setContactPhone] = useState(editing?.contactPhone || '');
+    const [contacts, setContacts] = useState<Contact[]>(editing?.contacts || []);
     const [address, setAddress] = useState(editing?.address || '');
     const [submitting, setSubmitting] = useState(false);
 
@@ -25,8 +27,9 @@ const AddSupplierForm: React.FC = () => {
         }
         if (submitting) return;
         setSubmitting(true);
+        const cleanContacts = contacts.filter(c => (c.name || '').trim() || (c.email || '').trim());
         if (editing) {
-            const result = await handleUpdateSupplier(editing.id, { name, contactPerson, contactEmail, contactPhone, address });
+            const result = await handleUpdateSupplier(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address });
             setSubmitting(false);
             if (!result.ok) { showToast(`Failed to update ${noun.toLowerCase()}: ${result.error}`); return; }
             hideModal();
@@ -38,6 +41,7 @@ const AddSupplierForm: React.FC = () => {
             contactPerson,
             contactEmail,
             contactPhone,
+            contacts: cleanContacts,
             address,
             type: defaultType,
             complianceStatus: 'Pending',
@@ -67,6 +71,9 @@ const AddSupplierForm: React.FC = () => {
                     <input type="tel" placeholder="Contact Phone" value={contactPhone} onChange={e => setContactPhone(e.target.value)} className={inputClasses} />
                 </div>
                  <textarea placeholder="Address (Optional)" value={address} onChange={e => setAddress(e.target.value)} rows={3} className={inputClasses} />
+                <div className="border-t border-gray-700 pt-4">
+                    <ContactsEditor contacts={contacts} onChange={setContacts} accent="text-amber-400" />
+                </div>
             </div>
             <div className="flex justify-end space-x-4 mt-8">
                 <button type="button" onClick={hideModal} disabled={submitting} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50">Cancel</button>

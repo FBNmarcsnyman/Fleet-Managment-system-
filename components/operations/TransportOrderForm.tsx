@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { LoadConfirmation, Client, Branch } from '../../types';
+import { LoadConfirmation, Client, Branch, Contact } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 
@@ -65,6 +65,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
     // Client side
     const [existingClientId, setExistingClientId] = useState('');
     const [clientName, setClientName] = useState('');
+    const [clientContact, setClientContact] = useState('');
     const [clientEmail, setClientEmail] = useState('');
     const [customerOrderNumber, setCustomerOrderNumber] = useState('');
     const [clientRate, setClientRate] = useState('');
@@ -123,11 +124,40 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
         return best;
     };
 
+    // Saved contacts for the currently-typed client / subcontractor — these feed
+    // the "Contact Person" dropdowns. Choosing a person auto-fills their email.
+    const clientContacts: Contact[] = useMemo(
+        () => (clients as any[]).find(c => (c.name || '').toLowerCase() === clientName.toLowerCase())?.contacts || [],
+        [clients, clientName]);
+    const subbieContacts: Contact[] = useMemo(
+        () => (suppliers as any[]).find(s => (s.name || '').toLowerCase() === subcontractorName.toLowerCase())?.contacts || [],
+        [suppliers, subcontractorName]);
+
+    const onClientContactChange = (name: string) => {
+        setClientContact(name);
+        const match = clientContacts.find(c => (c.name || '').toLowerCase() === name.toLowerCase());
+        if (match?.email) setClientEmail(match.email);
+    };
+
+    const onSubbieContactChange = (name: string) => {
+        setForAttention(name);
+        const match = subbieContacts.find(c => (c.name || '').toLowerCase() === name.toLowerCase());
+        if (match?.email) setSubcontractorEmail(match.email);
+    };
+
     const onClientNameChange = (name: string) => {
         setClientName(name);
         const c = (clients as any[]).find(c => (c.name || '').toLowerCase() === name.toLowerCase());
         setExistingClientId(c ? c.id : '');
-        if ((c?.contactEmail || c?.email)) setClientEmail(c.contactEmail || c.email);
+        // Default to the client's first saved contact (person + email); fall back
+        // to the legacy single contact email if no contacts list exists yet.
+        const cs: Contact[] = c?.contacts || [];
+        if (cs.length) {
+            if (!clientContact) setClientContact(cs[0].name || '');
+            if (cs[0].email) setClientEmail(cs[0].email);
+        } else if (c?.contactEmail || c?.email) {
+            setClientEmail(c.contactEmail || c.email);
+        }
         // Prefill the rest with this client's most-used details (only empty fields).
         const fill = (cur: string, setter: (v: string) => void, key: string) => { if (!cur) { const v = modeForClient(name, key); if (v) setter(v); } };
         fill(collectionPoint, setCollectionPoint, 'collectionPoint');
@@ -146,8 +176,14 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
         setSubcontractorName(name);
         const s = (suppliers as any[]).find(s => (s.name || '').toLowerCase() === name.toLowerCase());
         if (s) {
-            if (s.contactEmail && !subcontractorEmail) setSubcontractorEmail(s.contactEmail);
-            if (s.contactPerson && !forAttention) setForAttention(s.contactPerson);
+            const cs: Contact[] = s.contacts || [];
+            if (cs.length) {
+                if (!forAttention) setForAttention(cs[0].name || '');
+                if (cs[0].email && !subcontractorEmail) setSubcontractorEmail(cs[0].email);
+            } else {
+                if (s.contactPerson && !forAttention) setForAttention(s.contactPerson);
+                if (s.contactEmail && !subcontractorEmail) setSubcontractorEmail(s.contactEmail);
+            }
         }
     };
 
@@ -176,6 +212,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             arrangingBranch,
             loadRefNo: loadRefNo || undefined,
             clientName,
+            clientContact: clientContact || undefined,
             clientEmail: clientEmail || undefined,
             route: route || undefined,
             fbnRepresentative: fbnRepresentative || undefined,
@@ -248,17 +285,23 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
 
                 <Section title="Client  ·  goes on the Client Order only" accent="bg-blue-500">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className={labelCls}>Client Name *</label>
+                        <div><label className={labelCls}>Client (company) *</label>
                             <input list="clientList" value={clientName} onChange={e => onClientNameChange(e.target.value)} className={inputCls} required placeholder="start typing — picks from your clients" />
                             <datalist id="clientList">{clientSuggestions.map(n => <option key={n} value={n} />)}</datalist></div>
+                        <div><label className={labelCls}>Contact Person {clientContacts.length > 0 && <span className="text-blue-400 normal-case font-semibold">· {clientContacts.length} saved</span>}</label>
+                            <input list="clientContactList" value={clientContact} onChange={e => onClientContactChange(e.target.value)} className={inputCls} placeholder={clientName ? 'who are we dealing with?' : 'pick the client first'} />
+                            <datalist id="clientContactList">{clientContacts.map(c => <option key={c.name} value={c.name}>{c.email ? `${c.name} — ${c.email}` : c.name}</option>)}</datalist></div>
                         <div><label className={labelCls}>Client Email</label>
-                            <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inputCls} placeholder="for the client order" /></div>
+                            <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inputCls} placeholder="auto-fills when you pick the person" /></div>
                         <div><label className={labelCls}>Customer Order No</label>
                             <input value={customerOrderNumber} onChange={e => setCustomerOrderNumber(e.target.value)} className={inputCls} /></div>
-                        <div><label className={labelCls}>Client Rate (excl VAT) *</label>
+                        <div className="md:col-span-2"><label className={labelCls}>Client Rate (excl VAT) *</label>
                             <div className="relative"><span className="absolute left-3 top-2.5 text-blue-400 font-mono text-xs">R</span>
                                 <input type="number" step="0.01" value={clientRate} onChange={e => setClientRate(e.target.value)} className={`${inputCls} pl-7`} required /></div></div>
                     </div>
+                    {clientName && clientContacts.length === 0 && (
+                        <p className="text-[11px] text-gray-500 mt-3">New contact — it'll be saved to <span className="text-gray-300 font-semibold">{clientName}</span> for next time.</p>
+                    )}
                 </Section>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -331,8 +374,10 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                         <div><label className={labelCls}>Subcontractor *</label>
                             <input list="subbieList" value={subcontractorName} onChange={e => onSubbieNameChange(e.target.value)} className={inputCls} required placeholder="start typing — remembers past subbies" />
                             <datalist id="subbieList">{subbieSuggestions.map(n => <option key={n} value={n} />)}</datalist></div>
-                        <div><label className={labelCls}>For Attention</label><input value={forAttention} onChange={e => setForAttention(e.target.value)} className={inputCls} /></div>
-                        <div><label className={labelCls}>Subcontractor Email</label><input type="email" value={subcontractorEmail} onChange={e => setSubcontractorEmail(e.target.value)} className={inputCls} placeholder="loadcon goes here" /></div>
+                        <div><label className={labelCls}>For Attention {subbieContacts.length > 0 && <span className="text-amber-400 normal-case font-semibold">· {subbieContacts.length} saved</span>}</label>
+                            <input list="subbieContactList" value={forAttention} onChange={e => onSubbieContactChange(e.target.value)} className={inputCls} placeholder={subcontractorName ? 'controller / contact' : 'pick the subbie first'} />
+                            <datalist id="subbieContactList">{subbieContacts.map(c => <option key={c.name} value={c.name}>{c.email ? `${c.name} — ${c.email}` : c.name}</option>)}</datalist></div>
+                        <div><label className={labelCls}>Subcontractor Email</label><input type="email" value={subcontractorEmail} onChange={e => setSubcontractorEmail(e.target.value)} className={inputCls} placeholder="auto-fills when you pick the person" /></div>
                         <div><label className={labelCls}>Reg + Driver Name</label><input value={subcontractorDriverName} onChange={e => setSubcontractorDriverName(e.target.value)} className={inputCls} /></div>
                         <div><label className={labelCls}>Driver Cell</label><input value={subcontractorDriverCell} onChange={e => setSubcontractorDriverCell(e.target.value)} className={inputCls} /></div>
                         <div><label className={labelCls}>Transport Rate (excl VAT) *</label>

@@ -303,6 +303,15 @@ export interface ComplianceDoc {
     status: 'Valid' | 'Expired' | 'Pending Review';
 }
 
+// A named person at a client or subcontractor — the controller / booking
+// contact you liaise with. Choosing one auto-fills their email on an order.
+export interface Contact {
+    name: string;
+    email?: string;
+    phone?: string;
+    role?: string;
+}
+
 export interface Supplier {
     id: string;
     name: string;
@@ -310,6 +319,7 @@ export interface Supplier {
     contactPerson: string;
     contactEmail: string;
     contactPhone: string;
+    contacts?: Contact[];
     address: string;
     averageRating?: number;
     complianceStatus: 'Compliant' | 'Expired' | 'Pending';
@@ -353,6 +363,7 @@ export interface Client {
     contactPerson: string;
     contactEmail: string;
     contactPhone: string;
+    contacts?: Contact[];
     address: string;
     slaLevel?: string;
 }
@@ -400,6 +411,7 @@ export interface LoadConfirmation {
     arrangingBranch?: string;
     loadRefNo?: string;
     clientName?: string;
+    clientContact?: string;
     clientEmail?: string;
     route?: string;
     fbnRepresentative?: string;

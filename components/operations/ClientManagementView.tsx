@@ -59,18 +59,32 @@ const ClientManagementView: React.FC = () => {
                     <thead>
                          <tr className="border-b border-gray-700">
                             <th className="p-2 text-gray-400">Company Name</th>
-                            <th className="p-2 text-gray-400">Contact Person</th>
-                            <th className="p-2 text-gray-400">Contact Details</th>
+                            <th className="p-2 text-gray-400">Contacts</th>
+                            <th className="p-2 text-gray-400">Primary Email</th>
+                            <th className="p-2 text-gray-400 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {clients.map(client => (
+                        {clients.map(client => {
+                            const contacts = client.contacts || [];
+                            const primary = contacts[0];
+                            return (
                             <tr key={client.id} className="border-b border-gray-700/50">
                                 <td className="p-2 font-semibold text-white">{client.name}</td>
-                                <td className="p-2">{client.contactPerson}</td>
-                                <td className="p-2">{client.contactEmail} / {client.contactPhone}</td>
+                                <td className="p-2">
+                                    {contacts.length > 0
+                                        ? <span>{primary?.name}{contacts.length > 1 && <span className="text-gray-500"> +{contacts.length - 1} more</span>}</span>
+                                        : <span className="text-gray-500">{client.contactPerson || '—'}</span>}
+                                </td>
+                                <td className="p-2 text-gray-400">{primary?.email || client.contactEmail || '—'}</td>
+                                <td className="p-2 text-right">
+                                    <button onClick={() => showModal('addClient', { client })} className="px-3 py-1 rounded bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold">Edit</button>
+                                </td>
                             </tr>
-                        ))}
+                        );})}
+                        {clients.length === 0 && (
+                            <tr><td colSpan={4} className="p-6 text-center text-gray-500">No clients yet. They're added automatically when you create a Transport Order, or add one manually.</td></tr>
+                        )}
                     </tbody>
                 </table>
             </div>

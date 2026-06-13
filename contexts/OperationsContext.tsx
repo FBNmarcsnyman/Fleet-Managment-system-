@@ -5,7 +5,7 @@ import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch } from '../types';
 import { supabase, runWrite } from '../lib/supabase';
 import {
-    toClientInsert, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
+    toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
@@ -15,6 +15,33 @@ import {
 export const OperationsContext = createContext<any>(undefined);
 
 type Result<T = void> = { ok: true; value?: T } | { ok: false; error: string };
+
+// Merge a chosen contact into a saved client/subbie contacts list. Matches by
+// name (case-insensitive); fills in a newly-supplied email/phone, never blanks
+// an existing one. Returns null when nothing changed, so callers can skip the
+// write. A brand-new person is appended.
+const mergeContact = (
+    existing: { name: string; email?: string; phone?: string }[] | undefined,
+    incoming: { name?: string; email?: string; phone?: string },
+): { name: string; email?: string; phone?: string }[] | null => {
+    const name = (incoming.name || '').trim();
+    const email = (incoming.email || '').trim();
+    const phone = (incoming.phone || '').trim();
+    if (!name && !email) return null;
+    const list = (existing || []).map(c => ({ ...c }));
+    const idx = list.findIndex(c =>
+        (name && (c.name || '').toLowerCase() === name.toLowerCase()) ||
+        (!name && email && (c.email || '').toLowerCase() === email.toLowerCase()));
+    if (idx >= 0) {
+        const cur = list[idx];
+        const next = { ...cur, name: cur.name || name, email: cur.email || email || undefined, phone: cur.phone || phone || undefined };
+        if (next.name === cur.name && next.email === cur.email && next.phone === cur.phone) return null;
+        list[idx] = next;
+        return list;
+    }
+    list.push({ name: name || email, email: email || undefined, phone: phone || undefined });
+    return list;
+};
 
 export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const raw = useContext(RawDataContext);
@@ -52,6 +79,17 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true, value: mapped };
             } catch (err) {
                 console.error('[ops] addClient threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        handleUpdateClient: async (id: string, updates: Partial<Client>): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('clients').update(toClientUpdate(updates)).eq('id', id).select().single());
+                if (error) { console.error('[ops] updateClient failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_CLIENT', payload: { id, updates } });
+                return { ok: true };
+            } catch (err) {
+                console.error('[ops] updateClient threw:', err);
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
@@ -180,19 +218,22 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const mapped = mapLoadConfirmation(inserted, { branchById });
                 dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });
 
-                // Remember the subcontractor in the supplier database (create only
-                // if new, so management's later edits are never overwritten). The
-                // "For Attention" name + email become the editable contact details.
+                // Remember the subcontractor in the supplier database. New subbie →
+                // create with this contact. Existing → merge the chosen contact into
+                // its saved contacts so the dropdown grows (never overwrites edits).
                 const subName = (data.subcontractorName || '').trim();
                 if (subName) {
-                    const exists = (stateRef.current.suppliers || []).some((s: any) => (s.name || '').toLowerCase() === subName.toLowerCase());
-                    if (!exists) {
+                    const subContact = { name: data.forAttention || '', email: data.subcontractorEmail || '', phone: data.subcontractorDriverCell || '' };
+                    const existingSub = (stateRef.current.suppliers || []).find((s: any) => (s.name || '').toLowerCase() === subName.toLowerCase());
+                    if (!existingSub) {
+                        const seeded = mergeContact([], subContact) || [];
                         const supplierInput: any = {
                             name: subName,
                             type: 'Transport',
                             contactPerson: data.forAttention || '',
                             contactEmail: data.subcontractorEmail || '',
                             contactPhone: data.subcontractorDriverCell || '',
+                            contacts: seeded,
                             address: '',
                             complianceStatus: 'Pending',
                             controllerContact: data.forAttention || '',
@@ -200,18 +241,38 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         const { data: supRow, error: supErr } = await supabase.from('suppliers').insert(toSupplierInsert(supplierInput)).select().single();
                         if (supErr) console.error('[ops] auto-create subcontractor failed:', supErr);
                         else if (supRow) dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) });
+                    } else {
+                        const mergedContacts = mergeContact(existingSub.contacts, subContact);
+                        if (mergedContacts) {
+                            const updates = { contacts: mergedContacts };
+                            const { error: supErr } = await supabase.from('suppliers').update(toSupplierUpdate(updates as any)).eq('id', existingSub.id);
+                            if (supErr) console.error('[ops] merge subcontractor contact failed:', supErr);
+                            else dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: existingSub.id, updates } });
+                        }
                     }
                 }
 
-                // Remember the client in the client database too (create only if new).
+                // Remember the client in the client database the same way: create new,
+                // or merge the chosen contact person + email into an existing client.
                 const cName = (data.clientName || '').trim();
-                if (cName && !data.clientId) {
-                    const cExists = (stateRef.current.clients || []).some((c: any) => (c.name || '').toLowerCase() === cName.toLowerCase());
-                    if (!cExists) {
-                        const clientInput: any = { name: cName, contactPerson: '', contactEmail: data.clientEmail || '', contactPhone: '', address: '' };
+                if (cName) {
+                    const cContact = { name: data.clientContact || '', email: data.clientEmail || '' };
+                    const existingClient = (stateRef.current.clients || []).find((c: any) =>
+                        (data.clientId && c.id === data.clientId) || (c.name || '').toLowerCase() === cName.toLowerCase());
+                    if (!existingClient) {
+                        const seeded = mergeContact([], cContact) || [];
+                        const clientInput: any = { name: cName, contactPerson: data.clientContact || '', contactEmail: data.clientEmail || '', contactPhone: '', contacts: seeded, address: '' };
                         const { data: cRow, error: cErr } = await supabase.from('clients').insert(toClientInsert(clientInput)).select().single();
                         if (cErr) console.error('[ops] auto-create client failed:', cErr);
                         else if (cRow) dispatch({ type: 'ADD_CLIENT', payload: mapClient(cRow) });
+                    } else {
+                        const mergedContacts = mergeContact(existingClient.contacts, cContact);
+                        if (mergedContacts) {
+                            const updates = { contacts: mergedContacts };
+                            const { error: cErr } = await supabase.from('clients').update(toClientUpdate(updates as any)).eq('id', existingClient.id);
+                            if (cErr) console.error('[ops] merge client contact failed:', cErr);
+                            else dispatch({ type: 'UPDATE_CLIENT', payload: { id: existingClient.id, updates } });
+                        }
                     }
                 }
                 return { ok: true, value: mapped };

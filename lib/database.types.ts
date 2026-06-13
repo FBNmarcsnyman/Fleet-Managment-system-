@@ -347,6 +347,7 @@ export type Database = {
           contact_email: string | null
           contact_person: string | null
           contact_phone: string | null
+          contacts: Json
           created_at: string
           credit_limit: number | null
           id: string
@@ -362,6 +363,7 @@ export type Database = {
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
+          contacts?: Json
           created_at?: string
           credit_limit?: number | null
           id?: string
@@ -377,6 +379,7 @@ export type Database = {
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
+          contacts?: Json
           created_at?: string
           credit_limit?: number | null
           id?: string
@@ -913,6 +916,7 @@ export type Database = {
           cargo_photo_urls: string[] | null
           cargo_value: string | null
           cc_email: string | null
+          client_contact: string | null
           client_email: string | null
           client_id: string
           client_name: string | null
@@ -987,6 +991,7 @@ export type Database = {
           cargo_photo_urls?: string[] | null
           cargo_value?: string | null
           cc_email?: string | null
+          client_contact?: string | null
           client_email?: string | null
           client_id: string
           client_name?: string | null
@@ -1061,6 +1066,7 @@ export type Database = {
           cargo_photo_urls?: string[] | null
           cargo_value?: string | null
           cc_email?: string | null
+          client_contact?: string | null
           client_email?: string | null
           client_id?: string
           client_name?: string | null
@@ -2507,6 +2513,7 @@ export type Database = {
           contact_email: string | null
           contact_person: string | null
           contact_phone: string | null
+          contacts: Json
           controller_contact: string | null
           created_at: string
           expiry_date: string | null
@@ -2530,6 +2537,7 @@ export type Database = {
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
+          contacts?: Json
           controller_contact?: string | null
           created_at?: string
           expiry_date?: string | null
@@ -2553,6 +2561,7 @@ export type Database = {
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
+          contacts?: Json
           controller_contact?: string | null
           created_at?: string
           expiry_date?: string | null

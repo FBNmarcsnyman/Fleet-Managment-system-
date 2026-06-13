@@ -4,7 +4,7 @@ import type {
     RevenueEntry, ServiceInterval, PlannedService, FuelPriceRecord, Bowser, BowserRefill,
     Budget, Forecast, JobCard, JobCardStatus, JobCardType, ChecklistTemplate,
     ChecklistItemTemplate, ChecklistSubmission, ChecklistItemResult, Tire, TireStatus,
-    TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase, Client, Supplier,
+    TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase, Client, Supplier, Contact,
     ComplianceDoc, Attachment, Quote, QuoteStatus, QuoteItem, QuoteLeg, SubcontractorQuote,
     LoadConfirmation, LoadConfirmationStatus, Manifest, TripSheet, IncidentReport,
     IncidentStatus, IncidentQuote, AtFaultParty, SupplierApplication,
@@ -406,6 +406,7 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     contactPerson: row.contact_person ?? '',
     contactEmail: row.contact_email ?? '',
     contactPhone: row.contact_phone ?? '',
+    contacts: (row.contacts as unknown as Contact[]) ?? [],
     address: row.address ?? '',
     slaLevel: row.sla_level ?? undefined,
 });
@@ -437,6 +438,7 @@ export const mapSupplier = (
     contactPerson: row.contact_person ?? '',
     contactEmail: row.contact_email ?? '',
     contactPhone: row.contact_phone ?? '',
+    contacts: (row.contacts as unknown as Contact[]) ?? [],
     address: row.address ?? '',
     averageRating: row.average_rating ?? undefined,
     complianceStatus: row.compliance_status,
@@ -517,6 +519,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     arrangingBranch: row.arranging_branch ?? undefined,
     loadRefNo: row.load_ref_no ?? undefined,
     clientName: row.client_name ?? undefined,
+    clientContact: row.client_contact ?? undefined,
     clientEmail: row.client_email ?? undefined,
     route: row.route ?? undefined,
     fbnRepresentative: row.fbn_representative ?? undefined,
@@ -772,9 +775,22 @@ export const toClientInsert = (client: Omit<Client, 'id'>): Tables['clients']['I
     contact_person: client.contactPerson || null,
     contact_email: client.contactEmail || null,
     contact_phone: client.contactPhone || null,
+    contacts: (client.contacts ?? []) as unknown as Tables['clients']['Insert']['contacts'],
     address: client.address || null,
     sla_level: client.slaLevel ?? null,
 });
+
+export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] => {
+    const row: Tables['clients']['Update'] = {};
+    if (u.name !== undefined) row.name = u.name;
+    if (u.contactPerson !== undefined) row.contact_person = u.contactPerson || null;
+    if (u.contactEmail !== undefined) row.contact_email = u.contactEmail || null;
+    if (u.contactPhone !== undefined) row.contact_phone = u.contactPhone || null;
+    if (u.contacts !== undefined) row.contacts = (u.contacts ?? []) as unknown as Tables['clients']['Update']['contacts'];
+    if (u.address !== undefined) row.address = u.address || null;
+    if (u.slaLevel !== undefined) row.sla_level = u.slaLevel ?? null;
+    return row;
+};
 
 // -- Supplier -> suppliers row -----------------------------------------------
 export const toSupplierInsert = (supplier: Omit<Supplier, 'id'>): Tables['suppliers']['Insert'] => ({
@@ -784,6 +800,7 @@ export const toSupplierInsert = (supplier: Omit<Supplier, 'id'>): Tables['suppli
     contact_person: supplier.contactPerson || null,
     contact_email: supplier.contactEmail || null,
     contact_phone: supplier.contactPhone || null,
+    contacts: (supplier.contacts ?? []) as unknown as Tables['suppliers']['Insert']['contacts'],
     address: supplier.address || null,
     average_rating: supplier.averageRating ?? null,
     compliance_status: supplier.complianceStatus,
@@ -804,6 +821,7 @@ export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Upd
     if (u.contactPerson !== undefined) row.contact_person = u.contactPerson || null;
     if (u.contactEmail !== undefined) row.contact_email = u.contactEmail || null;
     if (u.contactPhone !== undefined) row.contact_phone = u.contactPhone || null;
+    if (u.contacts !== undefined) row.contacts = (u.contacts ?? []) as unknown as Tables['suppliers']['Update']['contacts'];
     if (u.address !== undefined) row.address = u.address || null;
     if (u.controllerContact !== undefined) row.controller_contact = u.controllerContact || null;
     if (u.accountsContact !== undefined) row.accounts_contact = u.accountsContact || null;
@@ -903,6 +921,7 @@ export const toLoadConfirmationInsert = (
     arranging_branch: lc.arrangingBranch ?? null,
     load_ref_no: lc.loadRefNo ?? null,
     client_name: lc.clientName ?? null,
+    client_contact: lc.clientContact ?? null,
     client_email: lc.clientEmail ?? null,
     route: lc.route ?? null,
     fbn_representative: lc.fbnRepresentative ?? null,

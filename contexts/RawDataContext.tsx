@@ -123,6 +123,7 @@ export type AppAction =
     | { type: 'UPDATE_INCIDENT', payload: IncidentReport }
     | { type: 'ADD_INCIDENT_QUOTE', payload: { incidentId: string, quote: IncidentQuote } }
     | { type: 'ADD_CLIENT', payload: Client }
+    | { type: 'UPDATE_CLIENT', payload: { id: string, updates: Partial<Client> } }
     | { type: 'ADD_SUPPLIER', payload: Supplier }
     | { type: 'UPDATE_SUPPLIER', payload: { id: string, updates: Partial<Supplier> } }
     | { type: 'BULK_ADD_CLIENTS', payload: Client[] }
@@ -366,6 +367,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         // and DB-generated fields (quote_number, load_con_number, status defaults).
         // The handler does the Supabase insert first and dispatches the mapped row.
         case 'ADD_CLIENT': return { ...state, clients: [...(state.clients || []), action.payload] };
+        case 'UPDATE_CLIENT': return { ...state, clients: (state.clients || []).map(c => c.id === action.payload.id ? { ...c, ...action.payload.updates } : c) };
         case 'BULK_ADD_CLIENTS': return { ...state, clients: [...(state.clients || []), ...action.payload] };
         case 'ADD_SUPPLIER': return { ...state, suppliers: [...(state.suppliers || []), action.payload] };
         case 'UPDATE_SUPPLIER': return { ...state, suppliers: (state.suppliers || []).map(s => s.id === action.payload.id ? { ...s, ...action.payload.updates } : s) };

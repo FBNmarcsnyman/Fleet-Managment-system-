@@ -42,11 +42,14 @@ const AddDriverForm: React.FC = () => {
     const labelCls = "block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1";
 
     const extractFromLicence = async (dataUrl: string, mimeType: string) => {
-        if (!process.env.API_KEY) { setScanNote('Licence saved. (AI auto-fill is off — fill the fields in below.)'); return; }
+        // Prefer the Vite-injected key (reliable on Vercel); fall back to the
+        // build-time define used by the app's other AI features.
+        const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.API_KEY : undefined);
+        if (!apiKey) { setScanNote("AI auto-fill isn't switched on yet (no AI key on the live site). The licence still uploads — type the details below."); return; }
         setScanning(true);
         setScanNote('');
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey });
             const imagePart = { inlineData: { mimeType: mimeType || 'image/jpeg', data: dataUrl.split(',')[1] } };
             const prompt = "This is a South African driver's licence card. Extract the holder's details. " +
                 "Return ISO dates (YYYY-MM-DD). For vehicleCodes give the licence codes shown (e.g. 'EB, C1'). " +
@@ -80,7 +83,8 @@ const AddDriverForm: React.FC = () => {
             setScanNote('Details read from the licence — please check them below.');
         } catch (err) {
             console.error('[driver] licence scan failed:', err);
-            setScanNote('Could not read the licence automatically — please fill the fields in below.');
+            const msg = err instanceof Error ? err.message : 'unknown error';
+            setScanNote(`Couldn't read the licence automatically (${msg}). The licence still uploads — type the details below.`);
         } finally {
             setScanning(false);
         }
@@ -181,7 +185,7 @@ const AddDriverForm: React.FC = () => {
                             <p className="text-sm font-bold text-white">Driver's Licence</p>
                             <p className="text-[11px] text-gray-500">Upload a photo — we'll read the details automatically.</p>
                             {scanning && <p className="text-[11px] text-blue-400 font-semibold mt-0.5 animate-pulse">Reading licence…</p>}
-                            {!scanning && scanNote && <p className="text-[11px] text-emerald-400 font-semibold mt-0.5">{scanNote}</p>}
+                            {!scanning && scanNote && <p className={`text-[11px] font-semibold mt-0.5 ${scanNote.startsWith('Details read') ? 'text-emerald-400' : 'text-amber-400'}`}>{scanNote}</p>}
                         </div>
                     </div>
                     <label className="shrink-0 cursor-pointer bg-brand-primary hover:bg-brand-secondary text-white text-xs font-bold py-2 px-4 rounded-lg">

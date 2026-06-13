@@ -47,6 +47,23 @@ export interface Vehicle {
 
 export type VehicleStatus = 'On the road' | 'In for service' | 'Off the road' | 'Sold';
 
+// A driver as an operational record — no login required. Seeded from the fleet
+// list; used for dispatch allocation and POD/tracking comms via their cell.
+export interface Driver {
+  id: string;
+  name: string;
+  cell?: string;
+  idNumber?: string;
+  licenceNo?: string;
+  licenceCode?: string;
+  licenceExpiry?: string;
+  pdpExpiry?: string;
+  assignedVehicleId?: string;
+  branch?: string;
+  isActive: boolean;
+  notes?: string;
+}
+
 export interface FuelEntry {
   id: string;
   vehicleId: string;

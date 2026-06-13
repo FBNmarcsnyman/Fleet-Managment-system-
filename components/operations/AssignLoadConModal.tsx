@@ -13,7 +13,7 @@ interface AssignLoadConModalProps {
 
 const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCancel }) => {
     const { suppliers, handleUpdateLoadConfirmation } = useOperations();
-    const { vehicles, users } = useVehicles();
+    const { vehicles, users, drivers = [] } = useVehicles();
     const { hideModal, showToast } = useUIState();
 
     const [assignmentType, setAssignmentType] = useState<'internal' | 'subcontractor'>(loadCon.supplierId ? 'subcontractor' : 'internal');
@@ -43,16 +43,34 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
         });
     }, [vehicles, loadCon.collectionBranch]);
 
-    const availableDrivers = useMemo(() => {
-        const allUsers = users || [];
-        return allUsers.filter(u => {
-            const isDriverRole = u.role === 'Staff' || u.role === 'Driver';
-            const isBranchOk = u.assignedBranches.length === 0 || 
-                               u.assignedBranches.includes(loadCon.collectionBranch as Branch) ||
-                               (loadCon.collectionBranch === 'LOADMASTER' && (u.assignedBranches.includes('FBN JHB') || u.assignedBranches.includes('FBN DBN')));
-            return isDriverRole && isBranchOk;
+    // Drivers come from the drivers table (fleet list, no login needed) plus any
+    // staff/driver users. We don't hard-filter by branch — that left the list
+    // empty; we sort the load's branch to the top instead. Value = the driver's
+    // name (driver_id is free text and displays as the name everywhere).
+    const driverOptions = useMemo(() => {
+        const opts: { key: string; label: string; value: string; branch?: string }[] = [];
+        (drivers || []).filter((d: any) => d.isActive !== false).forEach((d: any) => {
+            opts.push({ key: `d-${d.id}`, label: d.cell ? `${d.name} — ${d.cell}` : d.name, value: d.name, branch: d.branch });
         });
-    }, [users, loadCon.collectionBranch]);
+        (users || []).filter((u: any) => u.role === 'Staff' || u.role === 'Driver').forEach((u: any) => {
+            if (!opts.some(o => o.value.toLowerCase() === (u.name || '').toLowerCase())) {
+                opts.push({ key: `u-${u.email}`, label: u.name, value: u.name });
+            }
+        });
+        const branch = loadCon.collectionBranch;
+        return opts.sort((a, b) => {
+            const aHit = a.branch === branch ? 0 : 1;
+            const bHit = b.branch === branch ? 0 : 1;
+            return aHit - bHit || a.label.localeCompare(b.label);
+        });
+    }, [drivers, users, loadCon.collectionBranch]);
+
+    // When an internal vehicle is picked, auto-fill the driver linked to it.
+    const onVehicleChange = (vid: string) => {
+        setVehicleId(vid);
+        const linked = (drivers || []).find((d: any) => d.assignedVehicleId === vid);
+        if (linked && !driverId) setDriverId(linked.name);
+    };
 
     const transportSuppliers = useMemo(() => 
         (suppliers || []).filter((s: Supplier) => s.type === 'Transport')
@@ -153,7 +171,7 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className={labelClasses}>Internal Vehicle</label>
-                            <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} required className={inputClasses}>
+                            <select value={vehicleId} onChange={e => onVehicleChange(e.target.value)} required className={inputClasses}>
                                 <option value="" disabled>-- Select Asset --</option>
                                 {availableVehicles.map(v => <option key={v.id} value={v.id}>{v.registration} ({v.weightCategory})</option>)}
                             </select>
@@ -163,9 +181,9 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                             <label className={labelClasses}>Assigned Driver</label>
                              <select value={driverId} onChange={e => setDriverId(e.target.value)} required className={inputClasses}>
                                 <option value="" disabled>-- Select Driver --</option>
-                                {availableDrivers.map(d => <option key={d.email} value={d.email}>{d.name}</option>)}
+                                {driverOptions.map(d => <option key={d.key} value={d.value}>{d.label}</option>)}
                             </select>
-                            {availableDrivers.length === 0 && <p className="text-[10px] text-red-400 mt-1 ml-1 font-bold">No drivers available for branch {loadCon.collectionBranch}</p>}
+                            {driverOptions.length === 0 && <p className="text-[10px] text-amber-400 mt-1 ml-1 font-bold">No drivers yet — add them under Fleet → Drivers.</p>}
                         </div>
                     </div>
                     <div>

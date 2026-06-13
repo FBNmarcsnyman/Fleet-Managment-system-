@@ -13,6 +13,7 @@ import {
     toServiceEntryInsert, toOtherCostInsert, toRecurringCostInsert,
     toRevenueEntryInsert, toServiceIntervalInsert, toFuelPriceInsert,
     toBowserInsert, toBowserRefillInsert, mapBowser, mapBowserRefill, toTireUpdate,
+    mapDriver, toDriverInsert, toDriverUpdate,
 } from '../lib/mappers';
 import { ServiceEntry, OtherCost, RecurringCost, RevenueEntry, ServiceInterval, FuelPriceRecord } from '../types';
 
@@ -555,6 +556,34 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 if (error) { console.error('[fleet] updateTire failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_TIRE', payload: tire });
                 return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // -- Drivers (operational records, no login required) -----------------
+        handleAddDriver: async (driver: any): Promise<{ ok: boolean; value?: any; error?: string }> => {
+            try {
+                const { data, error } = await runWrite(() => supabase.from('drivers' as any).insert(toDriverInsert({ isActive: true, ...driver })).select().single());
+                if (error || !data) { console.error('[fleet] addDriver failed:', error); return { ok: false, error: error?.message || 'Could not add driver.' }; }
+                const mapped = mapDriver(data);
+                dispatch({ type: 'ADD_DRIVER', payload: mapped });
+                return { ok: true, value: mapped };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleUpdateDriver: async (id: string, updates: any): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('drivers' as any).update(toDriverUpdate(updates)).eq('id', id));
+                if (error) { console.error('[fleet] updateDriver failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_DRIVER', payload: { id, updates } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleBulkAddDrivers: async (drivers: any[]): Promise<{ ok: boolean; count?: number; error?: string }> => {
+            try {
+                const rows = drivers.map(d => toDriverInsert({ isActive: true, ...d }));
+                const { data, error } = await runWrite(() => supabase.from('drivers' as any).insert(rows).select());
+                if (error) { console.error('[fleet] bulkAddDrivers failed:', error); return { ok: false, error: error.message }; }
+                const mapped = (data || []).map(mapDriver);
+                dispatch({ type: 'BULK_ADD_DRIVERS', payload: mapped });
+                return { ok: true, count: mapped.length };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
     }), [dispatch, branchIdByName, branchById]);

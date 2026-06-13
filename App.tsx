@@ -60,6 +60,7 @@ const ReceiveRetreadModal = lazy(() => import('./components/ReceiveRetreadModal'
 const ScrapTireModal = lazy(() => import('./components/ScrapTireModal'));
 const SendForRetreadModal = lazy(() => import('./components/SendForRetreadModal'));
 const AddClientForm = lazy(() => import('./components/operations/AddClientForm'));
+const AddDriverForm = lazy(() => import('./components/fleet/AddDriverForm'));
 const AddSupplierForm = lazy(() => import('./components/operations/AddSupplierForm'));
 const BulkImportSuppliersModal = lazy(() => import('./components/operations/BulkImportSuppliersModal'));
 const RateSupplierModal = lazy(() => import('./components/RateSupplierModal'));
@@ -117,6 +118,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     scrapTire: ScrapTireModal,
     sendForRetread: SendForRetreadModal,
     addClient: AddClientForm,
+    addDriver: AddDriverForm,
     addSupplier: AddSupplierForm,
     bulkImportSuppliers: BulkImportSuppliersModal,
     rateSupplier: RateSupplierModal,

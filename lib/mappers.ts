@@ -4,7 +4,7 @@ import type {
     RevenueEntry, ServiceInterval, PlannedService, FuelPriceRecord, Bowser, BowserRefill,
     Budget, Forecast, JobCard, JobCardStatus, JobCardType, ChecklistTemplate,
     ChecklistItemTemplate, ChecklistSubmission, ChecklistItemResult, Tire, TireStatus,
-    TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase, Client, Supplier, Contact,
+    TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase, Client, Supplier, Contact, Driver,
     ComplianceDoc, Attachment, Quote, QuoteStatus, QuoteItem, QuoteLeg, SubcontractorQuote,
     LoadConfirmation, LoadConfirmationStatus, Manifest, TripSheet, IncidentReport,
     IncidentStatus, IncidentQuote, AtFaultParty, SupplierApplication,
@@ -410,6 +410,55 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     address: row.address ?? '',
     slaLevel: row.sla_level ?? undefined,
 });
+
+// -- drivers → Driver ---------------------------------------------------------
+// Typed loosely (any) so we don't have to hand-maintain the generated
+// database.types.ts for this table; the supabase calls cast the table name.
+export const mapDriver = (row: any): Driver => ({
+    id: row.id,
+    name: row.name,
+    cell: row.cell ?? undefined,
+    idNumber: row.id_number ?? undefined,
+    licenceNo: row.licence_no ?? undefined,
+    licenceCode: row.licence_code ?? undefined,
+    licenceExpiry: row.licence_expiry ?? undefined,
+    pdpExpiry: row.pdp_expiry ?? undefined,
+    assignedVehicleId: row.assigned_vehicle_id ?? undefined,
+    branch: row.branch ?? undefined,
+    isActive: row.is_active ?? true,
+    notes: row.notes ?? undefined,
+});
+
+export const toDriverInsert = (d: Omit<Driver, 'id'>): Record<string, any> => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    name: d.name,
+    cell: d.cell || null,
+    id_number: d.idNumber || null,
+    licence_no: d.licenceNo || null,
+    licence_code: d.licenceCode || null,
+    licence_expiry: d.licenceExpiry || null,
+    pdp_expiry: d.pdpExpiry || null,
+    assigned_vehicle_id: d.assignedVehicleId || null,
+    branch: d.branch || null,
+    is_active: d.isActive ?? true,
+    notes: d.notes || null,
+});
+
+export const toDriverUpdate = (u: Partial<Driver>): Record<string, any> => {
+    const row: Record<string, any> = {};
+    if (u.name !== undefined) row.name = u.name;
+    if (u.cell !== undefined) row.cell = u.cell || null;
+    if (u.idNumber !== undefined) row.id_number = u.idNumber || null;
+    if (u.licenceNo !== undefined) row.licence_no = u.licenceNo || null;
+    if (u.licenceCode !== undefined) row.licence_code = u.licenceCode || null;
+    if (u.licenceExpiry !== undefined) row.licence_expiry = u.licenceExpiry || null;
+    if (u.pdpExpiry !== undefined) row.pdp_expiry = u.pdpExpiry || null;
+    if (u.assignedVehicleId !== undefined) row.assigned_vehicle_id = u.assignedVehicleId || null;
+    if (u.branch !== undefined) row.branch = u.branch || null;
+    if (u.isActive !== undefined) row.is_active = u.isActive;
+    if (u.notes !== undefined) row.notes = u.notes || null;
+    return row;
+};
 
 // -- suppliers + supplier_compliance_docs + supplier_rate_cards → Supplier ---
 export const mapSupplierComplianceDoc = (row: Tables['supplier_compliance_docs']['Row']): ComplianceDoc => ({

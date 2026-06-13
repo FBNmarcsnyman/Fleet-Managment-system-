@@ -28,8 +28,10 @@
             }
         }
     </script>
-    <!-- Google Maps API for Places Autocomplete and Advanced Markers -->
-    <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&callback=initMap" async defer></script>
+    <!-- Google Maps API for Places Autocomplete and Advanced Markers.
+         Needs a key: set VITE_GOOGLE_MAPS_API_KEY in the environment (Vercel),
+         with the Maps JavaScript API + Places API enabled and billing on. -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places,marker&callback=initMap" async defer></script>
     <script>
         function initMap() {
             window.dispatchEvent(new Event('google-maps-api-loaded'));

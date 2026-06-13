@@ -105,11 +105,25 @@ export const PACKAGING_TYPES = [
 ];
 
 export const LOAD_SPECS = [
+    'Dedicated',
+    'Consolidated',
+    'LCL / Part Load',
     '1m Deck',
     '3m Deck',
     '6m Rigid',
+    '8m Rigid',
     '12m Flatbed',
-    'Superlink'
+    'Tri-Axle',
+    'Superlink',
+    'Link',
+    'Tautliner',
+    '6m Container',
+    '12m Container',
+    'Tanker',
+    'Lowbed',
+    'Side Tipper',
+    'Dropside',
+    'Refrigerated',
 ];
 
 export const NOTIFICATION_TRIGGERS = [

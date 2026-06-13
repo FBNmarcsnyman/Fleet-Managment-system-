@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LoadConfirmation, Client, Quote } from '../../types';
-import { useUIState, useFleetData } from '../../contexts/AppContexts';
+import { useUIState, useFleetData, useOperations } from '../../contexts/AppContexts';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { LOAD_SPECS } from '../../constants';
 
@@ -11,13 +11,19 @@ interface CreateBookingFormProps {
 }
 
 const CreateBookingForm: React.FC<CreateBookingFormProps> = ({ clients, onSubmit, quoteData }) => {
-    const { hideModal } = useUIState();
+    const { hideModal, showToast } = useUIState();
     const { commodities, packagingTypes, handleAddCommodity, handleAddPackagingType } = useFleetData();
+    const { handleAddClient } = useOperations();
 
     const [clientId, setClientId] = useState(quoteData?.clientId || '');
+    const [addingNewClient, setAddingNewClient] = useState(false);
+    const [newClientName, setNewClientName] = useState('');
     const [collectionPoint, setCollectionPoint] = useState(quoteData?.legs[0]?.collectionPoint || '');
     const [deliveryPoint, setDeliveryPoint] = useState(quoteData?.legs[0]?.deliveryPoint || '');
     const [collectionDate, setCollectionDate] = useState(quoteData?.collectionDate?.split('T')[0] || new Date().toISOString().split('T')[0]);
+    const [loadingTime, setLoadingTime] = useState('');
+    const [deliveryDate, setDeliveryDate] = useState((quoteData as any)?.deliveryDate?.split('T')[0] || '');
+    const [offloadingTime, setOffloadingTime] = useState('');
     const [customerOrderNumber, setCustomerOrderNumber] = useState(quoteData?.customerOrderNumber || '');
     const [description, setDescription] = useState(quoteData?.items.map(i => `${i.quantity}x ${i.description}`).join(', ') || '');
     const [totalAmount, setTotalAmount] = useState(quoteData?.totalAmount.toString() || '');
@@ -51,19 +57,26 @@ const CreateBookingForm: React.FC<CreateBookingFormProps> = ({ clients, onSubmit
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!clientId || !collectionPoint || !deliveryPoint || !description || !totalAmount) {
-            alert('Please fill all required fields.');
+        const haveClient = addingNewClient ? !!newClientName.trim() : !!clientId;
+        if (!haveClient || !collectionPoint || !deliveryPoint || !description || !totalAmount) {
+            alert('Please fill all required fields (client, addresses, description and rate).');
             return;
         }
 
-        const client = clients.find(c => c.id === clientId);
-        if (!client) return;
+        // Choose an existing client, or create a new one on the fly.
+        let resolvedClientId = clientId;
+        if (addingNewClient && newClientName.trim()) {
+            const res = await handleAddClient({ name: newClientName.trim(), contactPerson: '', contactEmail: '', contactPhone: '', address: '' });
+            if (!res.ok) { showToast(`Could not add client: ${res.error}`); return; }
+            resolvedClientId = res.value!.id;
+        }
+        if (!resolvedClientId) { alert('Please select or add a client.'); return; }
 
         const bookingData: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'> = {
             quoteId: quoteData?.id,
-            clientId,
+            clientId: resolvedClientId,
             items: quoteData?.items || [{
                 id: 'item-1',
                 description,
@@ -74,12 +87,15 @@ const CreateBookingForm: React.FC<CreateBookingFormProps> = ({ clients, onSubmit
             }],
             legs: quoteData?.legs || [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Internal' }],
             totalAmount: parseFloat(totalAmount),
-            collectionBranch: 'FBN JHB', 
+            collectionBranch: 'FBN JHB',
             destinationBranch: 'FBN DBN',
             priority,
             collectionPoint,
             deliveryPoint,
             collectionDate,
+            deliveryDate: deliveryDate || undefined,
+            loadingTime: loadingTime || undefined,
+            offloadingTime: offloadingTime || undefined,
             customerOrderNumber: customerOrderNumber || undefined,
             commodity,
             packaging,
@@ -104,15 +120,44 @@ const CreateBookingForm: React.FC<CreateBookingFormProps> = ({ clients, onSubmit
                 {/* Client & Date Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className={labelClasses}>Bill-to Client</label>
-                        <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputClasses} required disabled={!!quoteData}>
-                            <option value="" disabled>-- Select Client --</option>
-                            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                        <div className="flex justify-between items-center mb-1.5">
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Bill-to Client</label>
+                            {!quoteData && (
+                                <button type="button" onClick={() => { setAddingNewClient(!addingNewClient); setClientId(''); setNewClientName(''); }} className="text-[10px] text-blue-400 font-bold hover:underline">
+                                    {addingNewClient ? 'Choose existing' : '+ New client'}
+                                </button>
+                            )}
+                        </div>
+                        {addingNewClient ? (
+                            <input type="text" value={newClientName} onChange={e => setNewClientName(e.target.value)} className={inputClasses} placeholder="New client company name" required />
+                        ) : (
+                            <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputClasses} required disabled={!!quoteData}>
+                                <option value="" disabled>-- Select Client --</option>
+                                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        )}
                     </div>
-                    <div>
-                        <label className={labelClasses}>Requested Collection Date</label>
-                        <input type="date" value={collectionDate} onChange={e => setCollectionDate(e.target.value)} className={inputClasses} required />
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelClasses}>Collection Date</label>
+                            <input type="date" value={collectionDate} onChange={e => setCollectionDate(e.target.value)} className={inputClasses} required />
+                        </div>
+                        <div>
+                            <label className={labelClasses}>Collection Time</label>
+                            <input type="time" value={loadingTime} onChange={e => setLoadingTime(e.target.value)} className={inputClasses} />
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelClasses}>Delivery Date</label>
+                            <input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} className={inputClasses} />
+                        </div>
+                        <div>
+                            <label className={labelClasses}>Delivery Time</label>
+                            <input type="time" value={offloadingTime} onChange={e => setOffloadingTime(e.target.value)} className={inputClasses} />
+                        </div>
                     </div>
                 </div>
 

@@ -39,6 +39,8 @@ items ship.
 - Dashboard analytics: Load Pipeline, Subcontractor Margins, Top Clients.
 - Booking form: choose-or-add client, vehicle spec options (incl. Dedicated/Consolidated),
   collection + delivery dates and times.
+- **Drivers** as first-class records (no login): Fleet → Drivers (add/edit/bulk,
+  licence + PDP expiry); Assign Dispatch lists them; picking a vehicle auto-fills its driver.
 
 ---
 
@@ -51,12 +53,9 @@ items ship.
    *Maps JavaScript API* + *Places API* enabled and billing on, then add it as an env
    var in Vercel. Until then, address autocomplete won't suggest (you can still type
    addresses manually).
-2. **Drivers can't be assigned** — the driver dropdown only lists people with a *login*
-   (profiles). Fleet-list drivers have no login, so it's empty. **Plan:** make drivers
-   first-class records (a `drivers` list: name, cell, licence/PDP, assigned vehicle,
-   branch) that don't need a login; the fleet master-list names seed it. Assign
-   dispatch picks from this list (and still allows internal staff users). Surface the
-   driver's cell for POD/tracking comms.
+2. ~~**Drivers can't be assigned**~~ ✅ DONE — drivers are now first-class records
+   (Fleet → Drivers); add them or bulk-paste, then assign on dispatch. *(Marc: add your
+   driver list under Fleet → Drivers, or send me the list to bulk-import.)*
 3. **LoadCon documents (3):** generate from a saved load —
    - LoadCon → subcontractor (shows **transport rate**, NOT client/ client rate)
    - Client Order → client (shows **client rate**, NOT subbie / transport rate)

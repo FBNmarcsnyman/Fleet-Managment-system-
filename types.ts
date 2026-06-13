@@ -396,6 +396,37 @@ export interface LoadConfirmation {
     commodity?: string;
     packaging?: string;
     loadSpec?: string;
+    // Transport Order (loadcon) fields — mirror the FBN Transport Order form.
+    arrangingBranch?: string;
+    loadRefNo?: string;
+    clientName?: string;
+    clientEmail?: string;
+    route?: string;
+    fbnRepresentative?: string;
+    loadingTime?: string;
+    offloadingTime?: string;
+    collectionContact?: string;
+    collectionTelephone?: string;
+    deliveryContact?: string;
+    deliveryTelephone?: string;
+    loadType?: string;
+    quantity?: string;
+    weightKg?: string;
+    volume?: string;
+    cargoValue?: string;
+    equipmentRequired?: string[];
+    containerNo?: string;
+    containerTurnInAddress?: string;
+    containerOperator?: string;
+    containerSealNo?: string;
+    specialInstructions?: string;
+    subcontractorName?: string;
+    forAttention?: string;
+    subcontractorEmail?: string;
+    podEmail?: string;
+    ccEmail?: string;
+    delayReason?: string;
+    eta?: string;
 }
 
 export type LoadConfirmationStatus =

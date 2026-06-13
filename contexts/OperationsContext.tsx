@@ -168,6 +168,29 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (error) { console.error('[ops] createLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
                 const mapped = mapLoadConfirmation(inserted, { branchById });
                 dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });
+
+                // Remember the subcontractor in the supplier database (create only
+                // if new, so management's later edits are never overwritten). The
+                // "For Attention" name + email become the editable contact details.
+                const subName = (data.subcontractorName || '').trim();
+                if (subName) {
+                    const exists = (stateRef.current.suppliers || []).some((s: any) => (s.name || '').toLowerCase() === subName.toLowerCase());
+                    if (!exists) {
+                        const supplierInput: any = {
+                            name: subName,
+                            type: 'Transport',
+                            contactPerson: data.forAttention || '',
+                            contactEmail: data.subcontractorEmail || '',
+                            contactPhone: data.subcontractorDriverCell || '',
+                            address: '',
+                            complianceStatus: 'Pending',
+                            controllerContact: data.forAttention || '',
+                        };
+                        const { data: supRow, error: supErr } = await supabase.from('suppliers').insert(toSupplierInsert(supplierInput)).select().single();
+                        if (supErr) console.error('[ops] auto-create subcontractor failed:', supErr);
+                        else if (supRow) dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) });
+                    }
+                }
                 return { ok: true, value: mapped };
             } catch (err) {
                 console.error('[ops] createLoadConfirmation threw:', err);

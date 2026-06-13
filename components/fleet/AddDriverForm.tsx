@@ -6,6 +6,10 @@ import { uploadFile } from '../../lib/supabase';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
 import { SparklesIcon } from '../icons/SparklesIcon';
 
+// Bound any promise so a stalled network call can't hang the UI forever.
+const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> =>
+    Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timed out')), ms))]);
+
 // Add / edit a driver, or bulk-add several at once (one "Name, Cell" per line).
 // You can upload a photo of the driver's licence and the app auto-fills the
 // details (name, ID, licence no/code, licence & PDP expiry) using AI.
@@ -48,7 +52,7 @@ const AddDriverForm: React.FC = () => {
                 "Return ISO dates (YYYY-MM-DD). For vehicleCodes give the licence codes shown (e.g. 'EB, C1'). " +
                 "licenceExpiry is the card's valid-to / expiry date. pdpExpiry is the PrDP (professional driving permit) expiry if shown, else empty. " +
                 "If a field is not visible, return an empty string.";
-            const response: GenerateContentResponse = await ai.models.generateContent({
+            const response: GenerateContentResponse = await withTimeout(ai.models.generateContent({
                 model: 'gemini-3-flash-preview',
                 contents: { parts: [imagePart, { text: prompt }] },
                 config: {
@@ -65,7 +69,7 @@ const AddDriverForm: React.FC = () => {
                         },
                     },
                 },
-            });
+            }), 30000);
             const r = JSON.parse((response.text || '{}').trim());
             if (r.fullName) setName(prev => prev || r.fullName);
             if (r.idNumber) setIdNumber(r.idNumber);
@@ -114,27 +118,32 @@ const AddDriverForm: React.FC = () => {
             }
             if (!name.trim()) { showToast('Driver name is required.'); return; }
 
-            // Upload the licence image if a new one was selected.
-            let licenceDocUrl = editing?.licenceDocUrl || '';
-            if (licenceFile) {
-                const safe = licenceFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-                const path = `drivers/${Date.now()}_${safe}`;
-                const up = await uploadFile('driver-docs', path, licenceFile);
-                if (up.error) { showToast(`Licence upload failed: ${up.error}`); }
-                else if (up.url) licenceDocUrl = up.url;
-            }
-
-            const payload = { name: name.trim(), cell, idNumber, licenceNo, licenceCode, licenceExpiry, pdpExpiry, assignedVehicleId: assignedVehicleId || undefined, branch, isActive, licenceDocUrl: licenceDocUrl || undefined };
+            // Save the driver immediately (fast). The licence image, if any, is
+            // uploaded in the BACKGROUND afterwards and attached to the record —
+            // so a slow/failed upload can never freeze the save.
+            const payload = { name: name.trim(), cell, idNumber, licenceNo, licenceCode, licenceExpiry, pdpExpiry, assignedVehicleId: assignedVehicleId || undefined, branch, isActive, licenceDocUrl: editing?.licenceDocUrl || undefined };
+            let savedId = editing?.id;
             if (editing) {
                 const res = await handleUpdateDriver(editing.id, payload);
                 if (!res.ok) { showToast(`Could not update driver: ${res.error}`); return; }
-                hideModal();
-                showToast(`Driver "${name}" updated.`);
             } else {
                 const res = await handleAddDriver(payload);
                 if (!res.ok) { showToast(`Could not add driver: ${res.error}`); return; }
-                hideModal();
-                showToast(`Driver "${name}" added.`);
+                savedId = res.value?.id;
+            }
+            hideModal();
+            showToast(`Driver "${name}" ${editing ? 'updated' : 'added'}.${licenceFile ? ' Uploading licence…' : ''}`);
+
+            // Background licence upload — attach the URL once it lands.
+            if (licenceFile && savedId) {
+                const safe = licenceFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const path = `drivers/${savedId}_${Date.now()}_${safe}`;
+                withTimeout(uploadFile('driver-docs', path, licenceFile), 30000)
+                    .then(up => {
+                        if (up.url) handleUpdateDriver(savedId!, { licenceDocUrl: up.url });
+                        else if (up.error) showToast(`Licence image upload failed: ${up.error}`);
+                    })
+                    .catch(() => showToast('Licence image upload timed out — the driver was saved.'));
             }
         } catch (err) {
             showToast(`Could not save: ${err instanceof Error ? err.message : 'unknown error'}`);
@@ -215,7 +224,7 @@ const AddDriverForm: React.FC = () => {
             </div>
             <div className="flex justify-end space-x-3 mt-8">
                 <button type="button" onClick={hideModal} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button type="submit" disabled={submitting || scanning} className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50">{submitting ? 'Saving…' : (editing ? 'Save Changes' : 'Add Driver')}</button>
+                <button type="submit" disabled={submitting} className="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50">{submitting ? 'Saving…' : (editing ? 'Save Changes' : 'Add Driver')}</button>
             </div>
         </form>
     );

@@ -397,6 +397,81 @@ export type Database = {
           },
         ]
       }
+      fbn_quotes: {
+        Row: {
+          amount: number | null
+          amount_vat: number | null
+          client_company: string | null
+          client_email: string | null
+          client_name: string | null
+          client_phone: string | null
+          created_at: string | null
+          decline_comment: string | null
+          decline_reason: string | null
+          direction: string | null
+          follow_up_date: string | null
+          id: string
+          notes: string | null
+          quote_data: Json | null
+          quote_type: string | null
+          ref: string
+          status: string | null
+          status_updated_at: string | null
+          token: string
+          type_name: string | null
+          user_id: string | null
+          validity_days: number | null
+        }
+        Insert: {
+          amount?: number | null
+          amount_vat?: number | null
+          client_company?: string | null
+          client_email?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string | null
+          decline_comment?: string | null
+          decline_reason?: string | null
+          direction?: string | null
+          follow_up_date?: string | null
+          id?: string
+          notes?: string | null
+          quote_data?: Json | null
+          quote_type?: string | null
+          ref: string
+          status?: string | null
+          status_updated_at?: string | null
+          token: string
+          type_name?: string | null
+          user_id?: string | null
+          validity_days?: number | null
+        }
+        Update: {
+          amount?: number | null
+          amount_vat?: number | null
+          client_company?: string | null
+          client_email?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string | null
+          decline_comment?: string | null
+          decline_reason?: string | null
+          direction?: string | null
+          follow_up_date?: string | null
+          id?: string
+          notes?: string | null
+          quote_data?: Json | null
+          quote_type?: string | null
+          ref?: string
+          status?: string | null
+          status_updated_at?: string | null
+          token?: string
+          type_name?: string | null
+          user_id?: string | null
+          validity_days?: number | null
+        }
+        Relationships: []
+      }
       forecasts: {
         Row: {
           created_at: string
@@ -834,136 +909,226 @@ export type Database = {
       }
       load_confirmations: {
         Row: {
+          arranging_branch: string | null
           cargo_photo_urls: string[] | null
+          cargo_value: string | null
+          cc_email: string | null
+          client_email: string | null
           client_id: string
+          client_name: string | null
           collection_branch_id: string | null
+          collection_contact: string | null
           collection_date: string | null
           collection_point: string | null
+          collection_telephone: string | null
           commodity: string | null
+          container_no: string | null
+          container_operator: string | null
+          container_seal_no: string | null
+          container_turn_in_address: string | null
           created_at: string
           customer_order_number: string | null
           damage_report: string | null
           date: string
+          delay_reason: string | null
           delivery_area: string | null
+          delivery_contact: string | null
           delivery_date: string | null
           delivery_point: string | null
+          delivery_telephone: string | null
           destination_branch_id: string | null
           driver_id: string | null
+          equipment_required: string[] | null
+          eta: string | null
+          fbn_representative: string | null
+          for_attention: string | null
           id: string
           invoice_date: string | null
           invoice_number: string | null
           items: Json
           legs: Json
           load_con_number: string
+          load_ref_no: string | null
           load_spec: string | null
+          load_type: string | null
+          loading_time: string | null
           notes: Json | null
+          offloading_time: string | null
           organization_id: string
           packaging: string | null
           payment_status: Database["public"]["Enums"]["payment_status"] | null
           pod_analysis: Json | null
+          pod_email: string | null
           pod_photo_url: string | null
           pod_signature_url: string | null
           priority: Database["public"]["Enums"]["priority_level"]
+          quantity: string | null
           quote_id: string | null
+          route: string | null
           route_id: string | null
           sent_to_supplier_date: string | null
+          special_instructions: string | null
           status: Database["public"]["Enums"]["load_confirmation_status"]
           subcontractor_driver_cell: string | null
           subcontractor_driver_name: string | null
+          subcontractor_email: string | null
+          subcontractor_name: string | null
           subcontractor_vehicle_reg: string | null
           supplier_id: string | null
           supplier_rate: number | null
           total_amount: number
           updated_at: string
           vehicle_id: string | null
+          volume: string | null
+          weight_kg: string | null
         }
         Insert: {
+          arranging_branch?: string | null
           cargo_photo_urls?: string[] | null
+          cargo_value?: string | null
+          cc_email?: string | null
+          client_email?: string | null
           client_id: string
+          client_name?: string | null
           collection_branch_id?: string | null
+          collection_contact?: string | null
           collection_date?: string | null
           collection_point?: string | null
+          collection_telephone?: string | null
           commodity?: string | null
+          container_no?: string | null
+          container_operator?: string | null
+          container_seal_no?: string | null
+          container_turn_in_address?: string | null
           created_at?: string
           customer_order_number?: string | null
           damage_report?: string | null
           date?: string
+          delay_reason?: string | null
           delivery_area?: string | null
+          delivery_contact?: string | null
           delivery_date?: string | null
           delivery_point?: string | null
+          delivery_telephone?: string | null
           destination_branch_id?: string | null
           driver_id?: string | null
+          equipment_required?: string[] | null
+          eta?: string | null
+          fbn_representative?: string | null
+          for_attention?: string | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string | null
           items?: Json
           legs?: Json
           load_con_number: string
+          load_ref_no?: string | null
           load_spec?: string | null
+          load_type?: string | null
+          loading_time?: string | null
           notes?: Json | null
+          offloading_time?: string | null
           organization_id: string
           packaging?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           pod_analysis?: Json | null
+          pod_email?: string | null
           pod_photo_url?: string | null
           pod_signature_url?: string | null
           priority?: Database["public"]["Enums"]["priority_level"]
+          quantity?: string | null
           quote_id?: string | null
+          route?: string | null
           route_id?: string | null
           sent_to_supplier_date?: string | null
+          special_instructions?: string | null
           status?: Database["public"]["Enums"]["load_confirmation_status"]
           subcontractor_driver_cell?: string | null
           subcontractor_driver_name?: string | null
+          subcontractor_email?: string | null
+          subcontractor_name?: string | null
           subcontractor_vehicle_reg?: string | null
           supplier_id?: string | null
           supplier_rate?: number | null
           total_amount?: number
           updated_at?: string
           vehicle_id?: string | null
+          volume?: string | null
+          weight_kg?: string | null
         }
         Update: {
+          arranging_branch?: string | null
           cargo_photo_urls?: string[] | null
+          cargo_value?: string | null
+          cc_email?: string | null
+          client_email?: string | null
           client_id?: string
+          client_name?: string | null
           collection_branch_id?: string | null
+          collection_contact?: string | null
           collection_date?: string | null
           collection_point?: string | null
+          collection_telephone?: string | null
           commodity?: string | null
+          container_no?: string | null
+          container_operator?: string | null
+          container_seal_no?: string | null
+          container_turn_in_address?: string | null
           created_at?: string
           customer_order_number?: string | null
           damage_report?: string | null
           date?: string
+          delay_reason?: string | null
           delivery_area?: string | null
+          delivery_contact?: string | null
           delivery_date?: string | null
           delivery_point?: string | null
+          delivery_telephone?: string | null
           destination_branch_id?: string | null
           driver_id?: string | null
+          equipment_required?: string[] | null
+          eta?: string | null
+          fbn_representative?: string | null
+          for_attention?: string | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string | null
           items?: Json
           legs?: Json
           load_con_number?: string
+          load_ref_no?: string | null
           load_spec?: string | null
+          load_type?: string | null
+          loading_time?: string | null
           notes?: Json | null
+          offloading_time?: string | null
           organization_id?: string
           packaging?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           pod_analysis?: Json | null
+          pod_email?: string | null
           pod_photo_url?: string | null
           pod_signature_url?: string | null
           priority?: Database["public"]["Enums"]["priority_level"]
+          quantity?: string | null
           quote_id?: string | null
+          route?: string | null
           route_id?: string | null
           sent_to_supplier_date?: string | null
+          special_instructions?: string | null
           status?: Database["public"]["Enums"]["load_confirmation_status"]
           subcontractor_driver_cell?: string | null
           subcontractor_driver_name?: string | null
+          subcontractor_email?: string | null
+          subcontractor_name?: string | null
           subcontractor_vehicle_reg?: string | null
           supplier_id?: string | null
           supplier_rate?: number | null
           total_amount?: number
           updated_at?: string
           vehicle_id?: string | null
+          volume?: string | null
+          weight_kg?: string | null
         }
         Relationships: [
           {
@@ -1658,6 +1823,72 @@ export type Database = {
           },
         ]
       }
+      quote_requests: {
+        Row: {
+          assigned_to: string | null
+          cargo_description: string | null
+          collection_area: string | null
+          company: string | null
+          created_at: string | null
+          delivery_area: string | null
+          email: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          pieces: number | null
+          preferred_date: string | null
+          ref: string
+          responded_at: string | null
+          route: string | null
+          service_type: string | null
+          status: string | null
+          weight_kg: number | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          cargo_description?: string | null
+          collection_area?: string | null
+          company?: string | null
+          created_at?: string | null
+          delivery_area?: string | null
+          email: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          pieces?: number | null
+          preferred_date?: string | null
+          ref: string
+          responded_at?: string | null
+          route?: string | null
+          service_type?: string | null
+          status?: string | null
+          weight_kg?: number | null
+        }
+        Update: {
+          assigned_to?: string | null
+          cargo_description?: string | null
+          collection_area?: string | null
+          company?: string | null
+          created_at?: string | null
+          delivery_area?: string | null
+          email?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          pieces?: number | null
+          preferred_date?: string | null
+          ref?: string
+          responded_at?: string | null
+          route?: string | null
+          service_type?: string | null
+          status?: string | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       quotes: {
         Row: {
           client_id: string
@@ -1764,6 +1995,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_settings: {
+        Row: {
+          data: Json
+          id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          data: Json
+          id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          data?: Json
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       recurring_costs: {
         Row: {
@@ -2580,6 +2832,54 @@ export type Database = {
           },
         ]
       }
+      user_profiles: {
+        Row: {
+          company_name: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          role: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          role?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          role: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          role?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          role?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       vehicle_compliance_docs: {
         Row: {
           created_at: string
@@ -2818,6 +3118,7 @@ export type Database = {
         Args: { target_branch: string }
         Returns: boolean
       }
+      next_quote_ref: { Args: never; Returns: string }
       storage_path_part: {
         Args: { idx: number; path: string }
         Returns: string

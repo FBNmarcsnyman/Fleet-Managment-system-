@@ -25,6 +25,22 @@ All data lives in Supabase (`load_confirmations` table — already rich) and sur
 
 ---
 
+## CRITICAL RULE — two documents, margin protected
+One load entry produces **two separate documents/emails**, and **neither party sees the other's rate or identity**:
+
+| | **LoadCon / Transport Order** | **Client Order / Confirmation** |
+|---|---|---|
+| Sent to | **Subcontractor** (the carrier doing the load) | **Client** (who booked the load) |
+| Shows the **rate** | **Transport rate** (`supplier_rate`) | **Client rate** (`total_amount`) |
+| Shows the **carrier** | The **subcontractor** (name, driver, vehicle, cell) | "FBN Transport" only |
+| **Hides** | the client name + **client rate** | the subcontractor + **transport rate** |
+| Common fields (both) | collection/delivery addresses, dates/times, contacts, commodity, packaging, quantity, weight, volume, container details, equipment, special instructions, load ref / cust order no | same |
+
+- The **LoadCon** matches the supplied PDF template (already client-free).
+- The **Client Order** is a second template generated from the same record, showing the client + client rate and "FBN Transport" as the carrier — no subcontractor, no transport rate.
+- The capture form collects **everything** (client + client rate **and** subcontractor + transport rate); the two documents each redact the other side. This protects the FBN margin automatically.
+- On creation: email the **LoadCon to the subcontractor** and the **Client Order to the client** (client email captured on the form).
+
 ## The journey — your steps mapped to the system
 
 | # | Your step | System status | Who updates it | What the agent sends | Data captured |

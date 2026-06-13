@@ -28,34 +28,35 @@ const AddSupplierForm: React.FC = () => {
         if (submitting) return;
         setSubmitting(true);
         const cleanContacts = contacts.filter(c => (c.name || '').trim() || (c.email || '').trim());
-        if (editing) {
-            const result = await handleUpdateSupplier(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address });
-            setSubmitting(false);
-            if (!result.ok) { showToast(`Failed to update ${noun.toLowerCase()}: ${result.error}`); return; }
+        try {
+            if (editing) {
+                const result = await handleUpdateSupplier(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address });
+                if (!result.ok) { showToast(`Failed to update ${noun.toLowerCase()}: ${result.error}`); return; }
+                hideModal();
+                showToast(`${noun} "${name}" updated.`);
+                return;
+            }
+            const newSupplier: Omit<Supplier, 'id'> = {
+                name,
+                contactPerson,
+                contactEmail,
+                contactPhone,
+                contacts: cleanContacts,
+                address,
+                type: defaultType,
+                complianceStatus: 'Pending',
+                complianceDocs: [],
+                rateCards: [],
+            };
+            const result = await handleAddSupplier(newSupplier);
+            if (!result.ok) { showToast(`Failed to add supplier: ${result.error}`); return; }
             hideModal();
-            showToast(`${noun} "${name}" updated.`);
-            return;
+            showToast(`${noun} "${result.value!.name}" added.`);
+        } catch (err) {
+            showToast(`Could not save ${noun.toLowerCase()}: ${err instanceof Error ? err.message : 'unknown error'}`);
+        } finally {
+            setSubmitting(false);
         }
-        const newSupplier: Omit<Supplier, 'id'> = {
-            name,
-            contactPerson,
-            contactEmail,
-            contactPhone,
-            contacts: cleanContacts,
-            address,
-            type: defaultType,
-            complianceStatus: 'Pending',
-            complianceDocs: [],
-            rateCards: [],
-        };
-        const result = await handleAddSupplier(newSupplier);
-        setSubmitting(false);
-        if (!result.ok) {
-            showToast(`Failed to add supplier: ${result.error}`);
-            return;
-        }
-        hideModal();
-        showToast(`${noun} "${result.value!.name}" added.`);
     };
 
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";

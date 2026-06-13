@@ -24,28 +24,28 @@ const AddClientForm: React.FC = () => {
         if (submitting) return;
         setSubmitting(true);
         const cleanContacts = contacts.filter(c => (c.name || '').trim() || (c.email || '').trim());
+        try {
+            if (editing) {
+                const result = await handleUpdateClient(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address });
+                if (!result.ok) { showToast(`Failed to update client: ${result.error}`); return; }
+                hideModal();
+                showToast(`Client "${name}" updated.`);
+                return;
+            }
 
-        if (editing) {
-            const result = await handleUpdateClient(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address });
-            setSubmitting(false);
-            if (!result.ok) { showToast(`Failed to update client: ${result.error}`); return; }
+            const newClient = { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address };
+            const result = await handleAddClient(newClient);
+            if (!result.ok) { showToast(`Failed to add client: ${result.error}`); return; } // keep modal open so user can correct + retry
+            if (modal.payload?.onSuccess) {
+                modal.payload.onSuccess(result.value!.id);
+            }
             hideModal();
-            showToast(`Client "${name}" updated.`);
-            return;
+            showToast(`Client "${result.value!.name}" added.`);
+        } catch (err) {
+            showToast(`Could not save client: ${err instanceof Error ? err.message : 'unknown error'}`);
+        } finally {
+            setSubmitting(false);
         }
-
-        const newClient = { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address };
-        const result = await handleAddClient(newClient);
-        setSubmitting(false);
-        if (!result.ok) {
-            showToast(`Failed to add client: ${result.error}`);
-            return; // keep modal open so user can correct + retry
-        }
-        if (modal.payload?.onSuccess) {
-            modal.payload.onSuccess(result.value!.id);
-        }
-        hideModal();
-        showToast(`Client "${result.value!.name}" added.`);
     };
 
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";

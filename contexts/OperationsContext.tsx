@@ -84,7 +84,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleUpdateClient: async (id: string, updates: Partial<Client>): Promise<Result<void>> => {
             try {
-                const { error } = await runWrite(() => supabase.from('clients').update(toClientUpdate(updates)).eq('id', id).select().single());
+                const { error } = await runWrite(() => supabase.from('clients').update(toClientUpdate(updates)).eq('id', id));
                 if (error) { console.error('[ops] updateClient failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_CLIENT', payload: { id, updates } });
                 return { ok: true };
@@ -126,7 +126,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleUpdateSupplier: async (id: string, updates: Partial<Supplier>): Promise<Result<void>> => {
             try {
-                const { error } = await runWrite(() => supabase.from('suppliers').update(toSupplierUpdate(updates)).eq('id', id).select().single());
+                const { error } = await runWrite(() => supabase.from('suppliers').update(toSupplierUpdate(updates)).eq('id', id));
                 if (error) { console.error('[ops] updateSupplier failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_SUPPLIER', payload: { id, updates } });
                 return { ok: true };

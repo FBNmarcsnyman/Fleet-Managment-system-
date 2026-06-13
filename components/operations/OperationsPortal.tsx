@@ -39,6 +39,15 @@ const OperationsPortal: React.FC = () => {
         { view: 'clients', label: 'Clients' },
     ];
 
+    const handleNewTransportOrder = () => showModal('transportOrder', {
+        onSubmit: async (data: any) => {
+            const result = await createLoadCon(data);
+            if (result.ok) showToast(`Transport Order ${result.value!.loadConNumber} created.`);
+            else showToast(`Failed to create Transport Order: ${result.error}`);
+            return result;
+        },
+    });
+
     const handleAssign = (lc: LoadConfirmation) => showModal('assignLoadCon', { loadCon: lc });
     const handleNewBooking = () => showModal('createBooking', {
         clients,
@@ -70,13 +79,19 @@ const OperationsPortal: React.FC = () => {
     
     return (
         <div>
-            <div className="flex items-center space-x-1 mb-6 overflow-x-auto">
-                {navItems.map(item => (
-                    <button key={item.view} onClick={() => handleOperationsSubViewChange(item.view as any)}
-                        className={`px-4 py-2 text-sm font-semibold rounded-md whitespace-nowrap ${operationsSubView === item.view ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
-                        {item.label}
-                    </button>
-                ))}
+            <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex items-center space-x-1 overflow-x-auto">
+                    {navItems.map(item => (
+                        <button key={item.view} onClick={() => handleOperationsSubViewChange(item.view as any)}
+                            className={`px-4 py-2 text-sm font-semibold rounded-md whitespace-nowrap ${operationsSubView === item.view ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
+                <button onClick={handleNewTransportOrder}
+                    className="shrink-0 bg-brand-secondary hover:bg-brand-primary text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow-lg transition active:scale-95">
+                    + New Transport Order
+                </button>
             </div>
             {renderView()}
         </div>

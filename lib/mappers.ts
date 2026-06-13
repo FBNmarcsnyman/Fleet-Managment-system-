@@ -479,7 +479,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     id: row.id,
     loadConNumber: row.load_con_number,
     quoteId: row.quote_id ?? undefined,
-    clientId: row.client_id,
+    clientId: row.client_id ?? '',
     supplierId: row.supplier_id ?? undefined,
     date: row.date,
     items: (row.items as any[]) ?? [],
@@ -851,7 +851,7 @@ export const toLoadConfirmationInsert = (
     branchIdByName: BranchIdByName,
 ): Tables['load_confirmations']['Insert'] => ({
     organization_id: FBN_ORGANIZATION_ID,
-    client_id: lc.clientId,
+    client_id: lc.clientId || null,
     load_con_number: loadConNumber,
     quote_id: lc.quoteId ?? null,
     supplier_id: lc.supplierId ?? null,

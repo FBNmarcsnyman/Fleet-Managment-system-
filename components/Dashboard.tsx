@@ -13,6 +13,9 @@ import FuelPriceTickerWidget from './dashboard-widgets/FuelPriceTickerWidget';
 import BowserStatusWidget from './dashboard-widgets/BowserStatusWidget';
 import FuelAnalyticsWidget from './dashboard-widgets/FuelAnalyticsWidget';
 import ComplianceExpiryWidget from './dashboard-widgets/ComplianceExpiryWidget';
+import LoadPipelineWidget from './dashboard-widgets/LoadPipelineWidget';
+import SubcontractorMarginWidget from './dashboard-widgets/SubcontractorMarginWidget';
+import TopClientsWidget from './dashboard-widgets/TopClientsWidget';
 import AddWidgetModal from './dashboard-widgets/AddWidgetModal';
 import { PlusIcon } from './icons/PlusIcon';
 
@@ -29,11 +32,17 @@ const WIDGET_CONFIG: Record<WidgetType, { name: string; component: React.FC<any>
     'BOWSER_STATUS': { name: 'Bowser Fuel Levels', component: BowserStatusWidget, defaultSize: 'col-span-12 md:col-span-3' },
     'FUEL_ANALYTICS': { name: 'Fuel Analytics', component: FuelAnalyticsWidget, defaultSize: 'col-span-12 md:col-span-8' },
     'COMPLIANCE_EXPIRY': { name: 'Compliance & Expiry', component: ComplianceExpiryWidget, defaultSize: 'col-span-12 md:col-span-6' },
+    'LOAD_PIPELINE': { name: 'Load Pipeline', component: LoadPipelineWidget, defaultSize: 'col-span-12 md:col-span-6' },
+    'SUBCONTRACTOR_MARGIN': { name: 'Subcontractor Margins', component: SubcontractorMarginWidget, defaultSize: 'col-span-12 md:col-span-6' },
+    'TOP_CLIENTS': { name: 'Top Clients by Revenue', component: TopClientsWidget, defaultSize: 'col-span-12 md:col-span-6' },
 };
 
 const DEFAULT_LAYOUT: { type: WidgetType; size: string; }[] = [
     { type: 'ACTION_CENTER', size: 'col-span-12' },
     { type: 'FINANCIAL_SUMMARY_STATS', size: 'col-span-12' },
+    { type: 'LOAD_PIPELINE', size: 'col-span-12 md:col-span-6' },
+    { type: 'SUBCONTRACTOR_MARGIN', size: 'col-span-12 md:col-span-6' },
+    { type: 'TOP_CLIENTS', size: 'col-span-12 md:col-span-6' },
     { type: 'BOWSER_STATUS', size: 'col-span-12 md:col-span-4' },
     { type: 'MONTHLY_FINANCIALS_CHART', size: 'col-span-12 md:col-span-8' },
     { type: 'FUEL_ANALYTICS', size: 'col-span-12 md:col-span-8' },
@@ -46,7 +55,7 @@ const DEFAULT_LAYOUT: { type: WidgetType; size: string; }[] = [
 const Dashboard: React.FC = () => {
     const [layout, setLayout] = useState(() => {
         try {
-            const savedLayout = localStorage.getItem('dashboardLayout_v3');
+            const savedLayout = localStorage.getItem('dashboardLayout_v4');
             return savedLayout ? JSON.parse(savedLayout) : DEFAULT_LAYOUT;
         } catch (error) {
             return DEFAULT_LAYOUT;
@@ -58,7 +67,7 @@ const Dashboard: React.FC = () => {
     const dragOverItem = useRef<number | null>(null);
 
     useEffect(() => {
-        localStorage.setItem('dashboardLayout_v3', JSON.stringify(layout));
+        localStorage.setItem('dashboardLayout_v4', JSON.stringify(layout));
     }, [layout]);
     
     const onAddWidget = (widgetType: WidgetType) => {

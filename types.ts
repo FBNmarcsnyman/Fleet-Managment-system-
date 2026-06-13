@@ -14,7 +14,10 @@ export type WidgetType =
   | 'FUEL_PRICE_TICKER'
   | 'BOWSER_STATUS'
   | 'FUEL_ANALYTICS'
-  | 'COMPLIANCE_EXPIRY';
+  | 'COMPLIANCE_EXPIRY'
+  | 'LOAD_PIPELINE'
+  | 'SUBCONTRACTOR_MARGIN'
+  | 'TOP_CLIENTS';
 
 export interface Vehicle {
   id: string;

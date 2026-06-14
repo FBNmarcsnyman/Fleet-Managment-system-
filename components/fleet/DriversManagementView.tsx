@@ -18,8 +18,14 @@ const ExpiryPill: React.FC<{ label: string; date?: string }> = ({ label, date })
 };
 
 const DriversManagementView: React.FC = () => {
-    const { showModal } = useUIState();
-    const { drivers = [], vehicles = [] } = useVehicles();
+    const { showModal, showToast } = useUIState();
+    const { drivers = [], vehicles = [], handleDeleteDriver } = useVehicles();
+
+    const handleDelete = async (d: Driver) => {
+        if (!confirm(`Delete driver ${d.name}? This cannot be undone.`)) return;
+        const res = await handleDeleteDriver(d.id);
+        if (!res.ok) showToast(`Could not delete: ${res.error}`); else showToast(`${d.name} deleted.`);
+    };
 
     const vehicleReg = useMemo(() => {
         const m = new Map<string, string>();
@@ -63,8 +69,9 @@ const DriversManagementView: React.FC = () => {
                                 <td className="p-2 text-gray-300">{d.assignedVehicleId ? (vehicleReg.get(d.assignedVehicleId) || '—') : '—'}</td>
                                 <td className="p-2 text-gray-300">{d.branch || '—'}</td>
                                 <td className="p-2 space-x-1"><ExpiryPill label="Lic" date={d.licenceExpiry} /> <ExpiryPill label="PDP" date={d.pdpExpiry} /></td>
-                                <td className="p-2 text-right">
+                                <td className="p-2 text-right space-x-2">
                                     <button onClick={() => showModal('addDriver', { driver: d })} className="px-3 py-1 rounded bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold">Edit</button>
+                                    <button onClick={() => handleDelete(d)} className="px-3 py-1 rounded bg-gray-700 hover:bg-red-600 text-white text-xs font-bold">Delete</button>
                                 </td>
                             </tr>
                         ))}

@@ -93,6 +93,23 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
+        // Soft-delete: deactivate (keeps history/loads intact, hides from lists).
+        handleDeleteClient: async (id: string): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('clients').update({ is_active: false }).eq('id', id));
+                if (error) { console.error('[ops] deleteClient failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'REMOVE_CLIENT', payload: id });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleDeleteSupplier: async (id: string): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('suppliers').update({ is_active: false }).eq('id', id));
+                if (error) { console.error('[ops] deleteSupplier failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'REMOVE_SUPPLIER', payload: id });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
         handleBulkAddClients: async (clients: Omit<Client, 'id'>[]): Promise<Result<{ count: number }>> => {
             try {
                 const rows = clients.map(toClientInsert);

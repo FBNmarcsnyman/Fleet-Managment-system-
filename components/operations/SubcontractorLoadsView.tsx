@@ -98,6 +98,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                         <tr className="border-b border-gray-700">
                             <th className="p-2 text-gray-400">LoadCon #</th>
                             <th className="p-2 text-gray-400">Supplier</th>
+                            <th className="p-2 text-gray-400">Loading Date</th>
                             <th className="p-2 text-gray-400">Route</th>
                             <th className="p-2 text-gray-400">Status</th>
                             <th className="p-2 text-gray-400">Sent to Supplier</th>
@@ -112,6 +113,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                 <tr key={lc.id} className="border-b border-gray-700/50 hover:bg-gray-700/50">
                                     <td className="p-2 font-mono text-white">{lc.loadConNumber}</td>
                                     <td className="p-2 font-semibold">{supplier?.name}</td>
+                                    <td className="p-2 text-gray-300">{lc.collectionDate ? format(new Date(lc.collectionDate), 'dd MMM yyyy') : '—'}</td>
                                     <td className="p-2">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</td>
                                     <td className="p-2">{lc.status}</td>
                                     <td className="p-2">

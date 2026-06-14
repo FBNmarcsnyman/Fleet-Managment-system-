@@ -6,8 +6,14 @@ import { useUIState, useOperations } from '../../contexts/AppContexts';
 import * as XLSX from 'xlsx';
 
 const ClientManagementView: React.FC = () => {
-    const { showModal } = useUIState();
-    const { clients, handleBulkAddClients } = useOperations();
+    const { showModal, showToast } = useUIState();
+    const { clients, handleBulkAddClients, handleDeleteClient } = useOperations();
+
+    const handleDelete = async (client: any) => {
+        if (!confirm(`Remove ${client.name}? They'll be hidden from your list (past loads & history are kept).`)) return;
+        const res = await handleDeleteClient(client.id);
+        if (!res.ok) showToast(`Could not remove: ${res.error}`); else showToast(`${client.name} removed.`);
+    };
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -65,7 +71,7 @@ const ClientManagementView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {clients.map(client => {
+                        {clients.filter((c: any) => c.isActive !== false).map(client => {
                             const contacts = client.contacts || [];
                             const primary = contacts[0];
                             return (
@@ -77,8 +83,9 @@ const ClientManagementView: React.FC = () => {
                                         : <span className="text-gray-500">{client.contactPerson || '—'}</span>}
                                 </td>
                                 <td className="p-2 text-gray-400">{primary?.email || client.contactEmail || '—'}</td>
-                                <td className="p-2 text-right">
+                                <td className="p-2 text-right space-x-2">
                                     <button onClick={() => showModal('addClient', { client })} className="px-3 py-1 rounded bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold">Edit</button>
+                                    <button onClick={() => handleDelete(client)} className="px-3 py-1 rounded bg-gray-700 hover:bg-red-600 text-white text-xs font-bold">Delete</button>
                                 </td>
                             </tr>
                         );})}

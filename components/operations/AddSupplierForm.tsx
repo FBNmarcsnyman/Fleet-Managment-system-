@@ -30,10 +30,13 @@ const AddSupplierForm: React.FC = () => {
         const cleanContacts = contacts.filter(c => (c.name || '').trim() || (c.email || '').trim());
         try {
             if (editing) {
-                const result = await handleUpdateSupplier(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address });
-                if (!result.ok) { showToast(`Failed to update ${noun.toLowerCase()}: ${result.error}`); return; }
+                // Close immediately and save in the background — the database can
+                // be slow to wake on the free tier, so we don't make the user wait.
                 hideModal();
-                showToast(`${noun} "${name}" updated.`);
+                showToast(`Saving ${noun.toLowerCase()}…`);
+                handleUpdateSupplier(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address })
+                    .then((result: any) => showToast(result?.ok === false ? `Failed to update ${noun.toLowerCase()}: ${result.error}` : `${noun} "${name}" updated.`))
+                    .catch((err: any) => showToast(`Could not save: ${err?.message || 'error'}`));
                 return;
             }
             const newSupplier: Omit<Supplier, 'id'> = {

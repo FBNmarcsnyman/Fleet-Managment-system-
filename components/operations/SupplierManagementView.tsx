@@ -6,10 +6,16 @@ import { useUIState, useOperations, useCommonData } from '../../contexts/AppCont
 
 const SubcontractorManagementView: React.FC = () => {
     const { showModal, showToast } = useUIState();
-    const { suppliers = [], handleBulkAddSuppliers } = useOperations();
+    const { suppliers = [], handleBulkAddSuppliers, handleDeleteSupplier } = useOperations();
     const { users = [], handleAddUser } = useCommonData();
 
-    const subcontractors = (suppliers || []).filter((s: Supplier) => s.type === 'Transport');
+    const subcontractors = (suppliers || []).filter((s: Supplier) => s.type === 'Transport' && s.isActive !== false);
+
+    const handleDelete = async (supplier: Supplier) => {
+        if (!confirm(`Remove ${supplier.name}? They'll be hidden from your list (past loads & history are kept).`)) return;
+        const res = await handleDeleteSupplier(supplier.id);
+        if (!res.ok) showToast(`Could not remove: ${res.error}`); else showToast(`${supplier.name} removed.`);
+    };
 
     const handleOpenBulkImport = () => {
         showModal('bulkImportSuppliers', {
@@ -74,6 +80,7 @@ const SubcontractorManagementView: React.FC = () => {
                                         ? <span className="text-[11px] text-emerald-400 font-bold">Has login</span>
                                         : <button onClick={() => handleCreateLogin(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-emerald-600 text-white text-xs font-bold">Create login</button>}
                                     <button onClick={() => handleEdit(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold">Edit</button>
+                                    <button onClick={() => handleDelete(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-red-600 text-white text-xs font-bold">Delete</button>
                                 </td>
                             </tr>
                         ))}

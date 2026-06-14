@@ -26,10 +26,12 @@ const AddClientForm: React.FC = () => {
         const cleanContacts = contacts.filter(c => (c.name || '').trim() || (c.email || '').trim());
         try {
             if (editing) {
-                const result = await handleUpdateClient(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address });
-                if (!result.ok) { showToast(`Failed to update client: ${result.error}`); return; }
+                // Close immediately and save in the background (free-tier DB can be slow).
                 hideModal();
-                showToast(`Client "${name}" updated.`);
+                showToast('Saving client…');
+                handleUpdateClient(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, address })
+                    .then((result: any) => showToast(result?.ok === false ? `Failed to update client: ${result.error}` : `Client "${name}" updated.`))
+                    .catch((err: any) => showToast(`Could not save: ${err?.message || 'error'}`));
                 return;
             }
 

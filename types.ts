@@ -355,6 +355,7 @@ export interface Supplier {
     accountsContact?: string;
     complianceDocs: ComplianceDoc[];
     rateCards: Attachment[];
+    isActive?: boolean;
 }
 
 export type SupplierApplicationStatus = 'Pending' | 'Approved' | 'Rejected';
@@ -387,6 +388,7 @@ export interface Client {
     contacts?: Contact[];
     address: string;
     slaLevel?: string;
+    isActive?: boolean;
 }
 
 export interface LoadConfirmation {

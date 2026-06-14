@@ -601,6 +601,14 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
+        handleDeleteDriver: async (id: string): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('drivers' as any).delete().eq('id', id));
+                if (error) { console.error('[fleet] deleteDriver failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'REMOVE_DRIVER', payload: id });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
         handleBulkAddDrivers: async (drivers: any[]): Promise<{ ok: boolean; count?: number; error?: string }> => {
             try {
                 const rows = drivers.map(d => toDriverInsert({ isActive: true, ...d }));

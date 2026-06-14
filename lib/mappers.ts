@@ -409,6 +409,7 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     contacts: (row.contacts as unknown as Contact[]) ?? [],
     address: row.address ?? '',
     slaLevel: row.sla_level ?? undefined,
+    isActive: (row as any).is_active ?? true,
 });
 
 // -- drivers → Driver ---------------------------------------------------------
@@ -504,6 +505,7 @@ export const mapSupplier = (
     accountsContact: row.accounts_contact ?? undefined,
     complianceDocs: complianceDocsBySupplier.get(row.id) || [],
     rateCards: rateCardsBySupplier.get(row.id) || [],
+    isActive: (row as any).is_active ?? true,
 });
 
 // -- quotes → Quote ----------------------------------------------------------

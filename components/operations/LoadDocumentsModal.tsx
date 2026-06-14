@@ -48,7 +48,7 @@ const DocView: React.FC<{ lc: LoadConfirmation; type: DocType }> = ({ lc, type }
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '24px 28px 14px', borderBottom: `3px solid ${NAVY}` }}>
                 <div>
-                    <img src="/fbn-logo.png" alt="FBN Transport" onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }} style={{ height: '64px', display: 'block' }} />
+                    <img src="/fbn-logo.jpg" alt="FBN Transport" onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }} style={{ height: '64px', display: 'block' }} />
                     <div style={{ fontSize: '9.5px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: GREY, marginTop: '4px' }}>Commercial Freight Specialists</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -192,11 +192,12 @@ const buildEmailHtml = (lc: LoadConfirmation, type: DocType): string => {
         ? `<div style="margin-top:8px;text-align:right"><div style="display:inline-block;background:${NAVY};border-radius:8px;padding:10px 22px;text-align:right"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${YELLOW}">${type === 'loadcon' ? 'Agreed Transport Rate (excl. VAT)' : 'Agreed Rate (excl. VAT)'}</div><div style="font-size:22px;font-weight:800;color:#fff">${rand(type === 'loadcon' ? lc.supplierRate : lc.totalAmount)}</div></div></div>`
         : '';
 
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:660px;color:#1f2937;border:1px solid ${LINE};border-radius:10px;overflow:hidden">
-      <div style="background:${NAVY};padding:16px 22px">
-        <span style="color:#fff;font-weight:900;font-style:italic;font-size:26px">FBN</span><span style="color:#c4ccd4;font-weight:700;font-style:italic;font-size:20px"> transport</span>
-        <span style="color:${YELLOW};font-weight:800;font-size:15px;text-transform:uppercase;float:right;padding-top:8px">${title}</span>
-        <div style="color:#9aa9bd;font-size:9.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:2px">Commercial Freight Specialists</div>
+      <div style="background:#ffffff;padding:16px 22px;border-bottom:3px solid ${NAVY}">
+        <img src="${origin}/fbn-logo.jpg" alt="FBN Transport" height="46" style="height:46px;display:inline-block;vertical-align:middle" />
+        <span style="color:${NAVY};font-weight:800;font-size:15px;text-transform:uppercase;float:right;padding-top:14px">${title}</span>
+        <div style="color:${GREY};font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:4px">Commercial Freight Specialists</div>
       </div>
       <div style="height:4px;background:${YELLOW}"></div>
       <div style="padding:18px 22px">

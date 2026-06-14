@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Supplier, Client, Attachment, PodAnalysisResult } from '../../types';
 import { useUIState } from '../../contexts/AppContexts';
+import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -41,9 +42,38 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [loadConfirmations, filter, supplierMap]);
 
+    const [requesting, setRequesting] = useState<string | null>(null);
+
     const handleSendLoadCon = (lc: LoadConfirmation) => {
         onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
         showToast(`Load Confirmation ${lc.loadConNumber} marked as sent.`);
+    };
+
+    // Ask the transporter to send the POD for a delivered load. Works today via
+    // email; the same trigger will fire a WhatsApp once a sender number is connected.
+    const handleRequestPod = async (lc: LoadConfirmation) => {
+        const to = lc.subcontractorEmail;
+        if (!to) { showToast('No transporter email on this load — add one first.'); return; }
+        setRequesting(lc.id);
+        try {
+            const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+            const portal = `${window.location.origin}${window.location.pathname}?portal=supplier`;
+            const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
+              <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+              <p>Please send through the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''} now that it has delivered.</p>
+              <p>You can upload it directly on your carrier portal: <a href="${portal}">${portal}</a>, or simply reply to this email with the signed POD attached.</p>
+              <p>Thank you,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
+            </div>`;
+            const { data, error } = await supabase.functions.invoke('send-email', {
+                body: { to, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+            });
+            if (error || (data && (data as any).error)) { showToast(`Could not send request: ${(data as any)?.error || error?.message}`); return; }
+            showToast(`POD request sent to ${to}.`);
+        } catch (e) {
+            showToast(`Could not send request: ${e instanceof Error ? e.message : 'error'}`);
+        } finally {
+            setRequesting(null);
+        }
     };
 
     const handleViewPdf = (lc: LoadConfirmation) => {
@@ -127,7 +157,10 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                         {lc.podPhoto ? (
                                             <button onClick={() => handleViewPod(lc.podPhoto!)} className="inline-flex items-center text-xs font-semibold bg-green-600/20 text-green-400 hover:bg-green-600/30 py-1 px-2 rounded-lg">View POD</button>
                                         ) : lc.status === 'Delivered' ? (
-                                            <button onClick={() => handleUploadPodClick(lc)} className="inline-flex items-center text-xs font-semibold bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded-lg"><UploadIcon className="h-4 w-4 mr-1"/> Upload POD</button>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleUploadPodClick(lc)} className="inline-flex items-center text-xs font-semibold bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded-lg"><UploadIcon className="h-4 w-4 mr-1"/> Upload POD</button>
+                                                <button onClick={() => handleRequestPod(lc)} disabled={requesting === lc.id} title="Email the transporter to send the POD" className="text-xs font-semibold text-blue-300 hover:text-blue-200 disabled:opacity-50">{requesting === lc.id ? 'Sending…' : 'Request'}</button>
+                                            </div>
                                         ) : (
                                             <span className="text-yellow-400 text-xs">Awaiting delivery</span>
                                         )}

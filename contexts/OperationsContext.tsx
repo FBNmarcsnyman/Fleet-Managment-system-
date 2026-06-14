@@ -2,15 +2,17 @@
 import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { User, Quote, LoadConfirmation, Client, Supplier, Branch } from '../types';
-import { supabase, runWrite } from '../lib/supabase';
+import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
+import { supabase, runWrite, uploadFile } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
-    toJobCardInsert, mapJobCard,
+    toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
 } from '../lib/mappers';
+
+const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 export const OperationsContext = createContext<any>(undefined);
 
@@ -173,6 +175,40 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true, value: { count: mapped.length } };
             } catch (err) {
                 console.error('[ops] bulkAddSuppliers threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        // Subcontractor onboarding: upload a compliance document (registration, BEE,
+        // tax, insurance, etc.) to storage and record it with an optional expiry date.
+        handleAddSupplierComplianceDoc: async (
+            supplierId: string,
+            doc: { type: ComplianceDoc['type']; name: string; file: File; expiryDate?: string },
+        ): Promise<Result<ComplianceDoc>> => {
+            try {
+                const safe = doc.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                // Path MUST be {org}/{supplier}/file — the storage RLS policy checks these segments.
+                const up = await uploadFile('supplier-docs', `${FBN_ORG_ID}/${supplierId}/${Date.now()}_${safe}`, doc.file);
+                if (up.error || !up.url) return { ok: false, error: up.error || 'File upload failed.' };
+                const expired = doc.expiryDate ? new Date(doc.expiryDate) < new Date() : false;
+                const insertRow = {
+                    organization_id: FBN_ORG_ID,
+                    supplier_id: supplierId,
+                    type: doc.type,
+                    name: doc.name,
+                    file_url: up.url,
+                    file_name: doc.file.name,
+                    expiry_date: doc.expiryDate || null,
+                    status: (expired ? 'Expired' : 'Pending Review') as 'Valid' | 'Expired' | 'Pending Review',
+                };
+                const { data, error } = await runWrite(() => supabase.from('supplier_compliance_docs').insert(insertRow).select().single());
+                if (error || !data) { console.error('[ops] addSupplierComplianceDoc failed:', error); return { ok: false, error: error?.message || 'Could not save the document.' }; }
+                const mapped = mapSupplierComplianceDoc(data);
+                const current = (stateRef.current.suppliers || []).find((s: Supplier) => s.id === supplierId);
+                const newDocs = [...(current?.complianceDocs || []), mapped];
+                dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: supplierId, updates: { complianceDocs: newDocs } } });
+                return { ok: true, value: mapped };
+            } catch (err) {
+                console.error('[ops] addSupplierComplianceDoc threw:', err);
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },

@@ -27,16 +27,16 @@ const OperationsPortal: React.FC = () => {
 
     const navItems = [
         { view: 'dashboard', label: 'Dashboard' },
+        { view: 'clients', label: 'Clients' },
+        { view: 'subcontractors', label: 'Subcontractors' },
+        { view: 'subcontractorLoads', label: 'Subcontractor Loads' },
+        { view: 'supplierOnboarding', label: 'Supplier Onboarding' },
         { view: 'dailyPlanning', label: 'Daily Planning' },
         { view: 'collections', label: 'Collections' },
         { view: 'deliveries', label: 'Deliveries' },
-        { view: 'subcontractorLoads', label: 'Subcontractor Loads' },
-        { view: 'subcontractors', label: 'Subcontractors' },
-        { view: 'supplierOnboarding', label: 'Supplier Onboarding' },
+        { view: 'quotes', label: 'Quotes' },
         { view: 'fleetMap', label: 'Fleet Map' },
         { view: 'routePlanner', label: 'Route Planner' },
-        { view: 'quotes', label: 'Quotes' },
-        { view: 'clients', label: 'Clients' },
     ];
 
     const handleNewTransportOrder = () => showModal('transportOrder', {

@@ -63,6 +63,7 @@ const SendForRetreadModal = lazy(() => import('./components/SendForRetreadModal'
 const AddClientForm = lazy(() => import('./components/operations/AddClientForm'));
 const AddDriverForm = lazy(() => import('./components/fleet/AddDriverForm'));
 const LoadDocumentsModal = lazy(() => import('./components/operations/LoadDocumentsModal'));
+const LoadDetailModal = lazy(() => import('./components/operations/LoadDetailModal'));
 const QRCodeModal = lazy(() => import('./components/QRCodeModal'));
 const RigTrailersModal = lazy(() => import('./components/RigTrailersModal'));
 const AddSupplierForm = lazy(() => import('./components/operations/AddSupplierForm'));
@@ -124,6 +125,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     addClient: AddClientForm,
     addDriver: AddDriverForm,
     loadDocuments: LoadDocumentsModal,
+    loadDetail: LoadDetailModal,
     qrCode: QRCodeModal,
     rigTrailers: RigTrailersModal,
     addSupplier: AddSupplierForm,
@@ -159,6 +161,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     quotePdf: '4xl',
     supplierLoadConPdf: '4xl',
     loadDocuments: '5xl',
+    loadDetail: '5xl',
     invoicePdf: '4xl',
     viewPod: '2xl',
     jobCardDetail: '4xl',

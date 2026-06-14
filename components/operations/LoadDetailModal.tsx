@@ -1,0 +1,184 @@
+import React, { useState } from 'react';
+import { LoadConfirmation } from '../../types';
+import { useUIState, useOperations } from '../../contexts/AppContexts';
+
+const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmt = (d?: string) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+const STATUSES = ['Booked', 'Driver Assigned', 'At Collection Point', 'Collected', 'At Collection Depot', 'In Transit', 'At Destination Depot', 'Out for Delivery', 'Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'];
+
+const Section: React.FC<{ title: string; accent: string; children: React.ReactNode }> = ({ title, accent, children }) => (
+    <div className="bg-gray-900/40 rounded-xl border border-gray-700/50 p-4">
+        <h3 className="flex items-center text-xs font-black text-gray-300 uppercase tracking-[0.15em] mb-3"><span className={`w-1.5 h-4 rounded-full mr-2 ${accent}`} />{title}</h3>
+        {children}
+    </div>
+);
+
+const inputCls = "w-full bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm focus:outline-none focus:ring-1 focus:ring-brand-secondary";
+
+const LoadDetailModal: React.FC = () => {
+    const { modal, showModal, showToast, hideModal } = useUIState();
+    const { handleUpdateLoadConfirmation } = useOperations();
+    const lc: LoadConfirmation | undefined = modal.payload?.loadCon;
+    const [editing, setEditing] = useState(false);
+    const [d, setD] = useState<any>({});
+
+    if (!lc) return <div className="p-4 text-white">No load selected.</div>;
+
+    const startEdit = () => {
+        setD({
+            status: lc.status, priority: lc.priority,
+            arrangingBranch: lc.arrangingBranch || '', fbnRepresentative: lc.fbnRepresentative || '', route: lc.route || '',
+            loadRefNo: lc.loadRefNo || '', customerOrderNumber: lc.customerOrderNumber || '',
+            clientName: lc.clientName || '', clientContact: lc.clientContact || '', clientEmail: lc.clientEmail || '', totalAmount: lc.totalAmount ?? '',
+            subcontractorName: lc.subcontractorName || '', forAttention: lc.forAttention || '', subcontractorEmail: lc.subcontractorEmail || '',
+            subcontractorDriverName: lc.subcontractorDriverName || '', subcontractorVehicleReg: lc.subcontractorVehicleReg || '', subcontractorDriverCell: lc.subcontractorDriverCell || '', supplierRate: lc.supplierRate ?? '',
+            collectionPoint: lc.collectionPoint || '', collectionDate: (lc.collectionDate || '').slice(0, 10), loadingTime: lc.loadingTime || '', collectionContact: lc.collectionContact || '', collectionTelephone: lc.collectionTelephone || '',
+            deliveryPoint: lc.deliveryPoint || '', deliveryDate: (lc.deliveryDate || '').slice(0, 10), offloadingTime: lc.offloadingTime || '', deliveryContact: lc.deliveryContact || '', deliveryTelephone: lc.deliveryTelephone || '',
+            loadType: lc.loadType || '', commodity: lc.commodity || '', packaging: lc.packaging || '', quantity: lc.quantity || '', weightKg: lc.weightKg || '', volume: lc.volume || '', cargoValue: lc.cargoValue || '', containerNo: lc.containerNo || '', specialInstructions: lc.specialInstructions || '',
+        });
+        setEditing(true);
+    };
+
+    const set = (k: string, v: any) => setD((prev: any) => ({ ...prev, [k]: v }));
+
+    const save = () => {
+        const updates: any = { ...d, totalAmount: parseFloat(d.totalAmount) || 0, supplierRate: d.supplierRate === '' ? undefined : (parseFloat(d.supplierRate) || 0) };
+        hideModal();
+        showToast(`Saving ${lc.loadConNumber}…`);
+        handleUpdateLoadConfirmation(lc.id, updates)
+            .then((r: any) => showToast(r?.ok === false ? `Could not save: ${r.error}` : `${lc.loadConNumber} updated.`))
+            .catch((e: any) => showToast(`Could not save: ${e?.message || 'error'}`));
+    };
+
+    // Field: shows text, or an input when editing.
+    const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[] }> = ({ label, k, value, type = 'text', opts }) => (
+        <div>
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}</p>
+            {editing && k ? (
+                opts ? (
+                    <select value={d[k]} onChange={e => set(k, e.target.value)} className={inputCls}>{opts.map(o => <option key={o} value={o}>{o}</option>)}</select>
+                ) : (
+                    <input type={type} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />
+                )
+            ) : (
+                <p className="text-sm text-gray-100">{value || value === 0 ? value : '—'}</p>
+            )}
+        </div>
+    );
+
+    const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
+    const marginPct = lc.totalAmount ? (margin / lc.totalAmount) * 100 : 0;
+
+    return (
+        <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className="text-2xl font-black text-white">{lc.loadConNumber}</h2>
+                    <p className="text-sm text-gray-400">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-900/40 text-blue-300">{lc.status}</span>}
+                    {!editing
+                        ? <button onClick={startEdit} className="bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold py-1.5 px-3 rounded-lg">Edit</button>
+                        : <><button onClick={() => setEditing(false)} className="bg-gray-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg">Cancel</button>
+                           <button onClick={save} className="bg-brand-primary hover:bg-brand-secondary text-white text-xs font-bold py-1.5 px-3 rounded-lg">Save</button></>}
+                </div>
+            </div>
+
+            {!editing && (
+                <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate</p><p className="text-lg font-black text-blue-300">{rand(lc.totalAmount)}</p></div>
+                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Transport Rate</p><p className="text-lg font-black text-amber-300">{rand(lc.supplierRate)}</p></div>
+                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Margin</p><p className={`text-lg font-black ${marginPct < 10 ? 'text-red-400' : 'text-emerald-400'}`}>{rand(margin)} <span className="text-xs">({marginPct.toFixed(0)}%)</span></p></div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Section title="Order" accent="bg-brand-secondary">
+                    <div className="grid grid-cols-2 gap-3">
+                        <F label="Status" k="status" value={lc.status} opts={STATUSES} />
+                        <F label="Priority" k="priority" value={lc.priority} opts={['Low', 'Medium', 'High']} />
+                        <F label="FBN Branch" k="arrangingBranch" value={lc.arrangingBranch} />
+                        <F label="FBN Rep" k="fbnRepresentative" value={lc.fbnRepresentative} />
+                        <F label="Route" k="route" value={lc.route} />
+                        <F label="Load Ref" k="loadRefNo" value={lc.loadRefNo} />
+                        <F label="Customer Order" k="customerOrderNumber" value={lc.customerOrderNumber} />
+                    </div>
+                </Section>
+                <Section title="Client" accent="bg-blue-500">
+                    <div className="grid grid-cols-2 gap-3">
+                        <F label="Company" k="clientName" value={lc.clientName} />
+                        <F label="Contact" k="clientContact" value={lc.clientContact} />
+                        <F label="Email" k="clientEmail" value={lc.clientEmail} />
+                        <F label="Client Rate" k="totalAmount" type="number" value={rand(lc.totalAmount)} />
+                    </div>
+                </Section>
+                <Section title="Collection" accent="bg-emerald-500">
+                    <div className="grid grid-cols-2 gap-3">
+                        <F label="Address" k="collectionPoint" value={lc.collectionPoint} />
+                        <F label="Date" k="collectionDate" type="date" value={fmt(lc.collectionDate)} />
+                        <F label="Time" k="loadingTime" type="time" value={lc.loadingTime} />
+                        <F label="Contact" k="collectionContact" value={lc.collectionContact} />
+                        <F label="Tel" k="collectionTelephone" value={lc.collectionTelephone} />
+                    </div>
+                </Section>
+                <Section title="Delivery" accent="bg-rose-500">
+                    <div className="grid grid-cols-2 gap-3">
+                        <F label="Address" k="deliveryPoint" value={lc.deliveryPoint} />
+                        <F label="Date" k="deliveryDate" type="date" value={fmt(lc.deliveryDate)} />
+                        <F label="Time" k="offloadingTime" type="time" value={lc.offloadingTime} />
+                        <F label="Contact" k="deliveryContact" value={lc.deliveryContact} />
+                        <F label="Tel" k="deliveryTelephone" value={lc.deliveryTelephone} />
+                    </div>
+                </Section>
+                <Section title="Subcontractor" accent="bg-amber-500">
+                    <div className="grid grid-cols-2 gap-3">
+                        <F label="Carrier" k="subcontractorName" value={lc.subcontractorName} />
+                        <F label="For Attention" k="forAttention" value={lc.forAttention} />
+                        <F label="Email" k="subcontractorEmail" value={lc.subcontractorEmail} />
+                        <F label="Driver" k="subcontractorDriverName" value={lc.subcontractorDriverName} />
+                        <F label="Driver Cell" k="subcontractorDriverCell" value={lc.subcontractorDriverCell} />
+                        <F label="Vehicle Reg" k="subcontractorVehicleReg" value={lc.subcontractorVehicleReg} />
+                        <F label="Transport Rate" k="supplierRate" type="number" value={rand(lc.supplierRate)} />
+                    </div>
+                </Section>
+                <Section title="Cargo" accent="bg-gray-500">
+                    <div className="grid grid-cols-2 gap-3">
+                        <F label="Load Type" k="loadType" value={lc.loadType} />
+                        <F label="Commodity" k="commodity" value={lc.commodity} />
+                        <F label="Packaging" k="packaging" value={lc.packaging} />
+                        <F label="Quantity" k="quantity" value={lc.quantity} />
+                        <F label="Weight (kg)" k="weightKg" value={lc.weightKg} />
+                        <F label="Volume" k="volume" value={lc.volume} />
+                        <F label="Cargo Value" k="cargoValue" value={lc.cargoValue} />
+                        <F label="Container" k="containerNo" value={lc.containerNo} />
+                    </div>
+                    <div className="mt-2"><F label="Instructions" k="specialInstructions" value={lc.specialInstructions} /></div>
+                </Section>
+            </div>
+
+            {!editing && (
+                <Section title="Status & POD" accent="bg-purple-500">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-center">
+                        <F label="Sent to Supplier" value={lc.sentToSupplierDate ? fmt(lc.sentToSupplierDate) : 'Not sent'} />
+                        <F label="Payment" value={lc.paymentStatus || '—'} />
+                        <F label="POD" value={lc.podPhoto ? 'Received' : 'Awaiting'} />
+                        {lc.podPhoto?.data && <a href={lc.podPhoto.data} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>}
+                    </div>
+                </Section>
+            )}
+
+            {!editing && (
+                <div className="flex justify-end gap-3 pt-1">
+                    <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Documents</button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default LoadDetailModal;

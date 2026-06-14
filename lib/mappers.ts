@@ -1298,6 +1298,28 @@ export const toLoadConfirmationUpdate = (
     if (updates.commodity !== undefined) row.commodity = updates.commodity ?? null;
     if (updates.packaging !== undefined) row.packaging = updates.packaging ?? null;
     if (updates.loadSpec !== undefined) row.load_spec = updates.loadSpec ?? null;
+    // Remaining Transport Order fields, so a full edit persists everything.
+    if (updates.arrangingBranch !== undefined) row.arranging_branch = updates.arrangingBranch ?? null;
+    if (updates.loadRefNo !== undefined) row.load_ref_no = updates.loadRefNo ?? null;
+    if (updates.route !== undefined) row.route = updates.route ?? null;
+    if (updates.fbnRepresentative !== undefined) row.fbn_representative = updates.fbnRepresentative ?? null;
+    if (updates.loadingTime !== undefined) row.loading_time = updates.loadingTime ?? null;
+    if (updates.offloadingTime !== undefined) row.offloading_time = updates.offloadingTime ?? null;
+    if (updates.collectionContact !== undefined) row.collection_contact = updates.collectionContact ?? null;
+    if (updates.collectionTelephone !== undefined) row.collection_telephone = updates.collectionTelephone ?? null;
+    if (updates.deliveryContact !== undefined) row.delivery_contact = updates.deliveryContact ?? null;
+    if (updates.deliveryTelephone !== undefined) row.delivery_telephone = updates.deliveryTelephone ?? null;
+    if (updates.loadType !== undefined) row.load_type = updates.loadType ?? null;
+    if (updates.quantity !== undefined) row.quantity = updates.quantity ?? null;
+    if (updates.weightKg !== undefined) row.weight_kg = updates.weightKg ?? null;
+    if (updates.volume !== undefined) row.volume = updates.volume ?? null;
+    if (updates.cargoValue !== undefined) row.cargo_value = updates.cargoValue ?? null;
+    if (updates.equipmentRequired !== undefined) row.equipment_required = updates.equipmentRequired ?? null;
+    if (updates.containerNo !== undefined) row.container_no = updates.containerNo ?? null;
+    if (updates.containerTurnInAddress !== undefined) row.container_turn_in_address = updates.containerTurnInAddress ?? null;
+    if (updates.containerOperator !== undefined) row.container_operator = updates.containerOperator ?? null;
+    if (updates.containerSealNo !== undefined) row.container_seal_no = updates.containerSealNo ?? null;
+    if (updates.specialInstructions !== undefined) row.special_instructions = updates.specialInstructions ?? null;
     if (updates.podPhoto?.data) row.pod_photo_url = updates.podPhoto.data;
     if (updates.podSignature !== undefined) row.pod_signature_url = updates.podSignature ?? null;
     return row;

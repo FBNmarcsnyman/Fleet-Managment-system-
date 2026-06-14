@@ -210,6 +210,27 @@ const buildEmailHtml = (lc: LoadConfirmation, type: DocType): string => {
     </div>`;
 };
 
+// A short covering message above the document in the email.
+const coverNote = (lc: LoadConfirmation, type: DocType, sender: string): string => {
+    const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' → ' + lc.deliveryPoint : ''}`;
+    const when = fmtDate(lc.collectionDate);
+    const p = (s: string) => `<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827;margin:0 0 10px">${s}</p>`;
+    if (type === 'clientOrder') {
+        return `<div style="margin-bottom:18px">
+            ${p(`Good day ${lc.clientContact || lc.clientName || ''},`)}
+            ${p(`Please find your FBN Client Order <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''}.`)}
+            ${p('Kindly confirm and reply with your order number if not already supplied.')}
+            ${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}
+        </div>`;
+    }
+    return `<div style="margin-bottom:18px">
+        ${p(`Good day ${lc.forAttention || lc.subcontractorName || ''},`)}
+        ${p(`Please find FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''} below.`)}
+        ${p('Please <strong>confirm acceptance</strong> and reply with your <strong>driver name, vehicle registration and driver cell</strong>. POD to be returned on delivery.')}
+        ${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}
+    </div>`;
+};
+
 const LoadDocumentsModal: React.FC = () => {
     const { modal, showToast } = useUIState();
     const { currentUser } = useAuth();
@@ -242,7 +263,7 @@ const LoadDocumentsModal: React.FC = () => {
                     to,
                     cc: tab === 'loadcon' ? (lc.ccEmail || undefined) : undefined,
                     subject,
-                    html: buildEmailHtml(lc, tab),
+                    html: coverNote(lc, tab, currentUser?.name || 'FBN Transport') + buildEmailHtml(lc, tab),
                     fromName: currentUser?.name || 'FBN Transport',
                 },
             });

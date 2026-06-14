@@ -10,7 +10,7 @@ import { Notification, ViewType } from '../types';
  * automatically once the underlying issue is resolved.
  */
 export const useLiveAlerts = (): Notification[] => {
-    const { vehicles = [], jobCards = [], serviceStatuses, users = [], vehicleComplianceDocs = [] } = useVehicles() as any;
+    const { vehicles = [], jobCards = [], serviceStatuses, users = [], vehicleComplianceDocs = [], loadConfirmations = [], suppliers = [] } = useVehicles() as any;
 
     return useMemo(() => {
         const alerts: Notification[] = [];
@@ -55,6 +55,18 @@ export const useLiveAlerts = (): Notification[] => {
             flagDoc(`cmpv-${d.id}`, `${v ? v.name : 'Vehicle'} ${d.name || d.type}`, d.expiryDate, 'fleet');
         });
 
+        // Loads assigned to a non-compliant subcontractor — allowed, but flagged
+        // for management so they can chase the carrier's paperwork.
+        const supById = new Map((suppliers || []).map((s: any) => [s.id, s]));
+        (loadConfirmations || []).forEach((lc: any) => {
+            if (!lc.supplierId) return;
+            if (['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(lc.status)) return;
+            const sup: any = supById.get(lc.supplierId);
+            if (sup && sup.complianceStatus !== 'Compliant') {
+                add(`noncomp-${lc.id}`, 'JOB_CARD', `Load ${lc.loadConNumber || ''} is on a NON-COMPLIANT carrier (${sup.name}) — chase paperwork`, 'operations');
+            }
+        });
+
         return alerts;
-    }, [vehicles, jobCards, serviceStatuses, users, vehicleComplianceDocs]);
+    }, [vehicles, jobCards, serviceStatuses, users, vehicleComplianceDocs, loadConfirmations, suppliers]);
 };

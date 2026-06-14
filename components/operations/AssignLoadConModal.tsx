@@ -108,10 +108,8 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
             alert('Please select a supplier and enter the agreed buy-rate.');
             return;
         }
-        if (isNonCompliant) {
-            alert('Cannot assign load to a non-compliant supplier. Please update their credentials first.');
-            return;
-        }
+        // Non-compliant carriers are ALLOWED (so ops isn't blocked), but the load
+        // gets flagged to management automatically via the live alerts.
 
         // Auto-populate the LoadCon document fields from the chosen subcontractor
         // (company, controller + email) so the LoadCon is ready to send to them —
@@ -134,7 +132,7 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
             driverId: undefined
         });
 
-        showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}. LoadCon ready to send.`);
+        showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}.${isNonCompliant ? ' ⚠ Flagged — carrier not compliant.' : ' LoadCon ready to send.'}`);
         hideModal();
     };
 
@@ -204,6 +202,14 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                                 <option value="" disabled>-- Select a carrier --</option>
                                 {transportSuppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.complianceStatus})</option>)}
                             </select>
+                            {supplierId && isNonCompliant && (
+                                <div className="mt-2 flex items-start gap-2 bg-amber-900/30 border border-amber-700/60 rounded-lg p-2.5">
+                                    <ExclamationTriangleIcon className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                                    <p className="text-[11px] text-amber-300 font-semibold">
+                                        {selectedSupplier?.name} is <strong>{selectedSupplier?.complianceStatus}</strong>. You can still use them — the load will be flagged to management to chase paperwork.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>

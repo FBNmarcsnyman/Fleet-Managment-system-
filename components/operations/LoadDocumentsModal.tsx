@@ -48,7 +48,7 @@ const DocView: React.FC<{ lc: LoadConfirmation; type: DocType }> = ({ lc, type }
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '24px 28px 14px', borderBottom: `3px solid ${NAVY}` }}>
                 <div>
-                    <img src="/fbn-logo.svg" alt="FBN Transport" style={{ height: '56px', display: 'block' }} />
+                    <img src="/fbn-logo.png" alt="FBN Transport" onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }} style={{ height: '64px', display: 'block' }} />
                     <div style={{ fontSize: '9.5px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: GREY, marginTop: '4px' }}>Commercial Freight Specialists</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>

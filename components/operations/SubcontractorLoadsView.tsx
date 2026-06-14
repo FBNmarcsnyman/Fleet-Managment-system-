@@ -20,7 +20,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     onUpdateLoadConfirmation,
 }) => {
     const { showModal, showToast } = useUIState();
-    const [filter, setFilter] = useState<'All' | 'POD Awaiting' | 'Sent'>('All');
+    const [filter, setFilter] = useState<'All' | 'POD Awaiting' | 'Sent' | 'History'>('All');
 
     const transportSuppliers = useMemo(() => suppliers.filter(s => s.type === 'Transport'), [suppliers]);
     const supplierMap = useMemo(() => new Map(transportSuppliers.map(s => [s.id, s])), [transportSuppliers]);
@@ -30,6 +30,10 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         return (loadConfirmations || [])
             .filter(lc => lc.supplierId && supplierMap.has(lc.supplierId))
             .filter(lc => {
+                // "Invoiced" = completed/imported history — kept out of the active
+                // board (you only send current loads); see it under History.
+                if (filter === 'History') return lc.status === 'Invoiced';
+                if (lc.status === 'Invoiced') return false;
                 if (filter === 'POD Awaiting') return !lc.podPhoto;
                 if (filter === 'Sent') return !!lc.sentToSupplierDate;
                 return true;
@@ -81,9 +85,10 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 <h3 className="text-xl font-bold text-white">Subcontractor Loads</h3>
                 <div className="flex items-center space-x-3">
                     <select value={filter} onChange={e => setFilter(e.target.value as any)} className="bg-gray-700 text-white p-2 rounded-md border border-gray-600">
-                        <option value="All">All Loads</option>
+                        <option value="All">Active Loads</option>
                         <option value="POD Awaiting">POD Awaiting</option>
                         <option value="Sent">Sent to Supplier</option>
+                        <option value="History">History (imported)</option>
                     </select>
                 </div>
             </div>

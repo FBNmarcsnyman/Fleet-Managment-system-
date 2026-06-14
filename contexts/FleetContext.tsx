@@ -280,6 +280,31 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
             }
         },
 
+        // Assign a set of trailers to a truck (one-to-many, for superlinks with
+        // a 6m + 12m etc.). Each trailer points at the truck; trailers removed
+        // from the set are unlinked. Used by the rig checklist to show sections.
+        handleSetRigTrailers: async (truckId: string, trailerIds: string[]): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const all = stateRef.current.vehicles || [];
+                const current = all.filter(v => v.linkedVehicleId === truckId).map(v => v.id);
+                const toAdd = trailerIds.filter(id => !current.includes(id));
+                const toRemove = current.filter(id => !trailerIds.includes(id));
+                for (const id of toAdd) {
+                    const { error } = await runWrite(() => supabase.from('vehicles').update({ linked_vehicle_id: truckId }).eq('id', id).select().single());
+                    if (error) return { ok: false, error: error.message };
+                    dispatch({ type: 'UPDATE_VEHICLE', payload: { vehicleId: id, updates: { linkedVehicleId: truckId } } });
+                }
+                for (const id of toRemove) {
+                    const { error } = await runWrite(() => supabase.from('vehicles').update({ linked_vehicle_id: null }).eq('id', id).select().single());
+                    if (error) return { ok: false, error: error.message };
+                    dispatch({ type: 'UPDATE_VEHICLE', payload: { vehicleId: id, updates: { linkedVehicleId: undefined } } });
+                }
+                return { ok: true };
+            } catch (err) {
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+
         // -- Fuel entries -----------------------------------------------------
         // Mirrors the reducer's cascade: bump vehicle odometer if greater,
         // decrement bowser stock if a source bowser was named.

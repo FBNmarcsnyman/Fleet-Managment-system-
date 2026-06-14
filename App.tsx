@@ -64,6 +64,7 @@ const AddClientForm = lazy(() => import('./components/operations/AddClientForm')
 const AddDriverForm = lazy(() => import('./components/fleet/AddDriverForm'));
 const LoadDocumentsModal = lazy(() => import('./components/operations/LoadDocumentsModal'));
 const QRCodeModal = lazy(() => import('./components/QRCodeModal'));
+const RigTrailersModal = lazy(() => import('./components/RigTrailersModal'));
 const AddSupplierForm = lazy(() => import('./components/operations/AddSupplierForm'));
 const BulkImportSuppliersModal = lazy(() => import('./components/operations/BulkImportSuppliersModal'));
 const RateSupplierModal = lazy(() => import('./components/RateSupplierModal'));
@@ -124,6 +125,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     addDriver: AddDriverForm,
     loadDocuments: LoadDocumentsModal,
     qrCode: QRCodeModal,
+    rigTrailers: RigTrailersModal,
     addSupplier: AddSupplierForm,
     bulkImportSuppliers: BulkImportSuppliersModal,
     rateSupplier: RateSupplierModal,

@@ -50,12 +50,15 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ vehicle, onCancel }) => {
                 <img src={qrCodeUrl} alt={`QR Code for ${vehicle.registration}`} />
             </div>
             
-            <p className="text-xs text-gray-500 mt-4">Scan this code to start the daily checklist for this vehicle.</p>
+            <p className="text-xs text-gray-500 mt-4">Drivers scan this code to start the daily checklist. To try it yourself, use "Open as driver" below.</p>
 
-            <div className="flex justify-end space-x-4 mt-8">
+            <div className="flex flex-wrap justify-end gap-3 mt-8">
                 <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Close</button>
                 <button type="button" onClick={handlePrint} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
                     <PrinterIcon className="h-5 w-5 mr-2" /> Print
+                </button>
+                <button type="button" onClick={() => { window.location.href = qrData; }} className="flex items-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg">
+                    Open as driver →
                 </button>
             </div>
         </div>

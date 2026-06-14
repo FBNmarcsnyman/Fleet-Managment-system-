@@ -69,6 +69,9 @@ export type AppAction =
     | { type: 'SET_FORECASTS', payload: Forecast[] }
     | { type: 'SET_JOB_CARDS', payload: JobCard[] }
     | { type: 'SET_CHECKLIST_TEMPLATES', payload: ChecklistTemplate[] }
+    | { type: 'ADD_CHECKLIST_TEMPLATE', payload: ChecklistTemplate }
+    | { type: 'UPDATE_CHECKLIST_TEMPLATE', payload: ChecklistTemplate }
+    | { type: 'DELETE_CHECKLIST_TEMPLATE', payload: string }
     | { type: 'SET_CHECKLIST_SUBMISSIONS', payload: ChecklistSubmission[] }
     | { type: 'SET_TIRES', payload: Tire[] }
     | { type: 'SET_TIRE_INSPECTIONS', payload: TireInspection[] }
@@ -175,6 +178,9 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'SET_FORECASTS': return { ...state, forecasts: action.payload };
         case 'SET_JOB_CARDS': return { ...state, jobCards: action.payload };
         case 'SET_CHECKLIST_TEMPLATES': return { ...state, checklistTemplates: action.payload };
+        case 'ADD_CHECKLIST_TEMPLATE': return { ...state, checklistTemplates: [...(state.checklistTemplates || []), action.payload] };
+        case 'UPDATE_CHECKLIST_TEMPLATE': return { ...state, checklistTemplates: (state.checklistTemplates || []).map(t => t.id === action.payload.id ? action.payload : t) };
+        case 'DELETE_CHECKLIST_TEMPLATE': return { ...state, checklistTemplates: (state.checklistTemplates || []).filter(t => t.id !== action.payload) };
         case 'SET_CHECKLIST_SUBMISSIONS': return { ...state, checklistSubmissions: action.payload };
         case 'SET_TIRES': return { ...state, tires: action.payload };
         case 'SET_TIRE_INSPECTIONS': return { ...state, tireInspections: action.payload };

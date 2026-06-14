@@ -7,8 +7,10 @@ import { supabase, runWrite } from '../lib/supabase';
 import {
     toJobCardInsert, toJobCardUpdate, toPartInsert, toPurchaseRequestInsert, toTireUpdate,
     toPlannedServiceInsert, toPurchaseOrderInsert,
-    mapJobCard, mapPart, mapPurchaseRequest, mapPlannedService, mapPurchaseOrder,
+    mapJobCard, mapPart, mapPurchaseRequest, mapPlannedService, mapPurchaseOrder, mapChecklistTemplate,
 } from '../lib/mappers';
+
+const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 export const WorkshopContext = createContext<any>(undefined);
 
@@ -204,6 +206,33 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
+        // -- Checklist Templates ---------------------------------------------
+        handleAddChecklistTemplate: async (template: { name: string; items: any[] }): Promise<Result<void>> => {
+            try {
+                const row = { organization_id: FBN_ORG_ID, name: template.name, items: template.items as any, is_active: true };
+                const { data, error } = await runWrite(() => supabase.from('checklist_templates').insert(row).select().single());
+                if (error || !data) { console.error('[workshop] addChecklistTemplate failed:', error); return { ok: false, error: error?.message || 'Could not save template.' }; }
+                dispatch({ type: 'ADD_CHECKLIST_TEMPLATE', payload: mapChecklistTemplate(data) });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleUpdateChecklistTemplate: async (template: { id: string; name: string; items: any[] }): Promise<Result<void>> => {
+            try {
+                const { data, error } = await runWrite(() => supabase.from('checklist_templates').update({ name: template.name, items: template.items as any }).eq('id', template.id).select().single());
+                if (error || !data) { console.error('[workshop] updateChecklistTemplate failed:', error); return { ok: false, error: error?.message || 'Could not update template.' }; }
+                dispatch({ type: 'UPDATE_CHECKLIST_TEMPLATE', payload: mapChecklistTemplate(data) });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleDeleteChecklistTemplate: async (id: string): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('checklist_templates').delete().eq('id', id));
+                if (error) { console.error('[workshop] deleteChecklistTemplate failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'DELETE_CHECKLIST_TEMPLATE', payload: id });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+
         // AI triage suggestions stay local-only (applied per job card via the
         // workshop board, which persists individually).
         applyAiAssignments: (suggestions: Partial<JobCard>[]) => dispatch({ type: 'APPLY_AI_ASSIGNMENTS', payload: suggestions }),

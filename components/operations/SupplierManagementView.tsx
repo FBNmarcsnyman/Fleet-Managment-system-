@@ -2,11 +2,12 @@ import React from 'react';
 import { Supplier } from '../../types';
 import { PlusIcon } from '../icons/PlusIcon';
 import { UploadIcon } from '../icons/UploadIcon';
-import { useUIState, useOperations } from '../../contexts/AppContexts';
+import { useUIState, useOperations, useCommonData } from '../../contexts/AppContexts';
 
 const SubcontractorManagementView: React.FC = () => {
-    const { showModal } = useUIState();
+    const { showModal, showToast } = useUIState();
     const { suppliers = [], handleBulkAddSuppliers } = useOperations();
+    const { users = [], handleAddUser } = useCommonData();
 
     const subcontractors = (suppliers || []).filter((s: Supplier) => s.type === 'Transport');
 
@@ -24,6 +25,19 @@ const SubcontractorManagementView: React.FC = () => {
 
     const handleEdit = (supplier: Supplier) => {
         showModal('addSupplier', { supplier });
+    };
+
+    // Create a portal login for this subcontractor so they can see their loads,
+    // confirm driver details and submit PODs.
+    const hasLogin = (supplier: Supplier) => (users || []).some((u: any) => u.supplierId === supplier.id);
+    const handleCreateLogin = async (supplier: Supplier) => {
+        const email = supplier.contactEmail || supplier.contacts?.[0]?.email;
+        if (!email) { showToast('Add a contact email for this subcontractor first (Edit), then create the login.'); return; }
+        if (!confirm(`Create a portal login for ${supplier.name} (${email})?`)) return;
+        const res = await handleAddUser({ name: supplier.contactPerson || supplier.name, email, role: 'Supplier', supplierId: supplier.id, assignedBranches: [] });
+        if (!res.ok) { showToast(`Could not create login: ${res.error}`); return; }
+        const portal = `${window.location.origin}${window.location.pathname}?portal=supplier`;
+        alert(`Portal login created for ${supplier.name}.\n\nLogin page: ${portal}\nEmail: ${email}\nTemporary password: ${res.tempPassword}\n\nShare these with them — they can change the password after logging in.`);
     };
 
     return (
@@ -55,7 +69,10 @@ const SubcontractorManagementView: React.FC = () => {
                                 <td className="p-2 font-semibold text-white">{supplier.name}</td>
                                 <td className="p-2">{supplier.contactPerson}</td>
                                 <td className="p-2">{supplier.contactEmail} / {supplier.contactPhone}</td>
-                                <td className="p-2 text-right">
+                                <td className="p-2 text-right space-x-2">
+                                    {hasLogin(supplier)
+                                        ? <span className="text-[11px] text-emerald-400 font-bold">Has login</span>
+                                        : <button onClick={() => handleCreateLogin(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-emerald-600 text-white text-xs font-bold">Create login</button>}
                                     <button onClick={() => handleEdit(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold">Edit</button>
                                 </td>
                             </tr>

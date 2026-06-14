@@ -13,6 +13,7 @@
     "@google/genai": "^0.15.0",
     "@supabase/supabase-js": "^2.106.1",
     "date-fns": "^4.1.0",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.575.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

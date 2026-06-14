@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useUIState, useAuth, useOperations } from '../../contexts/AppContexts';
 import { supabase } from '../../lib/supabase';
+import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { PrinterIcon } from '../icons/PrinterIcon';
 
 type DocType = 'loadcon' | 'clientOrder' | 'deliveryNote';
@@ -232,10 +233,25 @@ const LoadDocumentsModal: React.FC = () => {
     const lc: LoadConfirmation | undefined = modal.payload?.loadCon;
     const [tab, setTab] = useState<DocType>('loadcon');
     const [sending, setSending] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     if (!lc) return <div className="p-4 bg-gray-800 text-white">No load selected.</div>;
 
     const recipientFor = (t: DocType) => t === 'clientOrder' ? lc.clientEmail : lc.subcontractorEmail;
+    const docLabel = (t: DocType) => t === 'clientOrder' ? 'Client Order' : t === 'deliveryNote' ? 'Delivery Note' : 'Load Confirmation';
+
+    // Download a clean, branded PDF of the current document (no print dialog).
+    const handleDownload = async () => {
+        setDownloading(true);
+        try {
+            const { doc, filename } = await buildLoadConPdf(lc, tab);
+            doc.save(filename);
+        } catch (e) {
+            showToast(`Could not make the PDF: ${e instanceof Error ? e.message : 'error'}`);
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     const handleEmail = async () => {
         const to = recipientFor(tab);
@@ -245,20 +261,34 @@ const LoadDocumentsModal: React.FC = () => {
         }
         const collection = lc.collectionPoint || '';
         const delivery = lc.deliveryPoint || '';
+        // Keep the subject plain ASCII — special chars (em-dash / arrow) get
+        // mis-encoded by some mail stacks and break the whole email's headers.
         const subject = tab === 'clientOrder'
-            ? `FBN Client Order ${lc.loadConNumber} — ${collection} → ${delivery}`
+            ? `FBN Client Order ${lc.loadConNumber} - ${collection} to ${delivery}`
             : tab === 'deliveryNote'
             ? `FBN Delivery Note ${lc.loadConNumber}`
-            : `FBN Load Confirmation ${lc.loadConNumber} — ${collection} → ${delivery}`;
+            : `FBN Load Confirmation ${lc.loadConNumber} - ${collection} to ${delivery}`;
         setSending(true);
         try {
+            // Attach the document as a proper PDF and keep the email body short and
+            // branded — a wall of inline tables reads as spam to most mail clients.
+            const { base64, filename } = await buildLoadConPdf(lc, tab);
+            const sender = currentUser?.name || 'FBN Transport';
+            const origin = typeof window !== 'undefined' ? window.location.origin : '';
+            const label = docLabel(tab);
+            const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;color:#1f2937">
+              <div style="background:#ffffff;padding:14px 0;border-bottom:3px solid ${NAVY}"><img src="${origin}/fbn-logo.jpg" alt="FBN Transport" height="44" style="height:44px;display:block" /><div style="color:${GREY};font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:4px">Commercial Freight Specialists</div></div>
+              <div style="height:4px;background:${YELLOW}"></div>
+              <div style="padding:18px 2px">${coverNote(lc, tab, sender)}<p style="font-size:13px;color:${GREY};margin-top:6px">Your ${label} (Ref ${lc.loadConNumber}) is attached to this email as a PDF.</p></div>
+            </div>`;
             const { data, error } = await supabase.functions.invoke('send-email', {
                 body: {
                     to,
                     cc: tab === 'loadcon' ? (lc.ccEmail || undefined) : undefined,
                     subject,
-                    html: coverNote(lc, tab, currentUser?.name || 'FBN Transport') + buildEmailHtml(lc, tab),
-                    fromName: currentUser?.name || 'FBN Transport',
+                    html,
+                    fromName: sender,
+                    attachments: [{ filename, content: base64, contentType: 'application/pdf' }],
                 },
             });
             if (error || (data && (data as any).error)) {
@@ -266,7 +296,7 @@ const LoadDocumentsModal: React.FC = () => {
                 return;
             }
             if (tab === 'loadcon') handleUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
-            showToast(`Sent to ${to}.`);
+            showToast(`Sent to ${to} with the ${label} attached.`);
         } catch (e) {
             showToast(`Email failed: ${e instanceof Error ? e.message : 'unknown error'}`);
         } finally {
@@ -291,8 +321,8 @@ const LoadDocumentsModal: React.FC = () => {
                             {sending ? 'Sending…' : tab === 'clientOrder' ? 'Email to Client' : 'Email to Subcontractor'}
                         </button>
                     )}
-                    <button onClick={() => window.print()} className="flex items-center font-bold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm">
-                        <PrinterIcon className="h-5 w-5 mr-2" /> Print / Save PDF
+                    <button onClick={handleDownload} disabled={downloading} className="flex items-center font-bold py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm">
+                        <PrinterIcon className="h-5 w-5 mr-2" /> {downloading ? 'Building PDF…' : 'Download PDF'}
                     </button>
                 </div>
             </div>

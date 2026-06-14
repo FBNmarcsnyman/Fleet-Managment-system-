@@ -3,9 +3,14 @@ import { LoadConfirmation } from '../../types';
 import { useUIState, useAuth, useOperations } from '../../contexts/AppContexts';
 import { supabase } from '../../lib/supabase';
 import { PrinterIcon } from '../icons/PrinterIcon';
-import { FuelIcon } from '../icons/FuelIcon';
 
 type DocType = 'loadcon' | 'clientOrder' | 'deliveryNote';
+
+// FBN brand palette
+const NAVY = '#13294b';
+const YELLOW = '#f5b700';
+const GREY = '#5b6573';
+const LINE = '#d7dde3';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDate = (d?: string) => {
@@ -17,171 +22,157 @@ const fmtDate = (d?: string) => {
 
 const Row: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) =>
     value ? (
-        <div className="flex text-sm py-0.5">
-            <span className="w-40 shrink-0 text-gray-500 font-semibold">{label}</span>
-            <span className="text-gray-900">{value}</span>
+        <div style={{ display: 'flex', fontSize: '13px', padding: '2px 0' }}>
+            <span style={{ width: '120px', flexShrink: 0, color: GREY, fontWeight: 600 }}>{label}</span>
+            <span style={{ color: '#1f2937' }}>{value}</span>
         </div>
     ) : null;
 
-const Box: React.FC<{ title: string; accent: string; children: React.ReactNode }> = ({ title, accent, children }) => (
-    <div className="border border-gray-300 rounded-lg overflow-hidden">
-        <div className={`px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white ${accent}`}>{title}</div>
-        <div className="p-3">{children}</div>
+const Box: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div style={{ border: `1px solid ${LINE}`, borderRadius: '8px', overflow: 'hidden' }}>
+        <div style={{ background: NAVY, color: '#fff', fontSize: '10.5px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', padding: '6px 12px' }}>{title}</div>
+        <div style={{ padding: '8px 12px' }}>{children}</div>
     </div>
 );
 
-// Renders ONE of the three transport documents from a load. Margin rule:
-// - LoadCon (to subcontractor): shows the TRANSPORT rate, never the client/client rate.
-// - Client Order (to client): shows the CLIENT rate, never the subcontractor/transport rate.
-// - Delivery Note / POD: no rates at all (for the driver to get signed).
+// Renders ONE of the three transport documents. Margin rule:
+// - LoadCon (to subbie): shows the TRANSPORT rate, never client/ client rate.
+// - Client Order (to client): shows the CLIENT rate, never subbie/transport rate.
+// - Delivery Note / POD: no rates at all.
 const DocView: React.FC<{ lc: LoadConfirmation; type: DocType }> = ({ lc, type }) => {
     const title = type === 'loadcon' ? 'LOAD CONFIRMATION' : type === 'clientOrder' ? 'CLIENT ORDER' : 'DELIVERY NOTE / POD';
-    const titleColor = type === 'loadcon' ? 'text-amber-700' : type === 'clientOrder' ? 'text-blue-700' : 'text-gray-700';
     const ref = lc.loadConNumber + (type === 'clientOrder' ? '-C' : type === 'deliveryNote' ? '-DN' : '');
 
     return (
-        <div className="printable-document bg-white text-gray-900 p-8 mx-auto" style={{ maxWidth: '210mm' }}>
-            <header className="flex justify-between items-start pb-4 border-b-2 border-gray-800">
-                <div className="flex items-center gap-3">
-                    <FuelIcon className="h-12 w-12 text-blue-700" />
-                    <div>
-                        <h1 className="text-2xl font-black leading-none">FBN Transport</h1>
-                        <p className="text-xs text-gray-500 mt-1">Nationwide Transport & Logistics</p>
-                    </div>
+        <div className="printable-document" style={{ maxWidth: '210mm', margin: '0 auto', background: '#fff', color: '#1f2937', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '24px 28px 14px', borderBottom: `3px solid ${NAVY}` }}>
+                <img src="/fbn-logo.svg" alt="FBN Transport" style={{ height: '60px' }} />
+                <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: NAVY, letterSpacing: '0.5px' }}>{title}</div>
+                    <div style={{ height: '3px', width: '96px', background: YELLOW, marginLeft: 'auto', marginTop: '5px' }} />
+                    <div style={{ marginTop: '8px', fontSize: '12px', color: GREY }}><strong style={{ color: NAVY }}>Ref:</strong> {ref}</div>
+                    <div style={{ fontSize: '12px', color: GREY }}><strong style={{ color: NAVY }}>Date:</strong> {fmtDate(lc.date) || fmtDate(new Date().toISOString())}</div>
+                    {lc.loadRefNo && <div style={{ fontSize: '12px', color: GREY }}><strong style={{ color: NAVY }}>Load Ref:</strong> {lc.loadRefNo}</div>}
                 </div>
-                <div className="text-right">
-                    <h2 className={`text-2xl font-black ${titleColor}`}>{title}</h2>
-                    <p className="mt-1 text-sm"><strong>Ref:</strong> {ref}</p>
-                    <p className="text-sm"><strong>Date:</strong> {fmtDate(lc.date) || fmtDate(new Date().toISOString())}</p>
-                    {lc.loadRefNo && <p className="text-sm"><strong>Load Ref:</strong> {lc.loadRefNo}</p>}
-                </div>
-            </header>
-
-            <div className="grid grid-cols-2 gap-4 my-4">
-                {/* Party box differs per document */}
-                {type === 'loadcon' && (
-                    <Box title="To Subcontractor" accent="bg-amber-600">
-                        <Row label="Company" value={<strong>{lc.subcontractorName}</strong>} />
-                        <Row label="For Attention" value={lc.forAttention} />
-                        <Row label="Email" value={lc.subcontractorEmail} />
-                        <Row label="Vehicle / Driver" value={lc.subcontractorDriverName} />
-                        <Row label="Driver Cell" value={lc.subcontractorDriverCell} />
-                        <Row label="Vehicle Reg" value={lc.subcontractorVehicleReg} />
-                    </Box>
-                )}
-                {type === 'clientOrder' && (
-                    <Box title="Client" accent="bg-blue-600">
-                        <Row label="Company" value={<strong>{lc.clientName}</strong>} />
-                        <Row label="For Attention" value={lc.clientContact} />
-                        <Row label="Email" value={lc.clientEmail} />
-                        <Row label="Customer Order #" value={lc.customerOrderNumber} />
-                    </Box>
-                )}
-                {type === 'deliveryNote' && (
-                    <Box title="Consignment" accent="bg-gray-700">
-                        <Row label="Load Ref" value={ref} />
-                        <Row label="Customer Order #" value={lc.customerOrderNumber} />
-                        <Row label="Carrier" value={lc.subcontractorName} />
-                        <Row label="Vehicle / Driver" value={lc.subcontractorDriverName} />
-                    </Box>
-                )}
-
-                <Box title="Route" accent="bg-gray-700">
-                    <Row label="FBN Branch" value={lc.arrangingBranch} />
-                    <Row label="FBN Rep" value={lc.fbnRepresentative} />
-                    <Row label="Route" value={lc.route} />
-                    <Row label="Priority" value={lc.priority} />
-                </Box>
-
-                <Box title="Collection" accent="bg-emerald-700">
-                    <Row label="Address" value={lc.collectionPoint} />
-                    <Row label="Date" value={fmtDate(lc.collectionDate)} />
-                    <Row label="Time" value={lc.loadingTime} />
-                    <Row label="Contact" value={lc.collectionContact} />
-                    <Row label="Tel" value={lc.collectionTelephone} />
-                </Box>
-
-                <Box title="Delivery" accent="bg-rose-700">
-                    <Row label="Address" value={lc.deliveryPoint} />
-                    <Row label="Date" value={fmtDate(lc.deliveryDate)} />
-                    <Row label="Time" value={lc.offloadingTime} />
-                    <Row label="Contact" value={lc.deliveryContact} />
-                    <Row label="Tel" value={lc.deliveryTelephone} />
-                </Box>
             </div>
+            <div style={{ height: '4px', background: YELLOW }} />
 
-            <Box title="Cargo" accent="bg-gray-700">
-                <div className="grid grid-cols-2 gap-x-6">
-                    <Row label="Load Type" value={lc.loadType} />
-                    <Row label="Commodity" value={lc.commodity} />
-                    <Row label="Packaging" value={lc.packaging} />
-                    <Row label="Quantity" value={lc.quantity} />
-                    <Row label="Weight (kg)" value={lc.weightKg} />
-                    <Row label="Volume" value={lc.volume} />
-                    {type !== 'deliveryNote' && <Row label="Cargo Value" value={lc.cargoValue} />}
-                    <Row label="Container #" value={lc.containerNo} />
-                </div>
-                {lc.equipmentRequired?.length ? <Row label="Equipment" value={lc.equipmentRequired.join(', ')} /> : null}
-                {lc.specialInstructions ? <Row label="Instructions" value={lc.specialInstructions} /> : null}
-            </Box>
+            <div style={{ padding: '18px 28px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    {type === 'loadcon' && (
+                        <Box title="To Subcontractor">
+                            <Row label="Company" value={<strong>{lc.subcontractorName}</strong>} />
+                            <Row label="For Attention" value={lc.forAttention} />
+                            <Row label="Email" value={lc.subcontractorEmail} />
+                            <Row label="Vehicle / Driver" value={lc.subcontractorDriverName} />
+                            <Row label="Driver Cell" value={lc.subcontractorDriverCell} />
+                            <Row label="Vehicle Reg" value={lc.subcontractorVehicleReg} />
+                        </Box>
+                    )}
+                    {type === 'clientOrder' && (
+                        <Box title="Client">
+                            <Row label="Company" value={<strong>{lc.clientName}</strong>} />
+                            <Row label="For Attention" value={lc.clientContact} />
+                            <Row label="Email" value={lc.clientEmail} />
+                            <Row label="Customer Order #" value={lc.customerOrderNumber} />
+                        </Box>
+                    )}
+                    {type === 'deliveryNote' && (
+                        <Box title="Consignment">
+                            <Row label="Load Ref" value={ref} />
+                            <Row label="Customer Order #" value={lc.customerOrderNumber} />
+                            <Row label="Carrier" value={lc.subcontractorName} />
+                            <Row label="Vehicle / Driver" value={lc.subcontractorDriverName} />
+                        </Box>
+                    )}
 
-            {/* Rate — only the side that's allowed to see it */}
-            {type === 'loadcon' && (
-                <div className="mt-4 flex justify-end">
-                    <div className="border-2 border-amber-600 rounded-lg px-6 py-3 text-right">
-                        <p className="text-xs font-bold uppercase tracking-wider text-amber-700">Agreed Transport Rate (excl. VAT)</p>
-                        <p className="text-3xl font-black font-mono">{rand(lc.supplierRate)}</p>
-                    </div>
-                </div>
-            )}
-            {type === 'clientOrder' && (
-                <div className="mt-4 flex justify-end">
-                    <div className="border-2 border-blue-600 rounded-lg px-6 py-3 text-right">
-                        <p className="text-xs font-bold uppercase tracking-wider text-blue-700">Agreed Rate (excl. VAT)</p>
-                        <p className="text-3xl font-black font-mono">{rand(lc.totalAmount)}</p>
-                    </div>
-                </div>
-            )}
+                    <Box title="Route">
+                        <Row label="FBN Branch" value={lc.arrangingBranch} />
+                        <Row label="FBN Rep" value={lc.fbnRepresentative} />
+                        <Row label="Route" value={lc.route} />
+                        <Row label="Priority" value={lc.priority} />
+                    </Box>
 
-            {/* POD signature block — delivery note only */}
-            {type === 'deliveryNote' && (
-                <div className="mt-8 grid grid-cols-2 gap-8">
-                    <div>
-                        <p className="text-sm font-semibold text-gray-600 mb-8">Received in good order by:</p>
-                        <div className="border-t border-gray-400 pt-1 text-xs text-gray-500">Name & Signature</div>
-                    </div>
-                    <div>
-                        <p className="text-sm font-semibold text-gray-600 mb-8">Date / Time:</p>
-                        <div className="border-t border-gray-400 pt-1 text-xs text-gray-500">Date received</div>
-                    </div>
-                    <div className="col-span-2 mt-2">
-                        <p className="text-xs text-gray-500">Any shortages, damages or remarks:</p>
-                        <div className="h-16 border border-gray-300 rounded mt-1" />
-                    </div>
-                </div>
-            )}
+                    <Box title="Collection">
+                        <Row label="Address" value={lc.collectionPoint} />
+                        <Row label="Date" value={fmtDate(lc.collectionDate)} />
+                        <Row label="Time" value={lc.loadingTime} />
+                        <Row label="Contact" value={lc.collectionContact} />
+                        <Row label="Tel" value={lc.collectionTelephone} />
+                    </Box>
 
-            <footer className="mt-8 pt-3 border-t text-center text-[10px] text-gray-400">
-                FBN Transport · This document was generated by the FBN Fleet system.
-                {type === 'loadcon' && ' Rate shown is the agreed subcontractor buy-rate and is confidential.'}
-                {type === 'clientOrder' && ' Rate shown is the agreed client sell-rate.'}
-            </footer>
+                    <Box title="Delivery">
+                        <Row label="Address" value={lc.deliveryPoint} />
+                        <Row label="Date" value={fmtDate(lc.deliveryDate)} />
+                        <Row label="Time" value={lc.offloadingTime} />
+                        <Row label="Contact" value={lc.deliveryContact} />
+                        <Row label="Tel" value={lc.deliveryTelephone} />
+                    </Box>
+                </div>
+
+                <div style={{ marginTop: '12px' }}>
+                    <Box title="Cargo">
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '24px' }}>
+                            <Row label="Load Type" value={lc.loadType} />
+                            <Row label="Commodity" value={lc.commodity} />
+                            <Row label="Packaging" value={lc.packaging} />
+                            <Row label="Quantity" value={lc.quantity} />
+                            <Row label="Weight (kg)" value={lc.weightKg} />
+                            <Row label="Volume" value={lc.volume} />
+                            {type !== 'deliveryNote' && <Row label="Cargo Value" value={lc.cargoValue} />}
+                            <Row label="Container #" value={lc.containerNo} />
+                        </div>
+                        {lc.equipmentRequired?.length ? <Row label="Equipment" value={lc.equipmentRequired.join(', ')} /> : null}
+                        {lc.specialInstructions ? <Row label="Instructions" value={lc.specialInstructions} /> : null}
+                    </Box>
+                </div>
+
+                {/* Rate — only the side allowed to see it */}
+                {(type === 'loadcon' || type === 'clientOrder') && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
+                        <div style={{ background: NAVY, borderRadius: '8px', padding: '12px 24px', textAlign: 'right', minWidth: '240px' }}>
+                            <div style={{ fontSize: '10px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', color: YELLOW }}>
+                                {type === 'loadcon' ? 'Agreed Transport Rate (excl. VAT)' : 'Agreed Rate (excl. VAT)'}
+                            </div>
+                            <div style={{ fontSize: '26px', fontWeight: 800, color: '#fff' }}>{rand(type === 'loadcon' ? lc.supplierRate : lc.totalAmount)}</div>
+                        </div>
+                    </div>
+                )}
+
+                {/* POD signature block */}
+                {type === 'deliveryNote' && (
+                    <div style={{ marginTop: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px' }}>
+                        <div>
+                            <p style={{ fontSize: '13px', fontWeight: 600, color: GREY, marginBottom: '34px' }}>Received in good order by:</p>
+                            <div style={{ borderTop: `1px solid ${NAVY}`, paddingTop: '4px', fontSize: '11px', color: GREY }}>Name &amp; Signature</div>
+                        </div>
+                        <div>
+                            <p style={{ fontSize: '13px', fontWeight: 600, color: GREY, marginBottom: '34px' }}>Date / Time:</p>
+                            <div style={{ borderTop: `1px solid ${NAVY}`, paddingTop: '4px', fontSize: '11px', color: GREY }}>Date received</div>
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <p style={{ fontSize: '11px', color: GREY }}>Shortages, damages or remarks:</p>
+                            <div style={{ height: '64px', border: `1px solid ${LINE}`, borderRadius: '6px', marginTop: '4px' }} />
+                        </div>
+                    </div>
+                )}
+
+                <div style={{ marginTop: '22px', paddingTop: '10px', borderTop: `1px solid ${LINE}`, textAlign: 'center', fontSize: '10px', color: '#9aa3af' }}>
+                    FBN Transport · Nationwide Transport &amp; Logistics · tracking@fbn-transport.co.za
+                    {type === 'loadcon' && ' · Rate shown is the confidential subcontractor buy-rate.'}
+                </div>
+            </div>
         </div>
     );
 };
 
-const TABS: { key: DocType; label: string }[] = [
-    { key: 'loadcon', label: 'LoadCon → Subcontractor' },
-    { key: 'clientOrder', label: 'Client Order → Client' },
-    { key: 'deliveryNote', label: 'Delivery Note / POD' },
-];
-
-// Build an email-safe HTML version of a document (inline styles, table layout).
+// Email-safe HTML version (inline styles, table layout, navy/grey/yellow).
 const buildEmailHtml = (lc: LoadConfirmation, type: DocType): string => {
     const title = type === 'loadcon' ? 'LOAD CONFIRMATION' : type === 'clientOrder' ? 'CLIENT ORDER' : 'DELIVERY NOTE / POD';
     const ref = lc.loadConNumber + (type === 'clientOrder' ? '-C' : type === 'deliveryNote' ? '-DN' : '');
-    const row = (l: string, v?: string) => (v ? `<tr><td style="padding:2px 10px 2px 0;color:#6b7280;font-weight:600;white-space:nowrap">${l}</td><td style="padding:2px 0;color:#111827">${v}</td></tr>` : '');
-    const block = (heading: string, rows: string) => `<div style="margin:0 0 14px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin-bottom:4px">${heading}</div><table style="border-collapse:collapse;font-size:13px">${rows}</table></div>`;
+    const row = (l: string, v?: string) => (v ? `<tr><td style="padding:2px 10px 2px 0;color:${GREY};font-weight:600;white-space:nowrap;font-size:13px">${l}</td><td style="padding:2px 0;color:#1f2937;font-size:13px">${v}</td></tr>` : '');
+    const block = (heading: string, rows: string) => `<div style="border:1px solid ${LINE};border-radius:8px;overflow:hidden;margin:0 0 12px"><div style="background:${NAVY};color:#fff;font-size:10.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:6px 12px">${heading}</div><table style="border-collapse:collapse;padding:8px 12px;width:100%"><tbody>${rows}</tbody></table></div>`;
 
     const party = type === 'loadcon'
         ? block('To Subcontractor', row('Company', `<strong>${lc.subcontractorName || ''}</strong>`) + row('For Attention', lc.forAttention) + row('Email', lc.subcontractorEmail) + row('Driver', lc.subcontractorDriverName) + row('Driver Cell', lc.subcontractorDriverCell) + row('Vehicle Reg', lc.subcontractorVehicleReg))
@@ -194,19 +185,21 @@ const buildEmailHtml = (lc: LoadConfirmation, type: DocType): string => {
     const delivery = block('Delivery', row('Address', lc.deliveryPoint) + row('Date', fmtDate(lc.deliveryDate)) + row('Time', lc.offloadingTime) + row('Contact', lc.deliveryContact) + row('Tel', lc.deliveryTelephone));
     const cargo = block('Cargo', row('Load Type', lc.loadType) + row('Commodity', lc.commodity) + row('Packaging', lc.packaging) + row('Quantity', lc.quantity) + row('Weight (kg)', lc.weightKg) + row('Volume', lc.volume) + (lc.equipmentRequired?.length ? row('Equipment', lc.equipmentRequired.join(', ')) : '') + (lc.specialInstructions ? row('Instructions', lc.specialInstructions) : ''));
 
-    const rate = type === 'loadcon'
-        ? `<div style="margin-top:8px;padding:10px;border:2px solid #d97706;border-radius:8px;text-align:right"><div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#b45309">Agreed Transport Rate (excl. VAT)</div><div style="font-size:22px;font-weight:800">${rand(lc.supplierRate)}</div></div>`
-        : type === 'clientOrder'
-        ? `<div style="margin-top:8px;padding:10px;border:2px solid #2563eb;border-radius:8px;text-align:right"><div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#1d4ed8">Agreed Rate (excl. VAT)</div><div style="font-size:22px;font-weight:800">${rand(lc.totalAmount)}</div></div>`
+    const rate = (type === 'loadcon' || type === 'clientOrder')
+        ? `<div style="margin-top:8px;text-align:right"><div style="display:inline-block;background:${NAVY};border-radius:8px;padding:10px 22px;text-align:right"><div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${YELLOW}">${type === 'loadcon' ? 'Agreed Transport Rate (excl. VAT)' : 'Agreed Rate (excl. VAT)'}</div><div style="font-size:22px;font-weight:800;color:#fff">${rand(type === 'loadcon' ? lc.supplierRate : lc.totalAmount)}</div></div></div>`
         : '';
 
-    return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;color:#111827">
-      <div style="display:flex;justify-content:space-between;border-bottom:2px solid #111827;padding-bottom:8px;margin-bottom:14px">
-        <div><div style="font-size:20px;font-weight:800">FBN Transport</div><div style="font-size:11px;color:#6b7280">Nationwide Transport &amp; Logistics</div></div>
-        <div style="text-align:right"><div style="font-size:18px;font-weight:800">${title}</div><div style="font-size:12px">Ref: ${ref}</div><div style="font-size:12px">Date: ${fmtDate(lc.date) || fmtDate(new Date().toISOString())}</div></div>
+    return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:660px;color:#1f2937;border:1px solid ${LINE};border-radius:10px;overflow:hidden">
+      <div style="background:${NAVY};padding:16px 22px">
+        <span style="color:#fff;font-weight:900;font-style:italic;font-size:26px">FBN</span><span style="color:#c4ccd4;font-weight:700;font-style:italic;font-size:20px"> transport</span>
+        <span style="color:${YELLOW};font-weight:800;font-size:15px;text-transform:uppercase;float:right;padding-top:8px">${title}</span>
       </div>
-      ${party}${route}${collection}${delivery}${cargo}${rate}
-      <div style="margin-top:16px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af">FBN Transport · Generated by the FBN Fleet system.${type === 'loadcon' ? ' Rate shown is the confidential subcontractor buy-rate.' : ''}</div>
+      <div style="height:4px;background:${YELLOW}"></div>
+      <div style="padding:18px 22px">
+        <p style="font-size:12px;color:${GREY};margin:0 0 14px"><strong style="color:${NAVY}">Ref:</strong> ${ref} &nbsp;·&nbsp; <strong style="color:${NAVY}">Date:</strong> ${fmtDate(lc.date) || fmtDate(new Date().toISOString())}</p>
+        ${party}${route}${collection}${delivery}${cargo}${rate}
+        <div style="margin-top:16px;padding-top:8px;border-top:1px solid ${LINE};font-size:10px;color:#9aa3af">FBN Transport · Nationwide Transport &amp; Logistics · tracking@fbn-transport.co.za${type === 'loadcon' ? ' · Rate shown is the confidential subcontractor buy-rate.' : ''}</div>
+      </div>
     </div>`;
 };
 
@@ -214,22 +207,18 @@ const buildEmailHtml = (lc: LoadConfirmation, type: DocType): string => {
 const coverNote = (lc: LoadConfirmation, type: DocType, sender: string): string => {
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' → ' + lc.deliveryPoint : ''}`;
     const when = fmtDate(lc.collectionDate);
-    const p = (s: string) => `<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827;margin:0 0 10px">${s}</p>`;
+    const p = (s: string) => `<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;margin:0 0 10px">${s}</p>`;
     if (type === 'clientOrder') {
-        return `<div style="margin-bottom:18px">
-            ${p(`Good day ${lc.clientContact || lc.clientName || ''},`)}
-            ${p(`Please find your FBN Client Order <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''}.`)}
-            ${p('Kindly confirm and reply with your order number if not already supplied.')}
-            ${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}
-        </div>`;
+        return `<div style="margin-bottom:18px">${p(`Good day ${lc.clientContact || lc.clientName || ''},`)}${p(`Please find your FBN Client Order <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''}.`)}${p('Kindly confirm and reply with your order number if not already supplied.')}${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}</div>`;
     }
-    return `<div style="margin-bottom:18px">
-        ${p(`Good day ${lc.forAttention || lc.subcontractorName || ''},`)}
-        ${p(`Please find FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''} below.`)}
-        ${p('Please <strong>confirm acceptance</strong> and reply with your <strong>driver name, vehicle registration and driver cell</strong>. POD to be returned on delivery.')}
-        ${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}
-    </div>`;
+    return `<div style="margin-bottom:18px">${p(`Good day ${lc.forAttention || lc.subcontractorName || ''},`)}${p(`Please find FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''} below.`)}${p('Please <strong>confirm acceptance</strong> and reply with your <strong>driver name, vehicle registration and driver cell</strong>. POD to be returned on delivery.')}${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}</div>`;
 };
+
+const TABS: { key: DocType; label: string }[] = [
+    { key: 'loadcon', label: 'LoadCon → Subcontractor' },
+    { key: 'clientOrder', label: 'Client Order → Client' },
+    { key: 'deliveryNote', label: 'Delivery Note / POD' },
+];
 
 const LoadDocumentsModal: React.FC = () => {
     const { modal, showToast } = useUIState();
@@ -271,9 +260,7 @@ const LoadDocumentsModal: React.FC = () => {
                 showToast(`Email failed: ${(data as any)?.error || error?.message || 'unknown error'}`);
                 return;
             }
-            if (tab === 'loadcon') {
-                handleUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
-            }
+            if (tab === 'loadcon') handleUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
             showToast(`Sent to ${to}.`);
         } catch (e) {
             showToast(`Email failed: ${e instanceof Error ? e.message : 'unknown error'}`);

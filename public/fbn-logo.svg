@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-label="FBN Transport">
+  <g transform="skewX(-12)">
+    <rect x="14" y="16" width="80" height="12" fill="#13294b"/>
+    <rect x="22" y="34" width="72" height="12" fill="#8c98a6"/>
+    <rect x="30" y="52" width="64" height="12" fill="#c4ccd4"/>
+  </g>
+  <text x="100" y="54" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-style="italic" font-size="54" fill="#13294b" letter-spacing="-1">FBN</text>
+  <text x="102" y="88" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-style="italic" font-size="34" fill="#13294b">transport</text>
+  <line x1="102" y1="94" x2="312" y2="94" stroke="#13294b" stroke-width="3"/>
+</svg>

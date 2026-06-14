@@ -47,7 +47,10 @@ const DocView: React.FC<{ lc: LoadConfirmation; type: DocType }> = ({ lc, type }
         <div className="printable-document" style={{ maxWidth: '210mm', margin: '0 auto', background: '#fff', color: '#1f2937', fontFamily: 'Arial, Helvetica, sans-serif' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '24px 28px 14px', borderBottom: `3px solid ${NAVY}` }}>
-                <img src="/fbn-logo.svg" alt="FBN Transport" style={{ height: '60px' }} />
+                <div>
+                    <img src="/fbn-logo.svg" alt="FBN Transport" style={{ height: '56px', display: 'block' }} />
+                    <div style={{ fontSize: '9.5px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: GREY, marginTop: '4px' }}>Commercial Freight Specialists</div>
+                </div>
                 <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '22px', fontWeight: 800, color: NAVY, letterSpacing: '0.5px' }}>{title}</div>
                     <div style={{ height: '3px', width: '96px', background: YELLOW, marginLeft: 'auto', marginTop: '5px' }} />
@@ -159,7 +162,7 @@ const DocView: React.FC<{ lc: LoadConfirmation; type: DocType }> = ({ lc, type }
                 )}
 
                 <div style={{ marginTop: '22px', paddingTop: '10px', borderTop: `1px solid ${LINE}`, textAlign: 'center', fontSize: '10px', color: '#9aa3af' }}>
-                    FBN Transport · Nationwide Transport &amp; Logistics · tracking@fbn-transport.co.za
+                    FBN Transport · Commercial Freight Specialists · tracking@fbn-transport.co.za
                     {type === 'loadcon' && ' · Rate shown is the confidential subcontractor buy-rate.'}
                 </div>
             </div>
@@ -193,12 +196,13 @@ const buildEmailHtml = (lc: LoadConfirmation, type: DocType): string => {
       <div style="background:${NAVY};padding:16px 22px">
         <span style="color:#fff;font-weight:900;font-style:italic;font-size:26px">FBN</span><span style="color:#c4ccd4;font-weight:700;font-style:italic;font-size:20px"> transport</span>
         <span style="color:${YELLOW};font-weight:800;font-size:15px;text-transform:uppercase;float:right;padding-top:8px">${title}</span>
+        <div style="color:#9aa9bd;font-size:9.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:2px">Commercial Freight Specialists</div>
       </div>
       <div style="height:4px;background:${YELLOW}"></div>
       <div style="padding:18px 22px">
         <p style="font-size:12px;color:${GREY};margin:0 0 14px"><strong style="color:${NAVY}">Ref:</strong> ${ref} &nbsp;·&nbsp; <strong style="color:${NAVY}">Date:</strong> ${fmtDate(lc.date) || fmtDate(new Date().toISOString())}</p>
         ${party}${route}${collection}${delivery}${cargo}${rate}
-        <div style="margin-top:16px;padding-top:8px;border-top:1px solid ${LINE};font-size:10px;color:#9aa3af">FBN Transport · Nationwide Transport &amp; Logistics · tracking@fbn-transport.co.za${type === 'loadcon' ? ' · Rate shown is the confidential subcontractor buy-rate.' : ''}</div>
+        <div style="margin-top:16px;padding-top:8px;border-top:1px solid ${LINE};font-size:10px;color:#9aa3af">FBN Transport · Commercial Freight Specialists · tracking@fbn-transport.co.za${type === 'loadcon' ? ' · Rate shown is the confidential subcontractor buy-rate.' : ''}</div>
       </div>
     </div>`;
 };

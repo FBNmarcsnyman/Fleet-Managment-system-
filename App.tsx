@@ -61,6 +61,7 @@ const ScrapTireModal = lazy(() => import('./components/ScrapTireModal'));
 const SendForRetreadModal = lazy(() => import('./components/SendForRetreadModal'));
 const AddClientForm = lazy(() => import('./components/operations/AddClientForm'));
 const AddDriverForm = lazy(() => import('./components/fleet/AddDriverForm'));
+const LoadDocumentsModal = lazy(() => import('./components/operations/LoadDocumentsModal'));
 const AddSupplierForm = lazy(() => import('./components/operations/AddSupplierForm'));
 const BulkImportSuppliersModal = lazy(() => import('./components/operations/BulkImportSuppliersModal'));
 const RateSupplierModal = lazy(() => import('./components/RateSupplierModal'));
@@ -119,6 +120,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     sendForRetread: SendForRetreadModal,
     addClient: AddClientForm,
     addDriver: AddDriverForm,
+    loadDocuments: LoadDocumentsModal,
     addSupplier: AddSupplierForm,
     bulkImportSuppliers: BulkImportSuppliersModal,
     rateSupplier: RateSupplierModal,
@@ -151,6 +153,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     transportOrder: '5xl',
     quotePdf: '4xl',
     supplierLoadConPdf: '4xl',
+    loadDocuments: '5xl',
     invoicePdf: '4xl',
     viewPod: '2xl',
     jobCardDetail: '4xl',

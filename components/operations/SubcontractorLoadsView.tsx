@@ -43,13 +43,8 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     };
 
     const handleViewPdf = (lc: LoadConfirmation) => {
-        const supplier = supplierMap.get(lc.supplierId!);
-        const client = clientMap.get(lc.clientId);
-        if (supplier && client) {
-            showModal('supplierLoadConPdf', { loadCon: lc, supplier, client });
-        } else {
-            showToast("Error: Supplier or Client data missing.");
-        }
+        // Opens the 3-document set: LoadCon (subbie), Client Order (client), Delivery Note.
+        showModal('loadDocuments', { loadCon: lc });
     };
 
     const handleViewPod = (podPhoto: Attachment) => {
@@ -129,7 +124,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                         )}
                                     </td>
                                     <td className="p-2 text-right space-x-2">
-                                        <button onClick={() => handleViewPdf(lc)} className="text-xs font-semibold bg-gray-600 text-white py-1 px-2 rounded-lg">View PDF</button>
+                                        <button onClick={() => handleViewPdf(lc)} className="text-xs font-semibold bg-gray-600 text-white py-1 px-2 rounded-lg">Documents</button>
                                         {lc.podPhoto ? (
                                             <button onClick={() => handleViewPod(lc.podPhoto!)} className="text-xs font-semibold bg-purple-600 text-white py-1 px-2 rounded-lg">View POD</button>
                                         ) : (

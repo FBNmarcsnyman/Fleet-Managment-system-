@@ -43,3 +43,10 @@ scripts/fuel-log-crawler-report.json
 scripts/fuel-log-builder-output.json
 scripts/drive-folder-map.json
 scripts/fuel-log-matcher-report.json
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example

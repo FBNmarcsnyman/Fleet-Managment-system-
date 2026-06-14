@@ -96,16 +96,25 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         // Soft-delete: deactivate (keeps history/loads intact, hides from lists).
         handleDeleteClient: async (id: string): Promise<Result<void>> => {
             try {
-                const { error } = await runWrite(() => supabase.from('clients').update({ is_active: false }).eq('id', id));
-                if (error) { console.error('[ops] deleteClient failed:', error); return { ok: false, error: error.message }; }
+                // Real delete when the client has no history; otherwise deactivate (hide) to keep loads/quotes.
+                const del = await runWrite(() => supabase.from('clients').delete().eq('id', id));
+                if (del.error) {
+                    const soft = await runWrite(() => supabase.from('clients').update({ is_active: false }).eq('id', id));
+                    if (soft.error) { console.error('[ops] deleteClient failed:', soft.error); return { ok: false, error: soft.error.message }; }
+                }
                 dispatch({ type: 'REMOVE_CLIENT', payload: id });
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
         handleDeleteSupplier: async (id: string): Promise<Result<void>> => {
             try {
-                const { error } = await runWrite(() => supabase.from('suppliers').update({ is_active: false }).eq('id', id));
-                if (error) { console.error('[ops] deleteSupplier failed:', error); return { ok: false, error: error.message }; }
+                // Try a real delete first so empty / junk subbies are actually removed.
+                // If the subbie has load history (FK), fall back to deactivating (hide) so we keep that history.
+                const del = await runWrite(() => supabase.from('suppliers').delete().eq('id', id));
+                if (del.error) {
+                    const soft = await runWrite(() => supabase.from('suppliers').update({ is_active: false }).eq('id', id));
+                    if (soft.error) { console.error('[ops] deleteSupplier failed:', soft.error); return { ok: false, error: soft.error.message }; }
+                }
                 dispatch({ type: 'REMOVE_SUPPLIER', payload: id });
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }

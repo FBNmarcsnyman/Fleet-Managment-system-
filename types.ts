@@ -379,6 +379,16 @@ export interface SupplierApplication {
     insurance: Attachment;
 }
 
+// An internal branch of a client (holding account) — e.g. PERI Scaffolding's
+// DBN / JHB / CPT branches, each with their own delivery address + contact.
+export interface ClientBranch {
+    name: string;
+    address?: string;
+    contactPerson?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+}
+
 export interface Client {
     id: string;
     name: string;
@@ -386,6 +396,7 @@ export interface Client {
     contactEmail: string;
     contactPhone: string;
     contacts?: Contact[];
+    branches?: ClientBranch[];
     address: string;
     slaLevel?: string;
     isActive?: boolean;

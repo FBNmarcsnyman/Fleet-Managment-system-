@@ -348,6 +348,7 @@ export type Database = {
           contact_person: string | null
           contact_phone: string | null
           contacts: Json
+          branches: Json
           created_at: string
           credit_limit: number | null
           id: string
@@ -364,6 +365,7 @@ export type Database = {
           contact_person?: string | null
           contact_phone?: string | null
           contacts?: Json
+          branches?: Json
           created_at?: string
           credit_limit?: number | null
           id?: string
@@ -380,6 +382,7 @@ export type Database = {
           contact_person?: string | null
           contact_phone?: string | null
           contacts?: Json
+          branches?: Json
           created_at?: string
           credit_limit?: number | null
           id?: string

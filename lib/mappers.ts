@@ -4,7 +4,7 @@ import type {
     RevenueEntry, ServiceInterval, PlannedService, FuelPriceRecord, Bowser, BowserRefill,
     Budget, Forecast, JobCard, JobCardStatus, JobCardType, ChecklistTemplate,
     ChecklistItemTemplate, ChecklistSubmission, ChecklistItemResult, Tire, TireStatus,
-    TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase, Client, Supplier, Contact, Driver,
+    TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase, Client, ClientBranch, Supplier, Contact, Driver,
     ComplianceDoc, Attachment, Quote, QuoteStatus, QuoteItem, QuoteLeg, SubcontractorQuote,
     LoadConfirmation, LoadConfirmationStatus, Manifest, TripSheet, IncidentReport,
     IncidentStatus, IncidentQuote, AtFaultParty, SupplierApplication,
@@ -407,6 +407,7 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     contactEmail: row.contact_email ?? '',
     contactPhone: row.contact_phone ?? '',
     contacts: (row.contacts as unknown as Contact[]) ?? [],
+    branches: ((row as any).branches as ClientBranch[]) ?? [],
     address: row.address ?? '',
     slaLevel: row.sla_level ?? undefined,
     isActive: (row as any).is_active ?? true,
@@ -830,6 +831,7 @@ export const toClientInsert = (client: Omit<Client, 'id'>): Tables['clients']['I
     contact_email: client.contactEmail || null,
     contact_phone: client.contactPhone || null,
     contacts: (client.contacts ?? []) as unknown as Tables['clients']['Insert']['contacts'],
+    branches: (client.branches ?? []) as any,
     address: client.address || null,
     sla_level: client.slaLevel ?? null,
 });
@@ -841,6 +843,7 @@ export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] 
     if (u.contactEmail !== undefined) row.contact_email = u.contactEmail || null;
     if (u.contactPhone !== undefined) row.contact_phone = u.contactPhone || null;
     if (u.contacts !== undefined) row.contacts = (u.contacts ?? []) as unknown as Tables['clients']['Update']['contacts'];
+    if (u.branches !== undefined) (row as any).branches = u.branches ?? [];
     if (u.address !== undefined) row.address = u.address || null;
     if (u.slaLevel !== undefined) row.sla_level = u.slaLevel ?? null;
     return row;

@@ -6,6 +6,7 @@ import Login from './components/Login';
 import ClientLogin from './components/ClientLogin';
 import SupplierLogin from './components/SupplierLogin';
 import DriverChecklistAuth from './components/DriverChecklistAuth';
+const RigChecklistFlow = lazy(() => import('./components/RigChecklistFlow'));
 import SupplierPODUploadView from './components/SupplierPODUploadView';
 import ClientQuoteView from './components/ClientQuoteView';
 import SupplierRegistrationPortal from './components/supplier/SupplierRegistrationPortal';
@@ -62,6 +63,7 @@ const SendForRetreadModal = lazy(() => import('./components/SendForRetreadModal'
 const AddClientForm = lazy(() => import('./components/operations/AddClientForm'));
 const AddDriverForm = lazy(() => import('./components/fleet/AddDriverForm'));
 const LoadDocumentsModal = lazy(() => import('./components/operations/LoadDocumentsModal'));
+const QRCodeModal = lazy(() => import('./components/QRCodeModal'));
 const AddSupplierForm = lazy(() => import('./components/operations/AddSupplierForm'));
 const BulkImportSuppliersModal = lazy(() => import('./components/operations/BulkImportSuppliersModal'));
 const RateSupplierModal = lazy(() => import('./components/RateSupplierModal'));
@@ -121,6 +123,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     addClient: AddClientForm,
     addDriver: AddDriverForm,
     loadDocuments: LoadDocumentsModal,
+    qrCode: QRCodeModal,
     addSupplier: AddSupplierForm,
     bulkImportSuppliers: BulkImportSuppliersModal,
     rateSupplier: RateSupplierModal,
@@ -174,7 +177,7 @@ const App: React.FC = () => {
     const { currentUser, currentViewOverride, hasPermission } = useAuth();
     const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast } = useUIState();
     const { quotes, clients, handleAcceptQuote, handleRejectQuote, handleAddChecklistSubmission } = useOperations();
-    const { vehicles, users, checklistTemplates } = useVehicles();
+    const { vehicles, users, checklistTemplates, drivers } = useVehicles();
     const [checklistFlow, setChecklistFlow] = useState<{ step: 'vehicleScan' | 'form', user: User, vehicle: Vehicle } | null>(null);
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -193,28 +196,29 @@ const App: React.FC = () => {
         return <div className="text-center p-8 text-red-400">Quote not found or invalid link.</div>;
     }
     
-    // Auth flow for standalone checklist scanning via QR
-    if (currentViewOverride === 'driver' && checklistVehicleId && !checklistFlow) {
+    // Scan a vehicle/trailer QR (any device, no login needed): identify the
+    // driver, then run the daily checklist across the whole rig.
+    if (checklistVehicleId && !checklistFlow) {
         const vehicle = (vehicles || []).find((v: any) => v.id === checklistVehicleId);
         if (vehicle) {
-            return <DriverChecklistAuth vehicle={vehicle} users={users} onAuthenticated={(user) => {
-                showToast(`Authenticated as ${user.name}.`);
-                setChecklistFlow({ step: 'form', user, vehicle }); // Simplified step for now
+            return <DriverChecklistAuth vehicle={vehicle} users={users} drivers={drivers} onAuthenticated={(user) => {
+                showToast(`Hi ${user.name} — let's run the checklist.`);
+                setChecklistFlow({ step: 'form', user, vehicle });
             }} />;
         }
     }
-    
+
     if (checklistFlow && checklistFlow.step === 'form') {
-         return (
-            <Suspense fallback={<div className="text-white text-center p-8">Loading Form...</div>}>
-                <PerformChecklistForm
-                    vehicle={checklistFlow.vehicle}
-                    currentUser={checklistFlow.user}
+        return (
+            <Suspense fallback={<div className="text-white text-center p-8">Loading Checklist…</div>}>
+                <RigChecklistFlow
+                    startVehicle={checklistFlow.vehicle}
+                    user={checklistFlow.user}
+                    vehicles={vehicles || []}
                     templates={checklistTemplates}
-                    onSubmit={async (data) => {
-                        const res = await handleAddChecklistSubmission(data, checklistFlow.user);
-                        if (res && res.ok === false) { showToast(`Could not submit checklist: ${res.error || 'unknown error'}`); return; }
-                        showToast('Checklist successfully submitted!');
+                    onSubmitUnit={(data, user) => handleAddChecklistSubmission(data, user)}
+                    onDone={() => {
+                        showToast('Rig checklist submitted. Thank you!');
                         setChecklistFlow(null);
                         window.history.pushState({}, '', window.location.pathname);
                     }}
@@ -222,7 +226,6 @@ const App: React.FC = () => {
                         setChecklistFlow(null);
                         window.history.pushState({}, '', window.location.pathname);
                     }}
-                    isStandalonePage
                 />
             </Suspense>
         );

@@ -2,6 +2,8 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     // The reliable way to expose a key on Vercel is a VITE_-prefixed var, which
@@ -30,7 +32,7 @@ export default defineConfig(({ mode }) => {
           'Expires': '0',
         },
       },
-      plugins: [react()],
+      plugins: [react(), cloudflare()],
       define: {
         // Legacy AI features read process.env.API_KEY. We do NOT define
         // import.meta.env.VITE_GEMINI_API_KEY here — Vite injects that natively

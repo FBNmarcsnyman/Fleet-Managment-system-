@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-label="FBN Transport">
-  <g transform="skewX(-12)">
-    <rect x="14" y="16" width="80" height="12" fill="#13294b"/>
-    <rect x="22" y="34" width="72" height="12" fill="#8c98a6"/>
-    <rect x="30" y="52" width="64" height="12" fill="#c4ccd4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 150" role="img" aria-label="FBN Transport">
+  <!-- speed bars (navy → mid-grey → light-grey), slanted -->
+  <g transform="skewX(-14)">
+    <rect x="40" y="26" width="150" height="20" fill="#13294b"/>
+    <rect x="52" y="54" width="138" height="20" fill="#7f8ca0"/>
+    <rect x="64" y="82" width="126" height="20" fill="#aab4c2"/>
   </g>
-  <text x="100" y="54" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-style="italic" font-size="54" fill="#13294b" letter-spacing="-1">FBN</text>
-  <text x="102" y="88" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-style="italic" font-size="34" fill="#13294b">transport</text>
-  <line x1="102" y1="94" x2="312" y2="94" stroke="#13294b" stroke-width="3"/>
+  <text x="150" y="96" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-style="italic" font-size="108" fill="#13294b" letter-spacing="-3">FBN</text>
+  <text x="468" y="138" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-style="italic" font-size="40" letter-spacing="6" fill="#13294b">transport</text>
 </svg>

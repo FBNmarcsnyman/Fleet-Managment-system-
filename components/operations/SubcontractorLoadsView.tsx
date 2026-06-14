@@ -125,18 +125,15 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                     </td>
                                     <td className="p-2">
                                         {lc.podPhoto ? (
-                                            <span className="text-green-400 font-semibold">Uploaded</span>
+                                            <button onClick={() => handleViewPod(lc.podPhoto!)} className="inline-flex items-center text-xs font-semibold bg-green-600/20 text-green-400 hover:bg-green-600/30 py-1 px-2 rounded-lg">View POD</button>
+                                        ) : lc.status === 'Delivered' ? (
+                                            <button onClick={() => handleUploadPodClick(lc)} className="inline-flex items-center text-xs font-semibold bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded-lg"><UploadIcon className="h-4 w-4 mr-1"/> Upload POD</button>
                                         ) : (
-                                            <span className="text-yellow-400">Awaiting</span>
+                                            <span className="text-yellow-400 text-xs">Awaiting delivery</span>
                                         )}
                                     </td>
-                                    <td className="p-2 text-right space-x-2">
-                                        <button onClick={() => handleViewPdf(lc)} className="text-xs font-semibold bg-gray-600 text-white py-1 px-2 rounded-lg">Documents</button>
-                                        {lc.podPhoto ? (
-                                            <button onClick={() => handleViewPod(lc.podPhoto!)} className="text-xs font-semibold bg-purple-600 text-white py-1 px-2 rounded-lg">View POD</button>
-                                        ) : (
-                                            lc.status === 'Delivered' && <button onClick={() => handleUploadPodClick(lc)} className="text-xs font-semibold bg-green-600 text-white py-1 px-2 rounded-lg flex items-center"><UploadIcon className="h-4 w-4 mr-1"/> Upload POD</button>
-                                        )}
+                                    <td className="p-2 text-right">
+                                        <button onClick={() => handleViewPdf(lc)} className="text-xs font-semibold bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded-lg">Documents</button>
                                     </td>
                                 </tr>
                             );

@@ -9,6 +9,7 @@ interface CommonDataContextType {
     notifications: Notification[];
     messages: Message[];
     handleAddUser: (user: any) => Promise<{ ok: boolean; error?: string; tempPassword?: string }>;
+    handleUpdateUser: (target: User, updates: any, opts?: { resetPassword?: boolean; newPassword?: string }) => Promise<{ ok: boolean; error?: string; tempPassword?: string }>;
     handleSendMessage: (vehicleId: string, message: any) => void;
     handleUpdateNavPreferences: (email: string, preferences: any) => void;
     handleDismissNotification: (id: string) => void;
@@ -49,6 +50,26 @@ export const CommonDataProvider: React.FC<{ children: ReactNode }> = ({ children
                     pdpExpiry: user.pdpExpiry,
                     isActive: true,
                 } });
+                return { ok: true, tempPassword: data?.tempPassword };
+            } catch (err) {
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        // Edits a user's profile (name/role/branches/active/licence) and/or resets
+        // their password, via the secure admin-update-user edge function.
+        handleUpdateUser: async (target: User, updates: any, opts?: { resetPassword?: boolean; newPassword?: string }): Promise<{ ok: boolean; error?: string; tempPassword?: string }> => {
+            try {
+                const body: any = { userId: target.id, ...updates };
+                if (opts?.resetPassword) body.resetPassword = true;
+                if (opts?.newPassword) body.newPassword = opts.newPassword;
+                const { data, error } = await supabase.functions.invoke('admin-update-user', { body });
+                if (error) {
+                    let msg = error.message;
+                    try { const ctx = await (error as any).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* ignore */ }
+                    return { ok: false, error: msg || 'Could not update the user.' };
+                }
+                if (data?.error) return { ok: false, error: data.error };
+                dispatch({ type: 'UPDATE_USER', payload: { id: target.id, email: target.email, updates } });
                 return { ok: true, tempPassword: data?.tempPassword };
             } catch (err) {
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };

@@ -40,18 +40,18 @@ const OperationsPortal: React.FC = () => {
     };
     
     return (
-        <div>
+        <div className="bg-slate-50 text-slate-800 rounded-2xl p-5 -m-2 min-h-[calc(100vh-7rem)] border border-slate-200">
             <div className="flex items-center justify-between gap-3 mb-6">
-                <div className="flex items-center space-x-1 overflow-x-auto">
+                <div className="flex items-center gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl">
                     {navItems.map(item => (
                         <button key={item.view} onClick={() => handleOperationsSubViewChange(item.view as any)}
-                            className={`px-4 py-2 text-sm font-semibold rounded-md whitespace-nowrap ${operationsSubView === item.view ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+                            className={`px-4 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition ${operationsSubView === item.view ? 'bg-[#13294b] text-white shadow' : 'text-slate-600 hover:bg-white'}`}>
                             {item.label}
                         </button>
                     ))}
                 </div>
                 <button onClick={handleNewTransportOrder}
-                    className="shrink-0 bg-brand-secondary hover:bg-brand-primary text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow-lg transition active:scale-95">
+                    className="shrink-0 bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
                     + New Transport Order
                 </button>
             </div>

@@ -97,11 +97,11 @@ export const isTerminal = (s: LoadConfirmationStatus) => TERMINAL.has(s);
 export const isInterBranch = (lc: LoadConfirmation): boolean =>
     !!(lc.collectionBranch && lc.destinationBranch && lc.collectionBranch !== lc.destinationBranch);
 
-// A colour hint for status chips (tailwind classes).
+// A colour hint for status chips (tailwind classes — light theme).
 export const statusChip = (s: LoadConfirmationStatus): string => {
-    if (s === 'Delivered' || s === 'POD Submitted' || s === 'Invoiced') return 'bg-emerald-900/40 text-emerald-300';
-    if (s === 'Cancelled') return 'bg-red-900/40 text-red-300';
-    if (s === 'In Transit') return 'bg-blue-900/40 text-blue-300';
-    if (s === 'Booked') return 'bg-amber-900/40 text-amber-300';
-    return 'bg-gray-700/60 text-gray-300';
+    if (s === 'Delivered' || s === 'POD Submitted' || s === 'Invoiced') return 'bg-emerald-100 text-emerald-700';
+    if (s === 'Cancelled') return 'bg-red-100 text-red-700';
+    if (s === 'In Transit') return 'bg-blue-100 text-blue-700';
+    if (s === 'Booked') return 'bg-amber-100 text-amber-700';
+    return 'bg-slate-200 text-slate-600';
 };

@@ -8,7 +8,6 @@ import { SparklesIcon } from '../icons/SparklesIcon';
 import { TruckIcon } from '../icons/TruckIcon';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
-import OperationsSummaryWidget from '../dashboard-widgets/OperationsSummaryWidget';
 import BrokingAnalytics from './BrokingAnalytics';
 import CommunicationHubModal from './CommunicationHubModal';
 import Modal from '../Modal';
@@ -59,7 +58,6 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
     return (
         <div className="space-y-8">
             <BrokingAnalytics />
-            <OperationsSummaryWidget />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
@@ -68,9 +66,9 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
                         items={quotesToBook}
                         renderItem={(quote: Quote) => (
                             <>
-                                <p className="font-semibold text-white">{clientMap.get(quote.clientId)?.name || 'Unknown Client'}</p>
+                                <p className="font-semibold text-slate-900">{clientMap.get(quote.clientId)?.name || 'Unknown Client'}</p>
                                 <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-1">{quote.loadSpec} | {quote.commodity}</p>
-                                <p className="text-xs text-gray-400 mt-0.5">{quote.legs[0]?.collectionPoint} &rarr; {quote.legs[0]?.deliveryPoint}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">{quote.legs[0]?.collectionPoint} &rarr; {quote.legs[0]?.deliveryPoint}</p>
                             </>
                         )}
                         renderAction={(quote: Quote) => (
@@ -82,8 +80,8 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
                         items={loadsAwaitingPod}
                         renderItem={(lc: LoadConfirmation) => (
                              <>
-                                <p className="font-semibold text-white">{clientMap.get(lc.clientId)?.name || 'Unknown Client'}</p>
-                                <p className="font-mono text-xs text-gray-500">{lc.loadConNumber}</p>
+                                <p className="font-semibold text-slate-900">{clientMap.get(lc.clientId)?.name || 'Unknown Client'}</p>
+                                <p className="font-mono text-xs text-slate-500">{lc.loadConNumber}</p>
                             </>
                         )}
                         renderAction={(lc: LoadConfirmation) => (
@@ -94,8 +92,8 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
                         )}
                     />
                 </div>
-                <div className="lg:col-span-1 bg-gray-800 p-4 rounded-lg">
-                    <h3 className="font-semibold text-white mb-3 flex items-center">
+                <div className="lg:col-span-1 bg-white border border-slate-200 shadow-sm p-4 rounded-lg">
+                    <h3 className="font-semibold text-slate-900 mb-3 flex items-center">
                         <span className="w-1.5 h-4 bg-orange-500 rounded mr-2"></span>
                         Priority Actions
                     </h3>
@@ -105,9 +103,9 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
                             items={unassigned}
                             renderItem={(lc: LoadConfirmation) => (
                                 <>
-                                    <p className="font-semibold text-white">{clientMap.get(lc.clientId)?.name || 'N/A'}</p>
+                                    <p className="font-semibold text-slate-900">{clientMap.get(lc.clientId)?.name || 'N/A'}</p>
                                     <p className="text-[10px] text-orange-400 font-bold uppercase">{lc.loadSpec}</p>
-                                    <p className="text-xs text-gray-400">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</p>
+                                    <p className="text-xs text-slate-500">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</p>
                                 </>
                             )}
                             renderAction={(lc: LoadConfirmation) => (
@@ -119,7 +117,7 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
                             items={overdue}
                             renderItem={(lc: LoadConfirmation) => (
                                 <>
-                                    <p className="font-semibold text-white">{clientMap.get(lc.clientId)?.name || 'N/A'}</p>
+                                    <p className="font-semibold text-slate-900">{clientMap.get(lc.clientId)?.name || 'N/A'}</p>
                                     <p className="text-xs text-red-400 font-bold">{lc.collectionDate && formatDistanceToNowStrict(new Date(lc.collectionDate), { addSuffix: true })}</p>
                                 </>
                             )}
@@ -143,17 +141,17 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
 };
 
 const ActionList: React.FC<{ title: string; items: any[]; renderItem: (item: any) => React.ReactNode; renderAction?: (item: any) => React.ReactNode }> = ({ title, items, renderItem, renderAction }) => (
-    <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-        <h4 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-4">{title} ({items.length})</h4>
+    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <h4 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">{title} ({items.length})</h4>
         <div className="space-y-3 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
             {items.length > 0 ? items.map(item => (
-                <div key={item.id} className="bg-gray-900/60 p-3 rounded-xl border border-white/5 transition-all hover:border-blue-500/30">
+                <div key={item.id} className="bg-white p-3 rounded-xl border border-slate-200 transition-all hover:border-blue-400">
                     <div className="flex justify-between items-center">
                         <div>{renderItem(item)}</div>
                         {renderAction && <div>{renderAction(item)}</div>}
                     </div>
                 </div>
-            )) : <p className="text-xs text-gray-600 text-center py-6 italic font-medium">No items in this queue.</p>}
+            )) : <p className="text-xs text-slate-400 text-center py-6 italic font-medium">No items in this queue.</p>}
         </div>
     </div>
 );

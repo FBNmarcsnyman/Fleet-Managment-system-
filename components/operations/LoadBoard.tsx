@@ -69,10 +69,10 @@ const LoadBoard: React.FC = () => {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Load Board</h3>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Load Board</h3>
                 <div className="flex items-center gap-2">
-                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search loads…" className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm w-44" />
-                    <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm">
+                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search loads…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-44" />
+                    <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm">
                         {branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}
                     </select>
                 </div>
@@ -83,10 +83,10 @@ const LoadBoard: React.FC = () => {
                     const jobs = active.filter((lc: LoadConfirmation) => col.statuses.includes(lc.status))
                         .sort((a: LoadConfirmation, b: LoadConfirmation) => new Date(a.collectionDate || a.date).getTime() - new Date(b.collectionDate || b.date).getTime());
                     return (
-                        <div key={col.title} className="bg-gray-800 rounded-2xl p-3 flex flex-col w-[300px] shrink-0 border border-gray-700/50 max-h-[calc(100vh-15rem)]">
-                            <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-700/50">
-                                <h4 className="text-xs font-black text-gray-300 uppercase tracking-widest">{col.title} <span className="text-gray-600">{jobs.length}</span></h4>
-                                <span className="text-[10px] font-bold text-emerald-400">{fmtR(jobs.reduce((s: number, j: LoadConfirmation) => s + (j.totalAmount || 0), 0))}</span>
+                        <div key={col.title} className="bg-slate-100 rounded-2xl p-3 flex flex-col w-[300px] shrink-0 border border-slate-200 max-h-[calc(100vh-15rem)]">
+                            <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                                <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest">{col.title} <span className="text-slate-400">{jobs.length}</span></h4>
+                                <span className="text-[10px] font-bold text-emerald-600">{fmtR(jobs.reduce((s: number, j: LoadConfirmation) => s + (j.totalAmount || 0), 0))}</span>
                             </div>
                             <div className="space-y-3 overflow-y-auto pr-1 flex-1">
                                 {jobs.map((lc: LoadConfirmation) => {
@@ -94,20 +94,20 @@ const LoadBoard: React.FC = () => {
                                     const assigned = isAssigned(lc);
                                     const showPod = lc.status === 'Out for Delivery' || (lc.status === 'Delivered' && !lc.podPhoto);
                                     return (
-                                        <div key={lc.id} className="bg-gray-900/60 p-3 rounded-xl border border-white/5">
+                                        <div key={lc.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                                             <div className="flex justify-between items-start mb-1.5">
-                                                <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-[10px] font-black text-blue-400 hover:text-blue-300 hover:underline font-mono">{lc.loadConNumber}</button>
+                                                <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-[10px] font-black text-blue-600 hover:text-blue-700 hover:underline font-mono">{lc.loadConNumber}</button>
                                                 <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
                                             </div>
-                                            <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block text-left font-bold text-white text-sm leading-tight hover:text-blue-300">{clientMap.get(lc.clientId || '') || lc.clientName}</button>
-                                            <p className="text-[10px] text-gray-500 mb-2 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
-                                            {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-300 mb-1.5 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
-                                            <div className="bg-gray-800/40 p-2 rounded-lg border border-white/5 flex items-center gap-2 mb-2.5">
-                                                <ArchiveBoxIcon className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                                                <p className="text-[9px] text-gray-400 font-medium truncate">{assigned ? transporterOf(lc) : 'Not assigned'} · {lc.commodity || 'Cargo'}</p>
+                                            <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block text-left font-bold text-slate-900 text-sm leading-tight hover:text-blue-600">{clientMap.get(lc.clientId || '') || lc.clientName}</button>
+                                            <p className="text-[10px] text-slate-500 mb-2 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                                            {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-600 mb-1.5 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
+                                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-center gap-2 mb-2.5">
+                                                <ArchiveBoxIcon className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                                <p className="text-[9px] text-slate-500 font-medium truncate">{assigned ? transporterOf(lc) : 'Not assigned'} · {lc.commodity || 'Cargo'}</p>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className={`flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest transition-all ${assigned ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>{assigned ? 'Reassign' : 'Assign'}</button>
+                                                <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className={`flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest transition-all ${assigned ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>{assigned ? 'Reassign' : 'Assign'}</button>
                                                 {showPod ? (
                                                     <button onClick={() => getPod(lc)} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest">Get POD</button>
                                                 ) : step ? (
@@ -117,7 +117,7 @@ const LoadBoard: React.FC = () => {
                                         </div>
                                     );
                                 })}
-                                {jobs.length === 0 && <p className="text-center text-gray-600 text-[11px] py-6 font-bold uppercase tracking-widest">Empty</p>}
+                                {jobs.length === 0 && <p className="text-center text-slate-400 text-[11px] py-6 font-bold uppercase tracking-widest">Empty</p>}
                             </div>
                         </div>
                     );

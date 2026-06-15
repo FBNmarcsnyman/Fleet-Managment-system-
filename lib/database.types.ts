@@ -3169,10 +3169,12 @@ export type Database = {
         | "Booked"
         | "Driver Assigned"
         | "At Collection Point"
+        | "Loading"
         | "Collected"
         | "At Collection Depot"
         | "In Transit"
         | "At Destination Depot"
+        | "Unloaded"
         | "Out for Delivery"
         | "Delivered"
         | "POD Submitted"
@@ -3382,10 +3384,12 @@ export const Constants = {
         "Booked",
         "Driver Assigned",
         "At Collection Point",
+        "Loading",
         "Collected",
         "At Collection Depot",
         "In Transit",
         "At Destination Depot",
+        "Unloaded",
         "Out for Delivery",
         "Delivered",
         "POD Submitted",

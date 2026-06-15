@@ -82,32 +82,36 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
 
     const isNonCompliant = selectedSupplier?.complianceStatus !== 'Compliant';
 
-    const handleInternalSubmit = (e: React.FormEvent) => {
+    const [saving, setSaving] = useState(false);
+
+    const handleInternalSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!vehicleId || !driverId) {
             alert('Please select both a vehicle and a driver.');
             return;
         }
-        
-        handleUpdateLoadConfirmation(loadCon.id, {
+        setSaving(true);
+        const res = await handleUpdateLoadConfirmation(loadCon.id, {
             vehicleId,
             driverId,
             collectionDate: new Date(collectionDate).toISOString(),
-            status: 'Driver Assigned',
+            status: loadCon.status === 'Booked' ? 'Driver Assigned' : loadCon.status,
             supplierId: undefined, // Clear subcontractor info if moving to internal
             supplierRate: undefined
         });
-        
+        setSaving(false);
+        if (res && res.ok === false) { showToast(`Could not assign: ${res.error}`); return; }
         showToast(`Load ${loadCon.loadConNumber} assigned to internal fleet.`);
         hideModal();
     };
 
-    const handleSubbieSubmit = (e: React.FormEvent) => {
+    const handleSubbieSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!supplierId || !supplierRate) {
             alert('Please select a supplier and enter the agreed buy-rate.');
             return;
         }
+        setSaving(true);
         // Non-compliant carriers are ALLOWED (so ops isn't blocked), but the load
         // gets flagged to management automatically via the live alerts.
 
@@ -118,7 +122,7 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
         const subEmail = primaryContact?.email || selectedSupplier?.contactEmail || '';
         const subAttention = primaryContact?.name || selectedSupplier?.contactPerson || '';
 
-        handleUpdateLoadConfirmation(loadCon.id, {
+        const res = await handleUpdateLoadConfirmation(loadCon.id, {
             supplierId,
             supplierRate: parseFloat(supplierRate),
             subcontractorName: selectedSupplier?.name,
@@ -127,11 +131,12 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
             subcontractorVehicleReg: subVehicleReg,
             subcontractorDriverName: subDriverName,
             subcontractorDriverCell: subDriverCell,
-            status: 'Driver Assigned',
+            status: loadCon.status === 'Booked' ? 'Driver Assigned' : loadCon.status,
             vehicleId: undefined, // Clear internal fleet info if moving to subbie
             driverId: undefined
         });
-
+        setSaving(false);
+        if (res && res.ok === false) { showToast(`Could not assign: ${res.error}`); return; }
         showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}.${isNonCompliant ? ' ⚠ Flagged — carrier not compliant.' : ' LoadCon ready to send.'}`);
         hideModal();
     };
@@ -190,7 +195,7 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                     </div>
                     <div className="flex justify-end space-x-3 mt-8 pt-4 border-t border-gray-700">
                         <button type="button" onClick={onCancel} className="px-6 py-2 text-sm font-bold text-gray-500 hover:text-white transition-colors">Cancel</button>
-                        <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-black py-2.5 px-8 rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wider text-xs">Confirm Dispatch</button>
+                        <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-2.5 px-8 rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wider text-xs">{saving ? 'Saving…' : 'Confirm Dispatch'}</button>
                     </div>
                 </form>
             ) : (
@@ -240,7 +245,7 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                     </div>
                     <div className="flex justify-end space-x-3 mt-8 pt-4 border-t border-gray-700">
                         <button type="button" onClick={onCancel} className="px-6 py-2 text-sm font-bold text-gray-500 hover:text-white transition-colors">Cancel</button>
-                        <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-black py-2.5 px-8 rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wider text-xs">Confirm Subcontractor</button>
+                        <button type="submit" disabled={saving} className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-black py-2.5 px-8 rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wider text-xs">{saving ? 'Saving…' : 'Confirm Subcontractor'}</button>
                     </div>
                 </form>
             )}

@@ -48,6 +48,28 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
     }
 };
 
+// Tells the client their POD is available to view & download once it's in.
+export const sendClientPodEmail = async (lc: any): Promise<void> => {
+    const to = lc?.clientEmail;
+    if (!to) return;
+    const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+    const podUrl = lc.podPhoto?.data || '';
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
+      <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
+      <p>The <strong>POD</strong> for your delivered shipment <strong>${lc.loadConNumber}</strong> is now available to view and download.</p>
+      <p style="text-align:center;margin:20px 0">
+        ${podUrl ? `<a href="${podUrl}" style="background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;display:inline-block;margin:0 4px">View / download POD &rarr;</a>` : ''}
+        <a href="${base}?track=${lc.id}" style="background:#13294b;color:#fff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;display:inline-block;margin:0 4px">Track shipment</a>
+      </p>
+      <p>Regards,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
+    </div>`;
+    try {
+        await supabase.functions.invoke('send-email', { body: { to, subject: `POD available - shipment ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+    } catch (e) {
+        console.error('[ops] client POD notify failed:', e);
+    }
+};
+
 export const sendPodRequestEmail = async (lc: any): Promise<void> => {
     const to = lc?.subcontractorEmail;
     if (!to) return;
@@ -424,6 +446,10 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 // Auto-update the client with a tracking link as the load changes phase.
                 if (updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]) {
                     sendClientPhaseEmail({ ...(prev || {}), ...updates, id }, updates.status);
+                }
+                // When a POD comes in, tell the client it's available to view/download.
+                if (updates.status === 'POD Submitted' && prev?.status !== 'POD Submitted') {
+                    sendClientPodEmail({ ...(prev || {}), ...updates, id });
                 }
                 return { ok: true };
             } catch (err) {

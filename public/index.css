@@ -1,0 +1,54 @@
+/* ============================================================
+   FBN Transport — global LIGHT THEME
+   Remaps the app's dark Tailwind utilities to a light, branded
+   palette in one place (the UI uses CDN Tailwind utility classes,
+   so this overrides them app-wide without touching every file).
+   Navy #13294b headers · slate surfaces · yellow accent.
+   ============================================================ */
+
+html, body { background-color: #eef2f6 !important; color: #1e293b !important; }
+
+/* ---- Dark surface backgrounds -> light ---- */
+.bg-gray-900, .bg-gray-900\/95, .bg-gray-900\/60, .bg-gray-900\/50,
+.bg-gray-900\/40, .bg-gray-900\/30, .bg-gray-900\/20,
+.bg-\[\#0a0f1a\], .bg-\[\#0f172a\] { background-color: #eef2f6 !important; }
+
+.bg-gray-800, .bg-gray-800\/60, .bg-gray-800\/50, .bg-gray-800\/40,
+.bg-gray-800\/30, .bg-\[\#111827\], .bg-\[\#1f2937\] { background-color: #ffffff !important; }
+
+.bg-gray-700, .bg-gray-700\/60, .bg-gray-700\/50, .bg-gray-700\/40 { background-color: #f1f5f9 !important; }
+.bg-gray-600, .bg-gray-600\/50 { background-color: #e2e8f0 !important; }
+.bg-gray-500 { background-color: #cbd5e1 !important; }
+
+/* ---- Hover backgrounds (so hover states stay light) ---- */
+.hover\:bg-gray-900:hover, .hover\:bg-gray-800:hover, .hover\:bg-gray-800\/60:hover,
+.hover\:bg-gray-800\/50:hover, .hover\:bg-gray-700:hover, .hover\:bg-gray-700\/50:hover { background-color: #e2e8f0 !important; }
+.hover\:bg-gray-600:hover, .hover\:bg-gray-500:hover { background-color: #cbd5e1 !important; }
+
+/* ---- Text colours ---- */
+.text-white { color: #1e293b !important; }
+.text-gray-100, .text-gray-200, .text-gray-300 { color: #334155 !important; }
+.text-gray-400 { color: #64748b !important; }
+.text-gray-500, .text-gray-600 { color: #94a3b8 !important; }
+.hover\:text-white:hover { color: #0f172a !important; }
+
+/* ---- Borders ---- */
+.border-gray-800, .border-gray-800\/60, .border-gray-700, .border-gray-700\/50,
+.border-gray-700\/40, .border-white\/5, .border-white\/10, .border-gray-600\/50,
+.ring-white\/5 { border-color: #e2e8f0 !important; }
+.border-gray-600 { border-color: #cbd5e1 !important; }
+
+/* ---- Inputs / selects / textareas ---- */
+input, select, textarea { background-color: #ffffff !important; color: #1e293b !important; border-color: #cbd5e1 !important; }
+input::placeholder, textarea::placeholder { color: #94a3b8 !important; }
+
+/* ---- Keep WHITE text on solid coloured buttons/badges ---- */
+.bg-blue-600, .bg-blue-700, .bg-blue-500, .bg-green-600, .bg-green-700, .bg-green-500,
+.bg-emerald-600, .bg-emerald-700, .bg-emerald-500, .bg-red-600, .bg-red-700, .bg-red-500,
+.bg-orange-600, .bg-orange-500, .bg-amber-600, .bg-purple-600, .bg-purple-700,
+.bg-indigo-600, .bg-indigo-700, .bg-brand-primary, .bg-brand-secondary,
+.bg-\[\#13294b\], .bg-\[\#1d3a66\], .bg-\[\#25D366\], .bg-\[\#128C7E\],
+.bg-gradient-to-r, .bg-gradient-to-br { color: #ffffff !important; }
+
+/* Scrollbars a touch lighter */
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1 !important; }

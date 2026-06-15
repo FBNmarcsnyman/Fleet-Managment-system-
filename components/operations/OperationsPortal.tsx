@@ -1,29 +1,22 @@
 
-import React, { useState, lazy, Suspense } from 'react';
-import { useUIState, useOperations, useAuth, useVehicles } from '../../contexts/AppContexts';
+import React, { lazy, Suspense } from 'react';
+import { useUIState, useOperations } from '../../contexts/AppContexts';
 import OperationsDashboard from './OperationsDashboard';
-import DailyPlanningView from './DailyPlanningView';
-import CollectionsView from './CollectionsView';
-import DeliveriesView from './DeliveriesView';
-import { LoadConfirmation } from '../../types';
+import LoadBoard from './LoadBoard';
 
 const SubcontractorLoadsView = lazy(() => import('./SubcontractorLoadsView'));
 
 
 const OperationsPortal: React.FC = () => {
-    const { currentUser } = useAuth();
     const { operationsSubView, handleOperationsSubViewChange, showModal, showToast } = useUIState();
     const {
-        users, loadConfirmations, tripSheets, clients, suppliers, manifests,
-        handleUpdateLoadConfirmation, handleCreateManifest, handleCreateTripSheet, handleCreateLoadConfirmation: createLoadCon
+        loadConfirmations, clients, suppliers,
+        handleUpdateLoadConfirmation, handleCreateLoadConfirmation: createLoadCon
     } = useOperations();
-    const { vehicles } = useVehicles();
 
     const navItems = [
-        { view: 'dailyPlanning', label: 'Daily Planning' },
+        { view: 'loadBoard', label: 'Load Board' },
         { view: 'subcontractorLoads', label: 'LoadCons' },
-        { view: 'collections', label: 'Collections' },
-        { view: 'deliveries', label: 'Deliveries' },
         { view: 'dashboard', label: 'Dashboard' },
     ];
 
@@ -36,26 +29,13 @@ const OperationsPortal: React.FC = () => {
         },
     });
 
-    const handleAssign = (lc: LoadConfirmation) => showModal('assignLoadCon', { loadCon: lc });
-    const handleNewBooking = () => showModal('createBooking', {
-        clients,
-        onSubmit: async (data: any) => {
-            const result = await createLoadCon(data);
-            if (result.ok) showToast(`Load Confirmation ${result.value!.loadConNumber} created.`);
-            else showToast(`Failed to create load confirmation: ${result.error}`);
-        },
-    });
-
-
     const renderView = () => {
         switch (operationsSubView) {
-            case 'dailyPlanning': return <DailyPlanningView loadConfirmations={loadConfirmations} vehicles={vehicles} users={users} clients={clients} manifests={manifests} tripSheets={tripSheets} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} onCreateManifest={handleCreateManifest} onCreateTripSheet={handleCreateTripSheet} onOpenModal={(type, payload) => showModal(type, payload)} />;
-            case 'collections': return <CollectionsView currentUser={currentUser!} loadConfirmations={loadConfirmations} clients={clients} suppliers={suppliers} vehicles={vehicles} users={users} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} onAssignClick={handleAssign} onNewBookingClick={handleNewBooking} />;
-            case 'deliveries': return <DeliveriesView currentUser={currentUser!} loadConfirmations={loadConfirmations} clients={clients} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} />;
             case 'subcontractorLoads': return <Suspense fallback={<div>Loading...</div>}><SubcontractorLoadsView loadConfirmations={loadConfirmations} suppliers={suppliers} clients={clients} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} /></Suspense>;
-            case 'dashboard':
+            case 'dashboard': return <OperationsDashboard />;
+            case 'loadBoard':
             default:
-                return <OperationsDashboard />;
+                return <LoadBoard />;
         }
     };
     

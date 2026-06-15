@@ -16,7 +16,7 @@ export type NavItem = { view: ViewType; label: string; icon: React.ElementType; 
 export const ALL_NAV_ITEMS: NavItem[] = [
     { view: 'management', label: 'Management', icon: DashboardIcon, permission: 'access_management' },
     { view: 'fleet', label: 'Fleet', icon: CarIcon, permission: 'access_fleet' },
-    { view: 'operations', label: 'Operations', icon: DocumentTextIcon, permission: 'access_operations' },
+    { view: 'operations', label: 'Sub Ops', icon: DocumentTextIcon, permission: 'access_operations' },
     { view: 'partners', label: 'Clients & Subbies', icon: UsersIcon, permission: 'access_operations' },
     { view: 'workshop', label: 'Workshop', icon: WorkshopIcon, permission: 'access_workshop' },
     { view: 'finance', label: 'Finance', icon: CurrencyDollarIcon, permission: 'access_finance' },
@@ -34,7 +34,7 @@ export const SETTINGS_NAV_ITEMS: NavItem[] = [
 export const VIEW_TITLES: Partial<Record<ViewType, string>> = {
     management: 'Management Overview',
     fleet: 'Fleet',
-    operations: 'Operations',
+    operations: 'Sub Ops',
     partners: 'Clients & Subcontractors',
     workshop: 'Workshop',
     finance: 'Finance',

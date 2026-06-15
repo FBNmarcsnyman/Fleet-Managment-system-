@@ -382,8 +382,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             try {
                 const prev = (stateRef.current.loadConfirmations || []).find((l: LoadConfirmation) => l.id === id);
                 const row = toLoadConfirmationUpdate(updates, branchIdByName);
-                const { error } = await supabase
-                    .from('load_confirmations').update(row).eq('id', id);
+                const { error } = await runWrite(() => supabase.from('load_confirmations').update(row).eq('id', id));
                 if (error) { console.error('[ops] updateLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id, updates } });
                 // Auto-fire the POD request the moment a load becomes Delivered

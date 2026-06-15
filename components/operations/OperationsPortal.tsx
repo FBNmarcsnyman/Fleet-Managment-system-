@@ -20,11 +20,11 @@ const OperationsPortal: React.FC = () => {
     const { vehicles } = useVehicles();
 
     const navItems = [
-        { view: 'dashboard', label: 'Dashboard' },
         { view: 'dailyPlanning', label: 'Daily Planning' },
+        { view: 'subcontractorLoads', label: 'LoadCons' },
         { view: 'collections', label: 'Collections' },
         { view: 'deliveries', label: 'Deliveries' },
-        { view: 'subcontractorLoads', label: 'Subcontractor Loads' },
+        { view: 'dashboard', label: 'Dashboard' },
     ];
 
     const handleNewTransportOrder = () => showModal('transportOrder', {

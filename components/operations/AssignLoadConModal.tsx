@@ -3,8 +3,6 @@ import React, { useState, useMemo } from 'react';
 import { LoadConfirmation, Vehicle, User, Supplier, Branch } from '../../types';
 import { useOperations, useUIState, useVehicles } from '../../contexts/AppContexts';
 import { ExclamationTriangleIcon } from '../icons/ExclamationTriangleIcon';
-import { TruckIcon } from '../icons/TruckIcon';
-import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 
 interface AssignLoadConModalProps {
     loadCon: LoadConfirmation;
@@ -16,7 +14,9 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
     const { vehicles, users, drivers = [] } = useVehicles();
     const { hideModal, showToast } = useUIState();
 
-    const [assignmentType, setAssignmentType] = useState<'internal' | 'subcontractor'>(loadCon.supplierId ? 'subcontractor' : 'internal');
+    // Subcontractor-first: internal-fleet local collections are archived for now,
+    // so assignment defaults to (and only shows) the subcontractor flow.
+    const [assignmentType, setAssignmentType] = useState<'internal' | 'subcontractor'>('subcontractor');
     
     // Internal State
     const [vehicleId, setVehicleId] = useState(loadCon.vehicleId || '');
@@ -122,23 +122,28 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
         const subEmail = primaryContact?.email || selectedSupplier?.contactEmail || '';
         const subAttention = primaryContact?.name || selectedSupplier?.contactPerson || '';
 
-        const res = await handleUpdateLoadConfirmation(loadCon.id, {
-            supplierId,
-            supplierRate: parseFloat(supplierRate),
-            subcontractorName: selectedSupplier?.name,
-            subcontractorEmail: subEmail || undefined,
-            forAttention: subAttention || undefined,
-            subcontractorVehicleReg: subVehicleReg,
-            subcontractorDriverName: subDriverName,
-            subcontractorDriverCell: subDriverCell,
-            status: loadCon.status === 'Booked' ? 'Driver Assigned' : loadCon.status,
-            vehicleId: undefined, // Clear internal fleet info if moving to subbie
-            driverId: undefined
-        });
-        setSaving(false);
-        if (res && res.ok === false) { showToast(`Could not assign: ${res.error}`); return; }
-        showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}.${isNonCompliant ? ' ⚠ Flagged — carrier not compliant.' : ' LoadCon ready to send.'}`);
-        hideModal();
+        try {
+            const res = await handleUpdateLoadConfirmation(loadCon.id, {
+                supplierId,
+                supplierRate: parseFloat(supplierRate),
+                subcontractorName: selectedSupplier?.name,
+                subcontractorEmail: subEmail || undefined,
+                forAttention: subAttention || undefined,
+                subcontractorVehicleReg: subVehicleReg,
+                subcontractorDriverName: subDriverName,
+                subcontractorDriverCell: subDriverCell,
+                status: loadCon.status === 'Booked' ? 'Driver Assigned' : loadCon.status,
+                vehicleId: undefined, // Clear internal fleet info if moving to subbie
+                driverId: undefined
+            });
+            if (res && res.ok === false) { showToast(`Could not assign: ${res.error}`); return; }
+            showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}.${isNonCompliant ? ' ⚠ Flagged — carrier not compliant.' : ' LoadCon ready to send.'}`);
+            hideModal();
+        } catch (err) {
+            showToast(`Could not assign: ${err instanceof Error ? err.message : 'error'}`);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const inputClasses = "w-full bg-gray-700 text-white p-2.5 rounded-lg border border-gray-600 focus:ring-1 focus:ring-blue-500 outline-none text-sm";
@@ -153,21 +158,6 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                 <h2 className="text-2xl font-black text-white leading-tight">Assign Dispatch</h2>
                 <p className="text-gray-500 text-xs font-mono uppercase tracking-tighter mt-1">{loadCon.loadConNumber} | {loadCon.collectionPoint} → {loadCon.deliveryPoint}</p>
             </header>
-
-            <div className="flex bg-gray-900/50 p-1 rounded-xl border border-gray-700/50">
-                <button 
-                    onClick={() => setAssignmentType('internal')} 
-                    className={`flex-1 flex items-center justify-center py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${assignmentType === 'internal' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                >
-                    <TruckIcon className="h-4 w-4 mr-2" /> Internal Fleet
-                </button>
-                <button 
-                    onClick={() => setAssignmentType('subcontractor')} 
-                    className={`flex-1 flex items-center justify-center py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${assignmentType === 'subcontractor' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                >
-                    <CheckCircleIcon className="h-4 w-4 mr-2" /> Subcontractor
-                </button>
-            </div>
 
             {assignmentType === 'internal' ? (
                 <form onSubmit={handleInternalSubmit} className="space-y-4">

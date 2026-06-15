@@ -75,10 +75,8 @@ const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <PlanningColumn title="To Collect" jobs={branchData.toCollect} clientMap={clientMap} busy={busy} onAssign={assign} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })} />
-                <PlanningColumn title="Linehaul / In Transit" jobs={branchData.linehaul} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })}
-                    actionButton={<button onClick={openCreateManifest} className="flex items-center text-[10px] font-black bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20 px-2 py-1 rounded uppercase tracking-wider transition-all"><PlusIcon className="h-3 w-3 mr-1" /> Manifest</button>} />
-                <PlanningColumn title="Local Delivery" jobs={branchData.local} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })}
-                    actionButton={<button onClick={openCreateTripSheet} className="flex items-center text-[10px] font-black bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-500/20 px-2 py-1 rounded uppercase tracking-wider transition-all"><PlusIcon className="h-3 w-3 mr-1" /> Trip Sheet</button>} />
+                <PlanningColumn title="In Transit" jobs={branchData.linehaul} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })} />
+                <PlanningColumn title="At Destination / Delivery" jobs={branchData.local} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })} />
             </div>
         </div>
     );

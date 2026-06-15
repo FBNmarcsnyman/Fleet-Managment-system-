@@ -53,15 +53,15 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
 
     const lineHFor = (size: number) => size * 0.42 + 0.7;
 
-    // ---------- generic bordered row ----------
-    const row = (cells: Cell[]) => {
+    // ---------- generic bordered row (taller, vertically-centred) ----------
+    const row = (cells: Cell[], minH = 9) => {
         const measured = cells.map(c => {
-            const size = c.size || (c.style === 'banner' ? 9 : 7.5);
+            const size = c.size || (c.style === 'banner' ? 10 : 8);
             doc.setFontSize(size);
             const lines = doc.splitTextToSize(c.text || '', c.w - 2 * PAD);
             return { lines, size };
         });
-        const h = Math.max(6.5, ...measured.map(m => m.lines.length * lineHFor(m.size) + 2 * PAD));
+        const h = Math.max(minH, ...measured.map(m => m.lines.length * lineHFor(m.size) + 2 * PAD));
         if (y + h > 286) { doc.addPage(); y = 14; }
         let x = M;
         cells.forEach((c, i) => {
@@ -74,7 +74,10 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
             doc.setTextColor(...(c.style === 'banner' ? [255, 255, 255] as [number, number, number] : isLabel ? NAVY : BLACK));
             const centered = c.style === 'banner' || c.style === 'centerLabel';
             const tx = centered ? x + c.w / 2 : x + PAD;
-            doc.text(lines, tx, y + PAD + size * 0.36, { align: centered ? 'center' : 'left' });
+            // vertical-centre the text block within the cell
+            const textH = lines.length * lineHFor(size);
+            const ty = y + (h - textH) / 2 + size * 0.34;
+            doc.text(lines, tx, ty, { align: centered ? 'center' : 'left' });
             x += c.w;
         });
         y += h;
@@ -133,6 +136,8 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
         notesBlock();
     }
 
+    row([{ w: L, text: 'ROUTE', style: 'label' }, { w: CW / 2 - L, text: lc.route || '', style: 'value' }, { w: L, text: 'BRANCH / PRIORITY', style: 'label' }, { w: CW / 2 - L, text: `${lc.arrangingBranch || ''}${lc.priority ? '  -  ' + lc.priority : ''}`, style: 'value' }]);
+
     specialBlock();
 
     row([
@@ -150,7 +155,19 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
         { w: L, text: 'LOAD TYPE', style: 'label' }, { w: c3, text: lc.loadType || '', style: 'value' },
         { w: L, text: 'WEIGHT', style: 'label' }, { w: c3, text: lc.weightKg ? `${lc.weightKg} KG` : '', style: 'value' },
     ]);
+    row([
+        { w: L, text: 'VOLUME', style: 'label' }, { w: c3, text: lc.volume || '', style: 'value' },
+        { w: L, text: 'CARGO VALUE', style: 'label' }, { w: c3, text: lc.cargoValue || '', style: 'value' },
+        { w: L, text: 'CONT TURN-IN', style: 'label' }, { w: c3, text: lc.containerTurnInAddress || '', style: 'value' },
+    ]);
     row([{ w: L, text: 'COMMODITY', style: 'label' }, { w: CW - L, text: `${lc.commodity || ''}${lc.packaging ? ' - ' + lc.packaging : ''}`, style: 'value' }]);
+    if (lc.containerNo || lc.containerSealNo || lc.containerOperator) {
+        row([
+            { w: L, text: 'CONTAINER NO', style: 'label' }, { w: c3, text: lc.containerNo || '', style: 'value' },
+            { w: L, text: 'OPERATOR', style: 'label' }, { w: c3, text: lc.containerOperator || '', style: 'value' },
+            { w: L, text: 'SEAL NO', style: 'label' }, { w: c3, text: lc.containerSealNo || '', style: 'value' },
+        ]);
+    }
 
     // Addresses
     row([{ w: CW / 2, text: 'COLLECTION ADDRESS', style: 'centerLabel' }, { w: CW / 2, text: 'DELIVERY ADDRESS', style: 'centerLabel' }]);
@@ -175,6 +192,15 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
         row([{ w: CW / 2, text: ' ', style: 'value' }, { w: CW / 2, text: ' ', style: 'value' }]);
         row([{ w: CW, text: 'SHORTAGES / DAMAGES / REMARKS', style: 'centerLabel' }]);
         row([{ w: CW, text: '  ', style: 'value' }]);
+    }
+
+    // Subcontractor acceptance block — they complete & sign back (also fills the page)
+    if (type === 'loadcon') {
+        y += 3;
+        row([{ w: CW, text: 'SUBCONTRACTOR ACCEPTANCE  -  PLEASE COMPLETE & RETURN TO CONFIRM', style: 'banner', size: 8.5 }], 8);
+        row([{ w: L, text: 'DRIVER NAME', style: 'label' }, { w: CW / 2 - L, text: '', style: 'value' }, { w: L, text: 'VEHICLE REG', style: 'label' }, { w: CW / 2 - L, text: '', style: 'value' }], 12);
+        row([{ w: L, text: 'DRIVER CELL', style: 'label' }, { w: CW / 2 - L, text: '', style: 'value' }, { w: L, text: 'SIGNATURE', style: 'label' }, { w: CW / 2 - L, text: '', style: 'value' }], 12);
+        row([{ w: L, text: 'DATE', style: 'label' }, { w: CW / 2 - L, text: '', style: 'value' }, { w: L, text: 'COMPANY STAMP', style: 'label' }, { w: CW / 2 - L, text: '', style: 'value' }], 16);
     }
 
     // Footer: red T&Cs link (subbie) + branding

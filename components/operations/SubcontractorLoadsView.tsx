@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Supplier, Client, Attachment, PodAnalysisResult } from '../../types';
 import { useUIState } from '../../contexts/AppContexts';
 import { supabase } from '../../lib/supabase';
+import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -43,10 +44,41 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     }, [loadConfirmations, filter, supplierMap]);
 
     const [requesting, setRequesting] = useState<string | null>(null);
+    const [sendingLc, setSendingLc] = useState<string | null>(null);
 
-    const handleSendLoadCon = (lc: LoadConfirmation) => {
-        onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
-        showToast(`Load Confirmation ${lc.loadConNumber} marked as sent.`);
+    // Actually EMAIL the Load Confirmation (branded PDF) to the subcontractor,
+    // then stamp it as sent. (Previously this only stamped the date.)
+    const handleSendLoadCon = async (lc: LoadConfirmation) => {
+        const to = lc.subcontractorEmail;
+        if (!to) { showToast('No subcontractor email on this load — open Documents to add one first.'); return; }
+        setSendingLc(lc.id);
+        try {
+            let attachments: any[] | undefined;
+            try {
+                const { base64, filename } = await buildLoadConPdf(lc, 'loadcon');
+                attachments = [{ filename, content: base64, contentType: 'application/pdf' }];
+            } catch (pdfErr) {
+                console.error('[loads] LoadCon PDF build failed, sending without attachment:', pdfErr);
+            }
+            const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+            const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
+              <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+              <p>Please find attached FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}.</p>
+              <p>Kindly <strong>confirm acceptance</strong> and reply with your driver name, vehicle registration and driver cell. POD to be returned on delivery.</p>
+              <p>Regards,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
+            </div>`;
+            const { data, error } = await supabase.functions.invoke('send-email', {
+                body: { to, cc: lc.ccEmail || undefined, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${lc.collectionPoint || ''} to ${lc.deliveryPoint || ''}`,
+                    html, fromName: 'FBN Transport', attachments },
+            });
+            if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message || 'unknown error'}`); return; }
+            onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
+            showToast(`Load Confirmation ${lc.loadConNumber} emailed to ${to}.`);
+        } catch (e) {
+            showToast(`Could not send: ${e instanceof Error ? e.message : 'unknown error'}`);
+        } finally {
+            setSendingLc(null);
+        }
     };
 
     // Ask the transporter to send the POD for a delivered load. Works today via
@@ -153,7 +185,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                         {lc.sentToSupplierDate ? (
                                             <span className="flex items-center text-green-400 text-xs"><CheckCircleIcon className="h-4 w-4 mr-1" />{format(new Date(lc.sentToSupplierDate), 'dd MMM')}</span>
                                         ) : (
-                                            <button onClick={() => handleSendLoadCon(lc)} className="text-xs font-semibold bg-blue-600 text-white py-1 px-2 rounded-lg">Send Now</button>
+                                            <button onClick={() => handleSendLoadCon(lc)} disabled={sendingLc === lc.id} className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-1 px-2 rounded-lg">{sendingLc === lc.id ? 'Sending…' : 'Email LoadCon'}</button>
                                         )}
                                     </td>
                                     <td className="p-2">

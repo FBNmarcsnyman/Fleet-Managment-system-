@@ -28,16 +28,8 @@
             }
         }
     </script>
-    <style>
-      /* When printing a document modal, hide everything except the document. */
-      @media print {
-        body * { visibility: hidden !important; }
-        .printable-document, .printable-document * { visibility: visible !important; }
-        .printable-document { position: absolute !important; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
-        .no-print { display: none !important; }
-        @page { margin: 12mm; }
-      }
-    </style>
+    <!-- Print rules + light theme live in /index.css (kept out of an inline <style>
+         because vite's html-inline-proxy can intermittently fail the production build). -->
     <!-- Google Maps API for Places Autocomplete and Advanced Markers.
          Needs a key: set VITE_GOOGLE_MAPS_API_KEY in the environment (Vercel),
          with the Maps JavaScript API + Places API enabled and billing on. -->
@@ -60,7 +52,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css?v=3">
+<link rel="stylesheet" href="/index.css?v=5">
 </head>
 <body class="bg-gray-900 text-gray-100 antialiased">
     <div id="root"></div>

@@ -1,3 +1,12 @@
+/* When printing a document modal, hide everything except the document. */
+@media print {
+  body * { visibility: hidden !important; }
+  .printable-document, .printable-document * { visibility: visible !important; }
+  .printable-document { position: absolute !important; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+  .no-print { display: none !important; }
+  @page { margin: 12mm; }
+}
+
 /* ============================================================
    FBN Transport — global LIGHT THEME
    Remaps the app's dark Tailwind utilities to a light, branded

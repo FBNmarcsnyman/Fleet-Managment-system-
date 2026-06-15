@@ -152,11 +152,11 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     };
 
     return (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <div className="bg-white border border-slate-200 p-6 rounded-lg shadow-sm">
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white">Subcontractor Loads</h3>
+                <h3 className="text-xl font-bold text-slate-900">Subcontractor Loads</h3>
                 <div className="flex items-center space-x-3">
-                    <select value={filter} onChange={e => setFilter(e.target.value as any)} className="bg-gray-700 text-white p-2 rounded-md border border-gray-600">
+                    <select value={filter} onChange={e => setFilter(e.target.value as any)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300">
                         <option value="All">Active Loads</option>
                         <option value="POD Awaiting">POD Awaiting</option>
                         <option value="Sent">Sent to Supplier</option>
@@ -166,26 +166,26 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             </div>
             <div className="overflow-x-auto max-h-[60vh]">
                 <table className="w-full text-left text-sm">
-                    <thead className="sticky top-0 bg-gray-800">
-                        <tr className="border-b border-gray-700">
-                            <th className="p-2 text-gray-400">LoadCon #</th>
-                            <th className="p-2 text-gray-400">Supplier</th>
-                            <th className="p-2 text-gray-400">Loading Date</th>
-                            <th className="p-2 text-gray-400">Route</th>
-                            <th className="p-2 text-gray-400">Status</th>
-                            <th className="p-2 text-gray-400">Sent to Supplier</th>
-                            <th className="p-2 text-gray-400">POD Status</th>
-                            <th className="p-2 text-gray-400 text-right">Actions</th>
+                    <thead className="sticky top-0 bg-slate-100">
+                        <tr className="border-b border-slate-200">
+                            <th className="p-2 text-slate-500">LoadCon #</th>
+                            <th className="p-2 text-slate-500">Supplier</th>
+                            <th className="p-2 text-slate-500">Loading Date</th>
+                            <th className="p-2 text-slate-500">Route</th>
+                            <th className="p-2 text-slate-500">Status</th>
+                            <th className="p-2 text-slate-500">Sent to Supplier</th>
+                            <th className="p-2 text-slate-500">POD Status</th>
+                            <th className="p-2 text-slate-500 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {brokeredLoads.map(lc => {
                             const supplier = supplierMap.get(lc.supplierId!);
                             return (
-                                <tr key={lc.id} className="border-b border-gray-700/50 hover:bg-gray-700/50">
-                                    <td className="p-2 font-mono"><button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-blue-400 hover:text-blue-300 hover:underline font-bold">{lc.loadConNumber}</button></td>
-                                    <td className="p-2 font-semibold">{supplier?.name}</td>
-                                    <td className="p-2 text-gray-300">{lc.collectionDate ? format(new Date(lc.collectionDate), 'dd MMM yyyy') : '—'}</td>
+                                <tr key={lc.id} className="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
+                                    <td className="p-2 font-mono"><button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-blue-600 hover:text-blue-700 hover:underline font-bold">{lc.loadConNumber}</button></td>
+                                    <td className="p-2 font-semibold text-slate-900">{supplier?.name}</td>
+                                    <td className="p-2 text-slate-500">{lc.collectionDate ? format(new Date(lc.collectionDate), 'dd MMM yyyy') : '—'}</td>
                                     <td className="p-2">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</td>
                                     <td className="p-2">{lc.status}</td>
                                     <td className="p-2">
@@ -200,25 +200,25 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                     </td>
                                     <td className="p-2">
                                         {lc.podPhoto ? (
-                                            <button onClick={() => handleViewPod(lc.podPhoto!)} className="inline-flex items-center text-xs font-semibold bg-green-600/20 text-green-400 hover:bg-green-600/30 py-1 px-2 rounded-lg">View POD</button>
+                                            <button onClick={() => handleViewPod(lc.podPhoto!)} className="inline-flex items-center text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 py-1 px-2 rounded-lg">View POD</button>
                                         ) : lc.status === 'Delivered' ? (
                                             <div className="flex items-center gap-2">
                                                 <button onClick={() => handleUploadPodClick(lc)} className="inline-flex items-center text-xs font-semibold bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded-lg"><UploadIcon className="h-4 w-4 mr-1"/> Upload POD</button>
-                                                <button onClick={() => handleRequestPod(lc)} disabled={requesting === lc.id} title="Email the transporter to send the POD" className="text-xs font-semibold text-blue-300 hover:text-blue-200 disabled:opacity-50">{requesting === lc.id ? 'Sending…' : 'Request'}</button>
+                                                <button onClick={() => handleRequestPod(lc)} disabled={requesting === lc.id} title="Email the transporter to send the POD" className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">{requesting === lc.id ? 'Sending…' : 'Request'}</button>
                                             </div>
                                         ) : (
-                                            <span className="text-yellow-400 text-xs">Awaiting delivery</span>
+                                            <span className="text-amber-600 text-xs">Awaiting delivery</span>
                                         )}
                                     </td>
                                     <td className="p-2 text-right">
-                                        <button onClick={() => handleViewPdf(lc)} className="text-xs font-semibold bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded-lg">Documents</button>
+                                        <button onClick={() => handleViewPdf(lc)} className="text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 py-1 px-3 rounded-lg">Documents</button>
                                     </td>
                                 </tr>
                             );
                         })}
                     </tbody>
                 </table>
-                {brokeredLoads.length === 0 && <p className="text-center text-gray-500 py-16">No subcontractor loads found.</p>}
+                {brokeredLoads.length === 0 && <p className="text-center text-slate-400 py-16">No subcontractor loads found.</p>}
             </div>
         </div>
     );

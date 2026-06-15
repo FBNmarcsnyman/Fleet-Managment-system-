@@ -93,15 +93,34 @@ const LoadBoard: React.FC = () => {
                                     const step = nextStep(lc);
                                     const assigned = isAssigned(lc);
                                     const showPod = lc.status === 'Out for Delivery' || (lc.status === 'Delivered' && !lc.podPhoto);
+                                    // margin
+                                    const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
+                                    const marginPct = lc.totalAmount ? (margin / lc.totalAmount) * 100 : 0;
+                                    const marginColor = !lc.supplierRate ? 'text-slate-400' : marginPct <= 0 ? 'text-red-600' : marginPct < 10 ? 'text-amber-600' : 'text-emerald-600';
+                                    // collection-date urgency (for loads not yet delivered)
+                                    const terminal = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+                                    let urgent: '' | 'over' | 'today' = '';
+                                    if (lc.collectionDate && !terminal) {
+                                        const d0 = new Date(lc.collectionDate); d0.setHours(0, 0, 0, 0);
+                                        const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+                                        if (d0 < t0) urgent = 'over'; else if (d0.getTime() === t0.getTime()) urgent = 'today';
+                                    }
+                                    const border = urgent === 'over' ? 'border-l-4 border-l-red-500' : urgent === 'today' ? 'border-l-4 border-l-amber-400' : '';
                                     return (
-                                        <div key={lc.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                        <div key={lc.id} className={`bg-white p-3 rounded-xl border border-slate-200 shadow-sm ${border}`}>
                                             <div className="flex justify-between items-start mb-1.5">
                                                 <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-[10px] font-black text-blue-600 hover:text-blue-700 hover:underline font-mono">{lc.loadConNumber}</button>
                                                 <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
                                             </div>
                                             <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block text-left font-bold text-slate-900 text-sm leading-tight hover:text-blue-600">{clientMap.get(lc.clientId || '') || lc.clientName}</button>
-                                            <p className="text-[10px] text-slate-500 mb-2 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
-                                            {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-600 mb-1.5 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
+                                            <p className="text-[10px] text-slate-500 mb-1 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                                            {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-600 mb-1 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
+                                            <div className="flex justify-between items-center mb-2 text-[9px] font-bold">
+                                                <span className={urgent === 'over' ? 'text-red-600' : urgent === 'today' ? 'text-amber-600' : 'text-slate-400'}>
+                                                    {lc.collectionDate ? (urgent === 'over' ? '⚠ Overdue' : urgent === 'today' ? '● Collect today' : 'Collect ' + new Date(lc.collectionDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' })) : 'No date'}
+                                                </span>
+                                                {lc.supplierRate ? <span className={marginColor}>+R {Math.round(margin).toLocaleString('en-ZA')} ({marginPct.toFixed(0)}%)</span> : null}
+                                            </div>
                                             <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-center gap-2 mb-2.5">
                                                 <ArchiveBoxIcon className="h-3.5 w-3.5 text-blue-500 shrink-0" />
                                                 <p className="text-[9px] text-slate-500 font-medium truncate">{assigned ? transporterOf(lc) : 'Not assigned'} · {lc.commodity || 'Cargo'}</p>

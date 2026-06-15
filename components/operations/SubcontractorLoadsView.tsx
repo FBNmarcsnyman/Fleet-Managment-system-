@@ -4,6 +4,7 @@ import { LoadConfirmation, Supplier, Client, Attachment, PodAnalysisResult } fro
 import { useUIState } from '../../contexts/AppContexts';
 import { supabase } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
+import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -67,13 +68,11 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             }
             const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
             const base = `${window.location.origin}${window.location.pathname}`;
-            const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
-              <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+            const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
               <p>Please find attached FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}.</p>
               <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
-              <p style="text-align:center;margin:20px 0"><a href="${base}?accept=${lc.id}" style="background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Accept this load &amp; send driver details &rarr;</a></p>
-              <p>Regards,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
-            </div>`;
+              ${emailButton(`${base}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
+              <p>Regards,<br>FBN Transport</p>`);
             const { data, error } = await supabase.functions.invoke('send-email', {
                 body: { to, cc: lc.ccEmail || undefined, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${lc.collectionPoint || ''} to ${lc.deliveryPoint || ''}`,
                     html, fromName: 'FBN Transport', attachments },
@@ -97,15 +96,11 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         try {
             const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
             const uploadLink = `${window.location.origin}${window.location.pathname}?pod=${lc.id}`;
-            const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
-              <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+            const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
               <p>Please send through the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''} now that it has delivered.</p>
-              <p style="text-align:center;margin:22px 0">
-                <a href="${uploadLink}" style="background:#13294b;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Upload POD &rarr;</a>
-              </p>
+              ${emailButton(uploadLink, 'Upload POD &rarr;', '#16a34a')}
               <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>
-              <p>Thank you,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
-            </div>`;
+              <p>Thank you,<br>FBN Transport</p>`);
             const { data, error } = await supabase.functions.invoke('send-email', {
                 body: { to, cc: lc.ccEmail || undefined, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
             });

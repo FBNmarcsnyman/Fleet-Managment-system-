@@ -59,13 +59,13 @@ const Sidebar: React.FC = () => {
     return (
         <aside className="shrink-0 w-[76px] lg:w-64 bg-gray-900/95 border-r border-gray-800/60 sticky top-0 h-screen flex flex-col z-40 ring-1 ring-white/5">
             {/* Brand */}
-            <div className="flex items-center px-4 h-20 shrink-0 border-b border-gray-800/60">
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-2.5 rounded-2xl shadow-2xl shadow-blue-900/40 ring-1 ring-white/20 transform transition-transform hover:scale-110 active:scale-95 cursor-pointer shrink-0" onClick={() => handleViewChange('management')}>
-                    <FuelIcon className="h-6 w-6 text-white" />
-                </div>
-                <div className="ml-3 hidden lg:block">
-                    <h1 className="text-lg font-black text-white tracking-tighter leading-none">FBN<span className="text-blue-500">Fleet</span></h1>
-                    <p className="text-[10px] font-bold text-gray-500 tracking-widest uppercase mt-0.5">Control Center</p>
+            <div className="flex items-center gap-3 px-3 h-20 shrink-0 border-b border-slate-200 overflow-hidden">
+                <img src="/fbn-logo.jpg" alt="FBN Transport" onClick={() => handleViewChange('management')}
+                    onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }}
+                    className="h-9 w-auto object-contain cursor-pointer shrink-0" />
+                <div className="hidden lg:block min-w-0">
+                    <p className="text-[11px] font-black text-[#13294b] tracking-[0.18em] uppercase leading-none">Control Centre</p>
+                    <p className="text-[9px] font-bold text-slate-500 tracking-[0.12em] uppercase mt-1 truncate">Commercial Freight Specialists</p>
                 </div>
             </div>
 

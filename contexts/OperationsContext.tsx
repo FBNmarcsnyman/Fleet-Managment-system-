@@ -12,6 +12,8 @@ import {
     toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
 } from '../lib/mappers';
 
+import { brandedEmail, emailButton } from '../lib/emailTemplate';
+
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 // Emails the transporter asking for the POD, with a no-login upload link
@@ -35,12 +37,10 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
     const trackLink = `${base}?track=${lc.id}`;
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
-    const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
-      <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
+    const html = brandedEmail(`<p>Good day ${lc.clientContact || lc.clientName || ''},</p>
       <p>An update on your shipment <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}: it <strong>${msg}</strong>.</p>
-      <p style="text-align:center;margin:20px 0"><a href="${trackLink}" style="background:#13294b;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Track your shipment &rarr;</a></p>
-      <p>Regards,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
-    </div>`;
+      ${emailButton(trackLink, 'Track your shipment &rarr;')}
+      <p>Regards,<br>FBN Transport</p>`);
     try {
         await supabase.functions.invoke('send-email', { body: { to, subject: `FBN shipment ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
@@ -54,15 +54,11 @@ export const sendClientPodEmail = async (lc: any): Promise<void> => {
     if (!to) return;
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
     const podUrl = lc.podPhoto?.data || '';
-    const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
-      <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
+    const html = brandedEmail(`<p>Good day ${lc.clientContact || lc.clientName || ''},</p>
       <p>The <strong>POD</strong> for your delivered shipment <strong>${lc.loadConNumber}</strong> is now available to view and download.</p>
-      <p style="text-align:center;margin:20px 0">
-        ${podUrl ? `<a href="${podUrl}" style="background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;display:inline-block;margin:0 4px">View / download POD &rarr;</a>` : ''}
-        <a href="${base}?track=${lc.id}" style="background:#13294b;color:#fff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;display:inline-block;margin:0 4px">Track shipment</a>
-      </p>
-      <p>Regards,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
-    </div>`;
+      ${podUrl ? emailButton(podUrl, 'View / download POD &rarr;', '#16a34a') : ''}
+      ${emailButton(`${base}?track=${lc.id}`, 'Track shipment')}
+      <p>Regards,<br>FBN Transport</p>`);
     try {
         await supabase.functions.invoke('send-email', { body: { to, subject: `POD available - shipment ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
@@ -76,15 +72,11 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
     const uploadLink = `${base}?pod=${lc.id}`;
-    const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
-      <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+    const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
       <p>Please send through the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''} now that it has delivered.</p>
-      <p style="text-align:center;margin:22px 0">
-        <a href="${uploadLink}" style="background:#13294b;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Upload POD &rarr;</a>
-      </p>
+      ${emailButton(uploadLink, 'Upload POD &rarr;', '#16a34a')}
       <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>
-      <p>Thank you,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
-    </div>`;
+      <p>Thank you,<br>FBN Transport</p>`);
     try {
         await supabase.functions.invoke('send-email', {
             body: { to, cc: lc.ccEmail || undefined, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },

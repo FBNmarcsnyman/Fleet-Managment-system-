@@ -20,6 +20,7 @@ const LoadBoard: React.FC = () => {
     const { showModal, showToast } = useUIState();
     const [busy, setBusy] = useState<string | null>(null);
     const [branch, setBranch] = useState<string>('All');
+    const [q, setQ] = useState('');
 
     const clientMap = useMemo(() => new Map<string, string>(clients.map((c: any) => [c.id, c.name])), [clients]);
     const supplierMap = useMemo(() => new Map<string, string>((suppliers || []).map((s: any) => [s.id, s.name])), [suppliers]);
@@ -30,10 +31,18 @@ const LoadBoard: React.FC = () => {
         return ['All', ...Array.from(set)];
     }, [loadConfirmations]);
 
-    const active = useMemo(() => (loadConfirmations || []).filter((lc: LoadConfirmation) =>
-        lc.status !== 'Invoiced' && lc.status !== 'Cancelled' &&
-        (branch === 'All' || lc.collectionBranch === branch || lc.destinationBranch === branch)
-    ), [loadConfirmations, branch]);
+    const active = useMemo(() => {
+        const needle = q.trim().toLowerCase();
+        return (loadConfirmations || []).filter((lc: LoadConfirmation) => {
+            if (lc.status === 'Invoiced' || lc.status === 'Cancelled') return false;
+            if (branch !== 'All' && lc.collectionBranch !== branch && lc.destinationBranch !== branch) return false;
+            if (!needle) return true;
+            const hay = `${lc.loadConNumber} ${clientMap.get(lc.clientId || '') || lc.clientName || ''} ${lc.route || ''} ${lc.collectionPoint || ''} ${lc.deliveryPoint || ''} ${lc.subcontractorName || ''}`.toLowerCase();
+            return hay.includes(needle);
+        });
+    }, [loadConfirmations, branch, q, clientMap]);
+
+    const fmtR = (n: number) => 'R ' + Math.round(n).toLocaleString('en-ZA');
 
     const advance = async (lc: LoadConfirmation) => {
         const step = nextStep(lc);
@@ -61,8 +70,8 @@ const LoadBoard: React.FC = () => {
         <div className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">Load Board</h3>
-                <div>
-                    <label className="text-sm text-gray-400 mr-2">Branch:</label>
+                <div className="flex items-center gap-2">
+                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search loads…" className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm w-44" />
                     <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm">
                         {branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}
                     </select>
@@ -76,8 +85,8 @@ const LoadBoard: React.FC = () => {
                     return (
                         <div key={col.title} className="bg-gray-800 rounded-2xl p-3 flex flex-col w-[300px] shrink-0 border border-gray-700/50 max-h-[calc(100vh-15rem)]">
                             <div className="flex justify-between items-center mb-3 pb-2 border-b border-gray-700/50">
-                                <h4 className="text-xs font-black text-gray-300 uppercase tracking-widest">{col.title}</h4>
-                                <span className="text-gray-600 text-xs font-bold">{jobs.length}</span>
+                                <h4 className="text-xs font-black text-gray-300 uppercase tracking-widest">{col.title} <span className="text-gray-600">{jobs.length}</span></h4>
+                                <span className="text-[10px] font-bold text-emerald-400">{fmtR(jobs.reduce((s: number, j: LoadConfirmation) => s + (j.totalAmount || 0), 0))}</span>
                             </div>
                             <div className="space-y-3 overflow-y-auto pr-1 flex-1">
                                 {jobs.map((lc: LoadConfirmation) => {

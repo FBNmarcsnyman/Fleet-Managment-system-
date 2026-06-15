@@ -17,6 +17,37 @@ const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 // Emails the transporter asking for the POD, with a no-login upload link
 // (?pod=<id>) and the option to reply with the POD attached. Fire-and-forget:
 // used both by the manual "Request" button and automatically on delivery.
+// Client-facing milestone copy for automatic phase updates.
+const CLIENT_PHASE_MSG: Record<string, string> = {
+    'Collected': 'has been collected and is being prepared for transit',
+    'In Transit': 'is now in transit',
+    'At Destination Depot': 'has arrived at our destination depot',
+    'Out for Delivery': 'is out for delivery',
+    'Delivered': 'has been delivered',
+};
+
+// Emails the client a short branded status update with a live tracking link as
+// the load moves through its phases. Fire-and-forget.
+export const sendClientPhaseEmail = async (lc: any, status: string): Promise<void> => {
+    const to = lc?.clientEmail;
+    const msg = CLIENT_PHASE_MSG[status];
+    if (!to || !msg) return;
+    const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+    const trackLink = `${base}?track=${lc.id}`;
+    const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
+      <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
+      <p>An update on your shipment <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}: it <strong>${msg}</strong>.</p>
+      <p style="text-align:center;margin:20px 0"><a href="${trackLink}" style="background:#13294b;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Track your shipment &rarr;</a></p>
+      <p>Regards,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
+    </div>`;
+    try {
+        await supabase.functions.invoke('send-email', { body: { to, subject: `FBN shipment ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
+    } catch (e) {
+        console.error('[ops] client phase update failed:', e);
+    }
+};
+
 export const sendPodRequestEmail = async (lc: any): Promise<void> => {
     const to = lc?.subcontractorEmail;
     if (!to) return;
@@ -389,6 +420,10 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 // (only on the transition, and only if no POD is in yet).
                 if (updates.status === 'Delivered' && prev?.status !== 'Delivered' && !prev?.podPhoto && !updates.podPhoto) {
                     sendPodRequestEmail({ ...(prev || {}), ...updates, id });
+                }
+                // Auto-update the client with a tracking link as the load changes phase.
+                if (updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]) {
+                    sendClientPhaseEmail({ ...(prev || {}), ...updates, id }, updates.status);
                 }
                 return { ok: true };
             } catch (err) {

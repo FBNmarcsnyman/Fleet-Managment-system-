@@ -284,7 +284,7 @@ const LoadDocumentsModal: React.FC = () => {
             const { data, error } = await supabase.functions.invoke('send-email', {
                 body: {
                     to,
-                    cc: tab === 'loadcon' ? (lc.ccEmail || undefined) : undefined,
+                    cc: tab !== 'deliveryNote' ? (lc.ccEmail || undefined) : undefined,
                     subject,
                     html,
                     fromName: sender,

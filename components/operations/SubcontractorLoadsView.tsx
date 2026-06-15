@@ -57,15 +57,18 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         setRequesting(lc.id);
         try {
             const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
-            const portal = `${window.location.origin}${window.location.pathname}?portal=supplier`;
+            const uploadLink = `${window.location.origin}${window.location.pathname}?pod=${lc.id}`;
             const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
               <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
               <p>Please send through the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''} now that it has delivered.</p>
-              <p>You can upload it directly on your carrier portal: <a href="${portal}">${portal}</a>, or simply reply to this email with the signed POD attached.</p>
+              <p style="text-align:center;margin:22px 0">
+                <a href="${uploadLink}" style="background:#13294b;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Upload POD &rarr;</a>
+              </p>
+              <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>
               <p>Thank you,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
             </div>`;
             const { data, error } = await supabase.functions.invoke('send-email', {
-                body: { to, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+                body: { to, cc: lc.ccEmail || undefined, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
             });
             if (error || (data && (data as any).error)) { showToast(`Could not send request: ${(data as any)?.error || error?.message}`); return; }
             showToast(`POD request sent to ${to}.`);

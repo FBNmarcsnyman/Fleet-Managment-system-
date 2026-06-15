@@ -9,6 +9,7 @@ import DriverChecklistAuth from './components/DriverChecklistAuth';
 const RigChecklistFlow = lazy(() => import('./components/RigChecklistFlow'));
 import SupplierPODUploadView from './components/SupplierPODUploadView';
 import ClientQuoteView from './components/ClientQuoteView';
+import PublicPodUpload from './components/PublicPodUpload';
 import SupplierRegistrationPortal from './components/supplier/SupplierRegistrationPortal';
 
 
@@ -188,7 +189,13 @@ const App: React.FC = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const publicQuoteId = urlParams.get('viewQuote');
     const checklistVehicleId = urlParams.get('checklist');
+    const podLoadId = urlParams.get('pod');
     const portal = urlParams.get('portal');
+
+    // Public, no-login POD upload from the link in our POD-request email.
+    if (podLoadId) {
+        return <PublicPodUpload loadId={podLoadId} />;
+    }
 
     if (publicQuoteId) {
         const quote = (quotes || []).find((q: any) => q.id === publicQuoteId);

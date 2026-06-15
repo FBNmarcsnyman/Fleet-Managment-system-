@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import Modal from '../Modal';
 import UpdateJobModal from './UpdateJobModal';
 import DriverPODModal from '../DriverPODModal';
+import { useUIState } from '../../contexts/AppContexts';
 import { isDeliveryStage, isInterBranch, nextStep, STATUS_LABEL, statusChip } from '../../lib/loadStatus';
 
 interface DeliveriesViewProps {
@@ -14,6 +15,7 @@ interface DeliveriesViewProps {
 }
 
 const DeliveriesView: React.FC<DeliveriesViewProps> = ({ currentUser, loadConfirmations = [], clients = [], onUpdateLoadConfirmation }) => {
+    const { showModal } = useUIState();
     const myBranch = currentUser?.assignedBranches?.[0];
     const [branchFilter, setBranchFilter] = useState<string>(myBranch || 'All');
     const [updateModalJob, setUpdateModalJob] = useState<LoadConfirmation | null>(null);
@@ -83,7 +85,7 @@ const DeliveriesView: React.FC<DeliveriesViewProps> = ({ currentUser, loadConfir
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm items-center">
                                     <div>
                                         <p className="font-bold text-white">{lc.deliveryDate ? format(new Date(lc.deliveryDate), 'EEE, dd MMM') : 'Unscheduled'}</p>
-                                        <p className="font-mono text-gray-300 text-xs">{lc.loadConNumber}</p>
+                                        <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="font-mono text-blue-400 hover:text-blue-300 hover:underline text-xs">{lc.loadConNumber}</button>
                                         {incoming && <p className="text-[10px] font-black text-purple-300 mt-1 uppercase">Incoming: {lc.collectionBranch} → {lc.destinationBranch}</p>}
                                     </div>
                                     <div>

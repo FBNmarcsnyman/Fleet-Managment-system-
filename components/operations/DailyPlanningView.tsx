@@ -74,10 +74,10 @@ const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <PlanningColumn title="To Collect" jobs={branchData.toCollect} clientMap={clientMap} busy={busy} onAssign={assign} onAdvance={advance} />
-                <PlanningColumn title="Linehaul / In Transit" jobs={branchData.linehaul} clientMap={clientMap} busy={busy} onAdvance={advance}
+                <PlanningColumn title="To Collect" jobs={branchData.toCollect} clientMap={clientMap} busy={busy} onAssign={assign} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })} />
+                <PlanningColumn title="Linehaul / In Transit" jobs={branchData.linehaul} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })}
                     actionButton={<button onClick={openCreateManifest} className="flex items-center text-[10px] font-black bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/20 px-2 py-1 rounded uppercase tracking-wider transition-all"><PlusIcon className="h-3 w-3 mr-1" /> Manifest</button>} />
-                <PlanningColumn title="Local Delivery" jobs={branchData.local} clientMap={clientMap} busy={busy} onAdvance={advance}
+                <PlanningColumn title="Local Delivery" jobs={branchData.local} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })}
                     actionButton={<button onClick={openCreateTripSheet} className="flex items-center text-[10px] font-black bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-500/20 px-2 py-1 rounded uppercase tracking-wider transition-all"><PlusIcon className="h-3 w-3 mr-1" /> Trip Sheet</button>} />
             </div>
         </div>
@@ -92,7 +92,8 @@ const PlanningColumn: React.FC<{
     actionButton?: React.ReactNode,
     onAssign?: (lc: LoadConfirmation) => void,
     onAdvance: (lc: LoadConfirmation) => void,
-}> = ({ title, jobs, clientMap, busy, actionButton, onAssign, onAdvance }) => (
+    onOpenDetail: (lc: LoadConfirmation) => void,
+}> = ({ title, jobs, clientMap, busy, actionButton, onAssign, onAdvance, onOpenDetail }) => (
     <div className="bg-gray-800 p-4 rounded-2xl shadow-xl flex flex-col h-[calc(100vh-25rem)] border border-gray-700/50">
         <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700/50">
             <h3 className="text-sm font-black text-gray-300 uppercase tracking-widest">{title} <span className="text-gray-600 ml-1">({jobs.length})</span></h3>
@@ -105,10 +106,10 @@ const PlanningColumn: React.FC<{
                 return (
                     <div key={lc.id} className="bg-gray-900/60 p-4 rounded-xl border border-white/5 hover:border-blue-500/30 transition-all">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="text-[10px] font-black text-gray-500 font-mono tracking-tighter">{lc.loadConNumber}</span>
+                            <button onClick={() => onOpenDetail(lc)} className="text-[10px] font-black text-blue-400 hover:text-blue-300 hover:underline font-mono tracking-tighter">{lc.loadConNumber}</button>
                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
                         </div>
-                        <p className="font-bold text-white text-sm mb-0.5 leading-tight">{clientMap.get(lc.clientId || '') || lc.clientName}</p>
+                        <button onClick={() => onOpenDetail(lc)} className="block text-left font-bold text-white text-sm mb-0.5 leading-tight hover:text-blue-300">{clientMap.get(lc.clientId || '') || lc.clientName}</button>
                         <p className="text-[10px] text-gray-500 mb-2 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                         {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-300 mb-2 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
 

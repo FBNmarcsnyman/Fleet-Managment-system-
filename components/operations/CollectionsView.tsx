@@ -4,6 +4,7 @@ import { PlusIcon } from '../icons/PlusIcon';
 import { MapPinIcon } from '../icons/MapPinIcon';
 import { ArchiveBoxIcon } from '../icons/ArchiveBoxIcon';
 import { TruckIcon } from '../icons/TruckIcon';
+import { useUIState } from '../../contexts/AppContexts';
 import { isCollectionStage, isAssigned, nextStep, STATUS_LABEL, statusChip, usesDepotRoute } from '../../lib/loadStatus';
 
 interface CollectionsViewProps {
@@ -19,6 +20,7 @@ interface CollectionsViewProps {
 }
 
 const CollectionsView: React.FC<CollectionsViewProps> = ({ loadConfirmations = [], clients = [], suppliers = [], onUpdateLoadConfirmation, onAssignClick, onNewBookingClick }) => {
+    const { showModal } = useUIState();
     const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c.name])), [clients]);
     const supplierMap = useMemo(() => new Map((suppliers || []).map(s => [s.id, s.name])), [suppliers]);
     const [busy, setBusy] = useState<string | null>(null);
@@ -59,8 +61,8 @@ const CollectionsView: React.FC<CollectionsViewProps> = ({ loadConfirmations = [
                             <div className="flex justify-between items-start mb-3">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                        <span className="bg-blue-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-wider">{lc.loadConNumber}</span>
-                                        <span className="text-gray-300 font-bold truncate">{clientMap.get(lc.clientId)}</span>
+                                        <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-wider">{lc.loadConNumber}</button>
+                                        <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-gray-300 hover:text-white font-bold truncate">{clientMap.get(lc.clientId)}</button>
                                         {depot && <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 uppercase">Depot route</span>}
                                     </div>
                                     <div className="flex items-center text-gray-500 text-xs">

@@ -10,6 +10,7 @@ const RigChecklistFlow = lazy(() => import('./components/RigChecklistFlow'));
 import SupplierPODUploadView from './components/SupplierPODUploadView';
 import ClientQuoteView from './components/ClientQuoteView';
 import PublicPodUpload from './components/PublicPodUpload';
+import PublicLoad from './components/PublicLoad';
 import SupplierRegistrationPortal from './components/supplier/SupplierRegistrationPortal';
 
 
@@ -192,11 +193,21 @@ const App: React.FC = () => {
     const publicQuoteId = urlParams.get('viewQuote');
     const checklistVehicleId = urlParams.get('checklist');
     const podLoadId = urlParams.get('pod');
+    const trackLoadId = urlParams.get('track');
+    const acceptLoadId = urlParams.get('accept');
     const portal = urlParams.get('portal');
 
     // Public, no-login POD upload from the link in our POD-request email.
     if (podLoadId) {
         return <PublicPodUpload loadId={podLoadId} />;
+    }
+    // Public client tracking page.
+    if (trackLoadId) {
+        return <PublicLoad loadId={trackLoadId} mode="track" />;
+    }
+    // Public carrier acceptance page (from the LoadCon email).
+    if (acceptLoadId) {
+        return <PublicLoad loadId={acceptLoadId} mode="accept" />;
     }
 
     if (publicQuoteId) {

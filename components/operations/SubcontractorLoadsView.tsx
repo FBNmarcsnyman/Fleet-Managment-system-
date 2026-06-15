@@ -66,10 +66,12 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 console.error('[loads] LoadCon PDF build failed, sending without attachment:', pdfErr);
             }
             const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+            const base = `${window.location.origin}${window.location.pathname}`;
             const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
               <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
               <p>Please find attached FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}.</p>
-              <p>Kindly <strong>confirm acceptance</strong> and reply with your driver name, vehicle registration and driver cell. POD to be returned on delivery.</p>
+              <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
+              <p style="text-align:center;margin:20px 0"><a href="${base}?accept=${lc.id}" style="background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Accept this load &amp; send driver details &rarr;</a></p>
               <p>Regards,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
             </div>`;
             const { data, error } = await supabase.functions.invoke('send-email', {

@@ -116,11 +116,18 @@ const LoadDocumentsModal: React.FC = () => {
             const { base64, filename } = await buildLoadConPdf(lc, tab);
             const sender = currentUser?.name || 'FBN Transport';
             const origin = typeof window !== 'undefined' ? window.location.origin : '';
+            const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
             const label = docLabel(tab);
+            // LoadCon -> carrier "Accept this load" link; Client Order -> client "Track" link.
+            const cta = tab === 'loadcon'
+                ? `<p style="text-align:center;margin:20px 0"><a href="${base}?accept=${lc.id}" style="background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Accept this load &amp; send driver details &rarr;</a></p>`
+                : tab === 'clientOrder'
+                ? `<p style="text-align:center;margin:20px 0"><a href="${base}?track=${lc.id}" style="background:${NAVY};color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Track this shipment &rarr;</a></p>`
+                : '';
             const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;color:#1f2937">
               <div style="background:#ffffff;padding:14px 0;border-bottom:3px solid ${NAVY}"><img src="${origin}/fbn-logo.jpg" alt="FBN Transport" height="44" style="height:44px;display:block" /><div style="color:${GREY};font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:4px">Commercial Freight Specialists</div></div>
               <div style="height:4px;background:${YELLOW}"></div>
-              <div style="padding:18px 2px">${coverNote(lc, tab, sender)}<p style="font-size:13px;color:${GREY};margin-top:6px">Your ${label} (Ref ${lc.loadConNumber}) is attached to this email as a PDF.</p></div>
+              <div style="padding:18px 2px">${coverNote(lc, tab, sender)}<p style="font-size:13px;color:${GREY};margin-top:6px">Your ${label} (Ref ${lc.loadConNumber}) is attached to this email as a PDF.</p>${cta}</div>
             </div>`;
             const { data, error } = await supabase.functions.invoke('send-email', {
                 body: {

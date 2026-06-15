@@ -13,15 +13,19 @@ interface LoadSummary {
     pod_photo_url?: string;
 }
 
-// Public, no-login POD upload reached from the link in our POD-request email
-// (?pod=<loadId>). Works on a phone — snap or pick the signed POD and send it.
+// Public, no-login POD page reached from the link in our POD-request email
+// (?pod=<loadId>). Driver snaps/chooses the signed POD, signs on screen, sends.
 const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
     const [load, setLoad] = useState<LoadSummary | null>(null);
     const [loadingErr, setLoadingErr] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [done, setDone] = useState(false);
     const [err, setErr] = useState<string | null>(null);
+    const [file, setFile] = useState<{ b64: string; name: string; type: string; preview: string } | null>(null);
     const fileRef = useRef<HTMLInputElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const drawing = useRef(false);
+    const signed = useRef(false);
 
     useEffect(() => {
         (async () => {
@@ -31,44 +35,49 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
         })();
     }, [loadId]);
 
-    const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        e.target.value = '';
-        if (!file) return;
+    // --- signature canvas ---
+    const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        const c = canvasRef.current!; const r = c.getBoundingClientRect();
+        return { x: (e.clientX - r.left) * (c.width / r.width), y: (e.clientY - r.top) * (c.height / r.height) };
+    };
+    const start = (e: React.PointerEvent<HTMLCanvasElement>) => { drawing.current = true; const ctx = canvasRef.current!.getContext('2d')!; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+    const move = (e: React.PointerEvent<HTMLCanvasElement>) => { if (!drawing.current) return; const ctx = canvasRef.current!.getContext('2d')!; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = '#111'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.stroke(); signed.current = true; };
+    const end = () => { drawing.current = false; };
+    const clearSig = () => { const c = canvasRef.current; if (c) c.getContext('2d')!.clearRect(0, 0, c.width, c.height); signed.current = false; };
+
+    const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0]; e.target.value = '';
+        if (!f) return;
+        const fr = new FileReader();
+        fr.onload = () => { const d = fr.result as string; setFile({ b64: d.split(',')[1] || '', name: f.name, type: f.type, preview: d }); };
+        fr.readAsDataURL(f);
+    };
+
+    const submit = async () => {
+        if (!file) { setErr('Please attach a photo of the signed POD first.'); return; }
         setBusy(true); setErr(null);
         try {
-            const base64 = await new Promise<string>((res, rej) => {
-                const fr = new FileReader();
-                fr.onload = () => res((fr.result as string).split(',')[1] || '');
-                fr.onerror = () => rej(new Error('Could not read the file.'));
-                fr.readAsDataURL(file);
-            });
+            const signatureBase64 = signed.current && canvasRef.current ? (canvasRef.current.toDataURL('image/png').split(',')[1] || '') : '';
             const { data, error } = await supabase.functions.invoke('submit-pod', {
-                body: { loadId, fileBase64: base64, fileName: file.name, contentType: file.type },
+                body: { loadId, fileBase64: file.b64, fileName: file.name, contentType: file.type, signatureBase64 },
             });
             if (error || (data as any)?.error) { setErr((data as any)?.error || error?.message || 'Upload failed.'); return; }
             setDone(true);
         } catch (e) {
             setErr(e instanceof Error ? e.message : 'Upload failed.');
-        } finally {
-            setBusy(false);
-        }
+        } finally { setBusy(false); }
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: '#0a0f1a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-            <div style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 14, overflow: 'hidden' }}>
+        <div style={{ minHeight: '100vh', background: '#0a0f1a', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, fontFamily: 'Arial, Helvetica, sans-serif' }}>
+            <div style={{ width: '100%', maxWidth: 460, background: '#fff', borderRadius: 14, overflow: 'hidden', marginTop: 20 }}>
                 <div style={{ background: NAVY, padding: '18px 20px' }}>
-                    <img src="/fbn-logo.jpg" alt="FBN Transport" style={{ height: 40, display: 'block', background: '#fff', borderRadius: 4, padding: 3 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                    <div style={{ color: YELLOW, fontSize: 10, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', marginTop: 6 }}>Proof of Delivery Upload</div>
+                    <img src="/fbn-logo.jpg" alt="FBN Transport" style={{ height: 40, background: '#fff', borderRadius: 4, padding: 3 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                    <div style={{ color: YELLOW, fontSize: 10, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', marginTop: 6 }}>Proof of Delivery</div>
                 </div>
                 <div style={{ height: 4, background: YELLOW }} />
                 <div style={{ padding: 22 }}>
-                    {loadingErr ? (
-                        <p style={{ color: '#b91c1c' }}>{loadingErr}</p>
-                    ) : !load ? (
-                        <p style={{ color: '#6b7280' }}>Loading…</p>
-                    ) : done ? (
+                    {loadingErr ? <p style={{ color: '#b91c1c' }}>{loadingErr}</p> : !load ? <p style={{ color: '#6b7280' }}>Loading…</p> : done ? (
                         <div style={{ textAlign: 'center', padding: '20px 0' }}>
                             <div style={{ fontSize: 44 }}>✅</div>
                             <h2 style={{ color: NAVY, margin: '8px 0' }}>POD received</h2>
@@ -77,19 +86,25 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
                     ) : (
                         <>
                             <h2 style={{ color: NAVY, margin: '0 0 4px', fontSize: 20 }}>Load {load.load_con_number}</h2>
-                            <p style={{ color: '#6b7280', fontSize: 14, margin: '0 0 16px' }}>
-                                {load.collection_point} → {load.delivery_point}
-                            </p>
-                            {load.pod_photo_url && (
-                                <p style={{ background: '#ecfdf5', color: '#047857', padding: '8px 12px', borderRadius: 8, fontSize: 13 }}>A POD has already been uploaded — you can replace it below if needed.</p>
-                            )}
-                            <p style={{ color: '#374151', fontSize: 14, marginBottom: 16 }}>Please attach a clear photo or PDF of the <strong>signed POD</strong> for this delivery.</p>
+                            <p style={{ color: '#6b7280', fontSize: 14, margin: '0 0 16px' }}>{load.collection_point} → {load.delivery_point}</p>
                             {err && <p style={{ color: '#b91c1c', fontSize: 13 }}>{err}</p>}
-                            <button onClick={() => fileRef.current?.click()} disabled={busy}
-                                style={{ width: '100%', background: busy ? '#9ca3af' : NAVY, color: '#fff', border: 'none', padding: '16px', borderRadius: 10, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>
-                                {busy ? 'Uploading…' : '📷 Take photo / choose POD'}
+
+                            <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '0 0 6px' }}>1. Attach the signed POD</p>
+                            <button onClick={() => fileRef.current?.click()} style={{ width: '100%', background: file ? '#e2e8f0' : NAVY, color: file ? '#1e293b' : '#fff', border: 'none', padding: 14, borderRadius: 10, fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
+                                {file ? '📷 Change photo' : '📷 Take photo / choose POD'}
                             </button>
                             <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" style={{ display: 'none' }} onChange={onFile} />
+                            {file && file.type.startsWith('image') && <img src={file.preview} alt="POD" style={{ width: '100%', borderRadius: 8, marginTop: 10, maxHeight: 180, objectFit: 'cover' }} />}
+
+                            <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '18px 0 6px' }}>2. Sign below (optional)</p>
+                            <canvas ref={canvasRef} width={420} height={140}
+                                onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end}
+                                style={{ width: '100%', height: 120, border: '1px dashed #cbd5e1', borderRadius: 8, touchAction: 'none', background: '#fff' }} />
+                            <button onClick={clearSig} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, marginTop: 4, cursor: 'pointer' }}>Clear signature</button>
+
+                            <button onClick={submit} disabled={busy} style={{ width: '100%', background: busy ? '#9ca3af' : '#16a34a', color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 16, fontWeight: 800, cursor: 'pointer', marginTop: 16 }}>
+                                {busy ? 'Sending…' : 'Send POD to FBN'}
+                            </button>
                             <p style={{ color: '#9ca3af', fontSize: 11, textAlign: 'center', marginTop: 14 }}>FBN Transport · Commercial Freight Specialists</p>
                         </>
                     )}

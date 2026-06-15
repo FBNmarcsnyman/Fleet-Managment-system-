@@ -23,7 +23,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     onUpdateLoadConfirmation,
 }) => {
     const { showModal, showToast } = useUIState();
-    const [filter, setFilter] = useState<'All' | 'POD Awaiting' | 'Sent' | 'History'>('All');
+    const [filter, setFilter] = useState<'All' | 'To Send' | 'Sent' | 'Awaiting POD' | 'History'>('All');
 
     const transportSuppliers = useMemo(() => suppliers.filter(s => s.type === 'Transport'), [suppliers]);
     const supplierMap = useMemo(() => new Map(transportSuppliers.map(s => [s.id, s])), [transportSuppliers]);
@@ -37,8 +37,9 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 // board (you only send current loads); see it under History.
                 if (filter === 'History') return lc.status === 'Invoiced';
                 if (lc.status === 'Invoiced') return false;
-                if (filter === 'POD Awaiting') return !lc.podPhoto;
+                if (filter === 'To Send') return !lc.sentToSupplierDate;
                 if (filter === 'Sent') return !!lc.sentToSupplierDate;
+                if (filter === 'Awaiting POD') return ['Delivered', 'Out for Delivery'].includes(lc.status) && !lc.podPhoto;
                 return true;
             })
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -152,9 +153,10 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 <h3 className="text-xl font-bold text-slate-900">Subcontractor Loads</h3>
                 <div className="flex items-center space-x-3">
                     <select value={filter} onChange={e => setFilter(e.target.value as any)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300">
-                        <option value="All">Active Loads</option>
-                        <option value="POD Awaiting">POD Awaiting</option>
-                        <option value="Sent">Sent to Supplier</option>
+                        <option value="All">All active</option>
+                        <option value="To Send">To send (email confirmation)</option>
+                        <option value="Sent">Sent to subcontractor</option>
+                        <option value="Awaiting POD">Awaiting PODs</option>
                         <option value="History">History (imported)</option>
                     </select>
                 </div>

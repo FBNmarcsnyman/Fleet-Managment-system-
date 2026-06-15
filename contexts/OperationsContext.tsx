@@ -14,6 +14,33 @@ import {
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
+// Emails the transporter asking for the POD, with a no-login upload link
+// (?pod=<id>) and the option to reply with the POD attached. Fire-and-forget:
+// used both by the manual "Request" button and automatically on delivery.
+export const sendPodRequestEmail = async (lc: any): Promise<void> => {
+    const to = lc?.subcontractorEmail;
+    if (!to) return;
+    const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+    const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+    const uploadLink = `${base}?pod=${lc.id}`;
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937">
+      <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+      <p>Please send through the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''} now that it has delivered.</p>
+      <p style="text-align:center;margin:22px 0">
+        <a href="${uploadLink}" style="background:#13294b;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Upload POD &rarr;</a>
+      </p>
+      <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>
+      <p>Thank you,<br>FBN Transport &middot; tracking@fbn-transport.co.za</p>
+    </div>`;
+    try {
+        await supabase.functions.invoke('send-email', {
+            body: { to, cc: lc.ccEmail || undefined, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+        });
+    } catch (e) {
+        console.error('[ops] auto POD request failed:', e);
+    }
+};
+
 export const OperationsContext = createContext<any>(undefined);
 
 type Result<T = void> = { ok: true; value?: T } | { ok: false; error: string };
@@ -353,11 +380,17 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleUpdateLoadConfirmation: async (id: string, updates: Partial<LoadConfirmation>): Promise<Result<void>> => {
             try {
+                const prev = (stateRef.current.loadConfirmations || []).find((l: LoadConfirmation) => l.id === id);
                 const row = toLoadConfirmationUpdate(updates, branchIdByName);
                 const { error } = await supabase
                     .from('load_confirmations').update(row).eq('id', id);
                 if (error) { console.error('[ops] updateLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id, updates } });
+                // Auto-fire the POD request the moment a load becomes Delivered
+                // (only on the transition, and only if no POD is in yet).
+                if (updates.status === 'Delivered' && prev?.status !== 'Delivered' && !prev?.podPhoto && !updates.podPhoto) {
+                    sendPodRequestEmail({ ...(prev || {}), ...updates, id });
+                }
                 return { ok: true };
             } catch (err) {
                 console.error('[ops] updateLoadConfirmation threw:', err);

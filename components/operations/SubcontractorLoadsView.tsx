@@ -47,10 +47,15 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     const [sendingLc, setSendingLc] = useState<string | null>(null);
 
     // Actually EMAIL the Load Confirmation (branded PDF) to the subcontractor,
-    // then stamp it as sent. (Previously this only stamped the date.)
+    // then stamp it as sent. Always lets you confirm / change / add the recipient
+    // email first, and can be used again to RESEND.
     const handleSendLoadCon = async (lc: LoadConfirmation) => {
-        const to = lc.subcontractorEmail;
-        if (!to) { showToast('No subcontractor email on this load — open Documents to add one first.'); return; }
+        const entered = window.prompt(`Email Load Confirmation ${lc.loadConNumber} to:`, lc.subcontractorEmail || '');
+        if (entered === null) return; // cancelled
+        const to = entered.trim();
+        if (!to) { showToast('No email entered.'); return; }
+        // If this load had no (or a different) email, remember the one just used.
+        if (to !== (lc.subcontractorEmail || '')) onUpdateLoadConfirmation(lc.id, { subcontractorEmail: to });
         setSendingLc(lc.id);
         try {
             let attachments: any[] | undefined;
@@ -182,11 +187,14 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                     <td className="p-2">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</td>
                                     <td className="p-2">{lc.status}</td>
                                     <td className="p-2">
-                                        {lc.sentToSupplierDate ? (
-                                            <span className="flex items-center text-green-400 text-xs"><CheckCircleIcon className="h-4 w-4 mr-1" />{format(new Date(lc.sentToSupplierDate), 'dd MMM')}</span>
-                                        ) : (
-                                            <button onClick={() => handleSendLoadCon(lc)} disabled={sendingLc === lc.id} className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-1 px-2 rounded-lg">{sendingLc === lc.id ? 'Sending…' : 'Email LoadCon'}</button>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {lc.sentToSupplierDate && (
+                                                <span className="flex items-center text-green-400 text-xs"><CheckCircleIcon className="h-4 w-4 mr-1" />{format(new Date(lc.sentToSupplierDate), 'dd MMM')}</span>
+                                            )}
+                                            <button onClick={() => handleSendLoadCon(lc)} disabled={sendingLc === lc.id} className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-1 px-2 rounded-lg">
+                                                {sendingLc === lc.id ? 'Sending…' : lc.sentToSupplierDate ? 'Resend' : 'Email LoadCon'}
+                                            </button>
+                                        </div>
                                     </td>
                                     <td className="p-2">
                                         {lc.podPhoto ? (

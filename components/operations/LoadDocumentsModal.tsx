@@ -254,10 +254,16 @@ const LoadDocumentsModal: React.FC = () => {
     };
 
     const handleEmail = async () => {
-        const to = recipientFor(tab);
-        if (!to) {
-            showToast(tab === 'clientOrder' ? 'No client email on this load — add one first.' : 'No subcontractor email on this load — add one first.');
-            return;
+        // Always let the user confirm / change / add the recipient before sending
+        // (and use this to resend). Pre-fill with whatever is on the load.
+        const existing = recipientFor(tab) || '';
+        const entered = window.prompt(`Email ${docLabel(tab)} ${lc.loadConNumber} to:`, existing);
+        if (entered === null) return; // cancelled
+        const to = entered.trim();
+        if (!to) { showToast('No email entered.'); return; }
+        // Remember a newly-entered / changed address on the load.
+        if (to !== existing) {
+            handleUpdateLoadConfirmation(lc.id, tab === 'clientOrder' ? { clientEmail: to } : { subcontractorEmail: to });
         }
         const collection = lc.collectionPoint || '';
         const delivery = lc.deliveryPoint || '';

@@ -66,6 +66,23 @@ export const sendClientPodEmail = async (lc: any): Promise<void> => {
     }
 };
 
+// Sends the subcontractor a copy of the POD they submitted (their record).
+export const sendSupplierPodEmail = async (lc: any): Promise<void> => {
+    const to = lc?.subcontractorEmail;
+    if (!to) return;
+    const podUrl = lc.podPhoto?.data || '';
+    const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+      <p>Thank you — here is your copy of the <strong>POD</strong> received for load <strong>${lc.loadConNumber}</strong>${lc.deliveryPoint ? ` (delivered to ${lc.deliveryPoint})` : ''}.</p>
+      ${podUrl ? emailButton(podUrl, 'View / download POD &rarr;', '#16a34a') : ''}
+      <p style="font-size:13px;color:#5b6573">Please keep this for your records and quote the load number on your invoice.</p>
+      <p>Regards,<br>FBN Transport</p>`);
+    try {
+        await supabase.functions.invoke('send-email', { body: { to, subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+    } catch (e) {
+        console.error('[ops] supplier POD copy failed:', e);
+    }
+};
+
 export const sendPodRequestEmail = async (lc: any): Promise<void> => {
     const to = lc?.subcontractorEmail;
     if (!to) return;
@@ -439,9 +456,11 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]) {
                     sendClientPhaseEmail({ ...(prev || {}), ...updates, id }, updates.status);
                 }
-                // When a POD comes in, tell the client it's available to view/download.
+                // When a POD comes in: notify the client AND send the subbie their copy.
                 if (updates.status === 'POD Submitted' && prev?.status !== 'POD Submitted') {
-                    sendClientPodEmail({ ...(prev || {}), ...updates, id });
+                    const merged = { ...(prev || {}), ...updates, id };
+                    sendClientPodEmail(merged);
+                    sendSupplierPodEmail(merged);
                 }
                 return { ok: true };
             } catch (err) {

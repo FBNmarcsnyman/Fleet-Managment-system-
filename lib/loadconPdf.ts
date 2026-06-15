@@ -4,6 +4,7 @@ import { LoadConfirmation } from '../types';
 export type DocType = 'loadcon' | 'clientOrder' | 'deliveryNote';
 
 const NAVY: [number, number, number] = [19, 41, 75];
+const YELLOW: [number, number, number] = [245, 183, 0];
 const RED: [number, number, number] = [197, 32, 32];
 const BLACK: [number, number, number] = [25, 30, 40];
 const GREY: [number, number, number] = [90, 100, 115];
@@ -49,7 +50,11 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
     const addr = ['Durban Head Office:', 'P O Box 1405, HILLCREST', 'Phone: 031 - 205 1705', 'Fax: 031 - 205 2098', 'Email: fbndbn@fbn-transport.co.za'];
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GREY);
     addr.forEach((line, i) => { doc.setFont('helvetica', i === 0 ? 'bold' : 'normal'); doc.setTextColor(...(i === 0 ? NAVY : GREY)); doc.text(line, W - M, y + 2 + i * 4, { align: 'right' }); });
-    y += 24;
+    y += 22;
+    // Brand accent: navy rule + yellow underline beneath the letterhead.
+    doc.setDrawColor(...NAVY); doc.setLineWidth(0.6); doc.line(M, y, W - M, y);
+    doc.setFillColor(...YELLOW); doc.rect(M, y + 0.6, W - 2 * M, 1.4, 'F');
+    y += 5;
 
     const lineHFor = (size: number) => size * 0.42 + 0.7;
 
@@ -203,12 +208,17 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
         row([{ w: L, text: 'DATE', style: 'label' }, { w: CW / 2 - L, text: '', style: 'value' }, { w: L, text: 'COMPANY STAMP', style: 'label' }, { w: CW / 2 - L, text: '', style: 'value' }], 16);
     }
 
-    // Footer: red T&Cs link (subbie) + branding
+    // Footer: clickable T&Cs link (subbie) + branding
     y += 3;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     if (type === 'loadcon') {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...RED);
-        doc.text('* SUBCONTRACTOR TERMS & CONDITIONS APPLY *', W / 2, y, { align: 'center' });
-        y += 4;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...RED);
+        const tcs = 'CLICK HERE FOR SUBCONTRACTOR TERMS & CONDITIONS';
+        const tw = doc.getTextWidth(tcs);
+        const tx = (W - tw) / 2;
+        doc.textWithLink(tcs, tx, y, { url: `${origin}?tcs=1` });
+        doc.setDrawColor(...RED); doc.setLineWidth(0.3); doc.line(tx, y + 1, tx + tw, y + 1); // underline = looks like a link
+        y += 5;
     }
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(150, 160, 170);
     doc.text('FBN Transport  |  Commercial Freight Specialists  |  tracking@fbn-transport.co.za', W / 2, y, { align: 'center' });

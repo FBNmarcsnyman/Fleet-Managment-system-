@@ -57,7 +57,7 @@ const Sidebar: React.FC = () => {
     const settingsItems = SETTINGS_NAV_ITEMS.filter(item => hasPermission(item.permission));
 
     return (
-        <aside className="shrink-0 w-[76px] lg:w-64 bg-gray-900/95 border-r border-gray-800/60 sticky top-0 h-screen flex flex-col z-40 ring-1 ring-white/5">
+        <aside className="shrink-0 w-[76px] lg:w-64 bg-white border-r border-slate-200 sticky top-0 h-screen flex flex-col z-40 shadow-sm">
             {/* Brand */}
             <div className="flex items-center gap-3 px-3 h-20 shrink-0 border-b border-slate-200 overflow-hidden">
                 <img src="/fbn-logo.jpg" alt="FBN Transport" onClick={() => handleViewChange('management')}

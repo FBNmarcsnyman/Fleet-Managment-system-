@@ -11,6 +11,7 @@ import SupplierPODUploadView from './components/SupplierPODUploadView';
 import ClientQuoteView from './components/ClientQuoteView';
 import PublicPodUpload from './components/PublicPodUpload';
 import PublicLoad from './components/PublicLoad';
+import PublicTerms from './components/PublicTerms';
 import SupplierRegistrationPortal from './components/supplier/SupplierRegistrationPortal';
 
 
@@ -195,7 +196,13 @@ const App: React.FC = () => {
     const podLoadId = urlParams.get('pod');
     const trackLoadId = urlParams.get('track');
     const acceptLoadId = urlParams.get('accept');
+    const showTerms = urlParams.get('tcs');
     const portal = urlParams.get('portal');
+
+    // Public Subcontractor Terms & Conditions page (linked from LoadCons/emails).
+    if (showTerms) {
+        return <PublicTerms />;
+    }
 
     // Public, no-login POD upload from the link in our POD-request email.
     if (podLoadId) {

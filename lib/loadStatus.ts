@@ -36,8 +36,8 @@ export const stageFlow = (lc: LoadConfirmation): LoadConfirmationStatus[] =>
 
 // Friendly status names shown as the load's current state.
 export const STATUS_LABEL: Record<LoadConfirmationStatus, string> = {
-    'Booked': 'Booked – needs transporter',
-    'Driver Assigned': 'Transporter assigned',
+    'Booked': 'Unassigned',
+    'Driver Assigned': 'Assigned',
     'At Collection Point': 'Arrived to load',
     'Loading': 'Loading',
     'Collected': 'Loaded / collected',

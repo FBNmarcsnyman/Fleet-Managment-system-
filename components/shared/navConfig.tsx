@@ -15,9 +15,10 @@ export type NavItem = { view: ViewType; label: string; icon: React.ElementType; 
 // The primary portals shown in the sidebar, in their default order.
 export const ALL_NAV_ITEMS: NavItem[] = [
     { view: 'management', label: 'Management', icon: DashboardIcon, permission: 'access_management' },
-    { view: 'fleet', label: 'Fleet', icon: CarIcon, permission: 'access_fleet' },
-    { view: 'operations', label: 'Sub Ops', icon: DocumentTextIcon, permission: 'access_operations' },
+    { view: 'fleet', label: 'FBN Fleet', icon: CarIcon, permission: 'access_fleet' },
+    { view: 'operations', label: 'Broking', icon: DocumentTextIcon, permission: 'access_operations' },
     { view: 'partners', label: 'Clients & Subbies', icon: UsersIcon, permission: 'access_operations' },
+    { view: 'quotes', label: 'Quotes', icon: CurrencyDollarIcon, permission: 'access_operations' },
     { view: 'workshop', label: 'Workshop', icon: WorkshopIcon, permission: 'access_workshop' },
     { view: 'finance', label: 'Finance', icon: CurrencyDollarIcon, permission: 'access_finance' },
     { view: 'incidentManagement', label: 'Incidents', icon: ExclamationTriangleIcon, permission: 'access_incidents' },
@@ -33,9 +34,10 @@ export const SETTINGS_NAV_ITEMS: NavItem[] = [
 // Human-friendly title for the current view — shown in the top bar.
 export const VIEW_TITLES: Partial<Record<ViewType, string>> = {
     management: 'Management Overview',
-    fleet: 'Fleet',
-    operations: 'Sub Ops',
+    fleet: 'FBN Fleet',
+    operations: 'Broking',
     partners: 'Clients & Subcontractors',
+    quotes: 'Quotes',
     workshop: 'Workshop',
     finance: 'Finance',
     incidentManagement: 'Incident Management',

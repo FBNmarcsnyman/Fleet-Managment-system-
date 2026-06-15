@@ -1,30 +1,24 @@
 import React, { useState, lazy, Suspense } from 'react';
-import { useOperations, useUIState } from '../../contexts/AppContexts';
 import ClientManagementView from './ClientManagementView';
-import QuotesView from './QuotesView';
 import SupplierOnboardingView from './SupplierOnboardingView';
 
 const SubcontractorManagementView = lazy(() => import('./SupplierManagementView'));
 
-type PartnersView = 'clients' | 'subcontractors' | 'onboarding' | 'quotes';
+type PartnersView = 'clients' | 'subcontractors' | 'onboarding';
 
 const NAV: { view: PartnersView; label: string }[] = [
     { view: 'clients', label: 'Clients' },
     { view: 'subcontractors', label: 'Subcontractors' },
     { view: 'onboarding', label: 'Supplier Onboarding' },
-    { view: 'quotes', label: 'Quotes' },
 ];
 
 const PartnersPortal: React.FC = () => {
     const [view, setView] = useState<PartnersView>('clients');
-    const { quotes, clients, suppliers } = useOperations();
-    const { showModal } = useUIState();
 
     const render = () => {
         switch (view) {
             case 'subcontractors': return <Suspense fallback={<div className="text-gray-400 p-4">Loading…</div>}><SubcontractorManagementView /></Suspense>;
             case 'onboarding': return <SupplierOnboardingView />;
-            case 'quotes': return <QuotesView quotes={quotes} clients={clients} suppliers={suppliers} onShowPdf={(quote, client) => showModal('quotePdf', { quote, client })} />;
             case 'clients':
             default: return <ClientManagementView />;
         }

@@ -8,7 +8,7 @@ import { TruckIcon } from '../icons/TruckIcon';
 // The broker load board: one kanban, columns = pipeline stages. Assign a
 // subcontractor in "To Cover", then advance each load left-to-right.
 const COLUMNS: { title: string; statuses: LoadConfirmationStatus[] }[] = [
-    { title: 'To Cover', statuses: ['Booked'] },
+    { title: 'To Assign', statuses: ['Booked'] },
     { title: 'Collecting / Loading', statuses: ['Driver Assigned', 'At Collection Point', 'Loading', 'At Collection Depot'] },
     { title: 'Loaded & On Route', statuses: ['Collected', 'In Transit'] },
     { title: 'At Destination', statuses: ['At Destination Depot', 'Unloaded', 'Out for Delivery'] },
@@ -98,7 +98,7 @@ const LoadBoard: React.FC = () => {
                                                 <p className="text-[9px] text-gray-400 font-medium truncate">{assigned ? transporterOf(lc) : 'Not assigned'} · {lc.commodity || 'Cargo'}</p>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className={`flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest transition-all ${assigned ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>{assigned ? 'Reassign' : 'Cover'}</button>
+                                                <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className={`flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest transition-all ${assigned ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>{assigned ? 'Reassign' : 'Assign'}</button>
                                                 {showPod ? (
                                                     <button onClick={() => getPod(lc)} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest">Get POD</button>
                                                 ) : step ? (

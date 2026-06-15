@@ -192,6 +192,7 @@ export type ViewType =
   | 'fleet'
   | 'operations'
   | 'partners'
+  | 'quotes'
   | 'workshop'
   | 'finance'
   | 'incidentManagement'

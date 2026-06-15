@@ -15,9 +15,9 @@ const OperationsPortal: React.FC = () => {
     } = useOperations();
 
     const navItems = [
+        { view: 'dashboard', label: 'Dashboard' },
         { view: 'loadBoard', label: 'Load Board' },
         { view: 'subcontractorLoads', label: 'LoadCons' },
-        { view: 'dashboard', label: 'Dashboard' },
     ];
 
     const handleNewTransportOrder = () => showModal('transportOrder', {
@@ -32,10 +32,10 @@ const OperationsPortal: React.FC = () => {
     const renderView = () => {
         switch (operationsSubView) {
             case 'subcontractorLoads': return <Suspense fallback={<div>Loading...</div>}><SubcontractorLoadsView loadConfirmations={loadConfirmations} suppliers={suppliers} clients={clients} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} /></Suspense>;
-            case 'dashboard': return <OperationsDashboard />;
-            case 'loadBoard':
+            case 'loadBoard': return <LoadBoard />;
+            case 'dashboard':
             default:
-                return <LoadBoard />;
+                return <OperationsDashboard />;
         }
     };
     

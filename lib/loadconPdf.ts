@@ -4,10 +4,10 @@ import { LoadConfirmation } from '../types';
 export type DocType = 'loadcon' | 'clientOrder' | 'deliveryNote';
 
 const NAVY: [number, number, number] = [19, 41, 75];
-const YELLOW: [number, number, number] = [245, 183, 0];
-const GREY: [number, number, number] = [91, 101, 115];
-const LINE: [number, number, number] = [120, 130, 145];
-const DARK: [number, number, number] = [31, 41, 55];
+const RED: [number, number, number] = [197, 32, 32];
+const BLACK: [number, number, number] = [25, 30, 40];
+const GREY: [number, number, number] = [90, 100, 115];
+const BORDER: [number, number, number] = [19, 41, 75];
 
 const money = (n?: number) => 'R ' + (n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 const fmt = (d?: string) => {
@@ -25,139 +25,167 @@ const logoDataUrl = async (): Promise<string | null> => {
     } catch { return null; }
 };
 
-const SUBBIE_NOTES =
-    'PLEASE SCAN COPIES OF PODS AND SUPPLIER DOCS WITHIN 24-48hrs AFTER DELIVERY TO THE EMAIL YOU RECEIVED THE LOADCON ON AND pods@fbn-transport.co.za. ' +
-    'BY ACCEPTING THIS LOAD/LOADCON YOU ACCEPT THE FBN TRANSPORT SUBCONTRACTOR TERMS & CONDITIONS. NO INVOICE WILL BE PAID UNTIL ALL THE RELEVANT, CORRECTLY ' +
-    'REFERENCED ORIGINAL DOCUMENTATION HAS BEEN RECEIVED. ALL DOCUMENTATION TO BE RECEIVED BY FBN TRANSPORT BEFORE 12 NOON ON THE 20TH OF EACH MONTH. IF ' +
-    'RECEIVED LATER THAN THE 20TH, PAYMENT WILL ONLY BE MADE 60 DAYS FROM RECEIPT. ALL VEHICLES ARE TO BE FITTED WITH REPUTABLE TRACKING AND 24hr SURVEILLANCE ' +
-    'UNITS AND VEHICLES TO SLEEP AT SAFE AND SECURE TRUCK STOPS.';
-
+const NOTE_BULLETS = [
+    'BY ACCEPTING THIS LOAD/LOADCON YOU ACCEPT THE FBN TRANSPORT SUBCONTRACTOR TERMS & CONDITIONS.',
+    'NO INVOICE WILL BE PAID UNTIL ALL THE RELEVANT, CORRECTLY REFERENCED ORIGINAL DOCUMENTATION HAS BEEN RECEIVED.',
+    'ALL DOCUMENTATION TO BE RECEIVED BY FBN TRANSPORT CC BEFORE 12 NOON ON THE 20TH OF EACH MONTH. IF RECEIVED LATER THAN THE 20TH, PAYMENT WILL ONLY BE MADE 60 DAYS FROM RECEIPT.',
+    'ALL VEHICLES ARE TO BE FITTED WITH REPUTABLE TRACKING AND 24hr SURVEILLANCE UNITS AND VEHICLES TO SLEEP AT SAFE AND SECURE TRUCK STOPS.',
+];
 const DEFAULT_SPECIAL = 'Please ensure cargo is secured and tarped correctly, tarps must be in good condition. CARGO MUST NOT GET WET.';
 
-type Cell = { w: number; text?: string; label?: boolean; align?: 'left' | 'center'; size?: number };
+type Style = 'label' | 'value' | 'banner' | 'centerLabel';
+type Cell = { w: number; text?: string; style?: Style; size?: number };
 
-// Builds the FBN "TRANSPORT ORDER" grid document (LoadCon / Client Order / POD)
-// to match the company's real template.
 export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Promise<{ doc: jsPDF; base64: string; filename: string }> => {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, M = 10, CW = W - 2 * M;
+    const PAD = 1.6;
+    const title = type === 'deliveryNote' ? 'DELIVERY NOTE / POD' : type === 'clientOrder' ? 'TRANSPORT ORDER' : 'TRANSPORT ORDER';
     let y = 12;
 
-    const title = type === 'deliveryNote' ? 'DELIVERY NOTE / POD' : type === 'clientOrder' ? 'TRANSPORT ORDER (CLIENT)' : 'TRANSPORT ORDER';
-    const ref = lc.loadConNumber + (type === 'clientOrder' ? '-C' : type === 'deliveryNote' ? '-DN' : '');
-
-    // ---- Header: logo + title + ref ----
+    // ---------- Letterhead: logo left, head-office block right ----------
     const logo = await logoDataUrl();
-    if (logo) { try { doc.addImage(logo, 'JPEG', M, y, 50, 15); } catch { /* ignore */ } }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(6); doc.setTextColor(...GREY);
-    doc.text('COMMERCIAL FREIGHT SPECIALISTS', M, y + 19);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(...NAVY);
-    doc.text(title, W - M, y + 6, { align: 'right' });
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...GREY);
-    doc.text(`LoadCon No: ${lc.loadConNumber}`, W - M, y + 11.5, { align: 'right' });
-    doc.text(`Date: ${fmt(lc.date) || fmt(new Date().toISOString())}`, W - M, y + 15.5, { align: 'right' });
-    y += 22;
-    doc.setFillColor(...YELLOW); doc.rect(M, y, CW, 1.4, 'F');
-    y += 4;
+    if (logo) { try { doc.addImage(logo, 'JPEG', M, y, 60, 18); } catch { /* ignore */ } }
+    const addr = ['Durban Head Office:', 'P O Box 1405, HILLCREST', 'Phone: 031 - 205 1705', 'Fax: 031 - 205 2098', 'Email: fbndbn@fbn-transport.co.za'];
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GREY);
+    addr.forEach((line, i) => { doc.setFont('helvetica', i === 0 ? 'bold' : 'normal'); doc.setTextColor(...(i === 0 ? NAVY : GREY)); doc.text(line, W - M, y + 2 + i * 4, { align: 'right' }); });
+    y += 24;
 
-    // ---- Generic grid row renderer (dynamic height for wrapped text) ----
-    const lineH = 3.6;
-    const pad = 1.6;
+    const lineHFor = (size: number) => size * 0.42 + 0.7;
+
+    // ---------- generic bordered row ----------
     const row = (cells: Cell[]) => {
-        const wrapped = cells.map(c => doc.splitTextToSize(c.text || '', c.w - 2 * pad));
-        const h = Math.max(6, ...wrapped.map(w => w.length * lineH + 2 * pad));
-        if (y + h > 285) { doc.addPage(); y = 14; }
+        const measured = cells.map(c => {
+            const size = c.size || (c.style === 'banner' ? 9 : 7.5);
+            doc.setFontSize(size);
+            const lines = doc.splitTextToSize(c.text || '', c.w - 2 * PAD);
+            return { lines, size };
+        });
+        const h = Math.max(6.5, ...measured.map(m => m.lines.length * lineHFor(m.size) + 2 * PAD));
+        if (y + h > 286) { doc.addPage(); y = 14; }
         let x = M;
         cells.forEach((c, i) => {
-            if (c.label) { doc.setFillColor(...NAVY); doc.rect(x, y, c.w, h, 'F'); }
-            doc.setDrawColor(...LINE); doc.setLineWidth(0.2); doc.rect(x, y, c.w, h);
-            doc.setFont('helvetica', c.label ? 'bold' : 'normal');
-            doc.setFontSize(c.size || 7.5);
-            doc.setTextColor(...(c.label ? [255, 255, 255] as [number, number, number] : DARK));
-            const tx = c.align === 'center' ? x + c.w / 2 : x + pad;
-            doc.text(wrapped[i], tx, y + pad + 2.7, { align: c.align || 'left' });
+            const { lines, size } = measured[i];
+            if (c.style === 'banner') { doc.setFillColor(...NAVY); doc.rect(x, y, c.w, h, 'F'); }
+            doc.setDrawColor(...BORDER); doc.setLineWidth(0.25); doc.rect(x, y, c.w, h);
+            doc.setFontSize(size);
+            const isLabel = c.style === 'label' || c.style === 'banner' || c.style === 'centerLabel';
+            doc.setFont('helvetica', isLabel ? 'bold' : 'normal');
+            doc.setTextColor(...(c.style === 'banner' ? [255, 255, 255] as [number, number, number] : isLabel ? NAVY : BLACK));
+            const centered = c.style === 'banner' || c.style === 'centerLabel';
+            const tx = centered ? x + c.w / 2 : x + PAD;
+            doc.text(lines, tx, y + PAD + size * 0.36, { align: centered ? 'center' : 'left' });
             x += c.w;
         });
         y += h;
     };
-    // Single full-width banner cell (navy section header).
-    const banner = (text: string) => row([{ w: CW, text, label: true, align: 'center', size: 8 }]);
 
-    const L = 32; // standard label-cell width
+    // ---------- the big red NOTES block (subcontractor LoadCon only) ----------
+    const notesBlock = () => {
+        const head = `NOTES: PLEASE SCAN COPIES OF PODS AND SUPPLIER DOCS WITHIN 24-48hrs AFTER DELIVERY TO THE EMAIL YOU RECEIVED THE LOADCON ON AND pods@fbn-transport.co.za`;
+        doc.setFontSize(8.5); doc.setFont('helvetica', 'bold');
+        const headLines = doc.splitTextToSize(head, CW - 2 * PAD);
+        doc.setFontSize(6.4); doc.setFont('helvetica', 'normal');
+        const bulletLines = NOTE_BULLETS.map(b => doc.splitTextToSize('•  ' + b, CW - 2 * PAD - 2));
+        const h = 2 * PAD + headLines.length * lineHFor(8.5) + 1 + bulletLines.reduce((s, bl) => s + bl.length * lineHFor(6.4), 0) + bulletLines.length * 0.6;
+        if (y + h > 286) { doc.addPage(); y = 14; }
+        doc.setDrawColor(...BORDER); doc.setLineWidth(0.25); doc.rect(M, y, CW, h);
+        let ty = y + PAD + 2.6;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...RED);
+        doc.text(headLines, M + PAD, ty); ty += headLines.length * lineHFor(8.5) + 1;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(6.4); doc.setTextColor(...NAVY);
+        bulletLines.forEach(bl => { doc.text(bl, M + PAD + 1, ty); ty += bl.length * lineHFor(6.4) + 0.6; });
+        y += h;
+    };
+
+    // ---------- special instructions (navy heading + red body) ----------
+    const specialBlock = () => {
+        const body = `${lc.specialInstructions ? lc.specialInstructions + '  ' : ''}${DEFAULT_SPECIAL}`;
+        doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+        const bodyLines = doc.splitTextToSize(body, CW - 2 * PAD);
+        const h = 2 * PAD + lineHFor(7.5) + bodyLines.length * lineHFor(7.5);
+        if (y + h > 286) { doc.addPage(); y = 14; }
+        doc.setDrawColor(...BORDER); doc.setLineWidth(0.25); doc.rect(M, y, CW, h);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...NAVY);
+        doc.text('SPECIAL INSTRUCTIONS:', M + PAD, y + PAD + 2.6);
+        doc.setTextColor(...RED);
+        doc.text(bodyLines, M + PAD, y + PAD + 2.6 + lineHFor(7.5));
+        y += h;
+    };
+
+    const L = 34;
+    const c3 = (CW - 3 * L) / 3;
+
+    // Title banner
+    row([{ w: CW, text: title, style: 'banner' }]);
 
     if (type === 'deliveryNote') {
-        row([{ w: L, text: 'CONSIGNMENT', label: true }, { w: CW - L, text: `${lc.loadConNumber}   ${lc.collectionPoint || ''} ${lc.deliveryPoint ? '→ ' + lc.deliveryPoint : ''}` }]);
-        row([{ w: L, text: 'CARRIER', label: true }, { w: CW / 2 - L, text: lc.subcontractorName || '' }, { w: L, text: 'CUST O/NO', label: true }, { w: CW / 2 - L, text: lc.customerOrderNumber || '' }]);
-        row([{ w: L, text: 'DRIVER', label: true }, { w: CW / 2 - L, text: lc.subcontractorDriverName || '' }, { w: L, text: 'VEHICLE', label: true }, { w: CW / 2 - L, text: lc.subcontractorVehicleReg || '' }]);
+        row([{ w: L, text: 'CONSIGNMENT', style: 'label' }, { w: CW / 2 - L, text: lc.loadConNumber }, { w: L, text: 'FBN REF', style: 'label' }, { w: CW / 2 - L, text: lc.loadRefNo || '' }]);
+        row([{ w: L, text: 'CARRIER', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorName || '' }, { w: L, text: 'DRIVER', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorDriverName || '' }]);
     } else if (type === 'clientOrder') {
-        row([{ w: L, text: 'INSTRUCTION FROM', label: true }, { w: CW / 2 - L, text: lc.fbnRepresentative || '' }, { w: L, text: 'FBN REF', label: true }, { w: CW / 2 - L, text: lc.loadRefNo || '' }]);
-        row([{ w: L, text: 'CLIENT', label: true }, { w: CW / 2 - L, text: lc.clientName || '' }, { w: L, text: 'FOR ATT', label: true }, { w: CW / 2 - L, text: lc.clientContact || '' }]);
-        row([{ w: L, text: 'CUST O/NO', label: true }, { w: CW - L, text: lc.customerOrderNumber || '' }]);
+        row([{ w: L, text: 'INSTRUCTION FROM', style: 'label' }, { w: CW / 2 - L, text: lc.fbnRepresentative || '' }, { w: L, text: 'LOADCON NO', style: 'label' }, { w: CW / 2 - L, text: lc.loadConNumber }]);
+        row([{ w: L, text: 'CLIENT', style: 'label' }, { w: CW / 2 - L, text: lc.clientName || '' }, { w: L, text: 'FOR ATT', style: 'label' }, { w: CW / 2 - L, text: lc.clientContact || '' }]);
+        row([{ w: L, text: 'FBN REF', style: 'label' }, { w: CW / 2 - L, text: lc.loadRefNo || '' }, { w: L, text: 'CUST O/NO', style: 'label' }, { w: CW / 2 - L, text: lc.customerOrderNumber || '' }]);
     } else {
-        row([{ w: L, text: 'INSTRUCTION FROM', label: true }, { w: CW / 2 - L, text: lc.fbnRepresentative || '' }, { w: L, text: 'FBN REF', label: true }, { w: CW / 2 - L, text: lc.loadRefNo || '' }]);
-        row([{ w: L, text: 'SUB-CONTRACTOR', label: true }, { w: CW / 2 - L, text: lc.subcontractorName || '' }, { w: L, text: 'FOR ATT', label: true }, { w: CW / 2 - L, text: lc.forAttention || '' }]);
-        row([{ w: L, text: 'REG + DRIVER', label: true }, { w: CW / 2 - L, text: lc.subcontractorDriverName || lc.subcontractorVehicleReg || '' }, { w: L, text: 'DRIVER CELL', label: true }, { w: CW / 2 - L, text: lc.subcontractorDriverCell || '' }]);
-        row([{ w: L, text: 'NOTES', label: true }, { w: CW - L, text: SUBBIE_NOTES, size: 6.3 }]);
+        row([{ w: L, text: 'INSTRUCTION FROM', style: 'label' }, { w: CW / 2 - L, text: lc.fbnRepresentative || '' }, { w: L, text: 'LOADCON NO', style: 'label' }, { w: CW / 2 - L, text: lc.loadConNumber }]);
+        row([{ w: L, text: 'SUB-CONTRACTOR', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorName || '' }, { w: L, text: 'FOR ATT', style: 'label' }, { w: CW / 2 - L, text: lc.forAttention || '' }]);
+        row([{ w: L, text: 'REG + DRIVER', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorDriverName || lc.subcontractorVehicleReg || '' }, { w: L, text: 'DRIVER CELL', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorDriverCell || '' }]);
+        notesBlock();
     }
 
-    row([{ w: L, text: 'SPECIAL INSTR.', label: true }, { w: CW - L, text: `${lc.specialInstructions ? lc.specialInstructions + '  ' : ''}${DEFAULT_SPECIAL}`, size: 7 }]);
+    specialBlock();
 
-    const c3 = (CW - 3 * L) / 3; // value width when 3 label/value pairs
     row([
-        { w: L, text: 'LOADING DATE', label: true }, { w: c3, text: fmt(lc.collectionDate) },
-        { w: L, text: 'LOADING TIME', label: true }, { w: c3, text: lc.loadingTime || '' },
-        { w: L, text: 'CUST O/NO', label: true }, { w: c3, text: lc.customerOrderNumber || '' },
+        { w: L, text: 'LOADING DATE', style: 'label' }, { w: c3, text: fmt(lc.collectionDate), style: 'value' },
+        { w: L, text: 'LOADING TIME', style: 'label' }, { w: c3, text: lc.loadingTime || '', style: 'value' },
+        { w: L, text: 'CUST O/NO', style: 'label' }, { w: c3, text: lc.customerOrderNumber || '', style: 'value' },
     ]);
     row([
-        { w: L, text: 'OFFLOAD DATE', label: true }, { w: c3, text: fmt(lc.deliveryDate) },
-        { w: L, text: 'OFFLOAD TIME', label: true }, { w: c3, text: lc.offloadingTime || '' },
-        { w: L, text: 'CONTAINER NO', label: true }, { w: c3, text: lc.containerNo || '' },
+        { w: L, text: 'OFFLOADING DATE', style: 'label' }, { w: c3, text: fmt(lc.deliveryDate), style: 'value' },
+        { w: L, text: 'OFFLOADING TIME', style: 'label' }, { w: c3, text: lc.offloadingTime || '', style: 'value' },
+        { w: L, text: 'CONTAINER NO', style: 'label' }, { w: c3, text: lc.containerNo || '', style: 'value' },
     ]);
     row([
-        { w: L, text: 'QUANTITY', label: true }, { w: c3, text: lc.quantity || '' },
-        { w: L, text: 'LOAD TYPE', label: true }, { w: c3, text: lc.loadType || '' },
-        { w: L, text: 'WEIGHT', label: true }, { w: c3, text: lc.weightKg ? `${lc.weightKg} KG` : '' },
+        { w: L, text: 'QUANTITY', style: 'label' }, { w: c3, text: lc.quantity || '', style: 'value' },
+        { w: L, text: 'LOAD TYPE', style: 'label' }, { w: c3, text: lc.loadType || '', style: 'value' },
+        { w: L, text: 'WEIGHT', style: 'label' }, { w: c3, text: lc.weightKg ? `${lc.weightKg} KG` : '', style: 'value' },
     ]);
-    row([{ w: L, text: 'COMMODITY', label: true }, { w: CW - L, text: `${lc.commodity || ''}${lc.packaging ? ' - ' + lc.packaging : ''}` }]);
+    row([{ w: L, text: 'COMMODITY', style: 'label' }, { w: CW - L, text: `${lc.commodity || ''}${lc.packaging ? ' - ' + lc.packaging : ''}`, style: 'value' }]);
 
-    // Addresses block
-    row([{ w: CW / 2, text: 'COLLECTION ADDRESS', label: true, align: 'center' }, { w: CW / 2, text: 'DELIVERY ADDRESS', label: true, align: 'center' }]);
-    row([{ w: CW / 2, text: lc.collectionPoint || '' }, { w: CW / 2, text: lc.deliveryPoint || '' }]);
+    // Addresses
+    row([{ w: CW / 2, text: 'COLLECTION ADDRESS', style: 'centerLabel' }, { w: CW / 2, text: 'DELIVERY ADDRESS', style: 'centerLabel' }]);
+    row([{ w: CW / 2, text: lc.collectionPoint || '', style: 'value' }, { w: CW / 2, text: lc.deliveryPoint || '', style: 'value' }]);
     row([
-        { w: L, text: 'CONTACT', label: true }, { w: CW / 2 - L, text: `${lc.collectionContact || ''}${lc.collectionTelephone ? ' / ' + lc.collectionTelephone : ''}` },
-        { w: L, text: 'CONTACT', label: true }, { w: CW / 2 - L, text: `${lc.deliveryContact || ''}${lc.deliveryTelephone ? ' / ' + lc.deliveryTelephone : ''}` },
+        { w: 18, text: 'CONTACT', style: 'label', size: 7 }, { w: CW / 2 - 18, text: `${lc.collectionContact || ''}${lc.collectionTelephone ? ' / ' + lc.collectionTelephone : ''}`, style: 'value' },
+        { w: 18, text: 'CONTACT', style: 'label', size: 7 }, { w: CW / 2 - 18, text: `${lc.deliveryContact || ''}${lc.deliveryTelephone ? ' / ' + lc.deliveryTelephone : ''}`, style: 'value' },
     ]);
 
-    if (lc.equipmentRequired?.length) {
-        row([{ w: L, text: 'EQUIPMENT', label: true }, { w: CW - L, text: lc.equipmentRequired.join(', ') }]);
-    }
+    row([{ w: L, text: 'EQUIPMENT REQUIRED', style: 'label' }, { w: CW - L, text: (lc.equipmentRequired || []).join(', '), style: 'value' }]);
 
-    // Rate band — only the side allowed to see it
+    // Rate row
     if (type === 'loadcon') {
-        row([{ w: L, text: 'AGREED RATE', label: true }, { w: CW / 2 - L, text: `${money(lc.supplierRate)}  (EXCL VAT)`, size: 9 }, { w: L, text: 'GIT/LOAD', label: true }, { w: CW / 2 - L, text: 'R 1 500 000.00' }]);
+        row([{ w: L, text: 'AGREED RATE', style: 'label' }, { w: 52, text: money(lc.supplierRate), style: 'value', size: 9 }, { w: L, text: 'RATE EXCL V.A.T.', style: 'label', size: 7 }, { w: CW - 2 * L - 52, text: 'GIT/LOAD: R 1 500 000.00', style: 'value', size: 7.5 }]);
     } else if (type === 'clientOrder') {
-        row([{ w: L, text: 'AGREED RATE', label: true }, { w: CW - L, text: `${money(lc.totalAmount)}  (EXCL VAT)`, size: 9 }]);
+        row([{ w: L, text: 'AGREED RATE', style: 'label' }, { w: CW / 2 - L, text: money(lc.totalAmount), style: 'value', size: 9 }, { w: L, text: 'RATE EXCL V.A.T.', style: 'label', size: 7 }, { w: CW / 2 - L, text: '', style: 'value' }]);
     }
 
     // POD signature block
     if (type === 'deliveryNote') {
-        y += 2;
-        banner('PROOF OF DELIVERY');
-        row([{ w: CW / 2, text: 'RECEIVED IN GOOD ORDER BY', label: true }, { w: CW / 2, text: 'DATE / TIME', label: true }]);
-        row([{ w: CW / 2, text: ' ' }, { w: CW / 2, text: ' ' }]); // signature space
-        row([{ w: CW / 2, text: 'NAME & SIGNATURE', label: true }, { w: CW / 2, text: 'SHORTAGES / DAMAGES / REMARKS', label: true }]);
-        row([{ w: CW / 2, text: ' ' }, { w: CW / 2, text: ' ' }]);
+        row([{ w: CW / 2, text: 'RECEIVED IN GOOD ORDER BY', style: 'centerLabel' }, { w: CW / 2, text: 'DATE / TIME', style: 'centerLabel' }]);
+        row([{ w: CW / 2, text: ' ', style: 'value' }, { w: CW / 2, text: ' ', style: 'value' }]);
+        row([{ w: CW, text: 'SHORTAGES / DAMAGES / REMARKS', style: 'centerLabel' }]);
+        row([{ w: CW, text: '  ', style: 'value' }]);
     }
 
-    // Footer
-    if (y > 280) { doc.addPage(); y = 16; }
-    y = Math.max(y + 4, 288);
-    doc.setDrawColor(...LINE); doc.setLineWidth(0.2); doc.line(M, y - 3, W - M, y - 3);
-    doc.setTextColor(150, 160, 170); doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8);
-    const foot = type === 'loadcon'
-        ? 'Subcontractor Terms & Conditions apply.  FBN Transport  |  Commercial Freight Specialists  |  tracking@fbn-transport.co.za'
-        : 'FBN Transport  |  Commercial Freight Specialists  |  tracking@fbn-transport.co.za';
-    doc.text(foot, W / 2, y, { align: 'center' });
+    // Footer: red T&Cs link (subbie) + branding
+    y += 3;
+    if (type === 'loadcon') {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...RED);
+        doc.text('* SUBCONTRACTOR TERMS & CONDITIONS APPLY *', W / 2, y, { align: 'center' });
+        y += 4;
+    }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(150, 160, 170);
+    doc.text('FBN Transport  |  Commercial Freight Specialists  |  tracking@fbn-transport.co.za', W / 2, y, { align: 'center' });
 
     const base64 = (doc.output('datauristring') as string).split(',')[1] || '';
     return { doc, base64, filename: `${title.replace(/[^A-Za-z0-9]+/g, '_')}_${lc.loadConNumber}.pdf` };

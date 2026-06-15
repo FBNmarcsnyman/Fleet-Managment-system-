@@ -16,6 +16,7 @@ import SupplierRegistrationPortal from './components/supplier/SupplierRegistrati
 import ManagementPortal from './components/ManagementPortal';
 import FleetPortal from './components/FleetPortal';
 import OperationsPortal from './components/operations/OperationsPortal';
+import PartnersPortal from './components/operations/PartnersPortal';
 import WorkshopPortal from './components/WorkshopPortal';
 import FinancePortal from './components/FinancePortal';
 import IncidentManagement from './components/IncidentManagement';
@@ -264,6 +265,7 @@ const App: React.FC = () => {
             case 'management': return managementView;
             case 'fleet': return <FleetPortal />;
             case 'operations': return <OperationsPortal />;
+            case 'partners': return <PartnersPortal />;
             case 'workshop': return <WorkshopPortal />;
             case 'finance': return <FinancePortal />;
             case 'incidentManagement': return <IncidentManagement />;

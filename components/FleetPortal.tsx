@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 // Fix: Added missing import for XLSX to handle Google Sheets data synchronization
 import * as XLSX from 'xlsx';
-import { useUIState, useVehicles } from '../contexts/AppContexts';
+import { useUIState, useVehicles, useOperations } from '../contexts/AppContexts';
 import VehicleList from './fleet/VehicleList';
+import LiveFleetMap from './operations/LiveFleetMap';
+import RoutePlanner from './RoutePlanner';
 import FuelManagement from './FuelManagement';
 import { BRANCHES } from '../constants';
 import FleetDashboard from './fleet/FleetDashboard';
@@ -13,11 +15,12 @@ import FleetAssetAdmin from './fleet/FleetAssetAdmin';
 import DriversManagementView from './fleet/DriversManagementView';
 import { FuelEntry } from '../types';
 
-type FleetView = 'dashboard' | 'vehicles' | 'admin' | 'drivers' | 'fuelAndCosts' | 'maintenance' | 'checklists' | 'operationsLog';
+type FleetView = 'dashboard' | 'vehicles' | 'admin' | 'drivers' | 'fuelAndCosts' | 'maintenance' | 'checklists' | 'operationsLog' | 'fleetMap' | 'routePlanner';
 
 const FleetPortal: React.FC = () => {
     const { fleetSubView, handleFleetSubViewChange, showModal, showToast, hideModal } = useUIState();
     const { vehicles, fuelPriceRecords, bowsers, bowserRefills, handleAddFuelEntry, handleSetFuelPrice, handleAddBowserRefill, handleAddBowser, handleBulkAddFuelEntries } = useVehicles();
+    const { users = [], loadConfirmations = [] } = useOperations();
     
     // Persist the connection URL in localStorage
     const [connectedFuelSheetUrl, setConnectedFuelSheetUrl] = useState<string>(() => {
@@ -33,6 +36,8 @@ const FleetPortal: React.FC = () => {
         { view: 'fuelAndCosts', label: 'Fuel & Costs' },
         { view: 'maintenance', label: 'Maintenance' },
         { view: 'checklists', label: 'Checklists' },
+        { view: 'fleetMap', label: 'Live Map' },
+        { view: 'routePlanner', label: 'Route Planner' },
         { view: 'operationsLog', label: 'Operations Log' },
     ];
 
@@ -185,6 +190,10 @@ const FleetPortal: React.FC = () => {
                 return <FleetMaintenanceView />;
             case 'checklists':
                 return <FleetChecklistView />;
+            case 'fleetMap':
+                return <LiveFleetMap vehicles={vehicles} users={users} loadConfirmations={loadConfirmations} />;
+            case 'routePlanner':
+                return <RoutePlanner />;
             case 'operationsLog':
                 return <FleetOperationsLogView />;
             case 'dashboard':

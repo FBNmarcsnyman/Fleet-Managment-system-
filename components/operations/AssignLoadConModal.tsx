@@ -10,7 +10,7 @@ interface AssignLoadConModalProps {
 }
 
 const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCancel }) => {
-    const { suppliers, handleUpdateLoadConfirmation } = useOperations();
+    const { suppliers, loadConfirmations = [], handleUpdateLoadConfirmation } = useOperations();
     const { vehicles, users, drivers = [] } = useVehicles();
     const { hideModal, showToast } = useUIState();
 
@@ -81,6 +81,17 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
     , [supplierId, transportSuppliers]);
 
     const isNonCompliant = selectedSupplier?.complianceStatus !== 'Compliant';
+
+    // Lane rate history: what we've paid carriers on this same lane before.
+    const laneHistory = useMemo(() => {
+        const lane = (loadCon.route || `${loadCon.collectionPoint || ''}→${loadCon.deliveryPoint || ''}`).toLowerCase().trim();
+        return (loadConfirmations || [])
+            .filter((o: LoadConfirmation) => o.id !== loadCon.id && (o.supplierRate || 0) > 0 &&
+                ((o.route || `${o.collectionPoint || ''}→${o.deliveryPoint || ''}`).toLowerCase().trim() === lane))
+            .sort((a: LoadConfirmation, b: LoadConfirmation) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 4);
+    }, [loadConfirmations, loadCon]);
+    const laneAvg = laneHistory.length ? laneHistory.reduce((s: number, o: LoadConfirmation) => s + (o.supplierRate || 0), 0) / laneHistory.length : 0;
 
     const [saving, setSaving] = useState(false);
 
@@ -210,6 +221,9 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                             <div>
                                 <label className={labelClasses}>Supplier Rate (ZAR)</label>
                                 <input type="number" value={supplierRate} onChange={e => setSupplierRate(e.target.value)} required className={inputClasses} placeholder="0.00" />
+                                {laneHistory.length > 0 && (
+                                    <p className="text-[10px] text-gray-400 mt-1 ml-1">Lane avg <strong className="text-blue-300">R {Math.round(laneAvg).toLocaleString('en-ZA')}</strong> · last: {laneHistory.map((o: any) => `R${Math.round(o.supplierRate).toLocaleString('en-ZA')}`).join(', ')}</p>
+                                )}
                             </div>
                             <div>
                                 <label className={labelClasses}>Margin</label>

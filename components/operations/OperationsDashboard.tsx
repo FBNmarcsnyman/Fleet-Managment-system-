@@ -9,6 +9,7 @@ import { TruckIcon } from '../icons/TruckIcon';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import OperationsSummaryWidget from '../dashboard-widgets/OperationsSummaryWidget';
+import BrokingAnalytics from './BrokingAnalytics';
 import CommunicationHubModal from './CommunicationHubModal';
 import Modal from '../Modal';
 
@@ -57,6 +58,7 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
 
     return (
         <div className="space-y-8">
+            <BrokingAnalytics />
             <OperationsSummaryWidget />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

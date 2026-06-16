@@ -61,16 +61,37 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         setSendingLc(lc.id);
         try {
             let attachments: any[] | undefined;
+            let pdfFailed = false;
             try {
                 const { base64, filename } = await buildLoadConPdf(lc, 'loadcon');
                 attachments = [{ filename, content: base64, contentType: 'application/pdf' }];
             } catch (pdfErr) {
                 console.error('[loads] LoadCon PDF build failed, sending without attachment:', pdfErr);
+                pdfFailed = true;
             }
             const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
             const base = `${window.location.origin}${window.location.pathname}`;
+            const fmtD = (d?: string) => { if (!d) return ''; try { return format(new Date(d), 'dd/MM/yyyy'); } catch { return d; } };
+            // Key details in the email body itself, so the load info is always there
+            // even if the PDF doesn't render in their mail client.
+            const rows: [string, string | undefined][] = [
+                ['Collection', lc.collectionPoint],
+                ['Delivery', lc.deliveryPoint],
+                ['Loading date', fmtD(lc.collectionDate)],
+                ['Loading time', lc.loadingTime],
+                ['Load type / size', lc.loadType],
+                ['Weight (kg)', lc.weightKg],
+                ['Commodity', lc.commodity],
+                ['Packaging', lc.packaging],
+                ['Transport rate', lc.supplierRate ? `R ${lc.supplierRate}` : ''],
+                ['Special instructions', lc.specialInstructions],
+            ];
+            const detailRows = rows.filter(([, v]) => v != null && `${v}`.trim() !== '')
+                .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px;white-space:nowrap">${k}</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">${v}</td></tr>`).join('');
+            const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
             const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
-              <p>Please find attached FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}.</p>
+              <p>Please find ${attachments ? 'attached ' : ''}FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}.</p>
+              ${detailsTable}
               <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
               ${emailButton(`${base}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
               <p>Regards,<br>FBN Transport</p>`);
@@ -80,7 +101,9 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             });
             if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message || 'unknown error'}`); return; }
             onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
-            showToast(`Load Confirmation ${lc.loadConNumber} emailed to ${to}.`);
+            showToast(pdfFailed
+                ? `Emailed to ${to} — but the PDF attachment couldn't be built, so only the details (in the email body) were sent.`
+                : `Load Confirmation ${lc.loadConNumber} emailed to ${to} with the PDF attached.`);
         } catch (e) {
             showToast(`Could not send: ${e instanceof Error ? e.message : 'unknown error'}`);
         } finally {

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useMemo, useRef, ReactNode } from 're
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
-import { supabase, runWrite, uploadFile, directInsert } from '../lib/supabase';
+import { supabase, runWrite, uploadFile, directInsert, directUpdate } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -113,6 +113,38 @@ export const sendSupplierPodEmail = async (lc: any): Promise<void> => {
         await supabase.functions.invoke('send-email', { body: { to, subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] supplier POD copy failed:', e);
+    }
+};
+
+// When an ALREADY-SENT LoadCon's details change, re-send it to the transporter
+// clearly flagged as AMENDED, with the accept link so they re-confirm the new
+// terms. `changed` is a short human list of what changed.
+export const sendAmendedLoadConEmail = async (lc: any, changed: string[]): Promise<void> => {
+    const to = lc?.subcontractorEmail;
+    if (!to) return;
+    const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+    const acceptLink = `${base}?accept=${lc.id}`;
+    const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+    const list = changed.length ? `<ul style="font-size:14px;color:#1f2937">${changed.map(c => `<li>${c}</li>`).join('')}</ul>` : '';
+    const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+      <p><strong style="color:#b45309">AMENDED DETAILS — please review &amp; re-confirm.</strong></p>
+      <p>The load confirmation <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''} has been <strong>amended</strong>. Please see the updated details${list ? ' below' : ''} and confirm acceptance of the amended terms.</p>
+      ${list}
+      ${emailButton(acceptLink, 'Review &amp; confirm amended load &rarr;', '#b45309')}
+      <p style="font-size:13px;color:#5b6573">If you cannot accept the amended terms, please reply to this email.</p>
+      <p>Regards,<br>FBN Transport</p>`);
+    try {
+        await supabase.functions.invoke('send-email', {
+            body: {
+                to,
+                cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])],
+                subject: `AMENDED Load Confirmation ${lc.loadConNumber} - please re-confirm`,
+                html,
+                fromName: 'FBN Transport',
+            },
+        });
+    } catch (e) {
+        console.error('[ops] amended loadcon resend failed:', e);
     }
 };
 
@@ -509,9 +541,33 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             try {
                 const prev = (stateRef.current.loadConfirmations || []).find((l: LoadConfirmation) => l.id === id);
                 const row = toLoadConfirmationUpdate(updates, branchIdByName);
-                const { error } = await runWrite(() => supabase.from('load_confirmations').update(row).eq('id', id));
+                // Direct REST update — the freeze-proof path (editing a load used to
+                // stall on the wedged supabase-js session, so changes never saved).
+                const { error } = await directUpdate('load_confirmations', { id }, row as any);
                 if (error) { console.error('[ops] updateLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id, updates } });
+
+                // If this load was ALREADY sent to the transporter and its real-world
+                // details changed, re-send it flagged as AMENDED so they re-confirm.
+                if (prev?.sentToSupplierDate) {
+                    const FIELDS: { key: keyof LoadConfirmation; label: string }[] = [
+                        { key: 'collectionPoint', label: 'Collection point' },
+                        { key: 'deliveryPoint', label: 'Delivery point' },
+                        { key: 'collectionDate', label: 'Loading date' },
+                        { key: 'deliveryDate', label: 'Offloading date' },
+                        { key: 'loadingTime', label: 'Loading time' },
+                        { key: 'supplierRate', label: 'Transport rate' },
+                        { key: 'loadType', label: 'Load type' },
+                        { key: 'weightKg', label: 'Weight' },
+                        { key: 'commodity', label: 'Commodity' },
+                        { key: 'route', label: 'Route' },
+                        { key: 'specialInstructions', label: 'Special instructions' },
+                    ];
+                    const changed = FIELDS
+                        .filter(f => f.key in updates && `${(updates as any)[f.key] ?? ''}` !== `${(prev as any)[f.key] ?? ''}`)
+                        .map(f => `${f.label}: ${(updates as any)[f.key] || '—'}`);
+                    if (changed.length) sendAmendedLoadConEmail({ ...(prev || {}), ...updates, id }, changed);
+                }
                 // Auto-fire the POD request the moment a load becomes Delivered
                 // (only on the transition, and only if no POD is in yet).
                 if (updates.status === 'Delivered' && prev?.status !== 'Delivered' && !prev?.podPhoto && !updates.podPhoto) {

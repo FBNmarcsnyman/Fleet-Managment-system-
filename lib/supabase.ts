@@ -177,29 +177,28 @@ const rawRefreshToken = async (): Promise<string | null> => {
   return null;
 };
 
-// Insert a row via direct REST and return the created record (or an error).
-// Tries the current token; on 401/JWT-expired it raw-refreshes once and retries.
-export const directInsert = async (
-  table: string,
-  row: Record<string, any>,
+// Shared sender for the direct-REST writes: gets a token (refreshing if needed),
+// runs the request, and on a 401/403 raw-refreshes once and retries.
+const directSend = async (
+  path: string,
+  method: 'POST' | 'PATCH',
+  body: Record<string, any>,
 ): Promise<{ data: any; error: { message: string } | null }> => {
   let token = readStoredSession()?.access_token || null;
   if (!token) {
     token = await rawRefreshToken();
     if (!token) return { data: null, error: { message: 'Your session has expired — please sign out and back in.' } };
   }
-
-  const attempt = async (tok: string) => raced(fetch(`${supabaseUrl}/rest/v1/${table}`, {
-    method: 'POST',
+  const attempt = async (tok: string) => raced(fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    method,
     headers: {
       apikey: supabaseAnonKey,
       Authorization: `Bearer ${tok}`,
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
     },
-    body: JSON.stringify(row),
+    body: JSON.stringify(body),
   }), 15000);
-
   try {
     let resp = await attempt(token);
     if (resp.status === 401 || resp.status === 403) {
@@ -218,4 +217,19 @@ export const directInsert = async (
       : (e instanceof Error ? e.message : 'Network error');
     return { data: null, error: { message: msg } };
   }
+};
+
+// Insert a row via direct REST and return the created record (or an error).
+export const directInsert = (table: string, row: Record<string, any>) =>
+  directSend(table, 'POST', row);
+
+// Update row(s) via direct REST. `match` is a PostgREST filter, e.g. {id: '...'}.
+// Returns the updated record (or an error) — freeze-proof, like directInsert.
+export const directUpdate = (
+  table: string,
+  match: Record<string, string>,
+  row: Record<string, any>,
+) => {
+  const qs = Object.entries(match).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
+  return directSend(`${table}?${qs}`, 'PATCH', row);
 };

@@ -1,8 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { supabase } from '../lib/supabase';
 
 const NAVY = '#13294b';
 const YELLOW = '#f5b700';
+
+const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/load-public`;
+const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+// Call the public edge function with a plain fetch (NOT supabase.functions.invoke):
+// the supabase-js client can wedge on its own session handling and leave the page
+// stuck on "Submitting…", even though the function itself returns 200. A direct
+// fetch can't be held up by that, and we bound it with a timeout to be safe.
+const callPublic = async (body: Record<string, unknown>): Promise<any> => {
+    const resp = await Promise.race<Response>([
+        fetch(FN_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${ANON}` },
+            body: JSON.stringify(body),
+        }),
+        new Promise<Response>((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000)),
+    ]);
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok || data?.error) throw new Error(data?.error || `${resp.status}`);
+    return data;
+};
 
 interface Summary {
     load_con_number: string;
@@ -12,6 +32,7 @@ interface Summary {
     collection_date?: string;
     delivery_date?: string;
     eta?: string;
+    loading_eta?: string;
     subcontractor_name?: string;
     vehicle_reg?: string;
     driver_name?: string;
@@ -40,78 +61,99 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
     const driverName = useRef<HTMLInputElement>(null);
     const vehicleReg = useRef<HTMLInputElement>(null);
     const driverCell = useRef<HTMLInputElement>(null);
+    const loadingEta = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         (async () => {
-            const { data, error } = await supabase.functions.invoke('load-public', { body: { loadId, action: 'track' } });
-            if (error || (data as any)?.error) { setErr((data as any)?.error || error?.message || 'Could not load this.'); return; }
-            setLoad(data as Summary);
+            try { setLoad(await callPublic({ loadId, action: 'track' }) as Summary); }
+            catch (e) { setErr(e instanceof Error ? e.message : 'Could not load this.'); }
         })();
     }, [loadId]);
 
     const submitAccept = async () => {
         setBusy(true); setErr(null);
-        const { data, error } = await supabase.functions.invoke('load-public', {
-            body: { loadId, action: 'accept', driverName: driverName.current?.value, vehicleReg: vehicleReg.current?.value, driverCell: driverCell.current?.value },
-        });
-        setBusy(false);
-        if (error || (data as any)?.error) { setErr((data as any)?.error || error?.message || 'Could not submit.'); return; }
-        setDone(true);
+        try {
+            await callPublic({
+                loadId, action: 'accept',
+                driverName: driverName.current?.value,
+                vehicleReg: vehicleReg.current?.value,
+                driverCell: driverCell.current?.value,
+                loadingEta: loadingEta.current?.value,
+            });
+            setDone(true);
+        } catch (e) {
+            setErr(e instanceof Error ? e.message : 'Could not submit. Please try again.');
+        } finally {
+            setBusy(false);
+        }
     };
 
     const idx = load ? stageIndex(load.status) : 0;
 
     return (
         <div style={{ minHeight: '100vh', background: '#0a0f1a', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-            <div style={{ width: '100%', maxWidth: 480, background: '#fff', borderRadius: 14, overflow: 'hidden', marginTop: 24 }}>
-                <div style={{ background: NAVY, padding: '16px 20px' }}>
-                    <img src="/fbn-logo.jpg" alt="FBN Transport" style={{ height: 38, background: '#fff', borderRadius: 4, padding: 3 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                    <div style={{ color: YELLOW, fontSize: 10, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', marginTop: 6 }}>{mode === 'accept' ? 'Load Acceptance' : 'Shipment Tracking'}</div>
+            <div style={{ width: '100%', maxWidth: 720, background: '#fff', borderRadius: 16, overflow: 'hidden', marginTop: 28, boxShadow: '0 10px 40px rgba(0,0,0,0.4)' }}>
+                <div style={{ background: NAVY, padding: '22px 30px' }}>
+                    <img src="/fbn-logo.jpg" alt="FBN Transport" style={{ height: 46, background: '#fff', borderRadius: 4, padding: 4 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                    <div style={{ color: YELLOW, fontSize: 12, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', marginTop: 8 }}>{mode === 'accept' ? 'Load Acceptance' : 'Shipment Tracking'}</div>
                 </div>
-                <div style={{ height: 4, background: YELLOW }} />
-                <div style={{ padding: 22 }}>
+                <div style={{ height: 5, background: YELLOW }} />
+                <div style={{ padding: 34 }}>
                     {err && !load ? <p style={{ color: '#b91c1c' }}>{err}</p> : !load ? <p style={{ color: '#6b7280' }}>Loading…</p> : (
                         <>
-                            <h2 style={{ color: NAVY, margin: '0 0 2px', fontSize: 20 }}>Load {load.load_con_number}</h2>
-                            <p style={{ color: '#6b7280', fontSize: 14, margin: '0 0 18px' }}>{load.collection_point} → {load.delivery_point}</p>
+                            <h2 style={{ color: NAVY, margin: '0 0 4px', fontSize: 26 }}>Load {load.load_con_number}</h2>
+                            <p style={{ color: '#6b7280', fontSize: 16, margin: '0 0 24px' }}>{load.collection_point} → {load.delivery_point}</p>
 
                             {mode === 'track' && (
                                 <>
-                                    <div style={{ marginBottom: 18 }}>
+                                    <div style={{ marginBottom: 20 }}>
                                         {STAGES.map((s, i) => (
-                                            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0' }}>
-                                                <div style={{ width: 22, height: 22, borderRadius: '50%', background: i <= idx ? '#16a34a' : '#e5e7eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{i <= idx ? '✓' : i + 1}</div>
-                                                <span style={{ color: i === idx ? NAVY : i < idx ? '#16a34a' : '#9ca3af', fontWeight: i === idx ? 800 : 600, fontSize: 14 }}>{s}{i === idx ? '  ← current' : ''}</span>
+                                            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '7px 0' }}>
+                                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: i <= idx ? '#16a34a' : '#e5e7eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>{i <= idx ? '✓' : i + 1}</div>
+                                                <span style={{ color: i === idx ? NAVY : i < idx ? '#16a34a' : '#9ca3af', fontWeight: i === idx ? 800 : 600, fontSize: 15 }}>{s}{i === idx ? '  ← current' : ''}</span>
                                             </div>
                                         ))}
                                     </div>
-                                    <div style={{ background: '#f3f4f6', borderRadius: 8, padding: 12, fontSize: 13, color: '#374151' }}>
+                                    <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 16, fontSize: 14, color: '#374151', lineHeight: 1.7 }}>
                                         {load.collection_date && <div>Collection: <strong>{fmt(load.collection_date)}</strong></div>}
                                         {load.delivery_date && <div>Delivery (planned): <strong>{fmt(load.delivery_date)}</strong></div>}
+                                        {load.loading_eta && <div>ETA at loading point: <strong>{load.loading_eta}</strong></div>}
                                         {load.vehicle_reg && <div>Vehicle: <strong>{load.vehicle_reg}</strong></div>}
                                         {load.has_pod && <div style={{ color: '#16a34a', fontWeight: 700, marginTop: 4 }}>POD received ✓</div>}
                                     </div>
-                                    <p style={{ color: '#9ca3af', fontSize: 11, textAlign: 'center', marginTop: 16 }}>FBN Transport · Commercial Freight Specialists</p>
+                                    <p style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center', marginTop: 20 }}>FBN Transport · Commercial Freight Specialists</p>
                                 </>
                             )}
 
                             {mode === 'accept' && (done || load.accepted_at ? (
-                                <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                                    <div style={{ fontSize: 42 }}>✅</div>
+                                <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                                    <div style={{ fontSize: 48 }}>✅</div>
                                     <h3 style={{ color: NAVY }}>Load accepted</h3>
                                     <p style={{ color: '#4b5563' }}>Thank you. FBN Transport has your acceptance and driver details for load {load.load_con_number}.</p>
                                 </div>
                             ) : (
                                 <>
-                                    <p style={{ color: '#374151', fontSize: 14, marginBottom: 14 }}>Please confirm you accept this load and enter the driver &amp; vehicle details.</p>
-                                    {err && <p style={{ color: '#b91c1c', fontSize: 13 }}>{err}</p>}
-                                    <label style={{ fontSize: 12, fontWeight: 700, color: NAVY }}>Driver name</label>
-                                    <input ref={driverName} style={inp} placeholder="Driver full name" />
-                                    <label style={{ fontSize: 12, fontWeight: 700, color: NAVY }}>Vehicle registration</label>
-                                    <input ref={vehicleReg} style={inp} placeholder="e.g. ND 123-456" />
-                                    <label style={{ fontSize: 12, fontWeight: 700, color: NAVY }}>Driver cell</label>
-                                    <input ref={driverCell} style={inp} placeholder="082..." />
-                                    <button onClick={submitAccept} disabled={busy} style={{ width: '100%', background: busy ? '#9ca3af' : '#16a34a', color: '#fff', border: 'none', padding: 14, borderRadius: 10, fontSize: 16, fontWeight: 800, cursor: 'pointer', marginTop: 8 }}>
+                                    <p style={{ color: '#374151', fontSize: 15, marginBottom: 18 }}>Please confirm you accept this load and enter the driver &amp; vehicle details.</p>
+                                    {err && <p style={{ color: '#b91c1c', fontSize: 14 }}>{err}</p>}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                        <div>
+                                            <label style={lbl}>Driver name</label>
+                                            <input ref={driverName} style={inp} placeholder="Driver full name" />
+                                        </div>
+                                        <div>
+                                            <label style={lbl}>Vehicle registration</label>
+                                            <input ref={vehicleReg} style={inp} placeholder="e.g. ND 123-456" />
+                                        </div>
+                                        <div>
+                                            <label style={lbl}>Driver cell</label>
+                                            <input ref={driverCell} style={inp} placeholder="082..." />
+                                        </div>
+                                        <div>
+                                            <label style={lbl}>ETA at loading point</label>
+                                            <input ref={loadingEta} style={inp} placeholder="e.g. 18/06/2026 08:00" />
+                                        </div>
+                                    </div>
+                                    <button onClick={submitAccept} disabled={busy} style={{ width: '100%', background: busy ? '#9ca3af' : '#16a34a', color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 17, fontWeight: 800, cursor: 'pointer', marginTop: 10 }}>
                                         {busy ? 'Submitting…' : 'Accept load'}
                                     </button>
                                 </>
@@ -124,6 +166,7 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
     );
 };
 
-const inp: React.CSSProperties = { width: '100%', padding: 11, margin: '4px 0 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 15, boxSizing: 'border-box' };
+const inp: React.CSSProperties = { width: '100%', padding: 12, margin: '4px 0 4px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 15, boxSizing: 'border-box' };
+const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: NAVY };
 
 export default PublicLoad;

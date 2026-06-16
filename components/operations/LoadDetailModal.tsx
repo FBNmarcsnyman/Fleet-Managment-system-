@@ -19,6 +19,30 @@ const Section: React.FC<{ title: string; accent: string; children: React.ReactNo
 
 const inputCls = "w-full bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm focus:outline-none focus:ring-1 focus:ring-brand-secondary";
 
+// Edit state shared with the field component via context. F MUST live at module
+// scope (not inside the modal) — a component defined inside render is a new type
+// every render, so React remounts each input and you lose focus after one letter.
+const FieldCtx = React.createContext<{ editing: boolean; d: any; set: (k: string, v: any) => void }>({ editing: false, d: {}, set: () => {} });
+
+// Field: shows text, or an input when editing.
+const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[] }> = ({ label, k, value, type = 'text', opts }) => {
+    const { editing, d, set } = React.useContext(FieldCtx);
+    return (
+        <div>
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}</p>
+            {editing && k ? (
+                opts ? (
+                    <select value={d[k]} onChange={e => set(k, e.target.value)} className={inputCls}>{opts.map(o => <option key={o} value={o}>{o}</option>)}</select>
+                ) : (
+                    <input type={type} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />
+                )
+            ) : (
+                <p className="text-sm text-gray-100">{value || value === 0 ? value : '—'}</p>
+            )}
+        </div>
+    );
+};
+
 const LoadDetailModal: React.FC = () => {
     const { modal, showModal, showToast, hideModal } = useUIState();
     const { handleUpdateLoadConfirmation } = useOperations();
@@ -54,26 +78,11 @@ const LoadDetailModal: React.FC = () => {
             .catch((e: any) => showToast(`Could not save: ${e?.message || 'error'}`));
     };
 
-    // Field: shows text, or an input when editing.
-    const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[] }> = ({ label, k, value, type = 'text', opts }) => (
-        <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}</p>
-            {editing && k ? (
-                opts ? (
-                    <select value={d[k]} onChange={e => set(k, e.target.value)} className={inputCls}>{opts.map(o => <option key={o} value={o}>{o}</option>)}</select>
-                ) : (
-                    <input type={type} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />
-                )
-            ) : (
-                <p className="text-sm text-gray-100">{value || value === 0 ? value : '—'}</p>
-            )}
-        </div>
-    );
-
     const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
     const marginPct = lc.totalAmount ? (margin / lc.totalAmount) * 100 : 0;
 
     return (
+        <FieldCtx.Provider value={{ editing, d, set }}>
         <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
             <div className="flex items-start justify-between">
                 <div>
@@ -178,6 +187,7 @@ const LoadDetailModal: React.FC = () => {
                 </div>
             )}
         </div>
+        </FieldCtx.Provider>
     );
 };
 

@@ -137,6 +137,36 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         }
     };
 
+    // Send (or resend) the received POD to a recipient — defaults to the client,
+    // but you can type any address. WhatsApp-to-driver will hook in here once a
+    // sender number is connected (it'll use the load's driver cell).
+    const handleSendPod = async (lc: LoadConfirmation) => {
+        const podUrl = lc.podPhoto?.data;
+        if (!podUrl) { showToast('No POD on this load yet.'); return; }
+        const def = lc.clientEmail || lc.subcontractorEmail || '';
+        const entered = window.prompt(`Send POD for ${lc.loadConNumber} to (email):`, def);
+        if (entered === null) return;
+        const to = entered.trim();
+        if (!to) { showToast('No email entered.'); return; }
+        setRequesting(lc.id);
+        try {
+            const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+            const html = brandedEmail(`<p>Good day,</p>
+              <p>Please find the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}.</p>
+              ${emailButton(podUrl, 'View / download POD &rarr;', '#16a34a')}
+              <p>Regards,<br>FBN Transport</p>`);
+            const { data, error } = await supabase.functions.invoke('send-email', {
+                body: { to, subject: `POD - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+            });
+            if (error || (data && (data as any).error)) { showToast(`Could not send POD: ${(data as any)?.error || error?.message}`); return; }
+            showToast(`POD sent to ${to}.`);
+        } catch (e) {
+            showToast(`Could not send POD: ${e instanceof Error ? e.message : 'error'}`);
+        } finally {
+            setRequesting(null);
+        }
+    };
+
     const handleViewPdf = (lc: LoadConfirmation) => {
         // Opens the 3-document set: LoadCon (subbie), Client Order (client), Delivery Note.
         showModal('loadDocuments', { loadCon: lc });
@@ -220,7 +250,10 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                     </td>
                                     <td className="p-2">
                                         {lc.podPhoto ? (
-                                            <button onClick={() => handleViewPod(lc.podPhoto!)} className="inline-flex items-center text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 py-1 px-2 rounded-lg">View POD</button>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleViewPod(lc.podPhoto!)} className="inline-flex items-center text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 py-1 px-2 rounded-lg">View POD</button>
+                                                <button onClick={() => handleSendPod(lc)} disabled={requesting === lc.id} title="Email the POD to the client or anyone (WhatsApp to driver coming soon)" className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">{requesting === lc.id ? 'Sending…' : 'Send / Resend'}</button>
+                                            </div>
                                         ) : lc.status === 'Delivered' ? (
                                             <div className="flex items-center gap-2">
                                                 <button onClick={() => handleUploadPodClick(lc)} className="inline-flex items-center text-xs font-semibold bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded-lg"><UploadIcon className="h-4 w-4 mr-1"/> Upload POD</button>

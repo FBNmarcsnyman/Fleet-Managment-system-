@@ -54,6 +54,10 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
     const subbieSuggestions = useMemo(
         () => rankNames((suppliers as any[]).map(s => s.name), (loadConfirmations as any[]).map(l => l.subcontractorName)),
         [suppliers, loadConfirmations]);
+    // Routes: the built-in list plus any route typed on past loads (so new ones stick).
+    const routeSuggestions = useMemo(
+        () => rankNames(ROUTES, (loadConfirmations as any[]).map(l => l.route)),
+        [loadConfirmations]);
 
     // Order
     const [arrangingBranch, setArrangingBranch] = useState(ARRANGING_BRANCHES[0]);
@@ -285,9 +289,8 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                                 {FBN_REPS.map(r => <option key={r} value={r}>{r}</option>)}
                             </select></div>
                         <div><label className={labelCls}>Route</label>
-                            <select value={route} onChange={e => setRoute(e.target.value)} className={inputCls}>
-                                <option value="">-- Select --</option>{ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select></div>
+                            <input list="routeList" value={route} onChange={e => setRoute(e.target.value)} className={inputCls} placeholder="pick a route or type a new one" />
+                            <datalist id="routeList">{routeSuggestions.map(r => <option key={r} value={r} />)}</datalist></div>
                         <div><label className={labelCls}>Priority</label>
                             <select value={priority} onChange={e => setPriority(e.target.value as any)} className={inputCls}>
                                 <option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option>

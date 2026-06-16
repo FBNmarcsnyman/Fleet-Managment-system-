@@ -272,6 +272,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         handleAddSupplierComplianceDoc: async (
             supplierId: string,
             doc: { type: ComplianceDoc['type']; name: string; file: File; expiryDate?: string },
+            markValid?: boolean, // staff uploading an already-vetted doc -> Valid; supplier upload -> Pending Review
         ): Promise<Result<ComplianceDoc>> => {
             try {
                 const safe = doc.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -287,7 +288,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     file_url: up.url,
                     file_name: doc.file.name,
                     expiry_date: doc.expiryDate || null,
-                    status: (expired ? 'Expired' : 'Pending Review') as 'Valid' | 'Expired' | 'Pending Review',
+                    status: (expired ? 'Expired' : markValid ? 'Valid' : 'Pending Review') as 'Valid' | 'Expired' | 'Pending Review',
                 };
                 const { data, error } = await runWrite(() => supabase.from('supplier_compliance_docs').insert(insertRow).select().single());
                 if (error || !data) { console.error('[ops] addSupplierComplianceDoc failed:', error); return { ok: false, error: error?.message || 'Could not save the document.' }; }
@@ -300,6 +301,28 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 console.error('[ops] addSupplierComplianceDoc threw:', err);
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
+        },
+        // Management vetting: accept (-> Valid) or set a compliance doc's status.
+        handleVetComplianceDoc: async (supplierId: string, docId: string, status: 'Valid' | 'Pending Review' | 'Expired'): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('supplier_compliance_docs').update({ status }).eq('id', docId));
+                if (error) return { ok: false, error: error.message };
+                const sup = (stateRef.current.suppliers || []).find((s: Supplier) => s.id === supplierId);
+                const newDocs = (sup?.complianceDocs || []).map(d => d.id === docId ? { ...d, status } : d);
+                dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: supplierId, updates: { complianceDocs: newDocs } } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Reject / remove a compliance doc.
+        handleDeleteComplianceDoc: async (supplierId: string, docId: string): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('supplier_compliance_docs').delete().eq('id', docId));
+                if (error) return { ok: false, error: error.message };
+                const sup = (stateRef.current.suppliers || []).find((s: Supplier) => s.id === supplierId);
+                const newDocs = (sup?.complianceDocs || []).filter(d => d.id !== docId);
+                dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: supplierId, updates: { complianceDocs: newDocs } } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
 
         // -- Quotes -----------------------------------------------------------

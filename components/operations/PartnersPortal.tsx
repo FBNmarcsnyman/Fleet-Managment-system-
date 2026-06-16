@@ -1,14 +1,16 @@
 import React, { useState, lazy, Suspense } from 'react';
 import ClientManagementView from './ClientManagementView';
 import SupplierOnboardingView from './SupplierOnboardingView';
+import ComplianceVettingView from './ComplianceVettingView';
 
 const SubcontractorManagementView = lazy(() => import('./SupplierManagementView'));
 
-type PartnersView = 'clients' | 'subcontractors' | 'onboarding';
+type PartnersView = 'clients' | 'subcontractors' | 'compliance' | 'onboarding';
 
 const NAV: { view: PartnersView; label: string }[] = [
     { view: 'clients', label: 'Clients' },
     { view: 'subcontractors', label: 'Subcontractors' },
+    { view: 'compliance', label: 'Compliance Vetting' },
     { view: 'onboarding', label: 'Supplier Onboarding' },
 ];
 
@@ -18,6 +20,7 @@ const PartnersPortal: React.FC = () => {
     const render = () => {
         switch (view) {
             case 'subcontractors': return <Suspense fallback={<div className="text-gray-400 p-4">Loading…</div>}><SubcontractorManagementView /></Suspense>;
+            case 'compliance': return <ComplianceVettingView />;
             case 'onboarding': return <SupplierOnboardingView />;
             case 'clients':
             default: return <ClientManagementView />;

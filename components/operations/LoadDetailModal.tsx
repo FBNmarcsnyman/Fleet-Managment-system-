@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
+import { supabase } from '../../lib/supabase';
+import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => {
@@ -78,6 +80,33 @@ const LoadDetailModal: React.FC = () => {
         handleUpdateLoadConfirmation(lc.id, updates)
             .then((r: any) => showToast(r?.ok === false ? `Could not save: ${r.error}` : `${lc.loadConNumber} updated.`))
             .catch((e: any) => showToast(`Could not save: ${e?.message || 'error'}`));
+    };
+
+    // Email the received POD to a chosen recipient (defaults to the client).
+    // Goes only to you while EMAILS: TEST is on.
+    const [sendingPod, setSendingPod] = useState(false);
+    const sendPod = async () => {
+        const podUrl = lc.podPhoto?.data;
+        if (!podUrl) { showToast('No POD on this load yet.'); return; }
+        const entered = window.prompt(`Send POD for ${lc.loadConNumber} to (email):`, lc.clientEmail || lc.subcontractorEmail || '');
+        if (entered === null) return;
+        const to = entered.trim();
+        if (!to) { showToast('No email entered.'); return; }
+        setSendingPod(true);
+        try {
+            const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+            const html = brandedEmail(`<p>Good day,</p>
+              <p>Please find the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}.</p>
+              ${emailButton(podUrl, 'View / download POD &rarr;', '#16a34a')}
+              <p>Regards,<br>FBN Transport</p>`);
+            const { data, error } = await supabase.functions.invoke('send-email', { body: { to, subject: `POD - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+            if (error || (data && (data as any).error)) { showToast(`Could not send POD: ${(data as any)?.error || error?.message}`); return; }
+            showToast(`POD sent to ${to}.`);
+        } catch (e) {
+            showToast(`Could not send POD: ${e instanceof Error ? e.message : 'error'}`);
+        } finally {
+            setSendingPod(false);
+        }
     };
 
     const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
@@ -178,7 +207,12 @@ const LoadDetailModal: React.FC = () => {
                         <F label="Sent to Supplier" value={lc.sentToSupplierDate ? fmt(lc.sentToSupplierDate) : 'Not sent'} />
                         <F label="Payment" value={lc.paymentStatus || '—'} />
                         <F label="POD" value={lc.podPhoto ? 'Received' : 'Awaiting'} />
-                        {lc.podPhoto?.data && <a href={lc.podPhoto.data} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>}
+                        {lc.podPhoto?.data && (
+                            <div className="flex items-center gap-3">
+                                <a href={lc.podPhoto.data} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>
+                                <button onClick={sendPod} disabled={sendingPod} className="text-xs font-bold text-emerald-400 hover:underline disabled:opacity-50">{sendingPod ? 'Sending…' : 'Send / Resend POD →'}</button>
+                            </div>
+                        )}
                     </div>
                 </Section>
             )}

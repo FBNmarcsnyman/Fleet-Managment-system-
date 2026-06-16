@@ -3,6 +3,7 @@ import { useCommonData } from '../contexts/AppContexts';
 import Modal from './Modal';
 import AddUserForm from './AddUserForm';
 import EditUserForm from './EditUserForm';
+import RoleAccessMatrix from './RoleAccessMatrix';
 import { PlusIcon } from './icons/PlusIcon';
 import { User } from '../types';
 
@@ -59,6 +60,8 @@ const UserManagement: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+
+            <RoleAccessMatrix />
 
             <Modal isOpen={isAddUserModalOpen} onClose={() => setIsAddUserModalOpen(false)}>
                 <AddUserForm onSubmit={handleSubmitNewUser} onCancel={() => setIsAddUserModalOpen(false)} />

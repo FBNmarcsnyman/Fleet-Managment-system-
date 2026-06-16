@@ -55,9 +55,12 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onClose }) => {
             <div className="space-y-4">
                 <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} className={inputCls} required />
                 <select value={role} onChange={e => setRole(e.target.value as Role)} className={inputCls}>
-                    <option value="Staff">Staff (Driver)</option>
-                    <option value="Admin">Admin</option>
                     <option value="Super Admin">Super Admin</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Accounts">Accounts</option>
+                    <option value="Ops">Ops</option>
+                    <option value="Workshop Manager">Workshop</option>
+                    <option value="Staff">Staff (Driver)</option>
                 </select>
 
                 {role !== 'Staff' && (

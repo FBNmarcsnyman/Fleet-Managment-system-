@@ -65,9 +65,12 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onSubmit, onCancel }) => {
                     {emailError && <p className="text-red-400 text-sm mt-1">{emailError}</p>}
                 </div>
                 <select value={role} onChange={e => setRole(e.target.value as Role)} className={inputClasses}>
-                    <option value="Staff">Staff (Driver)</option>
-                    <option value="Admin">Admin</option>
                     <option value="Super Admin">Super Admin</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Accounts">Accounts</option>
+                    <option value="Ops">Ops</option>
+                    <option value="Workshop Manager">Workshop</option>
+                    <option value="Staff">Staff (Driver)</option>
                 </select>
                 {role !== 'Staff' && (
                     <div>

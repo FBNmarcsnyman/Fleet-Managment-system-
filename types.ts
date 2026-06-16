@@ -161,7 +161,7 @@ export interface Message {
     text: string;
 }
 
-export type Role = 'Staff' | 'Driver' | 'Admin' | 'Super Admin' | 'Client' | 'Supplier' | 'Workshop Manager';
+export type Role = 'Staff' | 'Driver' | 'Admin' | 'Super Admin' | 'Client' | 'Supplier' | 'Workshop Manager' | 'Accounts' | 'Ops';
 
 export interface User {
     id?: string;

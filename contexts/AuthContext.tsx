@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, ReactNode } from 'react';
 import { User, Permission, Branch } from '../types';
 import { useCommonData } from './CommonDataContext';
-import { supabase } from '../lib/supabase';
+import { supabase, directSelect } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -81,6 +81,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
     const [currentViewOverride] = useState<string | null>(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
+    // The role → visible-modules matrix (editable in Users → Role Access).
+    // Used by hasPermission so a role's default visibility can be changed without
+    // a code deploy. A user's OWN permissions list (if set) overrides the role.
+    const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({});
+    useEffect(() => {
+        let active = true;
+        const load = async () => {
+            const { data } = await directSelect('role_permissions?select=role,permissions');
+            if (active && Array.isArray(data)) {
+                const map: Record<string, string[]> = {};
+                data.forEach((r: any) => { map[r.role] = Array.isArray(r.permissions) ? r.permissions : []; });
+                setRolePermissions(map);
+            }
+        };
+        load();
+        // Refresh when the matrix is edited elsewhere in the app.
+        const onChange = () => load();
+        window.addEventListener('role-permissions-changed', onChange);
+        return () => { active = false; window.removeEventListener('role-permissions-changed', onChange); };
+    }, []);
     // Distinguishes "user clicked Logout" (intentional) from "session expired
     // in the background" (implicit). The latter happens after Marc leaves the
     // tab idle for an hour+; the supabase-js client and the JS tab context
@@ -181,8 +201,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (state.currentUser.role === 'Super Admin' || state.currentUser.role === 'Admin') {
             return true;
         }
-        return state.currentUser.permissions.includes(permission);
-    }, [state.currentUser]);
+        // A user's OWN permissions list (per-user override) wins if set; otherwise
+        // fall back to the role's default visibility from the matrix.
+        const own = state.currentUser.permissions || [];
+        const effective = own.length ? own : (rolePermissions[state.currentUser.role] || []);
+        return effective.includes(permission);
+    }, [state.currentUser, rolePermissions]);
 
     const updateNavPreferences = useCallback((prefs: User['navigationPreferences']) => {
         if (state.currentUser) {

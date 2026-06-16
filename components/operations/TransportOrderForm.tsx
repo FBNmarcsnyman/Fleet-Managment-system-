@@ -244,10 +244,20 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             subcontractorDriverCell: subcontractorDriverCell || undefined,
         };
         setSaving(true);
-        const res = await onSubmit(data);
-        setSaving(false);
-        if (res && res.ok === false) { alert(`Could not create the Transport Order: ${res.error || 'unknown error'}`); return; }
-        hideModal();
+        try {
+            // Never let the button hang forever — if the save stalls (e.g. a slow
+            // connection), time out after 25s with a clear message.
+            const res = await Promise.race([
+                Promise.resolve(onSubmit(data)),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('Timed out — please check your connection and try again.')), 25000)),
+            ]) as any;
+            if (res && res.ok === false) { alert(`Could not create the Transport Order: ${res.error || 'unknown error'}`); return; }
+            hideModal();
+        } catch (e) {
+            alert(`Could not create the Transport Order: ${e instanceof Error ? e.message : 'unknown error'}`);
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (

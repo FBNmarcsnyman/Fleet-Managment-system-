@@ -428,8 +428,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     row.supplier_id = resolvedSupplierId;
                     row.status = 'Driver Assigned';
                 }
-                const { data: inserted, error } = await supabase
-                    .from('load_confirmations').insert(row).select().single();
+                const { data: inserted, error } = await runWrite(() => supabase.from('load_confirmations').insert(row).select().single());
                 if (error) { console.error('[ops] createLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
                 const mapped = mapLoadConfirmation(inserted, { branchById });
                 dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });

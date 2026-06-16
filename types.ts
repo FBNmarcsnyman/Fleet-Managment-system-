@@ -440,6 +440,8 @@ export interface LoadConfirmation {
     subcontractorVehicleReg?: string;
     subcontractorDriverName?: string;
     subcontractorDriverCell?: string;
+    acceptedAt?: string;
+    loadingEta?: string;
     commodity?: string;
     packaging?: string;
     loadSpec?: string;

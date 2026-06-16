@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LoadConfirmation, LoadConfirmationStatus } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { isAssigned, nextStep, STATUS_LABEL, statusChip, isInterBranch } from '../../lib/loadStatus';
@@ -16,11 +16,22 @@ const COLUMNS: { title: string; statuses: LoadConfirmationStatus[] }[] = [
 ];
 
 const LoadBoard: React.FC = () => {
-    const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation } = useOperations();
+    const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation, handleRefreshLoads } = useOperations();
     const { showModal, showToast } = useUIState();
     const [busy, setBusy] = useState<string | null>(null);
     const [branch, setBranch] = useState<string>('All');
     const [q, setQ] = useState('');
+    const [refreshing, setRefreshing] = useState(false);
+
+    // Pull fresh loads on open and every 30s, so carrier acceptances (driver /
+    // vehicle / ETA entered on the public page) appear without a manual reload.
+    const refresh = async () => { setRefreshing(true); try { await handleRefreshLoads?.(); } finally { setRefreshing(false); } };
+    useEffect(() => {
+        let active = true;
+        handleRefreshLoads?.();
+        const t = setInterval(() => { if (active) handleRefreshLoads?.(); }, 30000);
+        return () => { active = false; clearInterval(t); };
+    }, []);
 
     const clientMap = useMemo(() => new Map<string, string>(clients.map((c: any) => [c.id, c.name])), [clients]);
     const supplierMap = useMemo(() => new Map<string, string>((suppliers || []).map((s: any) => [s.id, s.name])), [suppliers]);
@@ -75,15 +86,16 @@ const LoadBoard: React.FC = () => {
                     <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm">
                         {branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}
                     </select>
+                    <button onClick={refresh} disabled={refreshing} title="Refresh loads" className="bg-white text-slate-700 hover:bg-slate-50 p-2 rounded-md border border-slate-300 text-sm font-bold disabled:opacity-50">{refreshing ? '…' : '↻'}</button>
                 </div>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto pb-3">
+            <div className="flex gap-3 pb-3 items-stretch overflow-x-auto">
                 {COLUMNS.map(col => {
                     const jobs = active.filter((lc: LoadConfirmation) => col.statuses.includes(lc.status))
                         .sort((a: LoadConfirmation, b: LoadConfirmation) => new Date(a.collectionDate || a.date).getTime() - new Date(b.collectionDate || b.date).getTime());
                     return (
-                        <div key={col.title} className="bg-slate-100 rounded-2xl p-3 flex flex-col w-[300px] shrink-0 border border-slate-200 max-h-[calc(100vh-15rem)]">
+                        <div key={col.title} className="bg-slate-100 rounded-2xl p-3 flex flex-col flex-1 min-w-[300px] border border-slate-200 h-[calc(100vh-14rem)]">
                             <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
                                 <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest">{col.title} <span className="text-slate-400">{jobs.length}</span></h4>
                                 <span className="text-[10px] font-bold text-emerald-600">{fmtR(jobs.reduce((s: number, j: LoadConfirmation) => s + (j.totalAmount || 0), 0))}</span>
@@ -121,14 +133,23 @@ const LoadBoard: React.FC = () => {
                                                 </span>
                                                 {lc.supplierRate ? <span className={marginColor}>+R {Math.round(margin).toLocaleString('en-ZA')} ({marginPct.toFixed(0)}%)</span> : null}
                                             </div>
-                                            <div className={`p-2 rounded-lg border flex items-center gap-2 mb-2.5 ${assigned ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-                                                <TruckIcon className={`h-3.5 w-3.5 shrink-0 ${assigned ? 'text-emerald-600' : 'text-amber-500'}`} />
-                                                <p className="text-[10px] font-bold truncate">
-                                                    {assigned
-                                                        ? <span className="text-emerald-700">{transporterOf(lc)}</span>
-                                                        : <span className="text-amber-700">Needs transporter</span>}
-                                                    <span className="text-slate-400 font-medium"> · {lc.loadType || lc.commodity || 'Cargo'}</span>
-                                                </p>
+                                            <div className={`p-2 rounded-lg border mb-2.5 ${assigned ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                                                <div className="flex items-center gap-2">
+                                                    <TruckIcon className={`h-3.5 w-3.5 shrink-0 ${assigned ? 'text-emerald-600' : 'text-amber-500'}`} />
+                                                    <p className="text-[10px] font-bold truncate">
+                                                        {assigned
+                                                            ? <span className="text-emerald-700">{transporterOf(lc)}</span>
+                                                            : <span className="text-amber-700">Needs transporter</span>}
+                                                        <span className="text-slate-400 font-medium"> · {lc.loadType || lc.commodity || 'Cargo'}</span>
+                                                    </p>
+                                                    {lc.acceptedAt && <span className="ml-auto text-[8px] font-black px-1.5 py-0.5 rounded-full bg-emerald-600 text-white uppercase shrink-0">Accepted ✓</span>}
+                                                </div>
+                                                {(lc.subcontractorDriverName || lc.subcontractorVehicleReg || lc.loadingEta) && (
+                                                    <p className="text-[9px] text-slate-500 mt-1 truncate pl-5">
+                                                        {[lc.subcontractorDriverName, lc.subcontractorVehicleReg].filter(Boolean).join(' · ')}
+                                                        {lc.loadingEta ? `${(lc.subcontractorDriverName || lc.subcontractorVehicleReg) ? ' · ' : ''}ETA ${lc.loadingEta}` : ''}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="flex gap-2">
                                                 <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className={`flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest transition-all ${assigned ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>{assigned ? 'Reassign' : 'Assign'}</button>

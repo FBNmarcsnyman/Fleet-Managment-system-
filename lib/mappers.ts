@@ -568,6 +568,8 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     subcontractorVehicleReg: row.subcontractor_vehicle_reg ?? undefined,
     subcontractorDriverName: row.subcontractor_driver_name ?? undefined,
     subcontractorDriverCell: row.subcontractor_driver_cell ?? undefined,
+    acceptedAt: (row as any).accepted_at ?? undefined,
+    loadingEta: (row as any).loading_eta ?? undefined,
     commodity: row.commodity ?? undefined,
     packaging: row.packaging ?? undefined,
     loadSpec: row.load_spec ?? undefined,

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useMemo, useRef, ReactNode } from 're
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
-import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete } from '../lib/supabase';
+import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -596,6 +596,15 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             } catch (err) {
                 console.error('[ops] updateLoadConfirmation threw:', err);
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        // Pull the latest load_confirmations straight from the DB and replace the
+        // local list — so carrier acceptances (driver/vehicle/ETA entered on the
+        // public page) and any other out-of-app changes show up without a reload.
+        handleRefreshLoads: async (): Promise<void> => {
+            const { data } = await directSelect('load_confirmations?select=*&order=created_at.desc');
+            if (Array.isArray(data)) {
+                dispatch({ type: 'SET_LOAD_CONFIRMATIONS', payload: data.map((r: any) => mapLoadConfirmation(r, { branchById })) });
             }
         },
         // Super-admin housekeeping: permanently remove an incorrect / failed load.

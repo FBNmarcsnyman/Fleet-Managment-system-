@@ -2,6 +2,19 @@ import React, { useState } from 'react';
 import { User, Role, Branch } from '../types';
 import { BRANCHES } from '../constants';
 import { useCommonData } from '../contexts/AppContexts';
+import { directUpdate } from '../lib/supabase';
+
+const ACCESS_MODULES: { key: string; label: string }[] = [
+    { key: 'access_management', label: 'Management' },
+    { key: 'access_fleet', label: 'FBN Fleet' },
+    { key: 'access_operations', label: 'Broking / Clients / Quotes' },
+    { key: 'access_workshop', label: 'Workshop' },
+    { key: 'access_finance', label: 'Finance' },
+    { key: 'access_incidents', label: 'Incidents' },
+    { key: 'access_hr', label: 'HR' },
+    { key: 'access_user_management', label: 'Users' },
+    { key: 'access_settings', label: 'Settings' },
+];
 
 interface EditUserFormProps {
     user: User;
@@ -22,6 +35,10 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onClose }) => {
     const [doResetPassword, setDoResetPassword] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [saving, setSaving] = useState(false);
+    // Per-user override: a non-empty permissions list overrides the role defaults.
+    const [customAccess, setCustomAccess] = useState((user.permissions || []).length > 0);
+    const [perms, setPerms] = useState<string[]>((user.permissions as string[]) || []);
+    const togglePerm = (k: string) => setPerms(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
 
     const toggleBranch = (b: Branch) =>
         setAssignedBranches(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
@@ -40,6 +57,9 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onClose }) => {
             pdpExpiry: role === 'Staff' ? pdpExpiry : undefined,
         };
         const res = await handleUpdateUser(user, updates, doResetPassword ? { resetPassword: true, newPassword: newPassword || undefined } : undefined);
+        // Persist the per-user access override directly (empty = inherit role).
+        const finalPerms = (role === 'Super Admin' || role === 'Admin') ? [] : (customAccess ? perms : []);
+        await directUpdate('profiles', { id: user.id }, { permissions: finalPerms as any });
         setSaving(false);
         if (!res.ok) { alert(`Could not update the user: ${res.error || 'unknown error'}`); return; }
         if (res.tempPassword) {
@@ -90,6 +110,26 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onClose }) => {
                     <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="h-5 w-5" />
                     Active (can log in and work)
                 </label>
+
+                {role !== 'Super Admin' && role !== 'Admin' && (
+                    <div className="border-t border-gray-700 pt-4">
+                        <label className="flex items-center gap-2 text-sm text-gray-200">
+                            <input type="checkbox" checked={customAccess} onChange={e => setCustomAccess(e.target.checked)} className="h-5 w-5" />
+                            Custom access for this person (overrides their role's defaults)
+                        </label>
+                        {customAccess && (
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                                {ACCESS_MODULES.map(m => (
+                                    <label key={m.key} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                        <input type="checkbox" checked={perms.includes(m.key)} onChange={() => togglePerm(m.key)} className="h-4 w-4" />
+                                        {m.label}
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                        {!customAccess && <p className="text-xs text-gray-500 mt-1">Leaving this off means they see whatever their role ({role}) is set to in Role Access.</p>}
+                    </div>
+                )}
 
                 <div className="border-t border-gray-700 pt-4">
                     <label className="flex items-center gap-2 text-sm text-gray-200">

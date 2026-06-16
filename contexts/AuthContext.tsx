@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, ReactNode } from 'react';
 import { User, Permission, Branch } from '../types';
 import { useCommonData } from './CommonDataContext';
-import { supabase, directSelect } from '../lib/supabase';
+import { supabase, directSelect, directUpdate } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -209,9 +209,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, [state.currentUser, rolePermissions]);
 
     const updateNavPreferences = useCallback((prefs: User['navigationPreferences']) => {
-        if (state.currentUser) {
-            handleUpdateNavPreferences(state.currentUser.email, prefs);
-        }
+        if (!state.currentUser) return;
+        // Update local state FIRST so the tabs visibly reorder/hide immediately
+        // (the old code only wrote to the DB, so nothing moved on screen). The
+        // DB write is freeze-proof and persists it for next login.
+        setState(prev => prev.currentUser ? { ...prev, currentUser: { ...prev.currentUser, navigationPreferences: prefs } } : prev);
+        const id = state.currentUser.id;
+        void directUpdate('profiles', { id }, { navigation_preferences: prefs as any })
+            .then(({ error }) => { if (error) console.error('[auth] save nav prefs failed:', error); });
+        // Keep the legacy path too (no-op if it also writes; harmless).
+        handleUpdateNavPreferences(state.currentUser.email, prefs);
     }, [state.currentUser, handleUpdateNavPreferences]);
 
     const resetPassword = useCallback(async (email: string): Promise<LoginResult> => {

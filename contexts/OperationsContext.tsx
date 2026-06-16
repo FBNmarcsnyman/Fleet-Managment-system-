@@ -449,7 +449,16 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         // -- Load Confirmations ----------------------------------------------
         handleCreateLoadConfirmation: async (data: any): Promise<Result<LoadConfirmation>> => {
             try {
-                const loadConNumber = `LCN-${Date.now()}`;
+                // Clean running number per month: FBN-2026-06-0001, -0002, …
+                const now = new Date();
+                const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const numPrefix = `FBN-${ym}-`;
+                let maxSeq = 0;
+                (stateRef.current.loadConfirmations || []).forEach((l: any) => {
+                    const m = (l.loadConNumber || '').match(/^FBN-\d{4}-\d{2}-(\d+)$/);
+                    if (m && (l.loadConNumber || '').startsWith(numPrefix)) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+                });
+                const loadConNumber = `${numPrefix}${String(maxSeq + 1).padStart(4, '0')}`;
 
                 // Resolve the subcontractor FIRST (find or create) so the new load is
                 // linked to it and counts as already assigned for dispatch — a

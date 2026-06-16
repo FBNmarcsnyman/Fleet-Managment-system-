@@ -4,6 +4,7 @@ import { BellIcon } from '../icons/BellIcon';
 import { RefreshIcon } from '../icons/RefreshIcon';
 import NotificationCenter from '../NotificationCenter';
 import GlobalSearch from './GlobalSearch';
+import TestModeToggle from './TestModeToggle';
 import { VIEW_TITLES } from './navConfig';
 import { useLiveAlerts } from '../../hooks/useLiveAlerts';
 
@@ -42,6 +43,7 @@ const Topbar: React.FC = () => {
 
                 {/* Actions */}
                 <div className="flex items-center space-x-3 sm:space-x-4 shrink-0">
+                    <TestModeToggle />
                     <OnlineStatus isOnline={isOnline} />
                     <div className="relative">
                         <button

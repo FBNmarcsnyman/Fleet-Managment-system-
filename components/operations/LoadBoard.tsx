@@ -121,9 +121,14 @@ const LoadBoard: React.FC = () => {
                                                 </span>
                                                 {lc.supplierRate ? <span className={marginColor}>+R {Math.round(margin).toLocaleString('en-ZA')} ({marginPct.toFixed(0)}%)</span> : null}
                                             </div>
-                                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-center gap-2 mb-2.5">
-                                                <ArchiveBoxIcon className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                                                <p className="text-[9px] text-slate-500 font-medium truncate">{assigned ? transporterOf(lc) : 'Not assigned'} · {lc.commodity || 'Cargo'}</p>
+                                            <div className={`p-2 rounded-lg border flex items-center gap-2 mb-2.5 ${assigned ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                                                <TruckIcon className={`h-3.5 w-3.5 shrink-0 ${assigned ? 'text-emerald-600' : 'text-amber-500'}`} />
+                                                <p className="text-[10px] font-bold truncate">
+                                                    {assigned
+                                                        ? <span className="text-emerald-700">{transporterOf(lc)}</span>
+                                                        : <span className="text-amber-700">Needs transporter</span>}
+                                                    <span className="text-slate-400 font-medium"> · {lc.loadType || lc.commodity || 'Cargo'}</span>
+                                                </p>
                                             </div>
                                             <div className="flex gap-2">
                                                 <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className={`flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest transition-all ${assigned ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>{assigned ? 'Reassign' : 'Assign'}</button>

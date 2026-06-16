@@ -123,3 +123,99 @@ export const runWrite = async (
   }
   return res;
 };
+
+// ---------------------------------------------------------------------------
+// Direct REST writes — the freeze-proof path.
+//
+// We confirmed the "LoadCon won't create / hangs on Creating…" bug is the
+// supabase-js client wedging on its own session/token handling: the request
+// never even leaves the browser (no row ever reaches Postgres). To make a write
+// that CAN'T be held hostage by that internal state, we talk to PostgREST with a
+// plain fetch, using the access token read straight out of localStorage. Plain
+// GETs work fine, so the network/token are healthy — it's only the client's
+// request pipeline that gets stuck. This sidesteps it entirely.
+// ---------------------------------------------------------------------------
+
+const PROJECT_REF = (supabaseUrl.match(/https:\/\/([^.]+)\./) || [])[1] || '';
+const AUTH_STORAGE_KEY = `sb-${PROJECT_REF}-auth-token`;
+
+const readStoredSession = (): { access_token?: string; refresh_token?: string } | null => {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw);
+    // supabase-js has used a couple of shapes over versions; cover both.
+    return j?.access_token ? j : (j?.currentSession || j?.session || null);
+  } catch {
+    return null;
+  }
+};
+
+const raced = <T,>(p: Promise<T>, ms: number): Promise<T> =>
+  Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('__timed_out__')), ms))]);
+
+// Exchange the stored refresh token for a fresh access token WITHOUT going
+// through supabase-js (which may be wedged). Persists the new session back so
+// subsequent calls use it too.
+const rawRefreshToken = async (): Promise<string | null> => {
+  const stored = readStoredSession();
+  const refresh_token = stored?.refresh_token;
+  if (!refresh_token) return null;
+  try {
+    const resp = await raced(fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { apikey: supabaseAnonKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token }),
+    }), 12000);
+    if (!resp.ok) return null;
+    const j = await resp.json();
+    if (j?.access_token) {
+      try { localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(j)); } catch { /* ignore */ }
+      return j.access_token as string;
+    }
+  } catch { /* fall through */ }
+  return null;
+};
+
+// Insert a row via direct REST and return the created record (or an error).
+// Tries the current token; on 401/JWT-expired it raw-refreshes once and retries.
+export const directInsert = async (
+  table: string,
+  row: Record<string, any>,
+): Promise<{ data: any; error: { message: string } | null }> => {
+  let token = readStoredSession()?.access_token || null;
+  if (!token) {
+    token = await rawRefreshToken();
+    if (!token) return { data: null, error: { message: 'Your session has expired — please sign out and back in.' } };
+  }
+
+  const attempt = async (tok: string) => raced(fetch(`${supabaseUrl}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${tok}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(row),
+  }), 15000);
+
+  try {
+    let resp = await attempt(token);
+    if (resp.status === 401 || resp.status === 403) {
+      const fresh = await rawRefreshToken();
+      if (fresh) resp = await attempt(fresh);
+    }
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      return { data: null, error: { message: `${resp.status}: ${text || resp.statusText}` } };
+    }
+    const json = await resp.json().catch(() => null);
+    return { data: Array.isArray(json) ? json[0] : json, error: null };
+  } catch (e) {
+    const msg = e instanceof Error && e.message === '__timed_out__'
+      ? 'The save timed out — please check your connection and try again.'
+      : (e instanceof Error ? e.message : 'Network error');
+    return { data: null, error: { message: msg } };
+  }
+};

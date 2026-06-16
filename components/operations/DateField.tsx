@@ -11,9 +11,16 @@ const isoToDisplay = (iso: string): string => {
     return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 };
 
+// Returns a valid ISO date or '' — rejects nonsense like 17/00/6202 so a broken
+// date can never be saved (which would make the whole load fail to create).
 const displayToIso = (s: string): string => {
     const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+    if (!m) return '';
+    const dd = +m[1], mm = +m[2], yyyy = +m[3];
+    if (mm < 1 || mm > 12) return '';
+    if (dd < 1 || dd > 31) return '';
+    if (yyyy < 2020 || yyyy > 2100) return '';
+    return `${m[3]}-${m[2]}-${m[1]}`;
 };
 
 interface Props {

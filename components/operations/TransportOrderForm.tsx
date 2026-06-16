@@ -167,8 +167,14 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
         } else if (c?.contactEmail || c?.email) {
             setClientEmail(c.contactEmail || c.email);
         }
-        // Prefill the rest with this client's most-used details (only empty fields).
-        const fill = (cur: string, setter: (v: string) => void, key: string) => { if (!cur) { const v = modeForClient(name, key); if (v) setter(v); } };
+        // Prefill from this client's MOST RECENT load so a repeat booking is mostly
+        // done — you just tweak what changed. Only fills fields you've left blank.
+        const past = (loadConfirmations as any[])
+            .filter(l => (l.clientName || '').toLowerCase() === name.toLowerCase());
+        const latest = past.slice().sort((a, b) =>
+            new Date(b.date || b.collectionDate || 0).getTime() - new Date(a.date || a.collectionDate || 0).getTime())[0];
+        const pick = (key: string) => (latest && latest[key] != null && `${latest[key]}` !== '') ? `${latest[key]}` : modeForClient(name, key);
+        const fill = (cur: string, setter: (v: string) => void, key: string) => { if (!cur) { const v = pick(key); if (v) setter(v); } };
         fill(collectionPoint, setCollectionPoint, 'collectionPoint');
         fill(deliveryPoint, setDeliveryPoint, 'deliveryPoint');
         fill(collectionContact, setCollectionContact, 'collectionContact');
@@ -179,6 +185,9 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
         fill(commodity, setCommodity, 'commodity');
         fill(packaging, setPackaging, 'packaging');
         fill(loadType, setLoadType, 'loadType');
+        fill(weightKg, setWeightKg, 'weightKg');
+        // Carry the last agreed client rate forward as a starting point.
+        if (!clientRate && latest?.totalAmount) setClientRate(`${latest.totalAmount}`);
     };
 
     const onSubbieNameChange = (name: string) => {

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useMemo, useRef, ReactNode } from 're
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
-import { supabase, runWrite, uploadFile } from '../lib/supabase';
+import { supabase, runWrite, uploadFile, directInsert } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -440,7 +440,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                             complianceStatus: 'Pending',
                             controllerContact: data.forAttention || '',
                         };
-                        const { data: supRow, error: supErr } = await writeWithRecovery(() => supabase.from('suppliers').insert(toSupplierInsert(supplierInput)).select().single());
+                        // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
+                        const { data: supRow, error: supErr } = await directInsert('suppliers', toSupplierInsert(supplierInput) as any);
                         if (supErr) console.error('[ops] auto-create subcontractor failed:', supErr);
                         else if (supRow) { resolvedSupplierId = (supRow as any).id; dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) }); }
                     } else {
@@ -461,7 +462,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     row.supplier_id = resolvedSupplierId;
                     row.status = 'Driver Assigned';
                 }
-                const { data: inserted, error } = await writeWithRecovery(() => supabase.from('load_confirmations').insert(row).select().single(), 12000);
+                // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
+                const { data: inserted, error } = await directInsert('load_confirmations', row as any);
                 if (error || !inserted) {
                     console.error('[ops] createLoadConfirmation failed:', error);
                     return { ok: false, error: error?.message || 'Could not save the load.' };
@@ -482,7 +484,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                             if (!existingClient) {
                                 const seeded = mergeContact([], cContact) || [];
                                 const clientInput: any = { name: cName, contactPerson: data.clientContact || '', contactEmail: data.clientEmail || '', contactPhone: '', contacts: seeded, address: '' };
-                                const { data: cRow, error: cErr } = await writeWithRecovery(() => supabase.from('clients').insert(toClientInsert(clientInput)).select().single());
+                                const { data: cRow, error: cErr } = await directInsert('clients', toClientInsert(clientInput) as any);
                                 if (cErr) console.error('[ops] auto-create client failed:', cErr);
                                 else if (cRow) dispatch({ type: 'ADD_CLIENT', payload: mapClient(cRow) });
                             } else {

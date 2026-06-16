@@ -3,7 +3,7 @@ import React, { createContext, useContext, useMemo, useRef, ReactNode } from 're
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
-import { supabase, runWrite, uploadFile, directInsert, directUpdate } from '../lib/supabase';
+import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -595,6 +595,18 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true };
             } catch (err) {
                 console.error('[ops] updateLoadConfirmation threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        // Super-admin housekeeping: permanently remove an incorrect / failed load.
+        // Freeze-proof direct DELETE; RLS still enforces who's allowed.
+        handleDeleteLoadConfirmation: async (id: string): Promise<Result<void>> => {
+            try {
+                const { error } = await directDelete('load_confirmations', { id });
+                if (error) { console.error('[ops] deleteLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'DELETE_LOAD_CONFIRMATION', payload: { id } });
+                return { ok: true };
+            } catch (err) {
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },

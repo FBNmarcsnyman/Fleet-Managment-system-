@@ -128,6 +128,7 @@ export type AppAction =
     | { type: 'UPDATE_QUOTE', payload: Quote }
     | { type: 'CREATE_LOAD_CONFIRMATION', payload: LoadConfirmation }
     | { type: 'UPDATE_LOAD_CONFIRMATION', payload: {id: string, updates: Partial<LoadConfirmation>}}
+    | { type: 'DELETE_LOAD_CONFIRMATION', payload: { id: string } }
     | { type: 'ADD_INCIDENT', payload: IncidentReport }
     | { type: 'UPDATE_INCIDENT', payload: IncidentReport }
     | { type: 'ADD_INCIDENT_QUOTE', payload: { incidentId: string, quote: IncidentQuote } }
@@ -399,6 +400,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_QUOTE': return { ...state, quotes: (state.quotes || []).map(q => q.id === action.payload.id ? action.payload : q) };
         case 'CREATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: [action.payload, ...(state.loadConfirmations || [])] };
         case 'UPDATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: (state.loadConfirmations || []).map(lc => lc.id === action.payload.id ? { ...lc, ...action.payload.updates } : lc) };
+        case 'DELETE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: (state.loadConfirmations || []).filter(lc => lc.id !== action.payload.id) };
         // Push 5: incident payloads now arrive with DB-assigned ids.
         case 'ADD_INCIDENT': return { ...state, incidentReports: [action.payload, ...(state.incidentReports || [])] };
         case 'UPDATE_INCIDENT': return { ...state, incidentReports: (state.incidentReports || []).map(i => i.id === action.payload.id ? action.payload : i) };

@@ -219,6 +219,29 @@ const directSend = async (
   }
 };
 
+// Read via direct REST (freeze-proof) — `path` is the table + PostgREST query,
+// e.g. "email_settings?id=eq.1&select=test_mode". Returns the parsed rows.
+export const directSelect = async (
+  path: string,
+): Promise<{ data: any; error: { message: string } | null }> => {
+  let token = readStoredSession()?.access_token || null;
+  if (!token) { token = await rawRefreshToken(); }
+  const attempt = async (tok: string | null) => raced(fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    headers: { apikey: supabaseAnonKey, ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+  }), 10000);
+  try {
+    let resp = await attempt(token);
+    if (resp.status === 401 || resp.status === 403) {
+      const fresh = await rawRefreshToken();
+      if (fresh) resp = await attempt(fresh);
+    }
+    if (!resp.ok) return { data: null, error: { message: `${resp.status}` } };
+    return { data: await resp.json().catch(() => null), error: null };
+  } catch (e) {
+    return { data: null, error: { message: e instanceof Error ? e.message : 'Network error' } };
+  }
+};
+
 // Insert a row via direct REST and return the created record (or an error).
 export const directInsert = (table: string, row: Record<string, any>) =>
   directSend(table, 'POST', row);
@@ -232,4 +255,26 @@ export const directUpdate = (
 ) => {
   const qs = Object.entries(match).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
   return directSend(`${table}?${qs}`, 'PATCH', row);
+};
+
+// Delete row(s) via direct REST (freeze-proof). `match` is a PostgREST filter.
+export const directDelete = async (
+  table: string,
+  match: Record<string, string>,
+): Promise<{ error: { message: string } | null }> => {
+  const qs = Object.entries(match).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
+  let token = readStoredSession()?.access_token || null;
+  if (!token) { token = await rawRefreshToken(); if (!token) return { error: { message: 'Your session has expired — please sign in again.' } }; }
+  const attempt = async (tok: string) => raced(fetch(`${supabaseUrl}/rest/v1/${table}?${qs}`, {
+    method: 'DELETE',
+    headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${tok}`, Prefer: 'return=minimal' },
+  }), 15000);
+  try {
+    let resp = await attempt(token);
+    if (resp.status === 401 || resp.status === 403) { const f = await rawRefreshToken(); if (f) resp = await attempt(f); }
+    if (!resp.ok) { const t = await resp.text().catch(() => ''); return { error: { message: `${resp.status}: ${t || resp.statusText}` } }; }
+    return { error: null };
+  } catch (e) {
+    return { error: { message: e instanceof Error ? e.message : 'Network error' } };
+  }
 };

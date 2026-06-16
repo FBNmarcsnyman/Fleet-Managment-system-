@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LoadConfirmation } from '../../types';
-import { useUIState, useOperations } from '../../contexts/AppContexts';
+import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => {
@@ -45,7 +45,9 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
 
 const LoadDetailModal: React.FC = () => {
     const { modal, showModal, showToast, hideModal } = useUIState();
-    const { handleUpdateLoadConfirmation } = useOperations();
+    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation } = useOperations();
+    const { currentUser } = useAuth();
+    const isSuperAdmin = (currentUser as any)?.role === 'Super Admin' || (currentUser as any)?.role === 'Admin';
     const lc: LoadConfirmation | undefined = modal.payload?.loadCon;
     const [editing, setEditing] = useState(false);
     const [d, setD] = useState<any>({});
@@ -182,7 +184,29 @@ const LoadDetailModal: React.FC = () => {
             )}
 
             {!editing && (
-                <div className="flex justify-end gap-3 pt-1">
+                <div className="flex justify-between items-center gap-3 pt-1">
+                    <div className="flex gap-2">
+                        {isSuperAdmin && (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        if (!window.confirm(`Archive ${lc.loadConNumber}? It will be hidden from the boards (you can still find it under History).`)) return;
+                                        hideModal();
+                                        handleUpdateLoadConfirmation(lc.id, { status: 'Cancelled' as any })
+                                            .then((r: any) => showToast(r?.ok === false ? `Could not archive: ${r.error}` : `${lc.loadConNumber} archived.`));
+                                    }}
+                                    className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-2 px-4 rounded-lg text-sm">Archive</button>
+                                <button
+                                    onClick={() => {
+                                        if (!window.confirm(`PERMANENTLY DELETE ${lc.loadConNumber}? This cannot be undone — use it only for loads created in error or that didn't load properly.`)) return;
+                                        hideModal();
+                                        handleDeleteLoadConfirmation(lc.id)
+                                            .then((r: any) => showToast(r?.ok === false ? `Could not delete: ${r.error}` : `${lc.loadConNumber} deleted.`));
+                                    }}
+                                    className="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 px-4 rounded-lg text-sm">Delete</button>
+                            </>
+                        )}
+                    </div>
                     <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Documents</button>
                 </div>
             )}

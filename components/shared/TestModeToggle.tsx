@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase, directUpdate } from '../../lib/supabase';
+import { directSelect, directUpdate } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AppContexts';
 
 // Admin-only switch for "email test mode". When ON, the send-email function
@@ -9,7 +9,9 @@ import { useAuth } from '../../contexts/AppContexts';
 // just the control + live indicator.
 const TestModeToggle: React.FC = () => {
     const { currentUser } = useAuth();
-    const [on, setOn] = useState<boolean | null>(null);
+    // Default ON (matches the DB default + safe assumption) so the pill shows for
+    // admins immediately — then refine from the freeze-proof read.
+    const [on, setOn] = useState<boolean>(true);
     const [busy, setBusy] = useState(false);
     const role = (currentUser as any)?.role || '';
     const isAdmin = role === 'Super Admin' || role === 'Admin';
@@ -17,15 +19,14 @@ const TestModeToggle: React.FC = () => {
     useEffect(() => {
         let active = true;
         (async () => {
-            try {
-                const { data } = await (supabase as any).from('email_settings').select('test_mode').eq('id', 1).single();
-                if (active) setOn(!!(data as any)?.test_mode);
-            } catch { if (active) setOn(true); }
+            const { data } = await directSelect('email_settings?id=eq.1&select=test_mode');
+            const row = Array.isArray(data) ? data[0] : data;
+            if (active && row && typeof row.test_mode === 'boolean') setOn(row.test_mode);
         })();
         return () => { active = false; };
     }, []);
 
-    if (!isAdmin || on === null) return null;
+    if (!isAdmin) return null;
 
     const toggle = async () => {
         const next = !on;

@@ -1,6 +1,59 @@
 import React, { useEffect, useState } from 'react';
 import { useUIState } from '../../contexts/AppContexts';
 import { DocSettings, DEFAULT_DOC_SETTINGS, getDocSettings, saveDocSettings } from '../../lib/docSettings';
+import { brandedEmail, emailButton } from '../../lib/emailTemplate';
+
+// Sample data so the email previews look like a real send.
+const SAMPLE = { loadConNumber: 'FBN-2026-06-0001', name: 'Wayne', client: 'PERI', route: 'PERI JHB to PERI EL' };
+
+// The exact email bodies the app sends (kept in sync with the senders), so you
+// can verify the look & wording here without sending a test.
+const EMAIL_SAMPLES: { key: string; label: string; subject: string; html: string }[] = [
+    {
+        key: 'loadcon', label: 'LoadCon → Transporter', subject: `FBN Load Confirmation ${SAMPLE.loadConNumber} - ${SAMPLE.route}`,
+        html: brandedEmail(`<p>Good day ${SAMPLE.name},</p>
+          <p>Please find attached FBN Load Confirmation <strong>${SAMPLE.loadConNumber}</strong> for <strong>${SAMPLE.route}</strong>.</p>
+          <table style="border-collapse:collapse;margin:6px 0 14px">
+            <tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px">Loading date</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">18/06/2026</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px">Load type / size</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">6M</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px">Weight (kg)</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">12000</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px">Special instructions</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">Tarp required</td></tr>
+          </table>
+          <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
+          ${emailButton('#', 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
+          <p>Regards,<br>FBN Transport</p>`),
+    },
+    {
+        key: 'clientOrder', label: 'Client Order → Client', subject: `FBN Transport Order ${SAMPLE.loadConNumber} - ${SAMPLE.route}`,
+        html: brandedEmail(`<p>Good day ${SAMPLE.client},</p>
+          <p>Please find your FBN Transport Order <strong>${SAMPLE.loadConNumber}</strong> for <strong>${SAMPLE.route}</strong>.</p>
+          ${emailButton('#', 'Track this shipment &rarr;', '#13294b')}
+          <p>Regards,<br>FBN Transport</p>`),
+    },
+    {
+        key: 'amended', label: 'AMENDED re-confirm', subject: `AMENDED Load Confirmation ${SAMPLE.loadConNumber} - please re-confirm`,
+        html: brandedEmail(`<p>Good day ${SAMPLE.name},</p>
+          <p><strong style="color:#b45309">AMENDED DETAILS — please review &amp; re-confirm.</strong></p>
+          <p>The load confirmation <strong>${SAMPLE.loadConNumber}</strong> (${SAMPLE.route}) has been <strong>amended</strong>.</p>
+          <ul style="font-size:14px;color:#1f2937"><li>Loading date: 19/06/2026</li><li>Transport rate: 16500</li></ul>
+          ${emailButton('#', 'Review &amp; confirm amended load &rarr;', '#b45309')}
+          <p>Regards,<br>FBN Transport</p>`),
+    },
+    {
+        key: 'podReq', label: 'POD request → Transporter', subject: `POD required - Load ${SAMPLE.loadConNumber}`,
+        html: brandedEmail(`<p>Good day ${SAMPLE.name},</p>
+          <p>Please send through the <strong>POD</strong> for load <strong>${SAMPLE.loadConNumber}</strong> (${SAMPLE.route}) now that it has delivered.</p>
+          ${emailButton('#', 'Upload POD &rarr;', '#16a34a')}
+          <p>Thank you,<br>FBN Transport</p>`),
+    },
+    {
+        key: 'podAvail', label: 'POD available → Client', subject: `POD available - shipment ${SAMPLE.loadConNumber}`,
+        html: brandedEmail(`<p>Good day ${SAMPLE.client},</p>
+          <p>The <strong>POD</strong> for your delivered shipment <strong>${SAMPLE.loadConNumber}</strong> is now available to view and download.</p>
+          ${emailButton('#', 'View / download POD &rarr;', '#16a34a')}
+          <p>Regards,<br>FBN Transport</p>`),
+    },
+];
 
 // Edit the boilerplate / red text that appears on every LoadCon, Order & POD.
 const DocumentSettingsView: React.FC = () => {
@@ -8,6 +61,8 @@ const DocumentSettingsView: React.FC = () => {
     const [s, setS] = useState<DocSettings>(DEFAULT_DOC_SETTINGS);
     const [loaded, setLoaded] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [tab, setTab] = useState<'wording' | 'email'>('wording');
+    const [emailKey, setEmailKey] = useState(EMAIL_SAMPLES[0].key);
 
     useEffect(() => { getDocSettings().then(v => { setS(v); setLoaded(true); }); }, []);
 
@@ -25,8 +80,34 @@ const DocumentSettingsView: React.FC = () => {
 
     if (!loaded) return <div className="text-slate-500 p-6">Loading…</div>;
 
+    const tabBtn = (k: 'wording' | 'email', t: string) => (
+        <button onClick={() => setTab(k)} className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg transition ${tab === k ? 'bg-[#13294b] text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700'}`}>{t}</button>
+    );
+
+    const current = EMAIL_SAMPLES.find(e => e.key === emailKey) || EMAIL_SAMPLES[0];
+
+    if (tab === 'email') {
+        return (
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm max-w-4xl">
+                <div className="flex gap-2 mb-5">{tabBtn('wording', 'Document Wording')}{tabBtn('email', 'Email Preview')}</div>
+                <h3 className="text-xl font-black text-slate-900 mb-1">Email Preview</h3>
+                <p className="text-xs text-slate-500 mb-4">Exactly how each email looks when sent. (While <strong>EMAILS: TEST</strong> is on, all of these go only to you.)</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {EMAIL_SAMPLES.map(e => (
+                        <button key={e.key} onClick={() => setEmailKey(e.key)} className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition ${emailKey === e.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>{e.label}</button>
+                    ))}
+                </div>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="bg-slate-50 border-b border-slate-200 px-4 py-2 text-xs text-slate-600"><strong>Subject:</strong> {current.subject}</div>
+                    <iframe title="email preview" srcDoc={current.html} style={{ width: '100%', height: '60vh', border: 'none', background: '#fff' }} />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm max-w-3xl">
+            <div className="flex gap-2 mb-5">{tabBtn('wording', 'Document Wording')}{tabBtn('email', 'Email Preview')}</div>
             <div className="flex justify-between items-center mb-5">
                 <div>
                     <h3 className="text-xl font-black text-slate-900">Document Settings</h3>

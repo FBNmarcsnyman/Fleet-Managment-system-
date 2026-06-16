@@ -189,8 +189,10 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!clientName || !subcontractorName || !collectionPoint || !deliveryPoint || !clientRate || !transportRate) {
-            alert('Please fill the required fields: client, subcontractor, collection & delivery addresses, and both rates.');
+        // Only the client + route are required up front. A load can be raised
+        // unassigned (no subbie/buy-rate yet) and assigned later from the board.
+        if (!clientName || !collectionPoint || !deliveryPoint) {
+            alert('Please fill: Client, Collection address and Delivery address. (Subcontractor & rates can be added when you assign.)');
             return;
         }
         const data: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'> = {
@@ -297,7 +299,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             <input value={customerOrderNumber} onChange={e => setCustomerOrderNumber(e.target.value)} className={inputCls} /></div>
                         <div className="md:col-span-2"><label className={labelCls}>Client Rate (excl VAT) *</label>
                             <div className="relative"><span className="absolute left-3 top-2.5 text-blue-400 font-mono text-xs">R</span>
-                                <input type="number" step="0.01" value={clientRate} onChange={e => setClientRate(e.target.value)} className={`${inputCls} pl-7`} required /></div></div>
+                                <input type="number" step="0.01" value={clientRate} onChange={e => setClientRate(e.target.value)} className={`${inputCls} pl-7`} /></div></div>
                     </div>
                     {clientName && clientContacts.length === 0 && (
                         <p className="text-[11px] text-gray-500 mt-3">New contact — it'll be saved to <span className="text-gray-300 font-semibold">{clientName}</span> for next time.</p>
@@ -372,7 +374,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                 <Section title="Subcontractor  ·  goes on the LoadCon only" accent="bg-amber-500">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div><label className={labelCls}>Subcontractor *</label>
-                            <input list="subbieList" value={subcontractorName} onChange={e => onSubbieNameChange(e.target.value)} className={inputCls} required placeholder="start typing — remembers past subbies" />
+                            <input list="subbieList" value={subcontractorName} onChange={e => onSubbieNameChange(e.target.value)} className={inputCls} placeholder="optional — leave blank to assign later" />
                             <datalist id="subbieList">{subbieSuggestions.map(n => <option key={n} value={n} />)}</datalist></div>
                         <div><label className={labelCls}>For Attention {subbieContacts.length > 0 && <span className="text-amber-400 normal-case font-semibold">· {subbieContacts.length} saved</span>}</label>
                             <input list="subbieContactList" value={forAttention} onChange={e => onSubbieContactChange(e.target.value)} className={inputCls} placeholder={subcontractorName ? 'controller / contact' : 'pick the subbie first'} />
@@ -382,7 +384,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                         <div><label className={labelCls}>Driver Cell</label><input value={subcontractorDriverCell} onChange={e => setSubcontractorDriverCell(e.target.value)} className={inputCls} /></div>
                         <div><label className={labelCls}>Transport Rate (excl VAT) *</label>
                             <div className="relative"><span className="absolute left-3 top-2.5 text-amber-400 font-mono text-xs">R</span>
-                                <input type="number" step="0.01" value={transportRate} onChange={e => setTransportRate(e.target.value)} className={`${inputCls} pl-7`} required /></div></div>
+                                <input type="number" step="0.01" value={transportRate} onChange={e => setTransportRate(e.target.value)} className={`${inputCls} pl-7`} /></div></div>
                         <div><label className={labelCls}>POD Email</label><input type="email" value={podEmail} onChange={e => setPodEmail(e.target.value)} className={inputCls} /></div>
                         <div><label className={labelCls}>Copy Email (CC)</label><input type="email" value={ccEmail} onChange={e => setCcEmail(e.target.value)} className={inputCls} /></div>
                     </div>

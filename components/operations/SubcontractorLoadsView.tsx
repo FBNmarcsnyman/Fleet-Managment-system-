@@ -75,7 +75,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
               ${emailButton(`${base}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
               <p>Regards,<br>FBN Transport</p>`);
             const { data, error } = await supabase.functions.invoke('send-email', {
-                body: { to, cc: lc.ccEmail || undefined, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${lc.collectionPoint || ''} to ${lc.deliveryPoint || ''}`,
+                body: { to, cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${lc.collectionPoint || ''} to ${lc.deliveryPoint || ''}`,
                     html, fromName: 'FBN Transport', attachments },
             });
             if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message || 'unknown error'}`); return; }

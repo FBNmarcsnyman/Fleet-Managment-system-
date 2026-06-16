@@ -126,8 +126,11 @@ const LoadDocumentsModal: React.FC = () => {
             const html = brandedEmail(`${coverNote(lc, tab, sender)}<p style="font-size:13px;color:${GREY};margin-top:6px">Your ${label} (Ref ${lc.loadConNumber}) is attached to this email as a PDF.</p>${cta}`);
             const { data, error } = await supabase.functions.invoke('send-email', {
                 body: {
+                    // LoadCons are always copied to loadcons@ for the monitoring team.
                     to,
-                    cc: tab !== 'deliveryNote' ? (lc.ccEmail || undefined) : undefined,
+                    cc: tab === 'loadcon'
+                        ? ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])]
+                        : (tab === 'clientOrder' ? (lc.ccEmail || undefined) : undefined),
                     subject,
                     html,
                     fromName: sender,

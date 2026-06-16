@@ -16,14 +16,37 @@ import { brandedEmail, emailButton } from '../lib/emailTemplate';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
-// Bound a Supabase write so a stalled request can NEVER freeze the UI: abort it
-// after `ms` and let the caller surface a clear error instead of hanging forever.
-// (The DB itself is fast; this guards against a stuck client-side session/token
-// or a cold network where the request never leaves the browser.)
-const abortAfter = (ms: number) => {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), ms);
-    return { signal: c.signal, clear: () => clearTimeout(t) };
+// Race any promise against a hard timeout. Unlike abortSignal (which only cancels
+// an in-flight fetch), this also escapes a hang that happens BEFORE the request is
+// sent — e.g. the supabase-js auth client getting wedged while it tries to read or
+// refresh the session. Rejects with a tagged error so callers can detect a stall.
+const TIMED_OUT = '__timed_out__';
+const withTimeout = <T,>(p: PromiseLike<T>, ms: number): Promise<T> =>
+    Promise.race([
+        Promise.resolve(p),
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(TIMED_OUT)), ms)),
+    ]);
+
+// The bulletproof write: try the write; if it STALLS (no response in `ms`) — the
+// classic wedged-session symptom where the request never even leaves the browser —
+// force a fresh session and try exactly once more. This is what actually unsticks a
+// stuck client-side session without the user reloading and losing their work.
+const writeWithRecovery = async <T,>(
+    makeOp: () => PromiseLike<{ data: T; error: any }>,
+    ms = 12000,
+): Promise<{ data: T | null; error: any }> => {
+    try {
+        return await withTimeout(makeOp(), ms);
+    } catch (e) {
+        if (!(e instanceof Error && e.message === TIMED_OUT)) throw e;
+        // Stalled. Refresh the session (bounded so it can't hang either) and retry.
+        try { await withTimeout(supabase.auth.refreshSession(), 8000); } catch { /* keep going */ }
+        try {
+            return await withTimeout(makeOp(), ms);
+        } catch (e2) {
+            return { data: null, error: { message: 'The save stalled — your session timed out. Please reload the page (Ctrl+Shift+R) and sign in again if prompted.' } };
+        }
+    }
 };
 
 // Emails the transporter asking for the POD, with a no-login upload link
@@ -417,19 +440,17 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                             complianceStatus: 'Pending',
                             controllerContact: data.forAttention || '',
                         };
-                        const ab = abortAfter(12000);
-                        const { data: supRow, error: supErr } = await runWrite(() => supabase.from('suppliers').insert(toSupplierInsert(supplierInput)).select().abortSignal(ab.signal).single());
-                        ab.clear();
+                        const { data: supRow, error: supErr } = await writeWithRecovery(() => supabase.from('suppliers').insert(toSupplierInsert(supplierInput)).select().single());
                         if (supErr) console.error('[ops] auto-create subcontractor failed:', supErr);
-                        else if (supRow) { resolvedSupplierId = supRow.id; dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) }); }
+                        else if (supRow) { resolvedSupplierId = (supRow as any).id; dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) }); }
                     } else {
                         resolvedSupplierId = existingSub.id;
                         const mergedContacts = mergeContact(existingSub.contacts, subContact);
                         if (mergedContacts) {
                             const updates = { contacts: mergedContacts };
-                            const { error: supErr } = await supabase.from('suppliers').update(toSupplierUpdate(updates as any)).eq('id', existingSub.id);
-                            if (supErr) console.error('[ops] merge subcontractor contact failed:', supErr);
-                            else dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: existingSub.id, updates } });
+                            // Best-effort and non-blocking: never let a contact-merge stall the create.
+                            void writeWithRecovery(() => supabase.from('suppliers').update(toSupplierUpdate(updates as any)).eq('id', existingSub.id) as any)
+                                .then(({ error: supErr }) => { if (supErr) console.error('[ops] merge subcontractor contact failed:', supErr); else dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: existingSub.id, updates } }); });
                         }
                     }
                 }
@@ -440,13 +461,10 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     row.supplier_id = resolvedSupplierId;
                     row.status = 'Driver Assigned';
                 }
-                const abLoad = abortAfter(15000);
-                const { data: inserted, error } = await runWrite(() => supabase.from('load_confirmations').insert(row).select().abortSignal(abLoad.signal).single());
-                abLoad.clear();
-                if (error) {
+                const { data: inserted, error } = await writeWithRecovery(() => supabase.from('load_confirmations').insert(row).select().single(), 12000);
+                if (error || !inserted) {
                     console.error('[ops] createLoadConfirmation failed:', error);
-                    const msg = /abort/i.test(error.message || '') ? 'The connection stalled — please check your internet and try again.' : error.message;
-                    return { ok: false, error: msg };
+                    return { ok: false, error: error?.message || 'Could not save the load.' };
                 }
                 const mapped = mapLoadConfirmation(inserted, { branchById });
                 dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });
@@ -464,18 +482,14 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                             if (!existingClient) {
                                 const seeded = mergeContact([], cContact) || [];
                                 const clientInput: any = { name: cName, contactPerson: data.clientContact || '', contactEmail: data.clientEmail || '', contactPhone: '', contacts: seeded, address: '' };
-                                const ab = abortAfter(12000);
-                                const { data: cRow, error: cErr } = await runWrite(() => supabase.from('clients').insert(toClientInsert(clientInput)).select().abortSignal(ab.signal).single());
-                                ab.clear();
+                                const { data: cRow, error: cErr } = await writeWithRecovery(() => supabase.from('clients').insert(toClientInsert(clientInput)).select().single());
                                 if (cErr) console.error('[ops] auto-create client failed:', cErr);
                                 else if (cRow) dispatch({ type: 'ADD_CLIENT', payload: mapClient(cRow) });
                             } else {
                                 const mergedContacts = mergeContact(existingClient.contacts, cContact);
                                 if (mergedContacts) {
                                     const updates = { contacts: mergedContacts };
-                                    const ab = abortAfter(12000);
-                                    const { error: cErr } = await runWrite(() => supabase.from('clients').update(toClientUpdate(updates as any)).eq('id', existingClient.id).abortSignal(ab.signal));
-                                    ab.clear();
+                                    const { error: cErr } = await writeWithRecovery(() => supabase.from('clients').update(toClientUpdate(updates as any)).eq('id', existingClient.id) as any);
                                     if (cErr) console.error('[ops] merge client contact failed:', cErr);
                                     else dispatch({ type: 'UPDATE_CLIENT', payload: { id: existingClient.id, updates } });
                                 }

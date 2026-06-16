@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Client, Branch, Contact } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
+import DateField from './DateField';
 
 interface TransportOrderFormProps {
     onSubmit: (data: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'>) => Promise<any> | void;
@@ -55,10 +56,13 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
     const subbieSuggestions = useMemo(
         () => rankNames((suppliers as any[]).map(s => s.name), (loadConfirmations as any[]).map(l => l.subcontractorName)),
         [suppliers, loadConfirmations]);
-    // Routes: the built-in list plus any route typed on past loads (so new ones stick).
-    const routeSuggestions = useMemo(
-        () => rankNames(ROUTES, (loadConfirmations as any[]).map(l => l.route)),
-        [loadConfirmations]);
+    // Routes: the built-in list plus any route ever typed on past loads, shown in
+    // plain A–Z order so the list is easy to scan (not usage-ranked like names).
+    const routeSuggestions = useMemo(() => {
+        const set = new Set<string>([...ROUTES]);
+        (loadConfirmations as any[]).forEach(l => { const r = (l.route || '').trim(); if (r) set.add(r); });
+        return [...set].sort((a, b) => a.localeCompare(b));
+    }, [loadConfirmations]);
 
     // Order
     const [arrangingBranch, setArrangingBranch] = useState(ARRANGING_BRANCHES[0]);
@@ -254,7 +258,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             // connection), time out after 25s with a clear message.
             const res = await Promise.race([
                 Promise.resolve(onSubmit(data)),
-                new Promise((_, rej) => setTimeout(() => rej(new Error('Timed out — please check your connection and try again.')), 25000)),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('Timed out — please check your connection and try again.')), 40000)),
             ]) as any;
             if (res && res.ok === false) { alert(`Could not create the Transport Order: ${res.error || 'unknown error'}`); return; }
             hideModal();
@@ -328,7 +332,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             <div className="grid grid-cols-2 gap-3">
                                 <div><label className={labelCls}>Contact</label><input value={collectionContact} onChange={e => setCollectionContact(e.target.value)} className={inputCls} /></div>
                                 <div><label className={labelCls}>Telephone</label><input value={collectionTelephone} onChange={e => setCollectionTelephone(e.target.value)} className={inputCls} /></div>
-                                <div><label className={labelCls}>Loading Date</label><input type="date" value={collectionDate} onChange={e => setCollectionDate(e.target.value)} className={inputCls} /></div>
+                                <div><label className={labelCls}>Loading Date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inputCls} /></div>
                                 <div><label className={labelCls}>Loading Time</label><input type="time" value={loadingTime} onChange={e => setLoadingTime(e.target.value)} className={inputCls} /></div>
                             </div>
                         </div>
@@ -340,7 +344,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             <div className="grid grid-cols-2 gap-3">
                                 <div><label className={labelCls}>Contact</label><input value={deliveryContact} onChange={e => setDeliveryContact(e.target.value)} className={inputCls} /></div>
                                 <div><label className={labelCls}>Telephone</label><input value={deliveryTelephone} onChange={e => setDeliveryTelephone(e.target.value)} className={inputCls} /></div>
-                                <div><label className={labelCls}>Offloading Date</label><input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} className={inputCls} /></div>
+                                <div><label className={labelCls}>Offloading Date</label><DateField value={deliveryDate} onChange={setDeliveryDate} className={inputCls} /></div>
                                 <div><label className={labelCls}>Offloading Time</label><input type="time" value={offloadingTime} onChange={e => setOffloadingTime(e.target.value)} className={inputCls} /></div>
                             </div>
                         </div>

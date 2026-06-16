@@ -9,7 +9,8 @@ interface TransportOrderFormProps {
 
 const ARRANGING_BRANCHES = ['FBNDBN', 'FBNJHB', 'FBN KZN', 'FBN CPT', 'FBN PE', 'FBN EL'];
 const ROUTES = ['DBN - JHB', 'JHB - DBN', 'DBN - EL - DBN', 'DBN - PE - DBN', 'DBN - CPT - DBN', 'JHB - CPT - JHB', 'JHB - PE - JHB', 'JHB - EL - JHB'];
-const LOAD_TYPES = ['LCL', 'PART LOAD', '6M', '12M', 'TRI AXLE', 'LINK', '6M CONTAINER', '12M CONTAINER'];
+// Smallest → largest, so the dropdown reads in ascending order.
+const LOAD_TYPES = ['LCL', 'PART LOAD', '6M', '6M CONTAINER', '12M', '12M CONTAINER', 'TRI AXLE', 'LINK'];
 const PACKAGING = ['PALLETS', 'CARTONS', 'CASES', 'COILS', 'DRUMS', 'BAGS', 'BUNDLES', 'LOOSE', 'LENGTHS', 'FULL LOAD', '6M CONTAINER', 'BULK'];
 const EQUIPMENT = ['Straps', 'Corner Plates', 'Tarps', 'Nets', 'Chains', 'Rubber Mats', 'Dunnage', 'Container Locks', 'Labour'];
 // FBN representatives — management can extend this list later from settings.

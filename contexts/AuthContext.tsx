@@ -264,17 +264,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
 
             if (event === 'SIGNED_OUT') {
+                // Just drop to the Login form via state — NO hard reload. The old
+                // code force-reloaded the page on any signout to dodge a
+                // next-login hang, but that also blew away whatever you were
+                // working on (a half-filled LoadCon) the instant a background
+                // token check hiccuped. The actual login-hang cause (the
+                // supabase-js auth lock) is fixed by the noop lock in
+                // lib/supabase.ts, so the reload is no longer needed.
                 setState({ currentUser: null, viewingClientAsAdmin: null });
-                // Implicit signout (session expired while idle) typically
-                // leaves the page's JS context in a state where the next
-                // signInWithPassword hangs. Marc hits this every time he
-                // walks away from the tab and comes back. Force a hard
-                // reload so the next login attempt starts fresh.
-                // Don't reload if the user clicked Logout themselves -
-                // that should just drop them on the Login form normally.
-                if (!intentionalLogoutRef.current) {
-                    window.location.reload();
-                }
                 intentionalLogoutRef.current = false;
             }
         });

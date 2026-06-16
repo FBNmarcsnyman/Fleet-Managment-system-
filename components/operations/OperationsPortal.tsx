@@ -3,6 +3,7 @@ import React, { lazy, Suspense } from 'react';
 import { useUIState, useOperations } from '../../contexts/AppContexts';
 import OperationsDashboard from './OperationsDashboard';
 import LoadBoard from './LoadBoard';
+import DocumentSettingsView from './DocumentSettingsView';
 
 const SubcontractorLoadsView = lazy(() => import('./SubcontractorLoadsView'));
 
@@ -18,6 +19,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'dashboard', label: 'Dashboard' },
         { view: 'loadBoard', label: 'Load Board' },
         { view: 'subcontractorLoads', label: 'LoadCons' },
+        { view: 'docSettings', label: 'Doc Settings' },
     ];
 
     const handleNewTransportOrder = () => showModal('transportOrder', {
@@ -33,6 +35,7 @@ const OperationsPortal: React.FC = () => {
         switch (operationsSubView) {
             case 'subcontractorLoads': return <Suspense fallback={<div>Loading...</div>}><SubcontractorLoadsView loadConfirmations={loadConfirmations} suppliers={suppliers} clients={clients} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} /></Suspense>;
             case 'loadBoard': return <LoadBoard />;
+            case 'docSettings': return <DocumentSettingsView />;
             case 'dashboard':
             default:
                 return <OperationsDashboard />;

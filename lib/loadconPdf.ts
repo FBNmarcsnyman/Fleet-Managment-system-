@@ -1,10 +1,10 @@
 import { jsPDF } from 'jspdf';
 import { LoadConfirmation } from '../types';
+import { getDocSettings } from './docSettings';
 
 export type DocType = 'loadcon' | 'clientOrder' | 'deliveryNote';
 
 const NAVY: [number, number, number] = [19, 41, 75];
-const YELLOW: [number, number, number] = [245, 183, 0];
 const RED: [number, number, number] = [197, 32, 32];
 const BLACK: [number, number, number] = [25, 30, 40];
 const GREY: [number, number, number] = [90, 100, 115];
@@ -26,18 +26,11 @@ const logoDataUrl = async (): Promise<string | null> => {
     } catch { return null; }
 };
 
-const NOTE_BULLETS = [
-    'BY ACCEPTING THIS LOAD/LOADCON YOU ACCEPT THE FBN TRANSPORT SUBCONTRACTOR TERMS & CONDITIONS.',
-    'NO INVOICE WILL BE PAID UNTIL ALL THE RELEVANT, CORRECTLY REFERENCED ORIGINAL DOCUMENTATION HAS BEEN RECEIVED.',
-    'ALL DOCUMENTATION TO BE RECEIVED BY FBN TRANSPORT CC BEFORE 12 NOON ON THE 20TH OF EACH MONTH. IF RECEIVED LATER THAN THE 20TH, PAYMENT WILL ONLY BE MADE 60 DAYS FROM RECEIPT.',
-    'ALL VEHICLES ARE TO BE FITTED WITH REPUTABLE TRACKING AND 24hr SURVEILLANCE UNITS AND VEHICLES TO SLEEP AT SAFE AND SECURE TRUCK STOPS.',
-];
-const DEFAULT_SPECIAL = 'Please ensure cargo is secured and tarped correctly, tarps must be in good condition. CARGO MUST NOT GET WET.';
-
 type Style = 'label' | 'value' | 'banner' | 'centerLabel';
 type Cell = { w: number; text?: string; style?: Style; size?: number };
 
 export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Promise<{ doc: jsPDF; base64: string; filename: string }> => {
+    const ds = await getDocSettings();
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, M = 10, CW = W - 2 * M;
     const PAD = 1.6;
@@ -47,14 +40,13 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
     // ---------- Letterhead: logo left, head-office block right ----------
     const logo = await logoDataUrl();
     if (logo) { try { doc.addImage(logo, 'JPEG', M, y, 60, 18); } catch { /* ignore */ } }
-    const addr = ['Durban Head Office:', 'P O Box 1405, HILLCREST', 'Phone: 031 - 205 1705', 'Fax: 031 - 205 2098', 'Email: fbndbn@fbn-transport.co.za'];
+    const addr = [ds.officeName, ...ds.officeLines];
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GREY);
     addr.forEach((line, i) => { doc.setFont('helvetica', i === 0 ? 'bold' : 'normal'); doc.setTextColor(...(i === 0 ? NAVY : GREY)); doc.text(line, W - M, y + 2 + i * 4, { align: 'right' }); });
     y += 22;
-    // Brand accent: navy rule + yellow underline beneath the letterhead.
-    doc.setDrawColor(...NAVY); doc.setLineWidth(0.6); doc.line(M, y, W - M, y);
-    doc.setFillColor(...YELLOW); doc.rect(M, y + 0.6, W - 2 * M, 1.4, 'F');
-    y += 5;
+    // Clean navy rule beneath the letterhead (no yellow on documents).
+    doc.setDrawColor(...NAVY); doc.setLineWidth(0.8); doc.line(M, y, W - M, y);
+    y += 4;
 
     const lineHFor = (size: number) => size * 0.42 + 0.7;
 
@@ -90,11 +82,11 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
 
     // ---------- the big red NOTES block (subcontractor LoadCon only) ----------
     const notesBlock = () => {
-        const head = `NOTES: PLEASE SCAN COPIES OF PODS AND SUPPLIER DOCS WITHIN 24-48hrs AFTER DELIVERY TO THE EMAIL YOU RECEIVED THE LOADCON ON AND pods@fbn-transport.co.za`;
+        const head = ds.notesHead.replace('{podsEmail}', ds.podsEmail);
         doc.setFontSize(8.5); doc.setFont('helvetica', 'bold');
         const headLines = doc.splitTextToSize(head, CW - 2 * PAD);
         doc.setFontSize(6.4); doc.setFont('helvetica', 'normal');
-        const bulletLines = NOTE_BULLETS.map(b => doc.splitTextToSize('•  ' + b, CW - 2 * PAD - 2));
+        const bulletLines = ds.notesBullets.map(b => doc.splitTextToSize('•  ' + b, CW - 2 * PAD - 2));
         const h = 2 * PAD + headLines.length * lineHFor(8.5) + 1 + bulletLines.reduce((s, bl) => s + bl.length * lineHFor(6.4), 0) + bulletLines.length * 0.6;
         if (y + h > 286) { doc.addPage(); y = 14; }
         doc.setDrawColor(...BORDER); doc.setLineWidth(0.25); doc.rect(M, y, CW, h);
@@ -108,7 +100,7 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
 
     // ---------- special instructions (navy heading + red body) ----------
     const specialBlock = () => {
-        const body = `${lc.specialInstructions ? lc.specialInstructions + '  ' : ''}${DEFAULT_SPECIAL}`;
+        const body = `${lc.specialInstructions ? lc.specialInstructions + '  ' : ''}${ds.defaultSpecial}`;
         doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
         const bodyLines = doc.splitTextToSize(body, CW - 2 * PAD);
         const h = 2 * PAD + lineHFor(7.5) + bodyLines.length * lineHFor(7.5);
@@ -186,7 +178,7 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
 
     // Rate row
     if (type === 'loadcon') {
-        row([{ w: L, text: 'AGREED RATE', style: 'label' }, { w: 52, text: money(lc.supplierRate), style: 'value', size: 9 }, { w: L, text: 'RATE EXCL V.A.T.', style: 'label', size: 7 }, { w: CW - 2 * L - 52, text: 'GIT/LOAD: R 1 500 000.00', style: 'value', size: 7.5 }]);
+        row([{ w: L, text: 'AGREED RATE', style: 'label' }, { w: 52, text: money(lc.supplierRate), style: 'value', size: 9 }, { w: L, text: 'RATE EXCL V.A.T.', style: 'label', size: 7 }, { w: CW - 2 * L - 52, text: `GIT/LOAD: ${ds.gitAmount}`, style: 'value', size: 7.5 }]);
     } else if (type === 'clientOrder') {
         row([{ w: L, text: 'AGREED RATE', style: 'label' }, { w: CW / 2 - L, text: money(lc.totalAmount), style: 'value', size: 9 }, { w: L, text: 'RATE EXCL V.A.T.', style: 'label', size: 7 }, { w: CW / 2 - L, text: '', style: 'value' }]);
     }
@@ -221,7 +213,7 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
         y += 5;
     }
     doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(150, 160, 170);
-    doc.text('FBN Transport  |  Commercial Freight Specialists  |  tracking@fbn-transport.co.za', W / 2, y, { align: 'center' });
+    doc.text(ds.footer, W / 2, y, { align: 'center' });
 
     const base64 = (doc.output('datauristring') as string).split(',')[1] || '';
     return { doc, base64, filename: `${title.replace(/[^A-Za-z0-9]+/g, '_')}_${lc.loadConNumber}.pdf` };

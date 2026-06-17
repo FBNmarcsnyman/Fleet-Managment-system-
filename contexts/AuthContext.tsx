@@ -284,6 +284,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!active) return;
 
+            // OAuth landing: Google redirects back to "...?code=<pkce>". supabase-js
+            // exchanges that code for a session DURING client init, and emits this
+            // event while still mid-exchange - so any supabase.from() that runs now
+            // (the profile fetch AND the full RawDataContext data hydrate) wedges on
+            // the auth lock, leaving the app signed-in but with empty lists. The
+            // session is already persisted to storage at this point, so the clean
+            // fix is one automatic reload to a code-free URL: the next load starts
+            // fresh (no in-flight exchange holding the lock) and hydrates normally,
+            // exactly like a manual Ctrl+F5. Runs once - after reload there's no code.
+            if (session?.user && /[?&](code|error)=/.test(window.location.search)) {
+                const u = new URL(window.location.href);
+                ['code', 'state', 'error', 'error_description'].forEach(p => u.searchParams.delete(p));
+                window.location.replace(u.origin + u.pathname + (u.search ? u.search : '') + u.hash);
+                return;
+            }
+
             // INITIAL_SESSION is the page-load path: hydrate currentUser
             // from the stored session if one exists. SIGNED_IN is handled
             // explicitly by handleLogin (it sets currentUser there) so we

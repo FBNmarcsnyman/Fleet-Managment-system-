@@ -9,7 +9,8 @@ const ContactsEditor: React.FC<{
     contacts: Contact[];
     onChange: (contacts: Contact[]) => void;
     accent?: string; // tailwind text colour for the accent, e.g. 'text-blue-400'
-}> = ({ contacts, onChange, accent = 'text-brand-secondary' }) => {
+    label?: string;  // override the default "Contacts · the people you liaise with"
+}> = ({ contacts, onChange, accent = 'text-brand-secondary', label }) => {
 
     const update = (i: number, field: keyof Contact, value: string) => {
         const next = contacts.map((c, idx) => idx === i ? { ...c, [field]: value } : c);
@@ -24,7 +25,7 @@ const ContactsEditor: React.FC<{
         <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    Contacts <span className={`${accent} normal-case`}>· the people you liaise with</span>
+                    {label ? <span className={`${accent} normal-case`}>{label}</span> : <>Contacts <span className={`${accent} normal-case`}>· the people you liaise with</span></>}
                 </label>
                 <button type="button" onClick={add} className="flex items-center text-xs font-bold text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-2.5 py-1.5 rounded-lg">
                     <PlusIcon className="h-4 w-4 mr-1" /> Add person

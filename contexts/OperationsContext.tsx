@@ -293,7 +293,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleUpdateClient: async (id: string, updates: Partial<Client>): Promise<Result<void>> => {
             try {
-                const { error } = await runWrite(() => supabase.from('clients').update(toClientUpdate(updates)).eq('id', id));
+                // directUpdate (freeze-proof REST) - supabase.from() here wedged on the
+                // auth lock so client edits silently never saved.
+                const { error } = await directUpdate('clients', { id }, toClientUpdate(updates) as any);
                 if (error) { console.error('[ops] updateClient failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_CLIENT', payload: { id, updates } });
                 return { ok: true };
@@ -306,9 +308,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         handleDeleteClient: async (id: string): Promise<Result<void>> => {
             try {
                 // Real delete when the client has no history; otherwise deactivate (hide) to keep loads/quotes.
-                const del = await runWrite(() => supabase.from('clients').delete().eq('id', id));
+                const del = await directDelete('clients', { id });
                 if (del.error) {
-                    const soft = await runWrite(() => supabase.from('clients').update({ is_active: false }).eq('id', id));
+                    const soft = await directUpdate('clients', { id }, { is_active: false });
                     if (soft.error) { console.error('[ops] deleteClient failed:', soft.error); return { ok: false, error: soft.error.message }; }
                 }
                 dispatch({ type: 'REMOVE_CLIENT', payload: id });
@@ -319,9 +321,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             try {
                 // Try a real delete first so empty / junk subbies are actually removed.
                 // If the subbie has load history (FK), fall back to deactivating (hide) so we keep that history.
-                const del = await runWrite(() => supabase.from('suppliers').delete().eq('id', id));
+                const del = await directDelete('suppliers', { id });
                 if (del.error) {
-                    const soft = await runWrite(() => supabase.from('suppliers').update({ is_active: false }).eq('id', id));
+                    const soft = await directUpdate('suppliers', { id }, { is_active: false });
                     if (soft.error) { console.error('[ops] deleteSupplier failed:', soft.error); return { ok: false, error: soft.error.message }; }
                 }
                 dispatch({ type: 'REMOVE_SUPPLIER', payload: id });
@@ -361,7 +363,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleUpdateSupplier: async (id: string, updates: Partial<Supplier>): Promise<Result<void>> => {
             try {
-                const { error } = await runWrite(() => supabase.from('suppliers').update(toSupplierUpdate(updates)).eq('id', id));
+                // directUpdate (freeze-proof REST) - supabase.from() wedged so subbie edits never saved.
+                const { error } = await directUpdate('suppliers', { id }, toSupplierUpdate(updates) as any);
                 if (error) { console.error('[ops] updateSupplier failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_SUPPLIER', payload: { id, updates } });
                 return { ok: true };

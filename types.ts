@@ -389,6 +389,9 @@ export interface ClientBranch {
     contactPerson?: string;
     contactEmail?: string;
     contactPhone?: string;
+    // The people at THIS branch who book / give us loads. Each can be picked as
+    // the booking contact on a load for this client's branch.
+    contacts?: Contact[];
 }
 
 export interface Client {

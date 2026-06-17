@@ -17,7 +17,8 @@ const AddClientForm: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
 
     const setBranch = (i: number, field: keyof ClientBranch, v: string) => setBranches(p => p.map((b, idx) => idx === i ? { ...b, [field]: v } : b));
-    const addBranch = () => setBranches(p => [...p, { name: '', address: '', contactPerson: '', contactEmail: '', contactPhone: '' }]);
+    const setBranchContacts = (i: number, cs: Contact[]) => setBranches(p => p.map((b, idx) => idx === i ? { ...b, contacts: cs } : b));
+    const addBranch = () => setBranches(p => [...p, { name: '', address: '', contactPerson: '', contactEmail: '', contactPhone: '', contacts: [] }]);
     const removeBranch = (i: number) => setBranches(p => p.filter((_, idx) => idx !== i));
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -29,7 +30,9 @@ const AddClientForm: React.FC = () => {
         if (submitting) return;
         setSubmitting(true);
         const cleanContacts = contacts.filter(c => (c.name || '').trim() || (c.email || '').trim());
-        const cleanBranches = branches.filter(b => (b.name || '').trim());
+        const cleanBranches = branches
+            .filter(b => (b.name || '').trim())
+            .map(b => ({ ...b, contacts: (b.contacts || []).filter(c => (c.name || '').trim() || (c.email || '').trim()) }));
         try {
             if (editing) {
                 // Close immediately and save in the background (free-tier DB can be slow).
@@ -87,9 +90,17 @@ const AddClientForm: React.FC = () => {
                                     <button type="button" onClick={() => removeBranch(i)} title="Remove" className="text-gray-500 hover:text-red-400 text-lg font-bold px-1">×</button>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2">
-                                    <input className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm" placeholder="Contact" value={b.contactPerson || ''} onChange={e => setBranch(i, 'contactPerson', e.target.value)} />
+                                    <input className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm" placeholder="Site / delivery contact" value={b.contactPerson || ''} onChange={e => setBranch(i, 'contactPerson', e.target.value)} />
                                     <input className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm" placeholder="Email" value={b.contactEmail || ''} onChange={e => setBranch(i, 'contactEmail', e.target.value)} />
                                     <input className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm" placeholder="Phone" value={b.contactPhone || ''} onChange={e => setBranch(i, 'contactPhone', e.target.value)} />
+                                </div>
+                                <div className="pl-1 pt-1 border-t border-gray-700/50">
+                                    <ContactsEditor
+                                        contacts={b.contacts || []}
+                                        onChange={cs => setBranchContacts(i, cs)}
+                                        accent="text-emerald-400"
+                                        label={`People at ${b.name || 'this branch'} who give us loads`}
+                                    />
                                 </div>
                             </div>
                         ))}

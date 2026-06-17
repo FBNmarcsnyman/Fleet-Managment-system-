@@ -51,26 +51,32 @@ const mapProfileRow = (row: ProfileRow, branchById: Map<string, Branch>): User =
 });
 
 const fetchUserContext = async (userId: string): Promise<User | null> => {
+    // Use directSelect (plain fetch + token from storage), NOT supabase.from():
+    // when this runs inside the onAuthStateChange callback (the only path that
+    // loads the profile after a Google OAuth redirect), the supabase-js client
+    // is mid-operation and supabase.from() wedges on its internal lock - the
+    // fetch never completes, the 10s timeout fires, currentUser stays null and
+    // the user is bounced back to the login screen even though they ARE signed
+    // in. directSelect bypasses that lock entirely. Same reason the rest of the
+    // app uses the direct-* helpers for writes.
     const [profileRes, branchesRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', userId).single(),
+        directSelect(`profiles?select=*&id=eq.${userId}`),
         // Use `code` (short, e.g. 'FBN JHB') - matches the TS Branch union.
         // See matching comment in RawDataContext hydrateFromSupabase.
-        supabase.from('branches').select('id, code'),
+        directSelect('branches?select=id,code'),
     ]);
 
-    if (profileRes.error || !profileRes.data) {
+    const profileRow = Array.isArray(profileRes.data) ? profileRes.data[0] : null;
+    if (profileRes.error || !profileRow) {
         console.error('AuthContext: failed to load profile', profileRes.error);
         return null;
     }
-    if (branchesRes.error || !branchesRes.data) {
-        console.error('AuthContext: failed to load branches', branchesRes.error);
-        return null;
-    }
+    const branchRows: Array<{ id: string; code: string }> = Array.isArray(branchesRes.data) ? branchesRes.data : [];
 
     const branchById = new Map<string, Branch>(
-        branchesRes.data.map(b => [b.id, b.code as Branch])
+        branchRows.map(b => [b.id, b.code as Branch])
     );
-    return mapProfileRow(profileRes.data, branchById);
+    return mapProfileRow(profileRow as ProfileRow, branchById);
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

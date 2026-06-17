@@ -22,7 +22,11 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
     const [done, setDone] = useState(false);
     const [err, setErr] = useState<string | null>(null);
     const [file, setFile] = useState<{ b64: string; name: string; type: string; preview: string } | null>(null);
+    const [damages, setDamages] = useState<{ b64: string; name: string; type: string }[]>([]);
+    const [docs, setDocs] = useState<{ b64: string; name: string; type: string }[]>([]);
     const fileRef = useRef<HTMLInputElement>(null);
+    const dmgRef = useRef<HTMLInputElement>(null);
+    const docRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const drawing = useRef(false);
     const signed = useRef(false);
@@ -53,13 +57,23 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
         fr.readAsDataURL(f);
     };
 
+    // Multi-file picker → append each to the given list (damages / docs).
+    const onMulti = (setter: React.Dispatch<React.SetStateAction<{ b64: string; name: string; type: string }[]>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        const fs = Array.from(e.target.files || []); e.target.value = '';
+        fs.forEach(f => { const fr = new FileReader(); fr.onload = () => { const d = fr.result as string; setter(prev => [...prev, { b64: d.split(',')[1] || '', name: f.name, type: f.type }]); }; fr.readAsDataURL(f); });
+    };
+
     const submit = async () => {
         if (!file) { setErr('Please attach a photo of the signed POD first.'); return; }
         setBusy(true); setErr(null);
         try {
             const signatureBase64 = signed.current && canvasRef.current ? (canvasRef.current.toDataURL('image/png').split(',')[1] || '') : '';
             const { data, error } = await supabase.functions.invoke('submit-pod', {
-                body: { loadId, fileBase64: file.b64, fileName: file.name, contentType: file.type, signatureBase64 },
+                body: {
+                    loadId, fileBase64: file.b64, fileName: file.name, contentType: file.type, signatureBase64,
+                    damages: damages.map(d => ({ base64: d.b64, name: d.name, contentType: d.type })),
+                    docs: docs.map(d => ({ base64: d.b64, name: d.name, contentType: d.type })),
+                },
             });
             if (error || (data as any)?.error) { setErr((data as any)?.error || error?.message || 'Upload failed.'); return; }
             setDone(true);
@@ -101,6 +115,18 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
                                 onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end}
                                 style={{ width: '100%', height: 120, border: '1px dashed #cbd5e1', borderRadius: 8, touchAction: 'none', background: '#fff' }} />
                             <button onClick={clearSig} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, marginTop: 4, cursor: 'pointer' }}>Clear signature</button>
+
+                            <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '18px 0 6px' }}>3. Damage photos (if any)</p>
+                            <button onClick={() => dmgRef.current?.click()} style={{ width: '100%', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                                {damages.length ? `📸 ${damages.length} damage photo(s) added — add more` : '📸 Add damage photos'}
+                            </button>
+                            <input ref={dmgRef} type="file" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={onMulti(setDamages)} />
+
+                            <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '18px 0 6px' }}>4. Other documents (optional)</p>
+                            <button onClick={() => docRef.current?.click()} style={{ width: '100%', background: '#fff', color: '#1e293b', border: '1px solid #cbd5e1', padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                                {docs.length ? `📎 ${docs.length} document(s) added — add more` : '📎 Add backing documents'}
+                            </button>
+                            <input ref={docRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }} onChange={onMulti(setDocs)} />
 
                             <button onClick={submit} disabled={busy} style={{ width: '100%', background: busy ? '#9ca3af' : '#16a34a', color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 16, fontWeight: 800, cursor: 'pointer', marginTop: 16 }}>
                                 {busy ? 'Sending…' : 'Send POD to FBN'}

@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Supplier, Client, Attachment, PodAnalysisResult } from '../../types';
 import { useUIState } from '../../contexts/AppContexts';
-import { supabase } from '../../lib/supabase';
+import { supabase, directInvoke } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
@@ -63,16 +63,20 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         try {
             let attachments: any[] | undefined;
             let pdfFailed = false;
+            let loadConB64: string | undefined;
             try {
                 const { base64, filename } = await buildLoadConPdf(lc, 'loadcon');
+                loadConB64 = base64;
                 attachments = [{ filename, content: base64, contentType: 'application/pdf' }];
             } catch (pdfErr) {
                 console.error('[loads] LoadCon PDF build failed, sending without attachment:', pdfErr);
                 pdfFailed = true;
             }
-            const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
             const base = `${window.location.origin}${window.location.pathname}`;
             const fmtD = (d?: string) => { if (!d) return ''; try { return format(new Date(d), 'dd/MM/yyyy'); } catch { return d; } };
+            // Short locality (last part of the address) for a tidy intro line.
+            const shortLoc = (a?: string) => { const p = String(a || '').split(',').map(s => s.trim()).filter(Boolean); return p.length ? p[p.length - 1] : (a || ''); };
+            const collLoc = shortLoc(lc.collectionPoint); const delLoc = shortLoc(lc.deliveryPoint);
             // Clickable Google Maps link for an address (no API key needed for the link).
             const mapLink = (addr?: string) => addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : '';
             const withMap = (addr?: string) => addr ? `${addr} &nbsp;<a href="${mapLink(addr)}" style="color:#1d4ed8;font-weight:700;white-space:nowrap">📍 View on map</a>` : '';
@@ -91,20 +95,31 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 ['Special instructions', lc.specialInstructions],
             ];
             const detailRows = rows.filter(([, v]) => v != null && `${v}`.trim() !== '')
-                .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px;white-space:nowrap">${k}</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">${v}</td></tr>`).join('');
+                .map(([k, v]) => `<tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
             const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
-            const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
-              <p>Please find ${attachments ? 'attached ' : ''}FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}.</p>
+            const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
+              <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+              <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
               ${detailsTable}
               <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
               ${emailButton(`${base}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
               <p>Regards,<br>FBN Transport</p>`);
+            const subjLoc = (a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
             const { data, error } = await supabase.functions.invoke('send-email', {
-                body: { to, cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${lc.collectionPoint || ''} to ${lc.deliveryPoint || ''}`,
+                body: { to, cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(collLoc)} to ${subjLoc(delLoc)}`,
                     html, fromName: 'FBN Transport', attachments },
             });
             if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message || 'unknown error'}`); return; }
             onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
+            // File the LoadCon + Client Order PDFs into the load's Google Drive folder (fire-and-forget).
+            void (async () => {
+                try {
+                    const files: any[] = [];
+                    if (loadConB64) files.push({ base64: loadConB64, name: 'LoadCon.pdf', kind: 'loadcon', contentType: 'application/pdf' });
+                    try { const co = await buildLoadConPdf(lc, 'clientOrder'); files.push({ base64: co.base64, name: 'Client-Order.pdf', kind: 'clientorder', contentType: 'application/pdf' }); } catch { /* */ }
+                    if (files.length) await directInvoke('drive-file', { loadId: lc.id, files });
+                } catch (e) { console.error('[loads] drive filing of PDFs failed:', e); }
+            })();
             showToast(pdfFailed
                 ? `Emailed to ${to} — but the PDF attachment couldn't be built, so only the details (in the email body) were sent.`
                 : `Load Confirmation ${lc.loadConNumber} emailed to ${to} with the PDF attached.`);

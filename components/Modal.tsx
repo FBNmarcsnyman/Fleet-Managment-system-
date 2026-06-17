@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { XIcon } from './icons/XIcon';
 
 interface ModalProps {
@@ -14,6 +14,22 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, size = 'md', dismissOnBackdrop = false }) => {
+    // Esc closes the modal (back to the page) - but not while typing in a field,
+    // so you can't lose a half-filled form by tapping Esc to dismiss a dropdown.
+    useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            const el = document.activeElement as HTMLElement | null;
+            const tag = el?.tagName;
+            const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable;
+            if (typing) { el?.blur(); return; }
+            onClose();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [isOpen, onClose]);
+
     if (!isOpen) return null;
 
     const sizeClasses = {

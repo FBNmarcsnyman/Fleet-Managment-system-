@@ -303,8 +303,16 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                                 {FBN_REPS.map(r => <option key={r} value={r}>{r}</option>)}
                             </select></div>
                         <div><label className={labelCls}>Route</label>
-                            <input list="routeList" value={route} onChange={e => setRoute(e.target.value)} className={inputCls} placeholder="pick a route or type a new one" />
-                            <datalist id="routeList">{routeSuggestions.map(r => <option key={r} value={r} />)}</datalist></div>
+                            {/* Plain text input (fully editable / deletable) + a separate
+                                quick-pick. A <datalist> here fought backspace in Chrome
+                                whenever the text matched a saved route. */}
+                            <div className="flex gap-2">
+                                <input value={route} onChange={e => setRoute(e.target.value)} className={inputCls} placeholder="type a route e.g. DBN - JHB" />
+                                <select value="" onChange={e => { if (e.target.value) setRoute(e.target.value); }} title="Quick-pick a saved route" className={`${inputCls} w-auto shrink-0`}>
+                                    <option value="">Pick…</option>
+                                    {routeSuggestions.map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                            </div></div>
                         <div><label className={labelCls}>Priority</label>
                             <select value={priority} onChange={e => setPriority(e.target.value as any)} className={inputCls}>
                                 <option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option>

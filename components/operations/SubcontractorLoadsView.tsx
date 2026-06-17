@@ -25,12 +25,32 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
 }) => {
     const { showModal, showToast } = useUIState();
     const [filter, setFilter] = useState<'All' | 'To Send' | 'Sent' | 'Awaiting POD' | 'History'>('All');
+    // Click a column header to sort by it; click again to flip direction.
+    type SortKey = 'number' | 'supplier' | 'date' | 'route' | 'status' | 'sent' | 'pod';
+    const [sortKey, setSortKey] = useState<SortKey>('date');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const toggleSort = (k: SortKey) => {
+        if (sortKey === k) { setSortDir(d => (d === 'asc' ? 'desc' : 'asc')); }
+        else { setSortKey(k); setSortDir(k === 'date' ? 'desc' : 'asc'); }
+    };
 
     const transportSuppliers = useMemo(() => suppliers.filter(s => s.type === 'Transport'), [suppliers]);
     const supplierMap = useMemo(() => new Map(transportSuppliers.map(s => [s.id, s])), [transportSuppliers]);
     const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
 
     const brokeredLoads = useMemo(() => {
+        const sortVal = (lc: LoadConfirmation): string | number => {
+            switch (sortKey) {
+                case 'number': return (lc.loadConNumber || '').toLowerCase();
+                case 'supplier': return (supplierMap.get(lc.supplierId!)?.name || '').toLowerCase();
+                case 'date': return new Date(lc.collectionDate || lc.date || 0).getTime();
+                case 'route': return `${lc.collectionPoint || ''} ${lc.deliveryPoint || ''}`.toLowerCase();
+                case 'status': return (lc.status || '').toLowerCase();
+                case 'sent': return lc.sentToSupplierDate ? new Date(lc.sentToSupplierDate).getTime() : 0;
+                case 'pod': return lc.podPhoto ? 2 : (lc.status === 'Delivered' ? 1 : 0);
+                default: return 0;
+            }
+        };
         return (loadConfirmations || [])
             .filter(lc => lc.supplierId && supplierMap.has(lc.supplierId))
             .filter(lc => {
@@ -43,8 +63,12 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 if (filter === 'Awaiting POD') return ['Delivered', 'Out for Delivery'].includes(lc.status) && !lc.podPhoto;
                 return true;
             })
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [loadConfirmations, filter, supplierMap]);
+            .sort((a, b) => {
+                const av = sortVal(a), bv = sortVal(b);
+                const c = av < bv ? -1 : av > bv ? 1 : 0;
+                return sortDir === 'asc' ? c : -c;
+            });
+    }, [loadConfirmations, filter, supplierMap, sortKey, sortDir]);
 
     const [requesting, setRequesting] = useState<string | null>(null);
     const [sendingLc, setSendingLc] = useState<string | null>(null);
@@ -298,13 +322,15 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 <table className="w-full text-left text-sm">
                     <thead className="sticky top-0 bg-slate-100">
                         <tr className="border-b border-slate-200">
-                            <th className="p-2 text-slate-500">LoadCon #</th>
-                            <th className="p-2 text-slate-500">Supplier</th>
-                            <th className="p-2 text-slate-500">Loading Date</th>
-                            <th className="p-2 text-slate-500">Route</th>
-                            <th className="p-2 text-slate-500">Status</th>
-                            <th className="p-2 text-slate-500">Sent to Supplier</th>
-                            <th className="p-2 text-slate-500">POD Status</th>
+                            {([
+                                ['number', 'LoadCon #'], ['supplier', 'Supplier'], ['date', 'Loading Date'],
+                                ['route', 'Route'], ['status', 'Status'], ['sent', 'Sent to Supplier'], ['pod', 'POD Status'],
+                            ] as [SortKey, string][]).map(([k, label]) => (
+                                <th key={k} onClick={() => toggleSort(k)}
+                                    className="p-2 text-slate-500 cursor-pointer select-none hover:text-slate-800 whitespace-nowrap">
+                                    {label}<span className="ml-1 text-slate-400">{sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                                </th>
+                            ))}
                             <th className="p-2 text-slate-500 text-right">Actions</th>
                         </tr>
                     </thead>

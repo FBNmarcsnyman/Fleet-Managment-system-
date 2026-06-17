@@ -86,11 +86,11 @@ export const sendDriverWhatsApp = async (lc: any, body: string): Promise<void> =
 // What we ask the driver at each phase. The reply keywords (ARRIVED, LOADED,
 // ONROUTE, DELIVERED, OFFLOADED) are what the inbound webhook will act on.
 const DRIVER_PHASE_MSG: Record<string, (lc: any, podLink: string) => string> = {
-    'Driver Assigned': (lc) => `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport has assigned you load ${lc.loadConNumber}.\nCollect: ${lc.collectionPoint || '-'}\nDeliver: ${lc.deliveryPoint || '-'}\nCargo: ${lc.loadType || ''} ${lc.commodity || ''}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\nContact: ${lc.collectionContact || '-'} ${lc.collectionTelephone || ''}\nPlease reply with your ETA at the loading point.`,
-    'At Collection Point': (lc) => `Thanks. When you start loading ${lc.loadConNumber}, reply LOADED.`,
-    'Collected': (lc) => `Great — load ${lc.loadConNumber} marked collected. Reply ONROUTE with your ETA at ${lc.deliveryPoint || 'delivery'} once you depart.`,
-    'In Transit': (lc) => `Safe travels. Reply ARRIVED when you reach ${lc.deliveryPoint || 'the delivery point'} for ${lc.loadConNumber}.`,
-    'Out for Delivery': (lc) => `Load ${lc.loadConNumber} is out for delivery. Reply DELIVERED once offloaded.`,
+    'Driver Assigned': (lc) => `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport has assigned you load ${lc.loadConNumber}.\nCollect: ${lc.collectionPoint || '-'}\nDeliver: ${lc.deliveryPoint || '-'}\nCargo: ${lc.loadType || ''} ${lc.commodity || ''}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\nContact: ${lc.collectionContact || '-'} ${lc.collectionTelephone || ''}\n\nWhat is your ETA at the loading point? Reply:\n1 = within 1 hour\n2 = within 2 hours\n3 = other (then type the time)`,
+    'At Collection Point': (lc) => `Thanks. When you start loading ${lc.loadConNumber}, reply 1 (Loaded).`,
+    'Collected': (lc) => `Great — load ${lc.loadConNumber} marked collected. When you depart for ${lc.deliveryPoint || 'delivery'}, reply 1 (On route).`,
+    'In Transit': (lc) => `Safe travels. Reply 1 (Arrived) when you reach ${lc.deliveryPoint || 'the delivery point'} for ${lc.loadConNumber}.`,
+    'Out for Delivery': (lc) => `Load ${lc.loadConNumber} is out for delivery. Reply 1 (Delivered) once offloaded.`,
     'Delivered': (lc, podLink) => `Thank you for delivering ${lc.loadConNumber}. Please upload the signed POD here: ${podLink}`,
 };
 

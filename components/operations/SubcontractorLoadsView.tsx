@@ -73,11 +73,14 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
             const base = `${window.location.origin}${window.location.pathname}`;
             const fmtD = (d?: string) => { if (!d) return ''; try { return format(new Date(d), 'dd/MM/yyyy'); } catch { return d; } };
+            // Clickable Google Maps link for an address (no API key needed for the link).
+            const mapLink = (addr?: string) => addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : '';
+            const withMap = (addr?: string) => addr ? `${addr} &nbsp;<a href="${mapLink(addr)}" style="color:#1d4ed8;font-weight:700;white-space:nowrap">📍 View on map</a>` : '';
             // Key details in the email body itself, so the load info is always there
             // even if the PDF doesn't render in their mail client.
             const rows: [string, string | undefined][] = [
-                ['Collection', lc.collectionPoint],
-                ['Delivery', lc.deliveryPoint],
+                ['Collection', withMap(lc.collectionPoint)],
+                ['Delivery', withMap(lc.deliveryPoint)],
                 ['Loading date', fmtD(lc.collectionDate)],
                 ['Loading time', lc.loadingTime],
                 ['Load type / size', lc.loadType],

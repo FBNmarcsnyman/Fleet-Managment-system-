@@ -11,114 +11,69 @@
 | **ID** | Unique reference — use in Claude Code to track the task |
 | **Type** | Bug / Change / Feature |
 | **Priority** | P1 = fix now / P2 = next session / P3 = backlog |
-| **Status** | PENDING / IN PROGRESS / DONE |
+| **Status** | PENDING / IN PROGRESS / DONE / PARTIAL |
 | **Files likely affected** | Best guess at which files Claude Code will need to touch |
 
----
-
-## Change Items
-
----
-
-### CHG-001
-- **Type:** Bug
-- **Priority:** P1
-- **Status:** PENDING
-- **Title:** User role assignment hangs on save
-- **Description:** On the Users screen, when changing a user's role (e.g. Driver → Admin or any role update), clicking save causes the UI to hang indefinitely. It is unclear whether the save completes in Supabase or fails silently.
-- **Expected behaviour:** Role change saves successfully, UI confirms with a success state and returns to normal.
-- **To investigate:** Check for missing await/async on the Supabase update call; check if RLS policy is blocking the write for certain role combinations; confirm whether the record actually updates in the DB despite the hang.
-- **Files likely affected:** Users management component, Supabase role update function/hook
-- **Notes:** Confirm with Marc whether any specific role combinations are worse than others.
+## Where the bigger picture lives
+- **Roadmap / master plan:** `FBN_PROGRAM_PLAN.md` — the full build backlog and the order things ship. This change log is the *running task list*; the program plan is the *roadmap*.
+- **Project skill (the "logic"):** `.claude/skills/fbn-fleet/` — encodes the app's conventions, architecture, and the deploy rules so any session works the same way.
+- **Deploy reality (important):** the **live site is `https://fleet-managment-system.marcsnyman.workers.dev` (Cloudflare Workers)**, auto-built from the **`main`** branch. Work is on `migration/supabase` and promoted to `main`. (The program plan still mentions Vercel — that's outdated; Cloudflare is current.)
+- **Freeze-proof writes:** the app's #1 recurring bug was the browser's Supabase client wedging so a save never left the browser. The fix pattern is `directInsert` / `directUpdate` / `directDelete` / `directSelect` / `directInvoke` in `lib/supabase.ts` (plain `fetch` with the token from storage). **Reuse these for any new write that users report freezing.**
 
 ---
 
-### CHG-002
-- **Type:** Change
-- **Priority:** P2
-- **Status:** PENDING
-- **Title:** ETA at loading point — replace free-text with date + time picker
-- **Description:** On the Load Acceptance screen (triggered from transporter email), the "ETA at loading point" field currently accepts free text (e.g. 18/06/2026 08:00). This must be replaced with a proper date picker and time input.
-- **Expected behaviour:** User sees a date selector calendar + time input (or combined datetime picker). Selected value formats consistently before saving.
-- **Screen:** Load Acceptance modal — field: "ETA at loading point"
-- **Files likely affected:** Load acceptance form component, LoadCon email template trigger
-- **Notes:** Confirm with Marc — separate date + time fields, or single combined datetime picker? Time free-type or increments?
+## Change Items (open)
+
+### CHG-002b
+- **Type:** Change · **Priority:** P3 · **Status:** PENDING
+- **Title:** Show ETA nicely on tracking / detail (formatted)
+- **Description:** ETA is now captured via a date+time picker (CHG-002 done). Optionally format it as `18 Jun 2026, 08:00` on the client tracking page and load detail instead of the raw value.
+- **Files:** `components/PublicLoad.tsx`, `components/operations/LoadDetailModal.tsx`
+
+### CHG-003 — Status update communications engine
+- **Type:** Feature · **Priority:** P2 · **Status:** PARTIAL (blocked on WhatsApp sender)
+- **Done so far (email):** client gets an email at each status milestone (`sendClientPhaseEmail`); POD is auto-requested from the transporter when a load hits Delivered; an **AMENDED — please re-confirm** email fires if a sent load's details change; FBN staff can already advance any status manually on the Load Board (the "FBN override").
+- **Still to build:** the **WhatsApp** channel; the **persistent chase loop** (keep requesting the next phase until the transporter responds or the POD closes the file); and **non-response flagging** into the KPI scorecard (see CHG-003b).
+- **Blocked on:** a WhatsApp Business sender — Twilio (Account SID + Auth Token + WhatsApp number) **or** Meta Cloud API token. Full message flow already captured in memory (`whatsapp-driver-bot-spec`).
+- **Files:** `contexts/OperationsContext.tsx` (senders + status hooks), new `whatsapp` edge function + inbound webhook, KPI module.
+- **Confirm with Marc:** does this apply to FBN own drivers too, or subcontractors only?
+
+### CHG-003b — Transporter KPI scorecard (response tracking)
+- **Type:** Feature · **Priority:** P3 · **Status:** PENDING (depends on CHG-003)
+- A basic transporter scorecard already exists in Broking analytics; this adds **update-responsiveness** as a tracked metric (each missed update request = a negative signal). Build alongside the chase loop.
+- **Files:** `components/operations/BrokingAnalytics.tsx`, status-update hooks.
+
+### CHG-004 — Get POD: request, upload, store, notify client
+- **Type:** Feature · **Priority:** P2 · **Status:** DONE (email) — WhatsApp + optional Drive push pending
+- **Done:** "Request"/"Get POD" emails the transporter a no-login upload link (`?pod=<id>`); driver uploads a **photo + on-screen signature** (`PublicPodUpload` → `submit-pod` edge function) which stores it on the load; the **client is auto-notified** when the POD lands (`sendClientPodEmail`) and the **subcontractor gets a copy** (`sendSupplierPodEmail`); plus a manual **Send / Resend POD** button on both the LoadCons list and the load detail. All safe under TEST mode.
+- **Still optional:** WhatsApp upload link (pending sender); push the POD to a Google Drive folder; attach the actual PDF vs. a view link (currently a view/download link).
+
+### CHG-005 — Google Maps address search + contact pull-through
+- **Type:** Feature · **Priority:** P2 · **Status:** BLOCKED on Marc
+- Address autocomplete on collection/delivery is built but inactive — needs a **Google Maps API key** set as `VITE_GOOGLE_MAPS_API_KEY` in the Cloudflare build env (key restricted to the live URL). Contact-number pull works only for named businesses (Google has no phone for plain street addresses).
 
 ---
 
-### CHG-003
-- **Type:** Feature
-- **Priority:** P2
-- **Status:** PENDING
-- **Title:** Status update communications engine — email/WhatsApp chain to transporter + client
-- **Description:** When load statuses are updated (driver assigned, departed, en route, arrived, delivered, POD received), the system must automatically send communications as follows:
+## Completed Items (this build run — 2026-06-16/17)
 
-  **To transporter (subcontractor):**
-  - Email + WhatsApp notification at each status milestone
-  - Requests confirmation/update for the NEXT phase
-  - Continues requesting until transporter responds or POD is received and file is closed
-  - Non-response is flagged against the transporter's KPI scorecard
-
-  **To client:**
-  - Email update at each key milestone
-  - Actual POD document (or notification of receipt) sent on file close
-
-  **FBN employee override:**
-  - If transporter does not update, FBN employee can action the status update manually
-  - System still sends client update and still requests next phase update from transporter
-  - Chain continues until POD received + file closed
-
-- **Status milestones to define (confirm with Marc):**
-  - Load assigned
-  - Departed loading point
-  - En route
-  - Arrived at delivery point
-  - Delivered
-  - POD uploaded / file closed
-
-- **Files likely affected:** Load status update component, notification service, KPI scorecard module (see CHG-003b below), email/WhatsApp integration layer
-- **Notes:** This is a large feature — recommend breaking into sub-tasks in Claude Code. KPI scorecard impact to be scoped separately as CHG-003b. Confirm: does this apply to FBN own drivers too, or subcontractors only?
-
----
-
-### CHG-003b
-- **Type:** Feature
-- **Priority:** P3
-- **Status:** PENDING
-- **Title:** Transporter KPI scorecard — update response tracking
-- **Description:** Transporter non-response to status update requests (from CHG-003) must be recorded and reflected in a KPI scorecard per transporter. Scorecard tracks responsiveness across loads over time.
-- **Expected behaviour:** Each missed update request increments a negative KPI signal against that transporter. Scorecard visible in transporter profile or reporting screen.
-- **Files likely affected:** Transporter profile, KPI/reporting module
-- **Notes:** Confirm with Marc — is the KPI scorecard already partially built, or greenfield? What other KPI metrics feed into it?
-
----
-
-### CHG-004
-- **Type:** Feature
-- **Priority:** P2
-- **Status:** PENDING
-- **Title:** Get POD — request, upload, store, notify client
-- **Description:** A "Get POD" button on the load record triggers the following flow:
-
-  1. **Request sent** to subcontractor/driver via email + WhatsApp with a unique upload link
-  2. **Transporter/driver uploads** POD document (photo or PDF) via the link
-  3. **POD stored** against the load record in Supabase
-  4. **Client notified** by email — either POD attached or notification of receipt (confirm with Marc)
-  5. **Load file closed**
-
-- **Files likely affected:** Load detail component, POD upload endpoint (public token-based, similar to load acceptance), Supabase storage, client notification service, email template
-- **Notes:** Confirm with Marc:
-  - Email + WhatsApp both, or per-transporter preference?
-  - Upload via link or attachment reply?
-  - POD also pushed to Google Drive folder?
-  - Client gets the actual document or just a notification?
-  - Accepted file types: JPG (phone photo), PDF, or both?
-
----
-
-## Completed Items
-
-*None yet.*
+- **CHG-001 — User role save no longer hangs.** Root cause: `supabase.functions.invoke` wedging. User create/update now go through freeze-proof `directInvoke`. **DONE.**
+- **CHG-002 — ETA at loading point is now a date+time picker** (combined `datetime-local`) on the acceptance page, stored on the load. **DONE.**
+- **LoadCon create no longer freezes** — saves via freeze-proof direct REST; root cause was the browser Supabase client wedging (verified the DB itself saves instantly).
+- **LoadCon edit no longer freezes / loses focus** — direct-REST update; field component moved to module scope so inputs keep focus.
+- **Carrier acceptance no longer hangs** — public page uses direct fetch; bigger card.
+- **Editing a sent load re-sends an AMENDED LoadCon** for re-confirmation, listing what changed.
+- **Email TEST MODE** — Super-Admin toggle (top-right pill); when ON, every email routes only to marcsnyman@ with a `[TEST]` banner. Defaulted ON. Enforced inside the `send-email` function (one chokepoint).
+- **LoadCon numbers** are now clean running numbers: `FBN-2026-06-0001` (per month).
+- **Routes** A–Z sorted, editable (type a new one); **Load Types** ascending; **dates** DD/MM/YYYY with calendar pick.
+- **Pick a client → prefills from their last load** (addresses, contacts, route, commodity, packaging, load type, weight, rate).
+- **LoadCon email carries the details** (loading date, size/type, weight, special instructions) and flags if the PDF couldn't attach.
+- **Load Board:** shows transporter name (green) / "Needs transporter" (amber); **Accepted ✓** + driver/reg/ETA on cards; **auto-refresh every 30s** + manual refresh; columns fill the page.
+- **Send / Resend POD** to client or any address (LoadCons list + load detail).
+- **Super Admin can Archive or Delete** an incorrect / failed load (from its detail).
+- **Doc Settings → Email Preview** tab to verify every email's look & wording.
+- **Roles & Access:** added **Accounts** + **Ops** roles (DB enum + RLS); role dropdown offers all 5 roles; **Users → Role Access matrix** (org-wide per-role module visibility); **per-user override** on Edit User.
+- **Workspace Personalization fixed** — moving/hiding nav tabs now updates instantly and saves.
+- **Modals** no longer close on a stray backdrop click; a transient session blip no longer force-reloads the page (no more lost work mid-form).
 
 ---
 
@@ -126,5 +81,5 @@
 
 | Date | Session Summary |
 |---|---|
-| 2026-06-17 | Initial change log created. 4 items logged (CHG-001 to CHG-004). Several items have open clarification questions — resolve before implementing. |
-
+| 2026-06-17 | Actioned CHG-001 (role save hang → fixed via directInvoke) and CHG-002 (ETA date+time picker). Logged the full build run's completed items. CHG-003/003b and the WhatsApp side of CHG-004 are blocked on a WhatsApp Business sender; CHG-005 blocked on a Google Maps key. Roadmap = `FBN_PROGRAM_PLAN.md`; project logic = `.claude/skills/fbn-fleet/`. |
+| 2026-06-17 | Initial change log created. 4 items logged (CHG-001 to CHG-004). |

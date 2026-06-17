@@ -3,6 +3,7 @@ import { LoadConfirmation } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import { supabase } from '../../lib/supabase';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
+import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => {
@@ -241,7 +242,18 @@ const LoadDetailModal: React.FC = () => {
                             </>
                         )}
                     </div>
-                    <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Documents</button>
+                    <div className="flex gap-2">
+                        {lc.subcontractorDriverCell && (
+                            <button
+                                onClick={() => {
+                                    const base = `${window.location.origin}${window.location.pathname}`;
+                                    sendDriverWhatsApp(lc, `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport load ${lc.loadConNumber}.\nCollect: ${lc.collectionPoint || '-'}\nDeliver: ${lc.deliveryPoint || '-'}\nCargo: ${lc.loadType || ''} ${lc.commodity || ''}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\nContact: ${lc.collectionContact || '-'} ${lc.collectionTelephone || ''}\nTrack/POD: ${base}?pod=${lc.id}\nPlease reply with your ETA at the loading point.`);
+                                    showToast(`WhatsApp sent to the driver${''}.`);
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm">WhatsApp Driver</button>
+                        )}
+                        <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Documents</button>
+                    </div>
                 </div>
             )}
         </div>

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useMemo, useRef, ReactNode } from 're
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
-import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect } from '../lib/supabase';
+import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -59,6 +59,39 @@ const CLIENT_PHASE_MSG: Record<string, string> = {
     'At Destination Depot': 'has arrived at our destination depot',
     'Out for Delivery': 'is out for delivery',
     'Delivered': 'has been delivered',
+};
+
+// Normalise a SA cell ("0832496150" / "27 83…" / "+2783…") to E.164 (+2783…).
+const waNumber = (raw?: string): string | null => {
+    if (!raw) return null;
+    let d = String(raw).replace(/[^\d+]/g, '');
+    if (d.startsWith('+')) return d;
+    if (d.startsWith('27')) return `+${d}`;
+    if (d.startsWith('0')) return `+27${d.slice(1)}`;
+    if (d.length === 9) return `+27${d}`;     // missing leading 0
+    return `+${d}`;
+};
+
+// Send a WhatsApp to the load's driver (freeze-proof invoke; honours TEST MODE
+// server-side). Fire-and-forget — never block a status update on messaging.
+export const sendDriverWhatsApp = async (lc: any, body: string): Promise<void> => {
+    const to = waNumber(lc?.subcontractorDriverCell);
+    if (!to) return;
+    try {
+        const { error } = await directInvoke('send-whatsapp', { to: `whatsapp:${to}`, body });
+        if (error) console.error('[ops] driver WhatsApp failed:', error);
+    } catch (e) { console.error('[ops] driver WhatsApp threw:', e); }
+};
+
+// What we ask the driver at each phase. The reply keywords (ARRIVED, LOADED,
+// ONROUTE, DELIVERED, OFFLOADED) are what the inbound webhook will act on.
+const DRIVER_PHASE_MSG: Record<string, (lc: any, podLink: string) => string> = {
+    'Driver Assigned': (lc) => `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport has assigned you load ${lc.loadConNumber}.\nCollect: ${lc.collectionPoint || '-'}\nDeliver: ${lc.deliveryPoint || '-'}\nCargo: ${lc.loadType || ''} ${lc.commodity || ''}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\nContact: ${lc.collectionContact || '-'} ${lc.collectionTelephone || ''}\nPlease reply with your ETA at the loading point.`,
+    'At Collection Point': (lc) => `Thanks. When you start loading ${lc.loadConNumber}, reply LOADED.`,
+    'Collected': (lc) => `Great — load ${lc.loadConNumber} marked collected. Reply ONROUTE with your ETA at ${lc.deliveryPoint || 'delivery'} once you depart.`,
+    'In Transit': (lc) => `Safe travels. Reply ARRIVED when you reach ${lc.deliveryPoint || 'the delivery point'} for ${lc.loadConNumber}.`,
+    'Out for Delivery': (lc) => `Load ${lc.loadConNumber} is out for delivery. Reply DELIVERED once offloaded.`,
+    'Delivered': (lc, podLink) => `Thank you for delivering ${lc.loadConNumber}. Please upload the signed POD here: ${podLink}`,
 };
 
 // Emails the client a short branded status update with a live tracking link as
@@ -585,6 +618,12 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 // Auto-update the client with a tracking link as the load changes phase.
                 if (updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]) {
                     sendClientPhaseEmail({ ...(prev || {}), ...updates, id }, updates.status);
+                }
+                // Message the DRIVER on WhatsApp at each phase with the next ask.
+                if (updates.status && updates.status !== prev?.status && DRIVER_PHASE_MSG[updates.status]) {
+                    const merged = { ...(prev || {}), ...updates, id };
+                    const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+                    sendDriverWhatsApp(merged, DRIVER_PHASE_MSG[updates.status](merged, `${base}?pod=${id}`));
                 }
                 // When a POD comes in: notify the client AND send the subbie their copy.
                 if (updates.status === 'POD Submitted' && prev?.status !== 'POD Submitted') {

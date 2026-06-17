@@ -7,23 +7,30 @@ declare global {
     }
 }
 
+interface PlaceInfo { address: string; name?: string; phone?: string; }
 interface AddressAutocompleteInputProps {
     value: string;
     onChange: (value: string) => void;
     placeholder: string;
     required?: boolean;
     className?: string;
+    // Fires with extra details when a place is picked — used to auto-fill the
+    // contact name + phone when the chosen place is a named business (Google has
+    // no phone for plain street addresses).
+    onPlace?: (info: PlaceInfo) => void;
 }
 
-const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({ value, onChange, placeholder, required, className }) => {
+const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({ value, onChange, placeholder, required, className, onPlace }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const [isApiLoaded, setIsApiLoaded] = useState(!!window.google);
     const onChangeRef = useRef(onChange);
+    const onPlaceRef = useRef(onPlace);
 
-    // Keep the onChange handler ref up to date without re-triggering the effect
+    // Keep the handler refs up to date without re-triggering the effect
     useEffect(() => {
         onChangeRef.current = onChange;
-    }, [onChange]);
+        onPlaceRef.current = onPlace;
+    }, [onChange, onPlace]);
 
     // Effect to listen for the API load event
     useEffect(() => {
@@ -48,14 +55,21 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({ val
         if (isApiLoaded && inputElement && window.google?.maps?.places) {
             autocomplete = new window.google.maps.places.Autocomplete(inputElement, {
                 componentRestrictions: { country: 'za' }, // Restrict suggestions to South Africa
-                fields: ['formatted_address'],
-                types: ['address'],
+                // No `types` restriction so BUSINESSES (which carry a phone) show
+                // alongside plain addresses.
+                fields: ['formatted_address', 'name', 'formatted_phone_number', 'international_phone_number'],
             });
 
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
-                if (place && place.formatted_address) {
-                    onChangeRef.current(place.formatted_address);
+                const address = place?.formatted_address || place?.name;
+                if (address) {
+                    onChangeRef.current(address);
+                    onPlaceRef.current?.({
+                        address,
+                        name: place?.name,
+                        phone: place?.formatted_phone_number || place?.international_phone_number,
+                    });
                 }
             });
         }

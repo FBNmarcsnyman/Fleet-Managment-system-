@@ -337,7 +337,8 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                     <Section title="Collection">
                         <div className="space-y-3">
                             <div><label className={labelCls}>Collection Address *</label>
-                                <AddressAutocompleteInput value={collectionPoint} onChange={setCollectionPoint} placeholder="Search Google Maps address…" required className={inputCls} /></div>
+                                <AddressAutocompleteInput value={collectionPoint} onChange={setCollectionPoint} placeholder="Search Google Maps address…" required className={inputCls}
+                                    onPlace={info => { if (info.name && !collectionContact) setCollectionContact(info.name); if (info.phone && !collectionTelephone) setCollectionTelephone(info.phone); }} /></div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div><label className={labelCls}>Contact</label><input value={collectionContact} onChange={e => setCollectionContact(e.target.value)} className={inputCls} /></div>
                                 <div><label className={labelCls}>Telephone</label><input value={collectionTelephone} onChange={e => setCollectionTelephone(e.target.value)} className={inputCls} /></div>
@@ -349,7 +350,8 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                     <Section title="Delivery">
                         <div className="space-y-3">
                             <div><label className={labelCls}>Delivery Address *</label>
-                                <AddressAutocompleteInput value={deliveryPoint} onChange={setDeliveryPoint} placeholder="Search Google Maps address…" required className={inputCls} /></div>
+                                <AddressAutocompleteInput value={deliveryPoint} onChange={setDeliveryPoint} placeholder="Search Google Maps address…" required className={inputCls}
+                                    onPlace={info => { if (info.name && !deliveryContact) setDeliveryContact(info.name); if (info.phone && !deliveryTelephone) setDeliveryTelephone(info.phone); }} /></div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div><label className={labelCls}>Contact</label><input value={deliveryContact} onChange={e => setDeliveryContact(e.target.value)} className={inputCls} /></div>
                                 <div><label className={labelCls}>Telephone</label><input value={deliveryTelephone} onChange={e => setDeliveryTelephone(e.target.value)} className={inputCls} /></div>

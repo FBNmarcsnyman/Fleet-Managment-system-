@@ -30,16 +30,20 @@ const EMAIL_SAMPLES: { key: string; label: string; subject: string; html: string
         key: 'clientOrder', label: 'Client Order → Client', subject: `FBN Transport Order ${SAMPLE.loadConNumber} - Transnet, Salt River to Transnet, Bloemfontein`,
         html: brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${SAMPLE.loadConNumber}</div>
           <p>Good day ${SAMPLE.client},</p>
-          <p><strong>Thank you for your load.</strong> We have made all the arrangements and booked it accordingly. Please find your order attached, with all the details:</p>
+          <p><strong>Thank you for your load — we are pleased to confirm it is booked</strong> and all arrangements are in place. Your order details are set out below and attached for your records:</p>
           <table style="border-collapse:collapse;margin:6px 0 14px">
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">FBN order no.</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${SAMPLE.loadConNumber}</td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Your reference</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">PO 88421</td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Collection</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, RSE Store, Salt River &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Delivery</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, Wagon Build, Bloemfontein &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Loading date</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18/06/2026</td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Load type / size</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">12M</td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Weight (kg)</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18000</td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Commodity</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">SUB FRAMES</td></tr>
           </table>
           ${emailButton('#', 'Track your shipment &rarr;', '#13294b')}
-          <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>
-          <p>Regards,<br>FBN Transport</p>`),
+          <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>
+          <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`),
     },
     {
         key: 'amended', label: 'AMENDED re-confirm', subject: `AMENDED Load Confirmation ${SAMPLE.loadConNumber} - please re-confirm`,

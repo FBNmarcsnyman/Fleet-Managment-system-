@@ -55,11 +55,23 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
-      <p><strong>Thank you for your load.</strong> We have made all the arrangements and booked it accordingly. Please find your order ${attachments ? 'attached, ' : ''}with all the details${attachments ? '' : ' below'}:</p>
-      ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(lc.deliveryPoint)], ['Loading date', fmtD(lc.collectionDate)], ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Your reference', lc.customerOrderNumber]])}
+      <p><strong>Thank you for your load — we are pleased to confirm it is booked</strong> and all arrangements are in place. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>
+      ${table([
+        ['FBN order no.', lc.loadConNumber],
+        ['Your reference', lc.customerOrderNumber],
+        ['Collection', withMap(lc.collectionPoint)],
+        ['Delivery', withMap(lc.deliveryPoint)],
+        ['Loading date', fmtD(lc.collectionDate)],
+        ['Loading time', lc.loadingTime],
+        ['Offloading date', fmtD(lc.deliveryDate)],
+        ['Load type / size', lc.loadType],
+        ['Weight (kg)', lc.weightKg],
+        ['Commodity', lc.commodity],
+        ['Packaging', lc.packaging],
+      ])}
       ${emailButton(`${base()}?track=${lc.id}`, 'Track your shipment &rarr;')}
-      <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>
-      <p>Regards,<br>FBN Transport</p>`);
+      <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>
+      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
         const { data, error } = await supabase.functions.invoke('send-email', { body: { to: dest, cc: lc.ccEmail || undefined, subject: `FBN Transport Order ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };

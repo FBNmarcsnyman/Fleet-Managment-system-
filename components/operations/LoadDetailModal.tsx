@@ -4,6 +4,7 @@ import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import { supabase } from '../../lib/supabase';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
+import { buildLoadConPdf } from '../../lib/loadconPdf';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => {
@@ -108,6 +109,28 @@ const LoadDetailModal: React.FC = () => {
         } finally {
             setSendingPod(false);
         }
+    };
+
+    // Email the computer-generated waybill / POD to the supplier (print & sign).
+    const [waybillBusy, setWaybillBusy] = useState(false);
+    const emailWaybillToSupplier = async () => {
+        if (!lc.subcontractorEmail) { showToast('No supplier email on this load — add one first.'); return; }
+        setWaybillBusy(true);
+        try {
+            const { base64, filename } = await buildLoadConPdf(lc, 'deliveryNote');
+            const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p><p>Please find the <strong>waybill / POD</strong> for load <strong>${lc.loadConNumber}</strong> attached. Kindly have it <strong>signed on delivery</strong> and returned to us (reply with a scan/photo, or use the driver upload link).</p><p>Regards,<br>FBN Transport</p>`);
+            const { data, error } = await supabase.functions.invoke('send-email', { body: { to: lc.subcontractorEmail, subject: `Waybill / POD - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments: [{ filename, content: base64, contentType: 'application/pdf' }] } });
+            if (error || (data as any)?.error) { showToast(`Failed: ${(data as any)?.error || error?.message}`); return; }
+            showToast('Waybill / POD emailed to the supplier.');
+        } catch (e) { showToast(`Could not send: ${e instanceof Error ? e.message : 'error'}`); }
+        finally { setWaybillBusy(false); }
+    };
+    const podToDriverWhatsApp = () => {
+        let cell = lc.subcontractorDriverCell;
+        if (!cell) { const v = window.prompt(`Driver's cell for ${lc.loadConNumber} (WhatsApp):`, ''); if (v === null) return; cell = v.trim(); if (!cell) { showToast('No number entered.'); return; } handleUpdateLoadConfirmation(lc.id, { subcontractorDriverCell: cell }); }
+        const link = `${window.location.origin}${window.location.pathname}?pod=${lc.id}`;
+        sendDriverWhatsApp({ ...lc, subcontractorDriverCell: cell }, `Please sign the POD on delivery and upload it here for load ${lc.loadConNumber}: ${link}`);
+        showToast('Sign-and-upload link sent to the driver on WhatsApp.');
     };
 
     const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
@@ -233,6 +256,15 @@ const LoadDetailModal: React.FC = () => {
                                 <button onClick={sendPod} disabled={sendingPod} className="text-xs font-bold text-emerald-400 hover:underline disabled:opacity-50">{sendingPod ? 'Sending…' : 'Send / Resend POD →'}</button>
                             </div>
                         )}
+                    </div>
+                    {/* Electronic POD / waybill: choose how the signed POD comes back. */}
+                    <div className="mt-3 pt-3 border-t border-gray-700/50">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Get the signed POD / waybill back</p>
+                        <div className="flex flex-wrap gap-2">
+                            <button onClick={emailWaybillToSupplier} disabled={waybillBusy} className="text-xs font-bold bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 disabled:opacity-50 py-1.5 px-3 rounded-lg">{waybillBusy ? 'Sending…' : '📄 Email waybill/POD to supplier'}</button>
+                            <button onClick={podToDriverWhatsApp} className="text-xs font-bold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 py-1.5 px-3 rounded-lg">💬 WhatsApp driver to sign &amp; upload</button>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-2">Use the waybill email when the supplier prints &amp; signs; use the driver WhatsApp link when the driver signs on-screen and uploads.</p>
                     </div>
                 </Section>
             )}

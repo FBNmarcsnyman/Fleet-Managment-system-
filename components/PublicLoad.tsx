@@ -39,6 +39,8 @@ interface Summary {
     has_pod?: boolean;
     accepted_at?: string;
     client_name?: string;
+    request_status?: string;
+    request_reply?: string;
 }
 
 // Public client-facing stages (no internal jargon).
@@ -64,6 +66,18 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
     const vehicleReg = useRef<HTMLInputElement>(null);
     const driverCell = useRef<HTMLInputElement>(null);
     const loadingEta = useRef<HTMLInputElement>(null);
+    const [reqMsg, setReqMsg] = useState('');
+    const [reqBusy, setReqBusy] = useState(false);
+    const [reqSent, setReqSent] = useState(false);
+
+    const submitRequest = async () => {
+        const message = reqMsg.trim();
+        if (!message) return;
+        setReqBusy(true);
+        try { await callPublic({ loadId, action: 'request', message }); setReqSent(true); setReqMsg(''); }
+        catch (e) { setErr(e instanceof Error ? e.message : 'Could not send your request.'); }
+        finally { setReqBusy(false); }
+    };
 
     useEffect(() => {
         (async () => {
@@ -122,6 +136,27 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
                                         {load.loading_eta && <div>ETA at loading point: <strong>{fmtDT(load.loading_eta)}</strong></div>}
                                         {load.vehicle_reg && <div>Vehicle: <strong>{load.vehicle_reg}</strong></div>}
                                         {load.has_pod && <div style={{ color: '#16a34a', fontWeight: 700, marginTop: 4 }}>POD received ✓</div>}
+                                    </div>
+                                    {/* Client → ops request channel (no detail editing, just a note). */}
+                                    <div style={{ marginTop: 22, borderTop: '1px solid #e5e7eb', paddingTop: 18 }}>
+                                        {load.request_reply ? (
+                                            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                                                <div style={{ fontSize: 12, fontWeight: 800, color: '#047857', textTransform: 'uppercase', letterSpacing: 1 }}>FBN replied</div>
+                                                <p style={{ color: '#065f46', fontSize: 14, margin: '6px 0 0' }}>{load.request_reply}</p>
+                                            </div>
+                                        ) : null}
+                                        {reqSent || load.request_status === 'open' ? (
+                                            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 14, textAlign: 'center' }}>
+                                                <p style={{ color: '#1e40af', fontSize: 14, margin: 0, fontWeight: 600 }}>✔ Your request is with our team — we'll be in touch shortly.</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <label style={{ fontSize: 13, fontWeight: 800, color: NAVY }}>Need anything for this delivery?</label>
+                                                <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 8px' }}>e.g. "Please call me 30 min before delivery." Our team will respond — you can't change the booking here.</p>
+                                                <textarea value={reqMsg} onChange={e => setReqMsg(e.target.value)} rows={3} placeholder="Type your request or special instruction…" style={{ width: '100%', padding: 11, borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                                                <button onClick={submitRequest} disabled={reqBusy || !reqMsg.trim()} style={{ marginTop: 8, background: reqBusy || !reqMsg.trim() ? '#9ca3af' : NAVY, color: '#fff', border: 'none', padding: '11px 20px', borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>{reqBusy ? 'Sending…' : 'Send request'}</button>
+                                            </>
+                                        )}
                                     </div>
                                     <p style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center', marginTop: 20 }}>FBN Transport · Commercial Freight Specialists</p>
                                 </>

@@ -130,6 +130,25 @@ const LoadDetailModal: React.FC = () => {
                 </div>
             </div>
 
+            {!editing && lc.clientRequestStatus === 'open' && (
+                <div className="bg-rose-50 border border-rose-300 rounded-xl p-4">
+                    <p className="text-[11px] font-black text-rose-600 uppercase tracking-widest mb-1">✉ Client request — needs a response</p>
+                    <p className="text-sm text-rose-900 mb-3">"{lc.clientRequest}"</p>
+                    <button
+                        onClick={() => {
+                            const reply = window.prompt(`Reply to ${lc.clientName || 'the client'} for ${lc.loadConNumber}:`, '');
+                            if (reply === null) return;
+                            const text = reply.trim();
+                            if (!text) { showToast('No reply entered.'); return; }
+                            const html = brandedEmail(`<p>Good day ${lc.clientContact || lc.clientName || ''},</p><p>Regarding your request on shipment <strong>${lc.loadConNumber}</strong>:</p><p style="background:#f3f4f6;border-radius:8px;padding:10px;color:#374151">${text}</p>${emailButton(`${window.location.origin}${window.location.pathname}?track=${lc.id}`, 'Track your shipment →')}<p>Regards,<br>FBN Transport</p>`);
+                            if (lc.clientEmail) supabase.functions.invoke('send-email', { body: { to: lc.clientEmail, subject: `FBN shipment ${lc.loadConNumber} - response to your request`, html, fromName: 'FBN Transport' } });
+                            handleUpdateLoadConfirmation(lc.id, { clientRequestStatus: 'resolved', clientRequestReply: text } as any)
+                                .then((r: any) => showToast(r?.ok === false ? `Saved reply but: ${r.error}` : 'Replied to the client and marked resolved.'));
+                        }}
+                        className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Reply to client</button>
+                </div>
+            )}
+
             {!editing && (
                 <div className="grid grid-cols-3 gap-3">
                     <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate</p><p className="text-lg font-black text-blue-300">{rand(lc.totalAmount)}</p></div>

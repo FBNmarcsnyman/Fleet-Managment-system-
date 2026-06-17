@@ -570,6 +570,11 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     subcontractorDriverCell: row.subcontractor_driver_cell ?? undefined,
     acceptedAt: (row as any).accepted_at ?? undefined,
     loadingEta: (row as any).loading_eta ?? undefined,
+    deliveryEta: (row as any).delivery_eta ?? undefined,
+    clientRequest: (row as any).client_request ?? undefined,
+    clientRequestAt: (row as any).client_request_at ?? undefined,
+    clientRequestStatus: (row as any).client_request_status ?? undefined,
+    clientRequestReply: (row as any).client_request_reply ?? undefined,
     commodity: row.commodity ?? undefined,
     packaging: row.packaging ?? undefined,
     loadSpec: row.load_spec ?? undefined,
@@ -1289,6 +1294,8 @@ export const toLoadConfirmationUpdate = (
     if (updates.sentToSupplierDate !== undefined) row.sent_to_supplier_date = updates.sentToSupplierDate ?? null;
     if (updates.subcontractorVehicleReg !== undefined) row.subcontractor_vehicle_reg = updates.subcontractorVehicleReg ?? null;
     if (updates.subcontractorDriverName !== undefined) row.subcontractor_driver_name = updates.subcontractorDriverName ?? null;
+    if ((updates as any).clientRequestStatus !== undefined) (row as any).client_request_status = (updates as any).clientRequestStatus ?? null;
+    if ((updates as any).clientRequestReply !== undefined) (row as any).client_request_reply = (updates as any).clientRequestReply ?? null;
     if (updates.subcontractorDriverCell !== undefined) row.subcontractor_driver_cell = updates.subcontractorDriverCell ?? null;
     // Transport Order document fields — needed so assigning a subbie (and later
     // edits) persist the details that print on the LoadCon / Client Order.

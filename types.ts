@@ -442,6 +442,11 @@ export interface LoadConfirmation {
     subcontractorDriverCell?: string;
     acceptedAt?: string;
     loadingEta?: string;
+    deliveryEta?: string;
+    clientRequest?: string;
+    clientRequestAt?: string;
+    clientRequestStatus?: string;
+    clientRequestReply?: string;
     commodity?: string;
     packaging?: string;
     loadSpec?: string;

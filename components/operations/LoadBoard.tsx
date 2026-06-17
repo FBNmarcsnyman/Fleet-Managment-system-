@@ -127,6 +127,9 @@ const LoadBoard: React.FC = () => {
                                             </div>
                                             <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block text-left font-bold text-slate-900 text-sm leading-tight hover:text-blue-600">{clientMap.get(lc.clientId || '') || lc.clientName}</button>
                                             <p className="text-[10px] text-slate-500 mb-1 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                                            {lc.clientRequestStatus === 'open' && (
+                                                <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block w-full text-left text-[9px] font-black text-white bg-rose-500 hover:bg-rose-600 rounded px-1.5 py-1 mb-1 animate-pulse">✉ CLIENT REQUEST — tap to respond</button>
+                                            )}
                                             {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-600 mb-1 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
                                             <div className="flex justify-between items-center mb-2 text-[9px] font-bold">
                                                 <span className={urgent === 'over' ? 'text-red-600' : urgent === 'today' ? 'text-amber-600' : 'text-slate-400'}>

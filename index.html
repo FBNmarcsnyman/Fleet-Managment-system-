@@ -30,10 +30,10 @@
     </script>
     <!-- Print rules + light theme live in /index.css (kept out of an inline <style>
          because vite's html-inline-proxy can intermittently fail the production build). -->
-    <!-- Google Maps API for Places Autocomplete and Advanced Markers.
-         Needs a key: set VITE_GOOGLE_MAPS_API_KEY in the environment (Vercel),
-         with the Maps JavaScript API + Places API enabled and billing on. -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places,marker&callback=initMap" async defer></script>
+    <!-- Google Maps API for Places Autocomplete. The key is HTTP-referrer
+         restricted to the FBN app URLs in Google Cloud (project "FBN FMS"),
+         so it is safe to ship in the page. Rotate in Google Cloud if needed. -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDO_QqVAA8P-kAw-FEeFoI54YC1O7jIPWk&libraries=places,marker&callback=initMap" async defer></script>
     <script>
         function initMap() {
             window.dispatchEvent(new Event('google-maps-api-loaded'));

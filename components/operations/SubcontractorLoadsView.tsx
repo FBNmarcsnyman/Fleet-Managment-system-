@@ -5,6 +5,7 @@ import { useUIState } from '../../contexts/AppContexts';
 import { supabase } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
+import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -167,6 +168,21 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         }
     };
 
+    // WhatsApp the driver the load brief (asks for their cell if not on file).
+    const handleWhatsAppDriver = (lc: LoadConfirmation) => {
+        let cell = lc.subcontractorDriverCell;
+        if (!cell) {
+            const entered = window.prompt(`Driver's cell number for ${lc.loadConNumber} (WhatsApp):`, '');
+            if (entered === null) return;
+            cell = entered.trim();
+            if (!cell) { showToast('No number entered.'); return; }
+            onUpdateLoadConfirmation(lc.id, { subcontractorDriverCell: cell });
+        }
+        const base = `${window.location.origin}${window.location.pathname}`;
+        sendDriverWhatsApp({ ...lc, subcontractorDriverCell: cell }, `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport load ${lc.loadConNumber}.\nCollect: ${lc.collectionPoint || '-'}\nDeliver: ${lc.deliveryPoint || '-'}\nCargo: ${lc.loadType || ''} ${lc.commodity || ''}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\nTrack/POD: ${base}?pod=${lc.id}\nPlease reply with your ETA at the loading point.`);
+        showToast('WhatsApp sent to the driver.');
+    };
+
     const handleViewPdf = (lc: LoadConfirmation) => {
         // Opens the 3-document set: LoadCon (subbie), Client Order (client), Delivery Note.
         showModal('loadDocuments', { loadCon: lc });
@@ -246,6 +262,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                             <button onClick={() => handleSendLoadCon(lc)} disabled={sendingLc === lc.id} className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-1 px-2 rounded-lg">
                                                 {sendingLc === lc.id ? 'Sending…' : lc.sentToSupplierDate ? 'Resend' : 'Email LoadCon'}
                                             </button>
+                                            <button onClick={() => handleWhatsAppDriver(lc)} title="WhatsApp the driver the load brief" className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white py-1 px-2 rounded-lg">WhatsApp</button>
                                         </div>
                                     </td>
                                     <td className="p-2">

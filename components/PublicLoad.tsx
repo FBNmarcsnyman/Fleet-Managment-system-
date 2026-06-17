@@ -52,6 +52,8 @@ const stageIndex = (status: string): number => {
     return 0;
 };
 const fmt = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }); };
+// ETA is a datetime — show date + time, e.g. "18 Jun 2026, 08:00".
+const fmtDT = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 
 const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ loadId, mode }) => {
     const [load, setLoad] = useState<Summary | null>(null);
@@ -117,7 +119,7 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
                                     <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 16, fontSize: 14, color: '#374151', lineHeight: 1.7 }}>
                                         {load.collection_date && <div>Collection: <strong>{fmt(load.collection_date)}</strong></div>}
                                         {load.delivery_date && <div>Delivery (planned): <strong>{fmt(load.delivery_date)}</strong></div>}
-                                        {load.loading_eta && <div>ETA at loading point: <strong>{load.loading_eta}</strong></div>}
+                                        {load.loading_eta && <div>ETA at loading point: <strong>{fmtDT(load.loading_eta)}</strong></div>}
                                         {load.vehicle_reg && <div>Vehicle: <strong>{load.vehicle_reg}</strong></div>}
                                         {load.has_pod && <div style={{ color: '#16a34a', fontWeight: 700, marginTop: 4 }}>POD received ✓</div>}
                                     </div>

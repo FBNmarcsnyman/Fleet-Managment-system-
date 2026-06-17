@@ -54,6 +54,7 @@ const LoadBoard: React.FC = () => {
     }, [loadConfirmations, branch, q, clientMap]);
 
     const fmtR = (n: number) => 'R ' + Math.round(n).toLocaleString('en-ZA');
+    const fmtEta = (s?: string) => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
 
     const advance = async (lc: LoadConfirmation) => {
         const step = nextStep(lc);
@@ -147,7 +148,7 @@ const LoadBoard: React.FC = () => {
                                                 {(lc.subcontractorDriverName || lc.subcontractorVehicleReg || lc.loadingEta) && (
                                                     <p className="text-[9px] text-slate-500 mt-1 truncate pl-5">
                                                         {[lc.subcontractorDriverName, lc.subcontractorVehicleReg].filter(Boolean).join(' · ')}
-                                                        {lc.loadingEta ? `${(lc.subcontractorDriverName || lc.subcontractorVehicleReg) ? ' · ' : ''}ETA ${lc.loadingEta}` : ''}
+                                                        {lc.loadingEta ? `${(lc.subcontractorDriverName || lc.subcontractorVehicleReg) ? ' · ' : ''}ETA ${fmtEta(lc.loadingEta)}` : ''}
                                                     </p>
                                                 )}
                                             </div>

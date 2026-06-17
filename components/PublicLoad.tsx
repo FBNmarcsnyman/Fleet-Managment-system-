@@ -149,8 +149,8 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
                                             <input ref={driverCell} style={inp} placeholder="082..." />
                                         </div>
                                         <div>
-                                            <label style={lbl}>ETA at loading point</label>
-                                            <input ref={loadingEta} style={inp} placeholder="e.g. 18/06/2026 08:00" />
+                                            <label style={lbl}>ETA at loading point (date &amp; time)</label>
+                                            <input ref={loadingEta} type="datetime-local" style={inp} />
                                         </div>
                                     </div>
                                     <button onClick={submitAccept} disabled={busy} style={{ width: '100%', background: busy ? '#9ca3af' : '#16a34a', color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 17, fontWeight: 800, cursor: 'pointer', marginTop: 10 }}>

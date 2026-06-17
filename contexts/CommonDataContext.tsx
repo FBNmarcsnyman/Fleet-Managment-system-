@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { User, Notification, Message } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, directInvoke } from '../lib/supabase';
 
 interface CommonDataContextType {
     users: User[];
@@ -32,12 +32,8 @@ export const CommonDataProvider: React.FC<{ children: ReactNode }> = ({ children
         // function (service role, admin-only), then reflects it in local state.
         handleAddUser: async (user: any): Promise<{ ok: boolean; error?: string; tempPassword?: string }> => {
             try {
-                const { data, error } = await supabase.functions.invoke('admin-create-user', { body: user });
-                if (error) {
-                    let msg = error.message;
-                    try { const ctx = await (error as any).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* ignore */ }
-                    return { ok: false, error: msg || 'Could not create the user.' };
-                }
+                const { data, error } = await directInvoke('admin-create-user', user);
+                if (error) return { ok: false, error: error.message || 'Could not create the user.' };
                 if (data?.error) return { ok: false, error: data.error };
                 dispatch({ type: 'ADD_USER', payload: {
                     name: data?.name ?? user.name,
@@ -62,12 +58,9 @@ export const CommonDataProvider: React.FC<{ children: ReactNode }> = ({ children
                 const body: any = { userId: target.id, ...updates };
                 if (opts?.resetPassword) body.resetPassword = true;
                 if (opts?.newPassword) body.newPassword = opts.newPassword;
-                const { data, error } = await supabase.functions.invoke('admin-update-user', { body });
-                if (error) {
-                    let msg = error.message;
-                    try { const ctx = await (error as any).context?.json?.(); if (ctx?.error) msg = ctx.error; } catch { /* ignore */ }
-                    return { ok: false, error: msg || 'Could not update the user.' };
-                }
+                // Freeze-proof invoke (supabase.functions.invoke could wedge → role save hung).
+                const { data, error } = await directInvoke('admin-update-user', body);
+                if (error) return { ok: false, error: error.message || 'Could not update the user.' };
                 if (data?.error) return { ok: false, error: data.error };
                 dispatch({ type: 'UPDATE_USER', payload: { id: target.id, email: target.email, updates } });
                 return { ok: true, tempPassword: data?.tempPassword };

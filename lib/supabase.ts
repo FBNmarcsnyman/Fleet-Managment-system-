@@ -242,6 +242,32 @@ export const directSelect = async (
   }
 };
 
+// Call an Edge Function via plain fetch (freeze-proof) instead of
+// supabase.functions.invoke, which can wedge on the auth client and hang the UI
+// (this caused the "role save hangs" + "accept load hangs" bugs).
+export const directInvoke = async (
+  fn: string,
+  body: Record<string, any>,
+): Promise<{ data: any; error: { message: string } | null }> => {
+  let token = readStoredSession()?.access_token || null;
+  if (!token) { token = await rawRefreshToken(); }
+  const attempt = async (tok: string | null) => raced(fetch(`${supabaseUrl}/functions/v1/${fn}`, {
+    method: 'POST',
+    headers: { apikey: supabaseAnonKey, ...(tok ? { Authorization: `Bearer ${tok}` } : {}), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }), 20000);
+  try {
+    let resp = await attempt(token);
+    if (resp.status === 401 || resp.status === 403) { const f = await rawRefreshToken(); if (f) resp = await attempt(f); }
+    const json = await resp.json().catch(() => null);
+    if (!resp.ok || (json && json.error)) return { data: null, error: { message: (json && json.error) || `${resp.status}` } };
+    return { data: json, error: null };
+  } catch (e) {
+    const msg = e instanceof Error && e.message === '__timed_out__' ? 'The request timed out — please try again.' : (e instanceof Error ? e.message : 'Network error');
+    return { data: null, error: { message: msg } };
+  }
+};
+
 // Insert a row via direct REST and return the created record (or an error).
 export const directInsert = (table: string, row: Record<string, any>) =>
   directSend(table, 'POST', row);

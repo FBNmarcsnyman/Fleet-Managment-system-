@@ -15,6 +15,7 @@ export type LoginResult = { ok: true } | { ok: false; error: string };
 
 interface AuthContextType extends AuthState {
   handleLogin: (email: string, password: string) => Promise<LoginResult>;
+  signInWithGoogle: () => Promise<LoginResult>;
   handleLogout: () => void;
   hasPermission: (permission: Permission) => boolean;
   setViewClientAsAdmin: (user: User | null) => void;
@@ -180,6 +181,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, []);
 
+    const signInWithGoogle = useCallback(async (): Promise<LoginResult> => {
+        // One-click sign-in with the staff member's FBN Google Workspace account.
+        // We hint Google to the company domain (hd) and force the account chooser
+        // so people on a personal+work Google don't get logged in as the wrong one.
+        // On success Google redirects back to this app; supabase-js (detectSessionInUrl)
+        // picks up the session and the onAuthStateChange listener loads the profile.
+        try {
+            // Clear any wedged auth storage first (same defensive nuke as handleLogin).
+            try {
+                const drop: string[] = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && (k.startsWith('sb-') || k.includes('supabase'))) drop.push(k);
+                }
+                for (const k of drop) localStorage.removeItem(k);
+            } catch { /* ignore */ }
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}${window.location.pathname}`,
+                    queryParams: { hd: 'fbn-transport.co.za', prompt: 'select_account' },
+                },
+            });
+            if (error) return { ok: false, error: error.message };
+            // Browser is now redirecting to Google; this promise effectively never
+            // resolves further. Return ok so the button shows a spinner.
+            return { ok: true };
+        } catch (err) {
+            return { ok: false, error: err instanceof Error ? err.message : 'Google sign-in failed' };
+        }
+    }, []);
+
     const handleLogout = useCallback(() => {
         intentionalLogoutRef.current = true;
         void supabase.auth.signOut();
@@ -317,6 +350,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const value = useMemo(() => ({
         ...state,
         handleLogin,
+        signInWithGoogle,
         handleLogout,
         hasPermission,
         setViewClientAsAdmin,
@@ -324,7 +358,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateNavPreferences,
         resetPassword,
         isAuthReady,
-    }), [state, handleLogin, handleLogout, hasPermission, setViewClientAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady]);
+    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -13,6 +13,7 @@ import {
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
+import { sendLoadConToSupplier, sendOrderToClient } from '../lib/loadEmails';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -563,6 +564,21 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 }
                 const mapped = mapLoadConfirmation(inserted, { branchById });
                 dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });
+
+                // Auto-send on booking: the LoadCon to the supplier and the Order to
+                // the client (fire-and-forget; TEST MODE keeps them coming to you).
+                const forEmail = { ...data, ...mapped };
+                const newId = mapped.id;
+                if (forEmail.subcontractorEmail && !mapped.sentToSupplierDate) {
+                    void sendLoadConToSupplier(forEmail).then(r => {
+                        if (r.ok) {
+                            const stamp = new Date().toISOString();
+                            void directUpdate('load_confirmations', { id: newId }, { sent_to_supplier_date: stamp } as any);
+                            dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id: newId, updates: { sentToSupplierDate: stamp } } });
+                        }
+                    });
+                }
+                if (forEmail.clientEmail) void sendOrderToClient(forEmail);
 
                 // The load is saved — return success NOW so the form closes instantly.
                 // Remembering the client in the client database is a nice-to-have that

@@ -130,6 +130,52 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         }
     };
 
+    // Send the CLIENT their professional order confirmation (Client Order PDF +
+    // map links + "we've booked it, regular updates coming"). Files to Drive too.
+    const handleSendClientOrder = async (lc: LoadConfirmation) => {
+        const entered = window.prompt(`Email the Client Order ${lc.loadConNumber} to:`, lc.clientEmail || '');
+        if (entered === null) return;
+        const to = entered.trim();
+        if (!to) { showToast('No email entered.'); return; }
+        if (to !== (lc.clientEmail || '')) onUpdateLoadConfirmation(lc.id, { clientEmail: to });
+        setSendingLc(lc.id);
+        try {
+            let attachments: any[] | undefined; let clientB64: string | undefined;
+            try { const { base64, filename } = await buildLoadConPdf(lc, 'clientOrder'); clientB64 = base64; attachments = [{ filename, content: base64, contentType: 'application/pdf' }]; }
+            catch (e) { console.error('[loads] Client Order PDF failed:', e); }
+            const base = `${window.location.origin}${window.location.pathname}`;
+            const fmtD = (d?: string) => { if (!d) return ''; try { return format(new Date(d), 'dd/MM/yyyy'); } catch { return d; } };
+            const shortLoc = (a?: string) => { const p = String(a || '').split(',').map(s => s.trim()).filter(Boolean); return p.length ? p[p.length - 1] : (a || ''); };
+            const mapLink = (a?: string) => a ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}` : '';
+            const withMap = (a?: string) => a ? `${a} &nbsp;<a href="${mapLink(a)}" style="color:#1d4ed8;font-weight:700;white-space:nowrap">📍 View on map</a>` : '';
+            const rows: [string, string | undefined][] = [
+                ['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(lc.deliveryPoint)],
+                ['Loading date', fmtD(lc.collectionDate)], ['Load type / size', lc.loadType],
+                ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging],
+                ['Your reference', lc.customerOrderNumber],
+            ];
+            const detailRows = rows.filter(([, v]) => v != null && `${v}`.trim() !== '')
+                .map(([k, v]) => `<tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
+            const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
+            const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
+              <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
+              <p><strong>Thank you for your load.</strong> We have made all the arrangements and booked it accordingly. Please find your order ${attachments ? 'attached, ' : ''}with all the details${attachments ? '' : ' below'}:</p>
+              ${detailsTable}
+              ${emailButton(`${base}?track=${lc.id}`, 'Track your shipment &rarr;')}
+              <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>
+              <p>Regards,<br>FBN Transport</p>`);
+            const subjLoc = (a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
+            const { data, error } = await supabase.functions.invoke('send-email', {
+                body: { to, cc: lc.ccEmail || undefined, subject: `FBN Transport Order ${lc.loadConNumber} - ${subjLoc(shortLoc(lc.collectionPoint))} to ${subjLoc(shortLoc(lc.deliveryPoint))}`, html, fromName: 'FBN Transport', attachments },
+            });
+            if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message}`); return; }
+            if (clientB64) void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: clientB64, name: 'Client-Order.pdf', kind: 'clientorder', contentType: 'application/pdf' }] });
+            showToast(`Order confirmation emailed to the client (${to}).`);
+        } catch (e) {
+            showToast(`Could not send: ${e instanceof Error ? e.message : 'error'}`);
+        } finally { setSendingLc(null); }
+    };
+
     // Ask the transporter to send the POD for a delivered load. Works today via
     // email; the same trigger will fire a WhatsApp once a sender number is connected.
     const handleRequestPod = async (lc: LoadConfirmation) => {
@@ -280,6 +326,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                             <button onClick={() => handleSendLoadCon(lc)} disabled={sendingLc === lc.id} className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-1 px-2 rounded-lg">
                                                 {sendingLc === lc.id ? 'Sending…' : lc.sentToSupplierDate ? 'Resend' : 'Email LoadCon'}
                                             </button>
+                                            <button onClick={() => handleSendClientOrder(lc)} disabled={sendingLc === lc.id} title="Email the client their order confirmation" className="text-xs font-semibold bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-700 py-1 px-2 rounded-lg">Email Order</button>
                                             <button onClick={() => handleWhatsAppDriver(lc)} title="WhatsApp the driver the load brief" className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white py-1 px-2 rounded-lg">WhatsApp</button>
                                         </div>
                                     </td>

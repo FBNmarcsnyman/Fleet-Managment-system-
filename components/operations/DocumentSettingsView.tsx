@@ -10,24 +10,35 @@ const SAMPLE = { loadConNumber: 'FBN-2026-06-0001', name: 'Wayne', client: 'PERI
 // can verify the look & wording here without sending a test.
 const EMAIL_SAMPLES: { key: string; label: string; subject: string; html: string }[] = [
     {
-        key: 'loadcon', label: 'LoadCon → Transporter', subject: `FBN Load Confirmation ${SAMPLE.loadConNumber} - ${SAMPLE.route}`,
-        html: brandedEmail(`<p>Good day ${SAMPLE.name},</p>
-          <p>Please find attached FBN Load Confirmation <strong>${SAMPLE.loadConNumber}</strong> for <strong>${SAMPLE.route}</strong>.</p>
+        key: 'loadcon', label: 'LoadCon → Transporter', subject: `FBN Load Confirmation ${SAMPLE.loadConNumber} - Transnet, Salt River to Transnet, Bloemfontein`,
+        html: brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${SAMPLE.loadConNumber}</div>
+          <p>Good day ${SAMPLE.name},</p>
+          <p>Please find attached your FBN Load Confirmation for the load from <strong>Salt River</strong> to <strong>Bloemfontein</strong>.</p>
           <table style="border-collapse:collapse;margin:6px 0 14px">
-            <tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px">Loading date</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">18/06/2026</td></tr>
-            <tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px">Load type / size</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">6M</td></tr>
-            <tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px">Weight (kg)</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">12000</td></tr>
-            <tr><td style="padding:4px 12px 4px 0;color:#5b6573;font-size:13px">Special instructions</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:600">Tarp required</td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Collection</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, RSE Store, Salt River &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Delivery</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, Wagon Build, Bloemfontein &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Loading date</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18/06/2026</td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Load type / size</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">12M</td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Weight (kg)</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18000</td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Transport rate</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">R 21600</td></tr>
           </table>
           <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
           ${emailButton('#', 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
           <p>Regards,<br>FBN Transport</p>`),
     },
     {
-        key: 'clientOrder', label: 'Client Order → Client', subject: `FBN Transport Order ${SAMPLE.loadConNumber} - ${SAMPLE.route}`,
-        html: brandedEmail(`<p>Good day ${SAMPLE.client},</p>
-          <p>Please find your FBN Transport Order <strong>${SAMPLE.loadConNumber}</strong> for <strong>${SAMPLE.route}</strong>.</p>
-          ${emailButton('#', 'Track this shipment &rarr;', '#13294b')}
+        key: 'clientOrder', label: 'Client Order → Client', subject: `FBN Transport Order ${SAMPLE.loadConNumber} - Transnet, Salt River to Transnet, Bloemfontein`,
+        html: brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${SAMPLE.loadConNumber}</div>
+          <p>Good day ${SAMPLE.client},</p>
+          <p><strong>Thank you for your load.</strong> We have made all the arrangements and booked it accordingly. Please find your order attached, with all the details:</p>
+          <table style="border-collapse:collapse;margin:6px 0 14px">
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Collection</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, RSE Store, Salt River &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Delivery</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, Wagon Build, Bloemfontein &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Loading date</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18/06/2026</td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Commodity</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">SUB FRAMES</td></tr>
+          </table>
+          ${emailButton('#', 'Track your shipment &rarr;', '#13294b')}
+          <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>
           <p>Regards,<br>FBN Transport</p>`),
     },
     {

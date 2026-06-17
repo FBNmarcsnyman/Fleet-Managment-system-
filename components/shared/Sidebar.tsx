@@ -64,8 +64,8 @@ const Sidebar: React.FC = () => {
                     onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }}
                     className="h-9 w-auto object-contain cursor-pointer shrink-0" />
                 <div className="hidden lg:block min-w-0">
-                    <p className="text-[11px] font-black text-[#13294b] tracking-[0.18em] uppercase leading-none">Control Centre</p>
-                    <p className="text-[9px] font-bold text-slate-500 tracking-[0.12em] uppercase mt-1 truncate">Commercial Freight Specialists</p>
+                    <p className="text-[11px] font-black text-[#13294b] tracking-[0.12em] uppercase leading-none">Control Centre</p>
+                    <p className="text-[8px] font-bold text-slate-500 tracking-[0.03em] uppercase mt-1 leading-tight">Commercial Freight Specialists</p>
                 </div>
             </div>
 

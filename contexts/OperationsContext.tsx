@@ -79,9 +79,12 @@ export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<v
     const msg = CLIENT_PHASE_MSG[status];
     if (!to || !msg) return;
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+    const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
     const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
       <p>Status update on load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}: it <strong>${msg}</strong>.</p>
-      <p>Please keep us updated on the next step. POD to be returned on delivery.</p>
+      <p>Please push the next update from your portal as the load progresses:</p>
+      ${emailButton(`${base}?update=${lc.id}`, 'Update this load &rarr;')}
+      <p style="font-size:13px;color:#5b6573">POD to be returned on delivery (you can upload it from the same portal).</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
         await supabase.functions.invoke('send-email', { body: { to, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });

@@ -196,6 +196,7 @@ const App: React.FC = () => {
     const podLoadId = urlParams.get('pod');
     const trackLoadId = urlParams.get('track');
     const acceptLoadId = urlParams.get('accept');
+    const updateLoadId = urlParams.get('update');
     const showTerms = urlParams.get('tcs');
     const portal = urlParams.get('portal');
 
@@ -215,6 +216,10 @@ const App: React.FC = () => {
     // Public carrier acceptance page (from the LoadCon email).
     if (acceptLoadId) {
         return <PublicLoad loadId={acceptLoadId} mode="accept" />;
+    }
+    // Public supplier/controller update portal — push status updates through the trip.
+    if (updateLoadId) {
+        return <PublicLoad loadId={updateLoadId} mode="update" />;
     }
 
     if (publicQuoteId) {

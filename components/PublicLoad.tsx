@@ -33,6 +33,7 @@ interface Summary {
     delivery_date?: string;
     eta?: string;
     loading_eta?: string;
+    delivery_eta?: string;
     subcontractor_name?: string;
     vehicle_reg?: string;
     driver_name?: string;
@@ -57,7 +58,16 @@ const fmt = (d?: string) => { if (!d) return ''; const dt = new Date(d); return 
 // ETA is a datetime — show date + time, e.g. "18 Jun 2026, 08:00".
 const fmtDT = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 
-const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ loadId, mode }) => {
+// Supplier portal: the next action(s) they can push, by current internal status.
+const NEXT_ACTION = (status: string): { to: string; label: string; askEta?: boolean } | null => {
+    if (['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'].includes(status)) return { to: 'Collected', label: 'Mark as Loaded / Collected' };
+    if (['Collected', 'At Collection Depot'].includes(status)) return { to: 'In Transit', label: 'Mark On Route to delivery', askEta: true };
+    if (status === 'In Transit') return { to: 'Out for Delivery', label: 'Mark Arrived at delivery' };
+    if (['Out for Delivery', 'At Destination Depot', 'Unloaded'].includes(status)) return { to: 'Delivered', label: 'Mark Delivered / Offloaded' };
+    return null;
+};
+
+const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update' }> = ({ loadId, mode }) => {
     const [load, setLoad] = useState<Summary | null>(null);
     const [err, setErr] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -69,6 +79,17 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
     const [reqMsg, setReqMsg] = useState('');
     const [reqBusy, setReqBusy] = useState(false);
     const [reqSent, setReqSent] = useState(false);
+
+    const [statusBusy, setStatusBusy] = useState(false);
+    const [delEta, setDelEta] = useState('');
+    const submitStatus = async (to: string, askEta: boolean) => {
+        setStatusBusy(true); setErr(null);
+        try {
+            await callPublic({ loadId, action: 'status', to, deliveryEta: askEta ? delEta : undefined });
+            setLoad(await callPublic({ loadId, action: 'track' }) as Summary);  // refresh to next step
+        } catch (e) { setErr(e instanceof Error ? e.message : 'Could not update. Please try again.'); }
+        finally { setStatusBusy(false); }
+    };
 
     const submitRequest = async () => {
         const message = reqMsg.trim();
@@ -111,7 +132,7 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
             <div style={{ width: '100%', maxWidth: 720, background: '#fff', borderRadius: 16, overflow: 'hidden', marginTop: 28, boxShadow: '0 10px 40px rgba(0,0,0,0.4)' }}>
                 <div style={{ background: NAVY, padding: '22px 30px' }}>
                     <img src="/fbn-logo.jpg" alt="FBN Transport" style={{ height: 46, background: '#fff', borderRadius: 4, padding: 4 }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                    <div style={{ color: YELLOW, fontSize: 12, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', marginTop: 8 }}>{mode === 'accept' ? 'Load Acceptance' : 'Shipment Tracking'}</div>
+                    <div style={{ color: YELLOW, fontSize: 12, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', marginTop: 8 }}>{mode === 'accept' ? 'Load Acceptance' : mode === 'update' ? 'Load Update' : 'Shipment Tracking'}</div>
                 </div>
                 <div style={{ height: 5, background: YELLOW }} />
                 <div style={{ padding: 34 }}>
@@ -195,6 +216,43 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' }> = ({ lo
                                     </button>
                                 </>
                             ))}
+
+                            {mode === 'update' && (() => {
+                                const next = NEXT_ACTION(load.status);
+                                const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(load.status);
+                                return (
+                                    <>
+                                        <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 14, fontSize: 14, color: '#374151', marginBottom: 18 }}>
+                                            Current status: <strong style={{ color: NAVY }}>{STAGES[stageIndex(load.status)]}</strong>
+                                            {load.delivery_eta && <div style={{ marginTop: 4 }}>Delivery ETA: <strong>{fmtDT(load.delivery_eta)}</strong></div>}
+                                        </div>
+                                        {err && <p style={{ color: '#b91c1c', fontSize: 14 }}>{err}</p>}
+                                        {delivered ? (
+                                            <div style={{ textAlign: 'center' }}>
+                                                <p style={{ color: '#16a34a', fontWeight: 700, fontSize: 16 }}>✅ Delivered</p>
+                                                {!load.has_pod && <a href={`${window.location.origin}${window.location.pathname}?pod=${loadId}`} style={{ display: 'inline-block', marginTop: 8, background: '#16a34a', color: '#fff', textDecoration: 'none', padding: '14px 26px', borderRadius: 10, fontSize: 16, fontWeight: 800 }}>Upload signed POD + documents →</a>}
+                                                {load.has_pod && <p style={{ color: '#16a34a' }}>POD received — thank you ✓</p>}
+                                            </div>
+                                        ) : next ? (
+                                            <>
+                                                <p style={{ color: '#374151', fontSize: 15, marginBottom: 12 }}>Tap to update us as the load progresses:</p>
+                                                {next.askEta && (
+                                                    <div style={{ marginBottom: 12 }}>
+                                                        <label style={lbl}>ETA at delivery (date &amp; time)</label>
+                                                        <input type="datetime-local" value={delEta} onChange={e => setDelEta(e.target.value)} style={inp} />
+                                                    </div>
+                                                )}
+                                                <button onClick={() => submitStatus(next.to, !!next.askEta)} disabled={statusBusy} style={{ width: '100%', background: statusBusy ? '#9ca3af' : NAVY, color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>
+                                                    {statusBusy ? 'Saving…' : next.label}
+                                                </button>
+                                                <p style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center', marginTop: 14 }}>Each update notifies FBN and the client automatically.</p>
+                                            </>
+                                        ) : (
+                                            <p style={{ color: '#6b7280' }}>No action needed right now. Thank you.</p>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </>
                     )}
                 </div>

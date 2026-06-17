@@ -72,6 +72,22 @@ const waNumber = (raw?: string): string | null => {
     return `+${d}`;
 };
 
+// Emails the SUBCONTRACTOR a short status update as the load moves phases
+// (the client gets their own via sendClientPhaseEmail). Fire-and-forget.
+export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<void> => {
+    const to = lc?.subcontractorEmail;
+    const msg = CLIENT_PHASE_MSG[status];
+    if (!to || !msg) return;
+    const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+    const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
+      <p>Status update on load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}: it <strong>${msg}</strong>.</p>
+      <p>Please keep us updated on the next step. POD to be returned on delivery.</p>
+      <p>Regards,<br>FBN Transport</p>`);
+    try {
+        await supabase.functions.invoke('send-email', { body: { to, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
+    } catch (e) { console.error('[ops] supplier phase update failed:', e); }
+};
+
 // Send a WhatsApp to the load's driver (freeze-proof invoke; honours TEST MODE
 // server-side). Fire-and-forget — never block a status update on messaging.
 export const sendDriverWhatsApp = async (lc: any, body: string): Promise<void> => {
@@ -617,7 +633,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 }
                 // Auto-update the client with a tracking link as the load changes phase.
                 if (updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]) {
-                    sendClientPhaseEmail({ ...(prev || {}), ...updates, id }, updates.status);
+                    const merged = { ...(prev || {}), ...updates, id };
+                    sendClientPhaseEmail(merged, updates.status);
+                    sendSupplierPhaseEmail(merged, updates.status);
                 }
                 // Message the DRIVER on WhatsApp at each phase with the next ask.
                 if (updates.status && updates.status !== prev?.status && DRIVER_PHASE_MSG[updates.status]) {

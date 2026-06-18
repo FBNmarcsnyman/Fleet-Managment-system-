@@ -75,7 +75,10 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
       <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
-        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc: lc.ccEmail || undefined, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments } });
+        // Client Order goes ONLY to the client — never CC the subcontractor's
+        // copy-list (lc.ccEmail is the subbie's accounts/controllers).
+        const clientCc = String((lc as any).clientCcEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc: clientCc.length ? clientCc : undefined, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
     if (b64) { void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: b64, name: 'Client-Order.pdf', kind: 'clientorder', contentType: 'application/pdf' }] }); }

@@ -196,9 +196,9 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
               ${emailButton(`${base}?track=${lc.id}`, 'Track your shipment &rarr;')}
               <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>
               <p>Regards,<br>FBN Transport</p>`);
-            const subjLoc = (a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
+            // Client Order goes ONLY to the client — never CC the subbie's list.
             const { data, error } = await invokeFn('send-email', {
-                body: { to, cc: lc.ccEmail || undefined, subject: `FBN Transport Order ${lc.loadConNumber} - ${subjLoc(shortLoc(lc.collectionPoint))} to ${subjLoc(shortLoc(lc.deliveryPoint))}`, html, fromName: 'FBN Transport', attachments },
+                body: { to, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments },
             });
             if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message}`); return; }
             if (clientB64) void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: clientB64, name: 'Client-Order.pdf', kind: 'clientorder', contentType: 'application/pdf' }] });

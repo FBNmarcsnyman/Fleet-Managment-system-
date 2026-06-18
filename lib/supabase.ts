@@ -268,6 +268,13 @@ export const directInvoke = async (
   }
 };
 
+// Drop-in, freeze-proof replacement for `supabase.functions.invoke(fn, { body })`.
+// Same call shape and same { data, error } result, but routes through directInvoke
+// (plain fetch) so it can't wedge on the auth lock the way functions.invoke does.
+// This is why emails (order/loadcon/status-update) silently never sent.
+export const invokeFn = (fn: string, opts: { body?: Record<string, any> } = {}) =>
+  directInvoke(fn, opts.body || {});
+
 // Insert a row via direct REST and return the created record (or an error).
 export const directInsert = (table: string, row: Record<string, any>) =>
   directSend(table, 'POST', row);

@@ -2,7 +2,7 @@
 // (SubcontractorLoadsView) and the auto-send on create (OperationsContext) use
 // the SAME wording, attachment and Drive filing. All sends respect TEST MODE
 // (enforced in the send-email edge function).
-import { supabase, directInvoke } from './supabase';
+import { directInvoke, invokeFn } from './supabase';
 import { buildLoadConPdf } from './loadconPdf';
 import { brandedEmail, emailButton } from './emailTemplate';
 
@@ -38,7 +38,7 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
       ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        const { data, error } = await supabase.functions.invoke('send-email', { body: { to: dest, cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
     if (b64) { void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: b64, name: 'LoadCon.pdf', kind: 'loadcon', contentType: 'application/pdf' }] }); }
@@ -73,7 +73,7 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
       <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
-        const { data, error } = await supabase.functions.invoke('send-email', { body: { to: dest, cc: lc.ccEmail || undefined, subject: `FBN Transport Order ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc: lc.ccEmail || undefined, subject: `FBN Transport Order ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
     if (b64) { void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: b64, name: 'Client-Order.pdf', kind: 'clientorder', contentType: 'application/pdf' }] }); }

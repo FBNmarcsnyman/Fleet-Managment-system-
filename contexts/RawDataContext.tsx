@@ -9,7 +9,7 @@ import {
   ComplianceDoc, Attachment, Driver,
 } from '../types';
 import { COMMODITIES, PACKAGING_TYPES } from '../constants';
-import { supabase } from '../lib/supabase';
+import { supabase, directSelect } from '../lib/supabase';
 import {
   mapProfile, mapVehicle, mapFuelEntry, mapServiceEntry, mapOtherCost, mapRecurringCost,
   mapRevenueEntry, mapServiceInterval, mapPlannedService, mapFuelPrice, mapBowser, mapBowserRefill,
@@ -563,7 +563,7 @@ const fetchBranchesWithRetry = async (): Promise<{ data: { id: string; code: str
     let lastError: unknown = null;
     for (let i = 0; i < delays.length; i++) {
         if (delays[i] > 0) await new Promise(r => setTimeout(r, delays[i]));
-        const res = await supabase.from('branches').select('id, code');
+        const res = await directSelect('branches?select=id,code');
         if (!res.error && res.data) return res;
         lastError = res.error;
         const status = (res.error as { status?: number; code?: string } | null)?.status;
@@ -617,45 +617,48 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             manifests, tripSheets, incidentReports, supplierApplications, notifications,
             messages, routes, vehicleComplianceDocs, drivers,
         ] = await Promise.all([
-            supabase.from('profiles').select('*'),
-            supabase.from('vehicles').select('*'),
-            supabase.from('fuel_entries').select('*'),
-            supabase.from('service_entries').select('*'),
-            supabase.from('other_costs').select('*'),
-            supabase.from('recurring_costs').select('*'),
-            supabase.from('revenue_entries').select('*'),
-            supabase.from('service_intervals').select('*'),
-            supabase.from('planned_services').select('*'),
-            supabase.from('fuel_prices').select('*'),
-            supabase.from('bowsers').select('*'),
-            supabase.from('bowser_refills').select('*'),
-            supabase.from('budgets').select('*'),
-            supabase.from('forecasts').select('*'),
-            supabase.from('job_cards').select('*'),
-            supabase.from('checklist_templates').select('*'),
-            supabase.from('checklist_submissions').select('*'),
-            supabase.from('tires').select('*'),
-            supabase.from('tire_mount_history').select('*'),
-            supabase.from('tire_inspections').select('*'),
-            supabase.from('parts').select('*'),
-            supabase.from('purchase_requests').select('*'),
-            supabase.from('purchase_orders').select('*'),
-            supabase.from('hr_cases').select('*'),
-            supabase.from('clients').select('*'),
-            supabase.from('suppliers').select('*'),
-            supabase.from('supplier_compliance_docs').select('*'),
-            supabase.from('supplier_rate_cards').select('*'),
-            supabase.from('quotes').select('*'),
-            supabase.from('load_confirmations').select('*'),
-            supabase.from('manifests').select('*'),
-            supabase.from('trip_sheets').select('*'),
-            supabase.from('incident_reports').select('*'),
-            supabase.from('supplier_applications').select('*'),
-            supabase.from('notifications').select('*'),
-            supabase.from('messages').select('*'),
-            supabase.from('routes').select('*'),
-            supabase.from('vehicle_compliance_docs').select('*'),
-            supabase.from('drivers' as any).select('*'),
+            // directSelect (plain fetch + stored token) instead of supabase.from():
+            // the supabase-js client wedges on its auth lock so the whole hydrate
+            // hung and lists (LoadCons, clients, subbies) silently never loaded.
+            directSelect('profiles?select=*'),
+            directSelect('vehicles?select=*'),
+            directSelect('fuel_entries?select=*'),
+            directSelect('service_entries?select=*'),
+            directSelect('other_costs?select=*'),
+            directSelect('recurring_costs?select=*'),
+            directSelect('revenue_entries?select=*'),
+            directSelect('service_intervals?select=*'),
+            directSelect('planned_services?select=*'),
+            directSelect('fuel_prices?select=*'),
+            directSelect('bowsers?select=*'),
+            directSelect('bowser_refills?select=*'),
+            directSelect('budgets?select=*'),
+            directSelect('forecasts?select=*'),
+            directSelect('job_cards?select=*'),
+            directSelect('checklist_templates?select=*'),
+            directSelect('checklist_submissions?select=*'),
+            directSelect('tires?select=*'),
+            directSelect('tire_mount_history?select=*'),
+            directSelect('tire_inspections?select=*'),
+            directSelect('parts?select=*'),
+            directSelect('purchase_requests?select=*'),
+            directSelect('purchase_orders?select=*'),
+            directSelect('hr_cases?select=*'),
+            directSelect('clients?select=*'),
+            directSelect('suppliers?select=*'),
+            directSelect('supplier_compliance_docs?select=*'),
+            directSelect('supplier_rate_cards?select=*'),
+            directSelect('quotes?select=*'),
+            directSelect('load_confirmations?select=*'),
+            directSelect('manifests?select=*'),
+            directSelect('trip_sheets?select=*'),
+            directSelect('incident_reports?select=*'),
+            directSelect('supplier_applications?select=*'),
+            directSelect('notifications?select=*'),
+            directSelect('messages?select=*'),
+            directSelect('routes?select=*'),
+            directSelect('vehicle_compliance_docs?select=*'),
+            directSelect('drivers?select=*'),
         ]);
         console.log('[hydrate] Promise.all settled (38 tables)');
 

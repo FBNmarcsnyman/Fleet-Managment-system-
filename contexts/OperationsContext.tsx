@@ -3,7 +3,7 @@ import React, { createContext, useContext, useMemo, useRef, ReactNode } from 're
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
-import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke } from '../lib/supabase';
+import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -88,7 +88,7 @@ export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<v
       <p style="font-size:13px;color:#5b6573">POD to be returned on delivery (you can upload it from the same portal).</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await supabase.functions.invoke('send-email', { body: { to, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
     } catch (e) { console.error('[ops] supplier phase update failed:', e); }
 };
 
@@ -128,7 +128,7 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
       ${emailButton(trackLink, 'Track your shipment &rarr;')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await supabase.functions.invoke('send-email', { body: { to, subject: `FBN shipment ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, subject: `FBN shipment ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client phase update failed:', e);
     }
@@ -146,7 +146,7 @@ export const sendClientPodEmail = async (lc: any): Promise<void> => {
       ${emailButton(`${base}?track=${lc.id}`, 'Track shipment')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await supabase.functions.invoke('send-email', { body: { to, subject: `POD available - shipment ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, subject: `POD available - shipment ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client POD notify failed:', e);
     }
@@ -163,7 +163,7 @@ export const sendSupplierPodEmail = async (lc: any): Promise<void> => {
       <p style="font-size:13px;color:#5b6573">Please keep this for your records and quote the load number on your invoice.</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await supabase.functions.invoke('send-email', { body: { to, subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] supplier POD copy failed:', e);
     }
@@ -187,7 +187,7 @@ export const sendAmendedLoadConEmail = async (lc: any, changed: string[]): Promi
       <p style="font-size:13px;color:#5b6573">If you cannot accept the amended terms, please reply to this email.</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await supabase.functions.invoke('send-email', {
+        await invokeFn('send-email', {
             body: {
                 to,
                 cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])],
@@ -213,7 +213,7 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
       <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>
       <p>Thank you,<br>FBN Transport</p>`);
     try {
-        await supabase.functions.invoke('send-email', {
+        await invokeFn('send-email', {
             body: { to, cc: lc.ccEmail || undefined, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
         });
     } catch (e) {

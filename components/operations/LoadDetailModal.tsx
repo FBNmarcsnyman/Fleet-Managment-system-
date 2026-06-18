@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
-import { supabase } from '../../lib/supabase';
+import { supabase, invokeFn } from '../../lib/supabase';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
@@ -101,7 +101,7 @@ const LoadDetailModal: React.FC = () => {
               <p>Please find the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}.</p>
               ${emailButton(podUrl, 'View / download POD &rarr;', '#16a34a')}
               <p>Regards,<br>FBN Transport</p>`);
-            const { data, error } = await supabase.functions.invoke('send-email', { body: { to, subject: `POD - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+            const { data, error } = await invokeFn('send-email', { body: { to, subject: `POD - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
             if (error || (data && (data as any).error)) { showToast(`Could not send POD: ${(data as any)?.error || error?.message}`); return; }
             showToast(`POD sent to ${to}.`);
         } catch (e) {
@@ -119,7 +119,7 @@ const LoadDetailModal: React.FC = () => {
         try {
             const { base64, filename } = await buildLoadConPdf(lc, 'deliveryNote');
             const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p><p>Please find the <strong>waybill / POD</strong> for load <strong>${lc.loadConNumber}</strong> attached. Kindly have it <strong>signed on delivery</strong> and returned to us (reply with a scan/photo, or use the driver upload link).</p><p>Regards,<br>FBN Transport</p>`);
-            const { data, error } = await supabase.functions.invoke('send-email', { body: { to: lc.subcontractorEmail, subject: `Waybill / POD - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments: [{ filename, content: base64, contentType: 'application/pdf' }] } });
+            const { data, error } = await invokeFn('send-email', { body: { to: lc.subcontractorEmail, subject: `Waybill / POD - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments: [{ filename, content: base64, contentType: 'application/pdf' }] } });
             if (error || (data as any)?.error) { showToast(`Failed: ${(data as any)?.error || error?.message}`); return; }
             showToast('Waybill / POD emailed to the supplier.');
         } catch (e) { showToast(`Could not send: ${e instanceof Error ? e.message : 'error'}`); }
@@ -164,7 +164,7 @@ const LoadDetailModal: React.FC = () => {
                             const text = reply.trim();
                             if (!text) { showToast('No reply entered.'); return; }
                             const html = brandedEmail(`<p>Good day ${lc.clientContact || lc.clientName || ''},</p><p>Regarding your request on shipment <strong>${lc.loadConNumber}</strong>:</p><p style="background:#f3f4f6;border-radius:8px;padding:10px;color:#374151">${text}</p>${emailButton(`${window.location.origin}${window.location.pathname}?track=${lc.id}`, 'Track your shipment →')}<p>Regards,<br>FBN Transport</p>`);
-                            if (lc.clientEmail) supabase.functions.invoke('send-email', { body: { to: lc.clientEmail, subject: `FBN shipment ${lc.loadConNumber} - response to your request`, html, fromName: 'FBN Transport' } });
+                            if (lc.clientEmail) invokeFn('send-email', { body: { to: lc.clientEmail, subject: `FBN shipment ${lc.loadConNumber} - response to your request`, html, fromName: 'FBN Transport' } });
                             handleUpdateLoadConfirmation(lc.id, { clientRequestStatus: 'resolved', clientRequestReply: text } as any)
                                 .then((r: any) => showToast(r?.ok === false ? `Saved reply but: ${r.error}` : 'Replied to the client and marked resolved.'));
                         }}

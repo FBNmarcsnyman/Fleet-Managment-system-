@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useUIState, useAuth, useOperations } from '../../contexts/AppContexts';
-import { supabase } from '../../lib/supabase';
+import { supabase, invokeFn } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail } from '../../lib/emailTemplate';
 import { PrinterIcon } from '../icons/PrinterIcon';
@@ -124,7 +124,7 @@ const LoadDocumentsModal: React.FC = () => {
                 ? `<p style="text-align:center;margin:20px 0"><a href="${base}?track=${lc.id}" style="background:${NAVY};color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Track this shipment &rarr;</a></p>`
                 : '';
             const html = brandedEmail(`${coverNote(lc, tab, sender)}<p style="font-size:13px;color:${GREY};margin-top:6px">Your ${label} (Ref ${lc.loadConNumber}) is attached to this email as a PDF.</p>${cta}`);
-            const { data, error } = await supabase.functions.invoke('send-email', {
+            const { data, error } = await invokeFn('send-email', {
                 body: {
                     // LoadCons are always copied to loadcons@ for the monitoring team.
                     to,

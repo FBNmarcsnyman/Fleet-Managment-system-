@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Supplier, Client, Attachment, PodAnalysisResult } from '../../types';
 import { useUIState } from '../../contexts/AppContexts';
-import { supabase, directInvoke } from '../../lib/supabase';
+import { supabase, directInvoke, invokeFn } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
@@ -129,7 +129,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
               ${emailButton(`${base}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
               <p>Regards,<br>FBN Transport</p>`);
             const subjLoc = (a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
-            const { data, error } = await supabase.functions.invoke('send-email', {
+            const { data, error } = await invokeFn('send-email', {
                 body: { to, cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(collLoc)} to ${subjLoc(delLoc)}`,
                     html, fromName: 'FBN Transport', attachments },
             });
@@ -189,7 +189,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
               <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>
               <p>Regards,<br>FBN Transport</p>`);
             const subjLoc = (a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
-            const { data, error } = await supabase.functions.invoke('send-email', {
+            const { data, error } = await invokeFn('send-email', {
                 body: { to, cc: lc.ccEmail || undefined, subject: `FBN Transport Order ${lc.loadConNumber} - ${subjLoc(shortLoc(lc.collectionPoint))} to ${subjLoc(shortLoc(lc.deliveryPoint))}`, html, fromName: 'FBN Transport', attachments },
             });
             if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message}`); return; }
@@ -214,7 +214,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
               ${emailButton(uploadLink, 'Upload POD &rarr;', '#16a34a')}
               <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>
               <p>Thank you,<br>FBN Transport</p>`);
-            const { data, error } = await supabase.functions.invoke('send-email', {
+            const { data, error } = await invokeFn('send-email', {
                 body: { to, cc: lc.ccEmail || undefined, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
             });
             if (error || (data && (data as any).error)) { showToast(`Could not send request: ${(data as any)?.error || error?.message}`); return; }
@@ -244,7 +244,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
               <p>Please find the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}.</p>
               ${emailButton(podUrl, 'View / download POD &rarr;', '#16a34a')}
               <p>Regards,<br>FBN Transport</p>`);
-            const { data, error } = await supabase.functions.invoke('send-email', {
+            const { data, error } = await invokeFn('send-email', {
                 body: { to, subject: `POD - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
             });
             if (error || (data && (data as any).error)) { showToast(`Could not send POD: ${(data as any)?.error || error?.message}`); return; }

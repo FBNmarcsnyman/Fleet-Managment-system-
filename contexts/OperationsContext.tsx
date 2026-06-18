@@ -560,6 +560,13 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     row.supplier_id = resolvedSupplierId;
                     row.status = 'Driver Assigned';
                 }
+                // Back-dated load (loading AND delivery dates both already past) = the
+                // cargo has already been delivered. Land it straight in Delivered/POD
+                // and flag it so the board badges it; the POD-first flow takes over below.
+                const _today0 = new Date(); _today0.setHours(0, 0, 0, 0);
+                const _isPast = (d?: string) => { if (!d) return false; const dt = new Date(d); return !isNaN(dt.getTime()) && dt < _today0; };
+                const backDated = _isPast(data.collectionDate) && _isPast(data.deliveryDate);
+                if (backDated) { row.status = 'Delivered'; (row as any).back_dated = true; }
                 // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
                 const { data: inserted, error } = await directInsert('load_confirmations', row as any);
                 if (error || !inserted) {
@@ -573,15 +580,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 // the client (fire-and-forget; TEST MODE keeps them coming to you).
                 const forEmail = { ...data, ...mapped };
                 const newId = mapped.id;
-                // Back-dated load = both the loading AND delivery dates are already in
-                // the past → the cargo has already been delivered. In that case we
-                // DON'T send the client their order up front; instead we mark it
-                // delivered, send the supplier the LoadCon + a POD request, and the
-                // client gets the order WITH the signed POD once it's uploaded.
-                const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
-                const isPast = (d?: string) => { if (!d) return false; const dt = new Date(d); return !isNaN(dt.getTime()) && dt < startToday; };
-                const backDated = isPast(forEmail.collectionDate) && isPast(forEmail.deliveryDate);
-
+                // Back-dated (already-delivered) load: DON'T send the client their
+                // order up front; send the supplier the LoadCon + a POD request, and
+                // the client gets the order WITH the signed POD once it's uploaded.
                 const sendLoadConThenStamp = () => {
                     if (!forEmail.subcontractorEmail || mapped.sentToSupplierDate) return;
                     void sendLoadConToSupplier(forEmail).then(r => {
@@ -594,8 +595,6 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 };
 
                 if (backDated) {
-                    void directUpdate('load_confirmations', { id: newId }, { status: 'Delivered' } as any);
-                    dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id: newId, updates: { status: 'Delivered' } } });
                     sendLoadConThenStamp();
                     if (forEmail.subcontractorEmail) void sendPodRequestEmail(forEmail);
                     // Client order intentionally NOT sent now — goes with the POD (submit-pod).

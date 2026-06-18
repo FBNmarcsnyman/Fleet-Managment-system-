@@ -124,7 +124,10 @@ const LoadBoard: React.FC = () => {
                                         <div key={lc.id} className={`bg-white p-3 rounded-xl border border-slate-200 shadow-sm ${border}`}>
                                             <div className="flex justify-between items-start mb-1.5">
                                                 <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-[10px] font-black text-blue-600 hover:text-blue-700 hover:underline font-mono">{lc.loadConNumber}</button>
-                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
+                                                <div className="flex items-center gap-1">
+                                                    {lc.backDated && <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase bg-purple-100 text-purple-700" title="Created after delivery — POD-first flow">POD-first</span>}
+                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
+                                                </div>
                                             </div>
                                             <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block text-left font-bold text-slate-900 text-sm leading-tight hover:text-blue-600">{clientMap.get(lc.clientId || '') || lc.clientName}</button>
                                             <p className="text-[10px] text-slate-500 mb-1.5 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>

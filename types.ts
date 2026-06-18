@@ -448,6 +448,7 @@ export interface LoadConfirmation {
     acceptedAt?: string;
     loadingEta?: string;
     deliveryEta?: string;
+    backDated?: boolean;
     clientRequest?: string;
     clientRequestAt?: string;
     clientRequestStatus?: string;

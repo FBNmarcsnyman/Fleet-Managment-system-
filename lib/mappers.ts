@@ -571,6 +571,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     acceptedAt: (row as any).accepted_at ?? undefined,
     loadingEta: (row as any).loading_eta ?? undefined,
     deliveryEta: (row as any).delivery_eta ?? undefined,
+    backDated: (row as any).back_dated ?? false,
     clientRequest: (row as any).client_request ?? undefined,
     clientRequestAt: (row as any).client_request_at ?? undefined,
     clientRequestStatus: (row as any).client_request_status ?? undefined,

@@ -198,6 +198,10 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             if (cs.length) {
                 if (!forAttention) setForAttention(cs[0].name || '');
                 if (cs[0].email && !subcontractorEmail) setSubcontractorEmail(cs[0].email);
+                // CC the supplier's OTHER saved contacts (accounts / additional
+                // controllers) so they all get the LoadCon and the updates.
+                const others = cs.slice(1).map(c => c.email).filter(Boolean) as string[];
+                if (others.length && !ccEmail) setCcEmail(others.join(', '));
             } else {
                 if (s.contactPerson && !forAttention) setForAttention(s.contactPerson);
                 if (s.contactEmail && !subcontractorEmail) setSubcontractorEmail(s.contactEmail);
@@ -423,7 +427,9 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             <div className="relative"><span className="absolute left-3 top-2.5 text-amber-400 font-mono text-xs">R</span>
                                 <input type="number" step="0.01" value={transportRate} onChange={e => setTransportRate(e.target.value)} className={`${inputCls} pl-7`} /></div></div>
                         <div><label className={labelCls}>POD Email</label><input type="email" value={podEmail} onChange={e => setPodEmail(e.target.value)} className={inputCls} /></div>
-                        <div><label className={labelCls}>Copy Email (CC)</label><input type="email" value={ccEmail} onChange={e => setCcEmail(e.target.value)} className={inputCls} /></div>
+                        <div className="md:col-span-2"><label className={labelCls}>CC for updates · accounts / other controllers</label>
+                            <input value={ccEmail} onChange={e => setCcEmail(e.target.value)} className={inputCls} placeholder="comma-separated — pre-fills from the subbie's saved contacts" />
+                            <p className="text-[10px] text-gray-500 mt-1">These get the LoadCon and every status update. New ones are saved to this subcontractor for next time.</p></div>
                     </div>
                 </Section>
             </div>

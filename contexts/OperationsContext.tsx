@@ -88,7 +88,8 @@ export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<v
       <p style="font-size:13px;color:#5b6573">POD to be returned on delivery (you can upload it from the same portal).</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
+        const cc = String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
+        await invokeFn('send-email', { body: { to, cc: cc.length ? cc : undefined, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
     } catch (e) { console.error('[ops] supplier phase update failed:', e); }
 };
 
@@ -523,10 +524,19 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const subName = (data.subcontractorName || '').trim();
                 let resolvedSupplierId = (data.supplierId || '').trim();
                 if (subName) {
-                    const subContact = { name: data.forAttention || '', email: data.subcontractorEmail || '', phone: data.subcontractorDriverCell || '' };
+                    // Build every contact entered on the loadcon: the main controller
+                    // (forAttention + email) PLUS each CC email (accounts / other
+                    // controllers). These all get logged on the supplier so the next
+                    // loadcon for this subbie pre-populates them.
+                    const ccList = String(data.ccEmail || '').split(/[,;]/).map((s: string) => s.trim()).filter(Boolean);
+                    const incoming = [
+                        { name: data.forAttention || '', email: data.subcontractorEmail || '', phone: data.subcontractorDriverCell || '' },
+                        ...ccList.map((email: string) => ({ name: '', email, phone: '' })),
+                    ].filter(c => (c.name || '').trim() || (c.email || '').trim());
                     const existingSub = (stateRef.current.suppliers || []).find((s: any) => (s.name || '').toLowerCase() === subName.toLowerCase());
                     if (!existingSub) {
-                        const seeded = mergeContact([], subContact) || [];
+                        let seeded: any[] = [];
+                        for (const c of incoming) { seeded = mergeContact(seeded, c) || seeded; }
                         const supplierInput: any = {
                             name: subName,
                             type: 'Transport',
@@ -544,12 +554,13 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         else if (supRow) { resolvedSupplierId = (supRow as any).id; dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(supRow, new Map(), new Map()) }); }
                     } else {
                         resolvedSupplierId = existingSub.id;
-                        const mergedContacts = mergeContact(existingSub.contacts, subContact);
-                        if (mergedContacts) {
-                            const updates = { contacts: mergedContacts };
-                            // Best-effort and non-blocking: never let a contact-merge stall the create.
-                            void writeWithRecovery(() => supabase.from('suppliers').update(toSupplierUpdate(updates as any)).eq('id', existingSub.id) as any)
-                                .then(({ error: supErr }) => { if (supErr) console.error('[ops] merge subcontractor contact failed:', supErr); else dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: existingSub.id, updates } }); });
+                        let merged = existingSub.contacts || []; let changed = false;
+                        for (const c of incoming) { const m = mergeContact(merged, c); if (m) { merged = m; changed = true; } }
+                        if (changed) {
+                            const updates = { contacts: merged };
+                            // Freeze-proof; non-blocking — never let a contact-merge stall the create.
+                            void directUpdate('suppliers', { id: existingSub.id }, toSupplierUpdate(updates as any) as any)
+                                .then(({ error: supErr }) => { if (supErr) console.error('[ops] merge subcontractor contacts failed:', supErr); else dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: existingSub.id, updates } }); });
                         }
                     }
                 }

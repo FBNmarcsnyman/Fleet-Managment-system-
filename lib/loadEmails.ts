@@ -18,6 +18,8 @@ const table = (rows: [string, string | undefined][]) => {
     return body ? `<table style="border-collapse:collapse;margin:6px 0 14px">${body}</table>` : '';
 };
 const subjLoc = (lc: any, a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
+// Split a comma/semicolon list of CC emails into clean array entries.
+export const splitEmails = (s?: string): string[] => String(s || '').split(/[,;]/).map(t => t.trim()).filter(Boolean);
 const base = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
 
 type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };
@@ -38,7 +40,7 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
       ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc: ['loadcons@fbn-transport.co.za', ...splitEmails(lc.ccEmail)], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
     if (b64) { void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: b64, name: 'LoadCon.pdf', kind: 'loadcon', contentType: 'application/pdf' }] }); }

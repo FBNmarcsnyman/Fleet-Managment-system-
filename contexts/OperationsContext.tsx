@@ -573,7 +573,17 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 // the client (fire-and-forget; TEST MODE keeps them coming to you).
                 const forEmail = { ...data, ...mapped };
                 const newId = mapped.id;
-                if (forEmail.subcontractorEmail && !mapped.sentToSupplierDate) {
+                // Back-dated load = both the loading AND delivery dates are already in
+                // the past → the cargo has already been delivered. In that case we
+                // DON'T send the client their order up front; instead we mark it
+                // delivered, send the supplier the LoadCon + a POD request, and the
+                // client gets the order WITH the signed POD once it's uploaded.
+                const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+                const isPast = (d?: string) => { if (!d) return false; const dt = new Date(d); return !isNaN(dt.getTime()) && dt < startToday; };
+                const backDated = isPast(forEmail.collectionDate) && isPast(forEmail.deliveryDate);
+
+                const sendLoadConThenStamp = () => {
+                    if (!forEmail.subcontractorEmail || mapped.sentToSupplierDate) return;
                     void sendLoadConToSupplier(forEmail).then(r => {
                         if (r.ok) {
                             const stamp = new Date().toISOString();
@@ -581,8 +591,18 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                             dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id: newId, updates: { sentToSupplierDate: stamp } } });
                         }
                     });
+                };
+
+                if (backDated) {
+                    void directUpdate('load_confirmations', { id: newId }, { status: 'Delivered' } as any);
+                    dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id: newId, updates: { status: 'Delivered' } } });
+                    sendLoadConThenStamp();
+                    if (forEmail.subcontractorEmail) void sendPodRequestEmail(forEmail);
+                    // Client order intentionally NOT sent now — goes with the POD (submit-pod).
+                } else {
+                    sendLoadConThenStamp();
+                    if (forEmail.clientEmail) void sendOrderToClient(forEmail);
                 }
-                if (forEmail.clientEmail) void sendOrderToClient(forEmail);
 
                 // The load is saved — return success NOW so the form closes instantly.
                 // Remembering the client in the client database is a nice-to-have that

@@ -138,7 +138,9 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
             // Send the client their Order at the SAME time the LoadCon goes to the
             // transporter — all subsequent client updates thread under this email.
-            if (lc.clientEmail) {
+            // Skip for already-delivered (back-dated) loads: there the client gets
+            // the order together with the signed POD once it's uploaded.
+            if (lc.clientEmail && lc.status !== 'Delivered' && lc.status !== 'POD Submitted' && lc.status !== 'Invoiced') {
                 void sendOrderToClient(lc).then(r => { if (r.ok) showToast(`Client order also emailed to ${lc.clientEmail}.`); else if (r.error) console.error('[loads] auto client order:', r.error); });
             }
             // File the LoadCon + Client Order PDFs into the load's Google Drive folder (fire-and-forget).

@@ -156,6 +156,16 @@ const LoadDetailModal: React.FC = () => {
 
             {!editing && <LoadStatusTimeline loadId={lc.id} />}
 
+            {!editing && (lc.loadedPackages != null || lc.loadingIssues) && (
+                <div className={`rounded-xl p-4 border ${lc.loadingIssues ? 'bg-rose-50 border-rose-300' : 'bg-emerald-50 border-emerald-200'}`}>
+                    <p className={`text-[11px] font-black uppercase tracking-widest mb-1 ${lc.loadingIssues ? 'text-rose-600' : 'text-emerald-700'}`}>Loading confirmation from transporter</p>
+                    {lc.loadedPackages != null && <p className="text-sm text-slate-800">Packages loaded: <strong>{lc.loadedPackages}</strong></p>}
+                    {lc.loadingIssues
+                        ? <p className="text-sm text-rose-900 mt-0.5">⚠ Issues: "{lc.loadingIssues}"</p>
+                        : <p className="text-sm text-emerald-800 mt-0.5">No issues reported at loading.</p>}
+                </div>
+            )}
+
             {!editing && lc.clientRequestStatus === 'open' && (
                 <div className="bg-rose-50 border border-rose-300 rounded-xl p-4">
                     <p className="text-[11px] font-black text-rose-600 uppercase tracking-widest mb-1">✉ Client request — needs a response</p>

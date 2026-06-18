@@ -449,6 +449,8 @@ export interface LoadConfirmation {
     loadingEta?: string;
     deliveryEta?: string;
     backDated?: boolean;
+    loadedPackages?: number;
+    loadingIssues?: string;
     clientRequest?: string;
     clientRequestAt?: string;
     clientRequestStatus?: string;

@@ -59,8 +59,8 @@ const fmt = (d?: string) => { if (!d) return ''; const dt = new Date(d); return 
 const fmtDT = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? d : dt.toLocaleString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 
 // Supplier portal: the next action(s) they can push, by current internal status.
-const NEXT_ACTION = (status: string): { to: string; label: string; askEta?: boolean } | null => {
-    if (['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'].includes(status)) return { to: 'Collected', label: 'Mark as Loaded / Collected' };
+const NEXT_ACTION = (status: string): { to: string; label: string; askEta?: boolean; askLoaded?: boolean } | null => {
+    if (['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'].includes(status)) return { to: 'Collected', label: 'Mark as Loaded / Collected', askLoaded: true };
     if (['Collected', 'At Collection Depot'].includes(status)) return { to: 'In Transit', label: 'Mark On Route to delivery', askEta: true };
     if (status === 'In Transit') return { to: 'Out for Delivery', label: 'Mark Arrived at delivery' };
     if (['Out for Delivery', 'At Destination Depot', 'Unloaded'].includes(status)) return { to: 'Delivered', label: 'Mark Delivered / Offloaded' };
@@ -82,10 +82,17 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
 
     const [statusBusy, setStatusBusy] = useState(false);
     const [delEta, setDelEta] = useState('');
-    const submitStatus = async (to: string, askEta: boolean) => {
+    const [pkgCount, setPkgCount] = useState('');
+    const [loadIssues, setLoadIssues] = useState('');
+    const submitStatus = async (to: string, askEta: boolean, askLoaded?: boolean) => {
         setStatusBusy(true); setErr(null);
         try {
-            await callPublic({ loadId, action: 'status', to, deliveryEta: askEta ? delEta : undefined });
+            await callPublic({
+                loadId, action: 'status', to,
+                deliveryEta: askEta ? delEta : undefined,
+                loadedPackages: askLoaded && pkgCount ? pkgCount : undefined,
+                loadingIssues: askLoaded ? (loadIssues || undefined) : undefined,
+            });
             setLoad(await callPublic({ loadId, action: 'track' }) as Summary);  // refresh to next step
         } catch (e) { setErr(e instanceof Error ? e.message : 'Could not update. Please try again.'); }
         finally { setStatusBusy(false); }
@@ -242,7 +249,15 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                                                         <input type="datetime-local" value={delEta} onChange={e => setDelEta(e.target.value)} style={inp} />
                                                     </div>
                                                 )}
-                                                <button onClick={() => submitStatus(next.to, !!next.askEta)} disabled={statusBusy} style={{ width: '100%', background: statusBusy ? '#9ca3af' : NAVY, color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>
+                                                {next.askLoaded && (
+                                                    <div style={{ marginBottom: 12 }}>
+                                                        <label style={lbl}>Number of packages loaded</label>
+                                                        <input type="number" value={pkgCount} onChange={e => setPkgCount(e.target.value)} placeholder="e.g. 24" style={inp} />
+                                                        <label style={{ ...lbl, marginTop: 10 }}>Any issues at loading? (leave blank if all good)</label>
+                                                        <textarea value={loadIssues} onChange={e => setLoadIssues(e.target.value)} placeholder="e.g. 2 cartons damaged, short-loaded by 1 pallet…" rows={3} style={{ ...inp, resize: 'vertical' }} />
+                                                    </div>
+                                                )}
+                                                <button onClick={() => submitStatus(next.to, !!next.askEta, !!next.askLoaded)} disabled={statusBusy} style={{ width: '100%', background: statusBusy ? '#9ca3af' : NAVY, color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 16, fontWeight: 800, cursor: 'pointer' }}>
                                                     {statusBusy ? 'Saving…' : next.label}
                                                 </button>
                                                 <p style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center', marginTop: 14 }}>Each update notifies FBN and the client automatically.</p>

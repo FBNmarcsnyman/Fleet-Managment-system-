@@ -7,6 +7,7 @@ import { directUpdate } from '../lib/supabase';
 const ACCESS_MODULES: { key: string; label: string }[] = [
     { key: 'access_management', label: 'Management' },
     { key: 'access_fleet', label: 'FBN Fleet' },
+    { key: 'access_fuel', label: 'Fuel' },
     { key: 'access_operations', label: 'Broking / Clients / Quotes' },
     { key: 'access_workshop', label: 'Workshop' },
     { key: 'access_finance', label: 'Finance' },

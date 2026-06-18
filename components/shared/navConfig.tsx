@@ -9,6 +9,7 @@ import { BriefcaseIcon } from '../icons/BriefcaseIcon';
 import { ExclamationTriangleIcon } from '../icons/ExclamationTriangleIcon';
 import { DocumentTextIcon } from '../icons/DocumentTextIcon';
 import { CurrencyDollarIcon } from '../icons/CurrencyDollarIcon';
+import { FuelIcon } from '../icons/FuelIcon';
 
 export type NavItem = { view: ViewType; label: string; icon: React.ElementType; permission: Permission };
 
@@ -16,6 +17,7 @@ export type NavItem = { view: ViewType; label: string; icon: React.ElementType; 
 export const ALL_NAV_ITEMS: NavItem[] = [
     { view: 'management', label: 'Management', icon: DashboardIcon, permission: 'access_management' },
     { view: 'fleet', label: 'FBN Fleet', icon: CarIcon, permission: 'access_fleet' },
+    { view: 'fuel', label: 'Fuel', icon: FuelIcon, permission: 'access_fuel' },
     { view: 'operations', label: 'Broking', icon: DocumentTextIcon, permission: 'access_operations' },
     { view: 'partners', label: 'Clients & Subbies', icon: UsersIcon, permission: 'access_operations' },
     { view: 'quotes', label: 'Quotes', icon: CurrencyDollarIcon, permission: 'access_operations' },
@@ -35,6 +37,7 @@ export const SETTINGS_NAV_ITEMS: NavItem[] = [
 export const VIEW_TITLES: Partial<Record<ViewType, string>> = {
     management: 'Management Overview',
     fleet: 'FBN Fleet',
+    fuel: 'Fuel',
     operations: 'Broking',
     partners: 'Clients & Subcontractors',
     quotes: 'Quotes',

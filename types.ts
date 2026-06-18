@@ -190,6 +190,7 @@ export interface User {
 export type ViewType =
   | 'management'
   | 'fleet'
+  | 'fuel'
   | 'operations'
   | 'partners'
   | 'quotes'
@@ -204,6 +205,7 @@ export type ViewType =
 export type Permission = 
   | 'access_management'
   | 'access_fleet'
+  | 'access_fuel'
   | 'access_operations'
   | 'access_workshop'
   | 'access_finance'

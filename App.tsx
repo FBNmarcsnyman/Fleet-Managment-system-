@@ -17,6 +17,7 @@ import SupplierRegistrationPortal from './components/supplier/SupplierRegistrati
 
 import ManagementPortal from './components/ManagementPortal';
 import FleetPortal from './components/FleetPortal';
+import FuelPortal from './components/FuelPortal';
 import OperationsPortal from './components/operations/OperationsPortal';
 import PartnersPortal from './components/operations/PartnersPortal';
 import QuotesPortal from './components/operations/QuotesPortal';
@@ -288,6 +289,7 @@ const App: React.FC = () => {
         switch (currentView) {
             case 'management': return managementView;
             case 'fleet': return <FleetPortal />;
+            case 'fuel': return <FuelPortal />;
             case 'operations': return <OperationsPortal />;
             case 'partners': return <PartnersPortal />;
             case 'quotes': return <QuotesPortal />;

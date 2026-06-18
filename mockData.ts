@@ -40,11 +40,11 @@ import { addDays, subDays, format } from 'date-fns';
 import { LIGHT_DUTY_CHECKLIST, HEAVY_DUTY_RIGID_CHECKLIST, TRUCK_TRACTOR_CHECKLIST, TRAILER_CHECKLIST, FORKLIFT_CHECKLIST, SPOT_CHECK_CHECKLIST } from './constants';
 
 const PERMISSIONS_CONFIG: { [key in User['role']]: Permission[] } = {
-    'Super Admin': ['access_management', 'access_fleet', 'access_operations', 'access_workshop', 'access_finance', 'access_incidents', 'access_hr', 'access_user_management', 'access_settings'],
-    'Admin': ['access_management', 'access_fleet', 'access_operations', 'access_workshop', 'access_finance', 'access_incidents', 'access_hr', 'access_user_management', 'access_settings'],
+    'Super Admin': ['access_management', 'access_fleet', 'access_fuel', 'access_operations', 'access_workshop', 'access_finance', 'access_incidents', 'access_hr', 'access_user_management', 'access_settings'],
+    'Admin': ['access_management', 'access_fleet', 'access_fuel', 'access_operations', 'access_workshop', 'access_finance', 'access_incidents', 'access_hr', 'access_user_management', 'access_settings'],
     'Workshop Manager': ['access_workshop', 'access_fleet'],
     'Accounts': ['access_finance', 'access_operations', 'access_management'],
-    'Ops': ['access_operations', 'access_fleet', 'access_incidents'],
+    'Ops': ['access_operations', 'access_fleet', 'access_fuel', 'access_incidents'],
     'Staff': [],
     'Driver': [],
     'Client': [],

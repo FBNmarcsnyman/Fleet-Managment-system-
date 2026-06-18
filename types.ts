@@ -335,6 +335,12 @@ export interface Contact {
     email?: string;
     phone?: string;
     role?: string;
+    // Which emails this person receives. getsDocs = the LoadCon + POD; getsUpdates
+    // = the running status updates. Controller usually both, Accounts docs only,
+    // other controllers updates only (can also tick docs). Undefined = legacy
+    // (treated as both for the main contact).
+    getsDocs?: boolean;
+    getsUpdates?: boolean;
 }
 
 export interface Supplier {
@@ -449,6 +455,7 @@ export interface LoadConfirmation {
     loadingEta?: string;
     deliveryEta?: string;
     backDated?: boolean;
+    updateCc?: string;
     loadedPackages?: number;
     loadingIssues?: string;
     clientRequest?: string;

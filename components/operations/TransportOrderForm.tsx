@@ -198,9 +198,10 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             if (cs.length) {
                 if (!forAttention) setForAttention(cs[0].name || '');
                 if (cs[0].email && !subcontractorEmail) setSubcontractorEmail(cs[0].email);
-                // CC the supplier's OTHER saved contacts (accounts / additional
-                // controllers) so they all get the LoadCon and the updates.
-                const others = cs.slice(1).map(c => c.email).filter(Boolean) as string[];
+                // CC the supplier's contacts flagged to receive docs (LoadCon + POD)
+                // — accounts + any other controllers ticked for docs. Routing for
+                // updates vs docs is finalised from the saved prefs when the load saves.
+                const others = cs.slice(1).filter(c => c.email && (c.getsDocs ?? true)).map(c => c.email) as string[];
                 if (others.length && !ccEmail) setCcEmail(others.join(', '));
             } else {
                 if (s.contactPerson && !forAttention) setForAttention(s.contactPerson);

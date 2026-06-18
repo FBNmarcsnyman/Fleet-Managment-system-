@@ -13,10 +13,26 @@ const ContactsEditor: React.FC<{
 }> = ({ contacts, onChange, accent = 'text-brand-secondary', label }) => {
 
     const update = (i: number, field: keyof Contact, value: string) => {
-        const next = contacts.map((c, idx) => idx === i ? { ...c, [field]: value } : c);
+        const next = contacts.map((c, idx) => {
+            if (idx !== i) return c;
+            const merged: Contact = { ...c, [field]: value };
+            // When a Role is chosen, default the send toggles sensibly (only if the
+            // user hasn't set them yet) — Controller gets everything, Accounts gets
+            // the docs (LoadCon + POD), others get the running updates.
+            if (field === 'role' && c.getsDocs === undefined && c.getsUpdates === undefined) {
+                const r = value.toLowerCase();
+                if (r.includes('account')) { merged.getsDocs = true; merged.getsUpdates = false; }
+                else if (r.includes('controller')) { merged.getsDocs = true; merged.getsUpdates = true; }
+                else { merged.getsDocs = false; merged.getsUpdates = true; }
+            }
+            return merged;
+        });
         onChange(next);
     };
-    const add = () => onChange([...contacts, { name: '', email: '', phone: '' }]);
+    const toggle = (i: number, field: 'getsDocs' | 'getsUpdates') => {
+        onChange(contacts.map((c, idx) => idx === i ? { ...c, [field]: !(c[field] ?? false) } : c));
+    };
+    const add = () => onChange([...contacts, { name: '', email: '', phone: '', getsDocs: true, getsUpdates: true }]);
     const remove = (i: number) => onChange(contacts.filter((_, idx) => idx !== i));
 
     const inputCls = "w-full bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-brand-secondary";
@@ -35,12 +51,19 @@ const ContactsEditor: React.FC<{
                 <p className="text-xs text-gray-500 italic py-2">No contacts yet — add the controller / booking person and their email.</p>
             )}
             {contacts.map((c, i) => (
-                <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                    <input className={`${inputCls} col-span-3`} placeholder="Name" value={c.name} onChange={e => update(i, 'name', e.target.value)} />
-                    <input className={`${inputCls} col-span-2`} placeholder="Role" list="contactRoles" value={c.role || ''} onChange={e => update(i, 'role', e.target.value)} />
-                    <input className={`${inputCls} col-span-4`} type="email" placeholder="Email" value={c.email || ''} onChange={e => update(i, 'email', e.target.value)} />
-                    <input className={`${inputCls} col-span-2`} placeholder="Phone" value={c.phone || ''} onChange={e => update(i, 'phone', e.target.value)} />
-                    <button type="button" onClick={() => remove(i)} title="Remove" className="col-span-1 text-gray-500 hover:text-red-400 text-lg font-bold">×</button>
+                <div key={i} className="space-y-1.5 bg-gray-900/30 rounded-lg p-2">
+                    <div className="grid grid-cols-12 gap-2 items-center">
+                        <input className={`${inputCls} col-span-3`} placeholder="Name" value={c.name} onChange={e => update(i, 'name', e.target.value)} />
+                        <input className={`${inputCls} col-span-2`} placeholder="Role" list="contactRoles" value={c.role || ''} onChange={e => update(i, 'role', e.target.value)} />
+                        <input className={`${inputCls} col-span-4`} type="email" placeholder="Email" value={c.email || ''} onChange={e => update(i, 'email', e.target.value)} />
+                        <input className={`${inputCls} col-span-2`} placeholder="Phone" value={c.phone || ''} onChange={e => update(i, 'phone', e.target.value)} />
+                        <button type="button" onClick={() => remove(i)} title="Remove" className="col-span-1 text-gray-500 hover:text-red-400 text-lg font-bold">×</button>
+                    </div>
+                    <div className="flex items-center gap-4 pl-1 text-[11px] text-gray-400">
+                        <span className="uppercase tracking-wider text-gray-500">Send them:</span>
+                        <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsDocs ?? false} onChange={() => toggle(i, 'getsDocs')} /> LoadCon &amp; POD</label>
+                        <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsUpdates ?? false} onChange={() => toggle(i, 'getsUpdates')} /> Status updates</label>
+                    </div>
                 </div>
             ))}
             <datalist id="contactRoles"><option value="Controller" /><option value="Accounts" /><option value="Ops" /><option value="POD / Documents" /><option value="Other" /></datalist>

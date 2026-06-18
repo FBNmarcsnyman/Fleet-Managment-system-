@@ -610,6 +610,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     subcontractorEmail: row.subcontractor_email ?? undefined,
     podEmail: row.pod_email ?? undefined,
     ccEmail: row.cc_email ?? undefined,
+    updateCc: (row as any).cc_updates ?? undefined,
     delayReason: row.delay_reason ?? undefined,
     eta: row.eta ?? undefined,
 });
@@ -1307,6 +1308,7 @@ export const toLoadConfirmationUpdate = (
     if (updates.forAttention !== undefined) row.for_attention = updates.forAttention ?? null;
     if (updates.podEmail !== undefined) row.pod_email = updates.podEmail ?? null;
     if (updates.ccEmail !== undefined) row.cc_email = updates.ccEmail ?? null;
+    if ((updates as any).updateCc !== undefined) (row as any).cc_updates = (updates as any).updateCc ?? null;
     if (updates.clientName !== undefined) row.client_name = updates.clientName ?? null;
     if (updates.clientContact !== undefined) row.client_contact = updates.clientContact ?? null;
     if (updates.clientEmail !== undefined) row.client_email = updates.clientEmail ?? null;

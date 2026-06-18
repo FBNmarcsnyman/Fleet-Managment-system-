@@ -88,7 +88,9 @@ export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<v
       <p style="font-size:13px;color:#5b6573">POD to be returned on delivery (you can upload it from the same portal).</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        const cc = String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
+        // Status updates go to the controller (To) + the "updates" contacts only —
+        // NOT accounts (who only need the LoadCon + POD).
+        const cc = String(lc.updateCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
         await invokeFn('send-email', { body: { to, cc: cc.length ? cc : undefined, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
     } catch (e) { console.error('[ops] supplier phase update failed:', e); }
 };
@@ -165,7 +167,7 @@ export const sendSupplierPodEmail = async (lc: any): Promise<void> => {
       <p style="font-size:13px;color:#5b6573">Please keep this for your records and quote the load number on your invoice.</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, cc: String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] supplier POD copy failed:', e);
     }
@@ -216,7 +218,7 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
       <p>Thank you,<br>FBN Transport</p>`);
     try {
         await invokeFn('send-email', {
-            body: { to, cc: lc.ccEmail || undefined, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+            body: { to, cc: String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
         });
     } catch (e) {
         console.error('[ops] auto POD request failed:', e);
@@ -523,6 +525,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 // Transport Order with a subbie shouldn't ask you to assign again.
                 const subName = (data.subcontractorName || '').trim();
                 let resolvedSupplierId = (data.supplierId || '').trim();
+                let subContactsFinal: any[] = [];
                 if (subName) {
                     // Build every contact entered on the loadcon: the main controller
                     // (forAttention + email) PLUS each CC email (accounts / other
@@ -537,6 +540,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     if (!existingSub) {
                         let seeded: any[] = [];
                         for (const c of incoming) { seeded = mergeContact(seeded, c) || seeded; }
+                        subContactsFinal = seeded;
                         const supplierInput: any = {
                             name: subName,
                             type: 'Transport',
@@ -556,6 +560,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         resolvedSupplierId = existingSub.id;
                         let merged = existingSub.contacts || []; let changed = false;
                         for (const c of incoming) { const m = mergeContact(merged, c); if (m) { merged = m; changed = true; } }
+                        subContactsFinal = merged;
                         if (changed) {
                             const updates = { contacts: merged };
                             // Freeze-proof; non-blocking — never let a contact-merge stall the create.
@@ -571,6 +576,17 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     row.supplier_id = resolvedSupplierId;
                     row.status = 'Driver Assigned';
                 }
+                // Route recipients from the subbie's saved contact preferences:
+                // docs (LoadCon + POD) vs running status updates. The main controller
+                // is the To; these are the CC lists. Falls back to the typed CC.
+                const _mainEmail = (data.subcontractorEmail || '').toLowerCase();
+                const _pick = (pred: (c: any) => boolean) => subContactsFinal
+                    .filter(c => pred(c) && c.email && c.email.toLowerCase() !== _mainEmail)
+                    .map(c => c.email);
+                const _docsCc = _pick(c => c.getsDocs);
+                const _updCc = _pick(c => c.getsUpdates);
+                if (_docsCc.length) (row as any).cc_email = _docsCc.join(', ');
+                (row as any).cc_updates = _updCc.length ? _updCc.join(', ') : null;
                 // Back-dated load (loading AND delivery dates both already past) = the
                 // cargo has already been delivered. Land it straight in Delivered/POD
                 // and flag it so the board badges it; the POD-first flow takes over below.

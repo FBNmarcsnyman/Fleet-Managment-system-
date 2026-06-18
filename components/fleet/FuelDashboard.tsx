@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useVehicles, useUIState } from '../../contexts/AppContexts';
+import { directInvoke, directSelect, directUpdate } from '../../lib/supabase';
 import { Bowser, BowserRefill, FuelEntry, FuelPriceRecord, Vehicle, VehiclePerformanceStats } from '../../types';
 
 const rand = (n: number) => 'R ' + (Math.round(n * 100) / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -109,8 +110,46 @@ const FuelDashboard: React.FC = () => {
 
     const inp = 'w-full bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm';
 
+    // --- Google Drive folder auto-import ---
+    const [folderLink, setFolderLink] = useState('');
+    const [syncing, setSyncing] = useState(false);
+    const [syncMsg, setSyncMsg] = useState<string | null>(null);
+    const [lastSync, setLastSync] = useState<string | null>(null);
+    useEffect(() => {
+        directSelect('email_settings?id=eq.1&select=fuel_drive_folder_id,fuel_sync_at,fuel_sync_result').then(({ data }) => {
+            const c = Array.isArray(data) ? data[0] : null;
+            if (c?.fuel_drive_folder_id) setFolderLink(c.fuel_drive_folder_id);
+            if (c?.fuel_sync_result) setLastSync(`${c.fuel_sync_result}${c.fuel_sync_at ? ' · ' + new Date(c.fuel_sync_at).toLocaleString('en-ZA') : ''}`);
+        });
+    }, []);
+    const saveFolder = async () => {
+        const id = folderLink.includes('/folders/') ? folderLink.split('/folders/')[1].split(/[/?]/)[0] : folderLink.trim();
+        await directUpdate('email_settings', { id: '1' }, { fuel_drive_folder_id: id });
+        showToast('Fuel folder linked.');
+    };
+    const syncNow = async () => {
+        setSyncing(true); setSyncMsg(null);
+        const { data, error } = await directInvoke('fuel-sheet-sync', { folderId: folderLink });
+        setSyncing(false);
+        if (error || data?.error) { setSyncMsg(`Sync failed: ${data?.error || error?.message}`); return; }
+        setSyncMsg(`Synced ${data.fileUsed}: ${data.inserted} new entries added${data.unmatchedRegs ? `, ${data.unmatchedRegs} rows with unknown registration` : ''}. Refresh to see them in the lists.`);
+        showToast(`${data.inserted} new fuel entries imported.`);
+    };
+
     return (
         <div className="space-y-6">
+            {/* Google Drive auto-import */}
+            <div className="bg-gray-800 rounded-2xl border border-gray-700 p-5">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Auto-import fuel logs from Google Drive</h3>
+                <p className="text-[11px] text-gray-500 mb-3">Paste the link to the Drive <b>folder</b> that holds your monthly fuel sheets. It reads the current month's sheet and adds only new rows (no duplicates). The folder must be shared with the FBN service account.</p>
+                <div className="flex flex-wrap gap-2">
+                    <input value={folderLink} onChange={e => setFolderLink(e.target.value)} placeholder="https://drive.google.com/drive/folders/..." className={`${inp} flex-1 min-w-[260px]`} />
+                    <button onClick={saveFolder} className="bg-gray-600 hover:bg-gray-500 text-white font-bold px-4 rounded-md text-xs uppercase tracking-wider">Save folder</button>
+                    <button onClick={syncNow} disabled={syncing} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-4 rounded-md text-xs uppercase tracking-wider">{syncing ? 'Syncing…' : 'Sync now'}</button>
+                </div>
+                {syncMsg && <p className="text-[11px] mt-2 text-emerald-300">{syncMsg}</p>}
+                {!syncMsg && lastSync && <p className="text-[11px] mt-2 text-gray-500">Last sync — {lastSync}</p>}
+            </div>
             {/* Bowser gauges */}
             <div>
                 <h2 className="text-lg font-black text-white mb-3 uppercase tracking-wide">Tank Levels</h2>

@@ -575,6 +575,8 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     isCollection: (row as any).is_collection ?? false,
     loadedPackages: (row as any).loaded_packages ?? undefined,
     loadingIssues: (row as any).loading_issues ?? undefined,
+    dimensions: (row as any).dimensions ?? undefined,
+    cargoPhotoUrls: (row as any).cargo_photo_urls ?? undefined,
     clientRequest: (row as any).client_request ?? undefined,
     clientRequestAt: (row as any).client_request_at ?? undefined,
     clientRequestStatus: (row as any).client_request_status ?? undefined,

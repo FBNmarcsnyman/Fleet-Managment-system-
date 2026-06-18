@@ -147,6 +147,7 @@ const LoadDetailModal: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                     {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-900/40 text-blue-300">{lc.status}</span>}
+                    {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">📷 Capture</button>}
                     {!editing
                         ? <button onClick={startEdit} className="bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold py-1.5 px-3 rounded-lg">Edit</button>
                         : <><button onClick={() => setEditing(false)} className="bg-gray-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg">Cancel</button>

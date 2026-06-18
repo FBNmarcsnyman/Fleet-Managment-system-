@@ -460,6 +460,8 @@ export interface LoadConfirmation {
     clientCc?: string;
     loadedPackages?: number;
     loadingIssues?: string;
+    dimensions?: string;
+    cargoPhotoUrls?: string[];
     clientRequest?: string;
     clientRequestAt?: string;
     clientRequestStatus?: string;

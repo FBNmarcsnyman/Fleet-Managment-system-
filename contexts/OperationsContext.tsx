@@ -742,6 +742,20 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         .map(f => `${f.label}: ${(updates as any)[f.key] || '—'}`);
                     if (changed.length) sendAmendedLoadConEmail({ ...(prev || {}), ...updates, id }, changed);
                 }
+                // Inter-branch handover: when the load reaches the destination depot,
+                // notify ops there to arrange the delivery leg (assign driver + ETA).
+                if (updates.status === 'At Destination Depot' && prev?.status !== 'At Destination Depot') {
+                    const m = { ...(prev || {}), ...updates, id } as any;
+                    if (m.collectionBranch && m.destinationBranch && m.collectionBranch !== m.destinationBranch) {
+                        const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+                        const html = brandedEmail(`<p><strong>Inter-branch handover.</strong></p>
+                          <p>Load <strong>${m.loadConNumber}</strong> has arrived at the <strong>${m.destinationBranch}</strong> depot (${m.collectionBranch} &rarr; ${m.destinationBranch}).</p>
+                          <p>Please arrange the delivery leg — assign a driver and ETA:</p>
+                          ${emailButton(`${base}?accept=${id}`, 'Assign delivery driver &amp; ETA &rarr;', '#16a34a')}
+                          <p>Regards,<br>FBN Transport</p>`);
+                        void invokeFn('send-email', { body: { to: 'loadcons@fbn-transport.co.za', subject: `HANDOVER ${m.loadConNumber} at ${m.destinationBranch} - arrange delivery`, html, fromName: 'FBN Transport' } });
+                    }
+                }
                 // Auto-fire the POD request the moment a load becomes Delivered
                 // (only on the transition, and only if no POD is in yet).
                 if (updates.status === 'Delivered' && prev?.status !== 'Delivered' && !prev?.podPhoto && !updates.podPhoto) {

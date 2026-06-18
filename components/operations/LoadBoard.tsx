@@ -4,6 +4,7 @@ import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { isAssigned, nextStep, STATUS_LABEL, statusChip, isInterBranch } from '../../lib/loadStatus';
 import { ArchiveBoxIcon } from '../icons/ArchiveBoxIcon';
 import { TruckIcon } from '../icons/TruckIcon';
+import LoadProgress from './LoadProgress';
 
 // The broker load board: one kanban, columns = pipeline stages. Assign a
 // subcontractor in "To Cover", then advance each load left-to-right.
@@ -126,7 +127,8 @@ const LoadBoard: React.FC = () => {
                                                 <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
                                             </div>
                                             <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block text-left font-bold text-slate-900 text-sm leading-tight hover:text-blue-600">{clientMap.get(lc.clientId || '') || lc.clientName}</button>
-                                            <p className="text-[10px] text-slate-500 mb-1 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                                            <p className="text-[10px] text-slate-500 mb-1.5 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                                            <LoadProgress lc={lc} />
                                             {lc.clientRequestStatus === 'open' && (
                                                 <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block w-full text-left text-[9px] font-black text-white bg-rose-500 hover:bg-rose-600 rounded px-1.5 py-1 mb-1 animate-pulse">✉ CLIENT REQUEST — tap to respond</button>
                                             )}

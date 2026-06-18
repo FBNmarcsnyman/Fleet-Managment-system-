@@ -4,6 +4,7 @@ import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import { supabase, invokeFn } from '../../lib/supabase';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
+import LoadStatusTimeline from './LoadStatusTimeline';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -152,6 +153,8 @@ const LoadDetailModal: React.FC = () => {
                            <button onClick={save} className="bg-brand-primary hover:bg-brand-secondary text-white text-xs font-bold py-1.5 px-3 rounded-lg">Save</button></>}
                 </div>
             </div>
+
+            {!editing && <LoadStatusTimeline loadId={lc.id} />}
 
             {!editing && lc.clientRequestStatus === 'open' && (
                 <div className="bg-rose-50 border border-rose-300 rounded-xl p-4">

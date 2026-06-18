@@ -627,6 +627,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const { error } = await directUpdate('load_confirmations', { id }, row as any);
                 if (error) { console.error('[ops] updateLoadConfirmation failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id, updates } });
+                // Status changes are logged to load_status_history by a DB trigger
+                // (captures staff, driver-WhatsApp and POD-upload changes alike).
 
                 // If this load was ALREADY sent to the transporter and its real-world
                 // details changed, re-send it flagged as AMENDED so they re-confirm.

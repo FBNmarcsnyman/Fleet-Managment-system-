@@ -7,6 +7,7 @@ import GlobalSearch from './GlobalSearch';
 import TestModeToggle from './TestModeToggle';
 import { VIEW_TITLES } from './navConfig';
 import { useLiveAlerts } from '../../hooks/useLiveAlerts';
+import { enablePush, isPushSupported, pushAlreadyEnabled } from '../../lib/push';
 
 const OnlineStatus: React.FC<{ isOnline: boolean }> = React.memo(({ isOnline }) => (
     <div className="hidden sm:flex items-center space-x-2 text-[10px] font-bold tracking-tight bg-gray-800/50 px-2.5 py-1 rounded-full border border-gray-700/50">
@@ -17,6 +18,12 @@ const OnlineStatus: React.FC<{ isOnline: boolean }> = React.memo(({ isOnline }) 
 
 const Topbar: React.FC = () => {
     const { currentUser } = useAuth();
+    const [pushOn, setPushOn] = useState(pushAlreadyEnabled());
+    const turnOnPush = async () => {
+        const r = await enablePush(currentUser?.id);
+        if (r.ok) { setPushOn(true); alert('Notifications enabled on this device. 🔔'); }
+        else alert(r.error || 'Could not enable notifications.');
+    };
     const { currentView, isOnline, setSidebarOpen } = useUIState();
     const { notifications = [] } = useNotifications();
     const liveAlerts = useLiveAlerts();
@@ -51,6 +58,12 @@ const Topbar: React.FC = () => {
                 <div className="flex items-center space-x-3 sm:space-x-4 shrink-0">
                     <TestModeToggle />
                     <OnlineStatus isOnline={isOnline} />
+                    {isPushSupported() && !pushOn && (
+                        <button onClick={turnOnPush} title="Get push notifications on this device"
+                            className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-blue-300 hover:text-white bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 px-2.5 py-1.5 rounded-lg">
+                            🔔 Enable alerts
+                        </button>
+                    )}
                     <div className="relative">
                         <button
                             onClick={() => setIsNotificationCenterOpen(prev => !prev)}

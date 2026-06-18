@@ -666,6 +666,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     void notifyOpsNewCollection(forEmail);
                     if (forEmail.clientEmail) void sendCollectionAckToClient(forEmail);
                     if (forEmail.subcontractorEmail) sendLoadConThenStamp();
+                    // Push to subscribed staff phones.
+                    void directInvoke('send-push', { title: `New collection ${mapped.loadConNumber}`, body: `${forEmail.clientName || 'Client'}: ${forEmail.collectionPoint || ''} → ${forEmail.deliveryPoint || ''}`, url: `?track=${newId}` });
                 } else if (backDated) {
                     sendLoadConThenStamp();
                     if (forEmail.subcontractorEmail) void sendPodRequestEmail(forEmail);

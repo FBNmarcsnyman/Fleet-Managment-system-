@@ -21,7 +21,7 @@ const NavLink: React.FC<{
                     : 'text-gray-400 hover:text-white hover:bg-gray-800/60'}`}
         >
             <Icon className={`h-5 w-5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`} />
-            <span className="ml-3 hidden lg:inline truncate">{item.label}</span>
+            <span className="ml-3 inline md:hidden lg:inline truncate">{item.label}</span>
             {badge !== undefined && badge > 0 && (
                 <span className="absolute lg:static lg:ml-auto -top-0.5 -right-0.5 lg:top-auto lg:right-auto flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-red-500 ring-2 ring-gray-900 lg:ring-0 text-[10px] font-black text-white shadow-lg shadow-red-900/60 animate-pulse">
                     {badge}
@@ -33,10 +33,14 @@ const NavLink: React.FC<{
 
 const Sidebar: React.FC = () => {
     const { currentUser, hasPermission, handleLogout } = useAuth();
-    const { currentView, handleViewChange } = useUIState();
+    const { currentView, handleViewChange, sidebarOpen, setSidebarOpen } = useUIState();
     const { unassignedJobCount = 0 } = useOperations();
 
     if (!currentUser) return null;
+
+    // On mobile the sidebar is an off-canvas drawer; tapping a nav item navigates
+    // AND closes it. On desktop it's always docked (the close is a no-op there).
+    const goAndClose = (view: ViewType) => { handleViewChange(view); setSidebarOpen(false); };
 
     // Respect the user's saved order + hidden preferences (same as before).
     const navItems = useMemo(() => {
@@ -57,13 +61,16 @@ const Sidebar: React.FC = () => {
     const settingsItems = SETTINGS_NAV_ITEMS.filter(item => hasPermission(item.permission));
 
     return (
-        <aside className="shrink-0 w-[76px] lg:w-64 bg-white border-r border-slate-200 sticky top-0 h-screen flex flex-col z-40 shadow-sm">
+        <>
+        {/* Mobile backdrop — tap to close the drawer */}
+        {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
+        <aside className={`fixed md:sticky inset-y-0 left-0 top-0 h-screen z-50 w-64 md:w-[76px] lg:w-64 transform transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 bg-white border-r border-slate-200 flex flex-col shadow-sm shrink-0`}>
             {/* Brand */}
             <div className="flex items-center gap-3 px-3 h-20 shrink-0 border-b border-slate-200 overflow-hidden">
-                <img src="/fbn-logo.jpg" alt="FBN Transport" onClick={() => handleViewChange('management')}
+                <img src="/fbn-logo.jpg" alt="FBN Transport" onClick={() => goAndClose('management')}
                     onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }}
                     className="h-9 w-auto object-contain cursor-pointer shrink-0" />
-                <div className="hidden lg:block min-w-0">
+                <div className="block md:hidden lg:block min-w-0">
                     <p className="text-[11px] font-black text-[#13294b] tracking-[0.12em] uppercase leading-none">Control Centre</p>
                     <p className="text-[8px] font-bold text-slate-500 tracking-[0.03em] uppercase mt-1 leading-tight">Commercial Freight Specialists</p>
                 </div>
@@ -71,13 +78,13 @@ const Sidebar: React.FC = () => {
 
             {/* Primary navigation */}
             <nav className="flex-1 overflow-y-auto no-scrollbar px-3 py-4 space-y-1.5">
-                <p className="hidden lg:block px-3 pb-1 text-[10px] font-black tracking-widest text-gray-600 uppercase">Menu</p>
+                <p className="block md:hidden lg:block px-3 pb-1 text-[10px] font-black tracking-widest text-gray-600 uppercase">Menu</p>
                 {navItems.map(item => (
                     <NavLink
                         key={item.view}
                         item={item}
                         isActive={currentView === item.view}
-                        onClick={handleViewChange}
+                        onClick={goAndClose}
                         badge={item.view === 'operations' ? unassignedJobCount : undefined}
                     />
                 ))}
@@ -87,17 +94,17 @@ const Sidebar: React.FC = () => {
             {settingsItems.length > 0 && (
                 <div className="px-3 py-3 border-t border-gray-800/60 space-y-1.5">
                     {settingsItems.map(item => (
-                        <NavLink key={item.view} item={item} isActive={currentView === item.view} onClick={handleViewChange} />
+                        <NavLink key={item.view} item={item} isActive={currentView === item.view} onClick={goAndClose} />
                     ))}
                 </div>
             )}
 
             {/* User + logout */}
             <div className="px-3 py-3 border-t border-gray-800/60 flex items-center">
-                <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-gray-700 to-gray-800 ring-2 ring-gray-600/40 flex items-center justify-center text-blue-400 font-black text-sm cursor-pointer hover:ring-blue-500/60 transition-all" onClick={() => handleViewChange('settings')}>
+                <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-gray-700 to-gray-800 ring-2 ring-gray-600/40 flex items-center justify-center text-blue-400 font-black text-sm cursor-pointer hover:ring-blue-500/60 transition-all" onClick={() => goAndClose('settings')}>
                     {currentUser.name.charAt(0).toUpperCase()}
                 </div>
-                <div className="ml-3 hidden lg:block min-w-0 flex-1">
+                <div className="ml-3 block md:hidden lg:block min-w-0 flex-1">
                     <p className="text-sm font-bold text-white leading-none truncate">{currentUser.name}</p>
                     <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mt-1">{currentUser.role}</p>
                 </div>
@@ -108,6 +115,7 @@ const Sidebar: React.FC = () => {
                 </button>
             </div>
         </aside>
+        </>
     );
 };
 

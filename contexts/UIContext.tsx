@@ -43,7 +43,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // fell through to default. Setting a proper initial value removes the
   // mismatch while keeping the same observable behavior.
   const [currentView, setCurrentView] = useState<ViewType>('management');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Drawer state for the mobile sidebar only (desktop sidebar is always docked).
+  // Starts closed so a phone doesn't open it over the content.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLiveAssistantOpen, setIsLiveAssistantOpen] = useState(false);
   const [modal, setModal] = useState<{ isOpen: boolean; type: string | null; payload: any }>({ isOpen: false, type: null, payload: null });

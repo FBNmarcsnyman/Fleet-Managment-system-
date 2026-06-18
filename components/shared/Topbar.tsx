@@ -17,7 +17,7 @@ const OnlineStatus: React.FC<{ isOnline: boolean }> = React.memo(({ isOnline }) 
 
 const Topbar: React.FC = () => {
     const { currentUser } = useAuth();
-    const { currentView, isOnline } = useUIState();
+    const { currentView, isOnline, setSidebarOpen } = useUIState();
     const { notifications = [] } = useNotifications();
     const liveAlerts = useLiveAlerts();
     const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
@@ -30,9 +30,15 @@ const Topbar: React.FC = () => {
     return (
         <header className="bg-gray-900/95 backdrop-blur-2xl border-b border-gray-800/60 sticky top-0 z-30 ring-1 ring-white/5">
             <div className="flex items-center justify-between h-20 px-4 sm:px-6 lg:px-8 gap-4">
+                {/* Mobile menu (hamburger) — opens the sidebar drawer */}
+                <button onClick={() => setSidebarOpen(true)} title="Menu"
+                    className="md:hidden shrink-0 p-2 -ml-1 text-gray-300 hover:text-white rounded-lg hover:bg-gray-800/60">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                </button>
+
                 {/* Page title */}
                 <div className="min-w-0 shrink-0">
-                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">{title}</h2>
+                    <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight truncate">{title}</h2>
                     <p className="hidden sm:block text-[11px] font-bold text-gray-500 tracking-wide mt-0.5">Welcome back, {currentUser.name.split(' ')[0]}</p>
                 </div>
 

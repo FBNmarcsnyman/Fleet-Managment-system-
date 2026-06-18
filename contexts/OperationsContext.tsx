@@ -227,6 +227,36 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
     }
 };
 
+const OPS_EMAIL = 'loadcons@fbn-transport.co.za';
+const baseUrl = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
+
+// Mobile "Quick Collection" → email ops to action it (assign driver + ETA).
+export const notifyOpsNewCollection = async (lc: any): Promise<void> => {
+    const acceptLink = `${baseUrl()}?accept=${lc.id}`;
+    const html = brandedEmail(`<p><strong>New collection request${lc.arrangingBranch ? ` — ${lc.arrangingBranch}` : ''}.</strong></p>
+      <p><strong>${lc.clientName || ''}</strong> — collect from <strong>${lc.collectionPoint || ''}</strong> &rarr; <strong>${lc.deliveryPoint || ''}</strong>.</p>
+      <p>${[lc.packaging, lc.commodity].filter(Boolean).join(' · ') || ''}</p>
+      <p>Please assign a driver and collection ETA:</p>
+      ${emailButton(acceptLink, 'Assign driver &amp; collection ETA &rarr;', '#16a34a')}
+      <p>Regards,<br>FBN Transport</p>`);
+    try { await invokeFn('send-email', { body: { to: OPS_EMAIL, subject: `NEW COLLECTION ${lc.loadConNumber}${lc.arrangingBranch ? ` (${lc.arrangingBranch})` : ''} - ${lc.clientName || ''}`, html, fromName: 'FBN Transport' } }); }
+    catch (e) { console.error('[ops] collection ops-notify failed:', e); }
+};
+
+// Acknowledge the client that we've received their collection request.
+export const sendCollectionAckToClient = async (lc: any): Promise<void> => {
+    const to = lc?.clientEmail; if (!to) return;
+    const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
+      <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
+      <p><strong>Thank you — we've received your collection request and are arranging it.</strong> We'll confirm the vehicle and collection time shortly.</p>
+      <p>Collection: <strong>${lc.collectionPoint || ''}</strong><br>Delivery: <strong>${lc.deliveryPoint || ''}</strong></p>
+      ${emailButton(`${baseUrl()}?track=${lc.id}`, 'Track this collection &rarr;')}
+      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+    const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), OPS_EMAIL];
+    try { await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } }); }
+    catch (e) { console.error('[ops] collection ack failed:', e); }
+};
+
 export const OperationsContext = createContext<any>(undefined);
 
 type Result<T = void> = { ok: true; value?: T } | { ok: false; error: string };
@@ -602,6 +632,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const _isPast = (d?: string) => { if (!d) return false; const dt = new Date(d); return !isNaN(dt.getTime()) && dt < _today0; };
                 const backDated = _isPast(data.collectionDate) && _isPast(data.deliveryDate);
                 if (backDated) { row.status = 'Delivered'; (row as any).back_dated = true; }
+                if (data.isCollection) (row as any).is_collection = true;
                 // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
                 const { data: inserted, error } = await directInsert('load_confirmations', row as any);
                 if (error || !inserted) {
@@ -629,7 +660,13 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     });
                 };
 
-                if (backDated) {
+                if (data.isCollection) {
+                    // Mobile Quick Collection: notify ops to action it + acknowledge the
+                    // client. It then rides the normal LoadCon rails once ops assign.
+                    void notifyOpsNewCollection(forEmail);
+                    if (forEmail.clientEmail) void sendCollectionAckToClient(forEmail);
+                    if (forEmail.subcontractorEmail) sendLoadConThenStamp();
+                } else if (backDated) {
                     sendLoadConThenStamp();
                     if (forEmail.subcontractorEmail) void sendPodRequestEmail(forEmail);
                     // Client order intentionally NOT sent now — goes with the POD (submit-pod).

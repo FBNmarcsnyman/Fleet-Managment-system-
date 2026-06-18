@@ -58,6 +58,7 @@ const CreatePurchaseRequestModal = lazy(() => import('./components/CreatePurchas
 const CreateQuoteForm = lazy(() => import('./components/operations/CreateQuoteForm'));
 const CreateBookingForm = lazy(() => import('./components/operations/CreateBookingForm'));
 const TransportOrderForm = lazy(() => import('./components/operations/TransportOrderForm'));
+const QuickCollectionForm = lazy(() => import('./components/operations/QuickCollectionForm'));
 const CreateTripSheetModal = lazy(() => import('./components/operations/CreateTripSheetModal'));
 const DismountTireModal = lazy(() => import('./components/DismountTireModal'));
 const LinkTrailerModal = lazy(() => import('./components/LinkTrailerModal'));
@@ -119,6 +120,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     createQuote: CreateQuoteForm,
     createBooking: CreateBookingForm,
     transportOrder: TransportOrderForm,
+    quickCollection: QuickCollectionForm,
     editQuote: CreateQuoteForm,
     createTripSheet: CreateTripSheetModal,
     dismountTire: DismountTireModal,
@@ -164,6 +166,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     editQuote: '5xl',
     createBooking: '3xl',
     transportOrder: '5xl',
+    quickCollection: 'lg',
     quotePdf: '4xl',
     supplierLoadConPdf: '4xl',
     loadDocuments: '5xl',

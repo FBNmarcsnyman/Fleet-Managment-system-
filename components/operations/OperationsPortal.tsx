@@ -35,6 +35,15 @@ const OperationsPortal: React.FC = () => {
         },
     });
 
+    const handleNewCollection = () => showModal('quickCollection', {
+        onSubmit: async (data: any) => {
+            const result = await createLoadCon(data);
+            if (result.ok) showToast(`Collection ${result.value!.loadConNumber} logged — ops notified.`);
+            else showToast(`Failed to log collection: ${result.error}`);
+            return result;
+        },
+    });
+
     const renderView = () => {
         switch (operationsSubView) {
             case 'subcontractorLoads': return <Suspense fallback={<div>Loading...</div>}><SubcontractorLoadsView loadConfirmations={loadConfirmations} suppliers={suppliers} clients={clients} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} /></Suspense>;
@@ -59,10 +68,16 @@ const OperationsPortal: React.FC = () => {
                         </button>
                     ))}
                 </div>
-                <button onClick={handleNewTransportOrder}
-                    className="shrink-0 bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                    + New Transport Order
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={handleNewCollection}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                        + Collection
+                    </button>
+                    <button onClick={handleNewTransportOrder}
+                        className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                        + New Transport Order
+                    </button>
+                </div>
             </div>
             {renderView()}
         </div>

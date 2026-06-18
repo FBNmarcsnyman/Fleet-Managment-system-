@@ -175,6 +175,15 @@ const LoadDetailModal: React.FC = () => {
                 </div>
             )}
 
+            {!editing && lc.clientRequestStatus === 'resolved' && lc.clientRequest && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <p className="text-[11px] font-black text-emerald-700 uppercase tracking-widest mb-1">✓ Client request — handled</p>
+                    <p className="text-sm text-emerald-900 mb-1">Request: "{lc.clientRequest}"</p>
+                    {lc.clientRequestReply && <p className="text-sm text-emerald-900">Your reply: "{lc.clientRequestReply}"</p>}
+                    <p className="text-[11px] text-emerald-700 mt-1">This stays green until the client sends a new request.</p>
+                </div>
+            )}
+
             {!editing && (
                 <div className="grid grid-cols-3 gap-3">
                     <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate</p><p className="text-lg font-black text-blue-300">{rand(lc.totalAmount)}</p></div>

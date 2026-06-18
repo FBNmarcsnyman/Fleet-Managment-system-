@@ -6,6 +6,7 @@ import LoadBoard from './LoadBoard';
 import DocumentSettingsView from './DocumentSettingsView';
 
 const SubcontractorLoadsView = lazy(() => import('./SubcontractorLoadsView'));
+const WhatsAppChatsView = lazy(() => import('./WhatsAppChatsView'));
 
 
 const OperationsPortal: React.FC = () => {
@@ -19,6 +20,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'dashboard', label: 'Dashboard' },
         { view: 'loadBoard', label: 'Load Board' },
         { view: 'subcontractorLoads', label: 'LoadCons' },
+        { view: 'driverChats', label: 'Driver Chats' },
         { view: 'docSettings', label: 'Doc Settings' },
     ];
 
@@ -35,6 +37,7 @@ const OperationsPortal: React.FC = () => {
         switch (operationsSubView) {
             case 'subcontractorLoads': return <Suspense fallback={<div>Loading...</div>}><SubcontractorLoadsView loadConfirmations={loadConfirmations} suppliers={suppliers} clients={clients} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} /></Suspense>;
             case 'loadBoard': return <LoadBoard />;
+            case 'driverChats': return <Suspense fallback={<div>Loading…</div>}><WhatsAppChatsView /></Suspense>;
             case 'docSettings': return <DocumentSettingsView />;
             case 'dashboard':
             default:

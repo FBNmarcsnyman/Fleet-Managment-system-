@@ -98,7 +98,8 @@ export const sendDriverWhatsApp = async (lc: any, body: string): Promise<void> =
     const to = waNumber(lc?.subcontractorDriverCell);
     if (!to) return;
     try {
-        const { error } = await directInvoke('send-whatsapp', { to: `whatsapp:${to}`, body });
+        // Pass loadId so send-whatsapp logs this outbound to the conversation transcript.
+        const { error } = await directInvoke('send-whatsapp', { to: `whatsapp:${to}`, body, loadId: lc?.id, loadConNumber: lc?.loadConNumber, party: 'FBN' });
         if (error) console.error('[ops] driver WhatsApp failed:', error);
     } catch (e) { console.error('[ops] driver WhatsApp threw:', e); }
 };

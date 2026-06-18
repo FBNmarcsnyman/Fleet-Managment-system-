@@ -6,6 +6,7 @@ import VehicleList from './fleet/VehicleList';
 import LiveFleetMap from './operations/LiveFleetMap';
 import RoutePlanner from './RoutePlanner';
 import FuelManagement from './FuelManagement';
+import FuelDashboard from './fleet/FuelDashboard';
 import { BRANCHES } from '../constants';
 import FleetDashboard from './fleet/FleetDashboard';
 import FleetMaintenanceView from './fleet/FleetMaintenanceView';
@@ -15,7 +16,7 @@ import FleetAssetAdmin from './fleet/FleetAssetAdmin';
 import DriversManagementView from './fleet/DriversManagementView';
 import { FuelEntry } from '../types';
 
-type FleetView = 'dashboard' | 'vehicles' | 'admin' | 'drivers' | 'fuelAndCosts' | 'maintenance' | 'checklists' | 'operationsLog' | 'fleetMap' | 'routePlanner';
+type FleetView = 'dashboard' | 'vehicles' | 'admin' | 'drivers' | 'fuel' | 'fuelAndCosts' | 'maintenance' | 'checklists' | 'operationsLog' | 'fleetMap' | 'routePlanner';
 
 const FleetPortal: React.FC = () => {
     const { fleetSubView, handleFleetSubViewChange, showModal, showToast, hideModal } = useUIState();
@@ -33,6 +34,7 @@ const FleetPortal: React.FC = () => {
         { view: 'vehicles', label: 'Asset List' },
         { view: 'admin', label: 'Asset Admin' },
         { view: 'drivers', label: 'Drivers' },
+        { view: 'fuel', label: 'Fuel' },
         { view: 'fuelAndCosts', label: 'Fuel & Costs' },
         { view: 'maintenance', label: 'Maintenance' },
         { view: 'checklists', label: 'Checklists' },
@@ -169,6 +171,8 @@ const FleetPortal: React.FC = () => {
                 return <FleetAssetAdmin />;
             case 'drivers':
                 return <DriversManagementView />;
+            case 'fuel':
+                return <FuelDashboard />;
             case 'fuelAndCosts':
                 return <FuelManagement
                     vehicles={vehicles}

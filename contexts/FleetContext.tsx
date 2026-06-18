@@ -5,7 +5,7 @@ import { CommonDataContext } from './CommonDataContext';
 import { Vehicle, FuelEntry, JobCard, CalculatedFuelEntry, VehiclePerformanceStats, Tire, ServiceStatus, Branch } from '../types';
 import { useServiceStatus } from '../hooks/useServiceStatus';
 import { addMonths, format } from 'date-fns';
-import { supabase, runWrite } from '../lib/supabase';
+import { supabase, runWrite, directInsert, directUpdate, directDelete } from '../lib/supabase';
 import {
     mapVehicle, mapFuelEntry, mapServiceEntry, mapOtherCost, mapRecurringCost,
     mapRevenueEntry, mapServiceInterval, mapFuelPrice,
@@ -311,12 +311,10 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         handleAddFuelEntry: async (vehicleId: string, entry: Omit<FuelEntry, 'id' | 'vehicleId'>) => {
             try {
                 const insertRow = toFuelEntryInsert({ vehicleId, ...entry });
-                // Refreshes the session and retries once if the first write is
-                // rejected because the login token went stale.
-                const { data: inserted, error: insertErr } = await runWrite(() =>
-                    supabase.from('fuel_entries').insert(insertRow).select().single());
+                // Freeze-proof REST write (supabase.from wedges on the auth lock,
+                // so fills + the bowser stock cascade silently never saved).
+                const { data: inserted, error: insertErr } = await directInsert('fuel_entries', insertRow as any);
                 if (insertErr || !inserted) {
-                    // Surface the real failure — never pretend a save succeeded.
                     console.error('[fleet] addFuelEntry failed:', insertErr);
                     return { ok: false, error: insertErr?.message || 'The fuel entry could not be saved. Please try again.' };
                 }
@@ -325,16 +323,14 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 const cur = stateRef.current;
                 const vehicle = (cur.vehicles || []).find(v => v.id === vehicleId);
                 if (vehicle && (!vehicle.currentOdometer || entry.odometer > vehicle.currentOdometer)) {
-                    const { error: vErr } = await supabase
-                        .from('vehicles').update({ current_odometer: entry.odometer }).eq('id', vehicleId);
+                    const { error: vErr } = await directUpdate('vehicles', { id: vehicleId }, { current_odometer: entry.odometer });
                     if (vErr) console.error('[fleet] fuel-cascade vehicle odo update failed:', vErr);
                 }
                 if (entry.sourceBowserId) {
                     const bowser = (cur.bowsers || []).find(b => b.id === entry.sourceBowserId);
                     if (bowser) {
                         const newStock = bowser.currentStock - entry.liters;
-                        const { error: bErr } = await supabase
-                            .from('bowsers').update({ current_stock_liters: newStock }).eq('id', entry.sourceBowserId);
+                        const { error: bErr } = await directUpdate('bowsers', { id: entry.sourceBowserId }, { current_stock_liters: newStock });
                         if (bErr) console.error('[fleet] fuel-cascade bowser stock update failed:', bErr);
                     }
                 }
@@ -349,12 +345,12 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
 
         handleUpdateFuelEntry: async (entry: FuelEntry): Promise<{ ok: boolean; error?: string }> => {
             try {
-                const { error } = await runWrite(() => supabase.from('fuel_entries').update({
+                const { error } = await directUpdate('fuel_entries', { id: entry.id }, {
                     date: entry.date,
                     odometer: entry.odometer,
                     liters: entry.liters,
                     trip_distance_km: entry.tripDistance ?? null,
-                }).eq('id', entry.id).select().single());
+                });
                 if (error) {
                     console.error('[fleet] updateFuelEntry failed:', error);
                     return { ok: false, error: error.message || 'The change could not be saved.' };
@@ -369,7 +365,7 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
 
         handleDeleteFuelEntry: async (id: string): Promise<{ ok: boolean; error?: string }> => {
             try {
-                const { error } = await runWrite(() => supabase.from('fuel_entries').delete().eq('id', id).select());
+                const { error } = await directDelete('fuel_entries', { id });
                 if (error) {
                     console.error('[fleet] deleteFuelEntry failed:', error);
                     return { ok: false, error: error.message || 'The entry could not be deleted.' };
@@ -514,7 +510,7 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         // (bowsers.current_stock_liters) both in the DB and local state.
         handleAddBowser: async (bowser: any): Promise<{ ok: boolean; error?: string }> => {
             try {
-                const { data, error } = await runWrite(() => supabase.from('bowsers').insert(toBowserInsert(bowser)).select().single());
+                const { data, error } = await directInsert('bowsers', toBowserInsert(bowser) as any);
                 if (error || !data) { console.error('[fleet] addBowser failed:', error); return { ok: false, error: error?.message || 'Could not save the bowser.' }; }
                 dispatch({ type: 'ADD_BOWSER', payload: mapBowser(data) });
                 return { ok: true };
@@ -523,11 +519,11 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         handleAddBowserRefill: async (refill: any): Promise<{ ok: boolean; error?: string }> => {
             try {
                 const finalCostPerLiter = (refill.costPerLiter || 0) * (1 - ((refill.rebatePercentage || 0) / 100));
-                const { data, error } = await runWrite(() => supabase.from('bowser_refills').insert(toBowserRefillInsert({ ...refill, finalCostPerLiter })).select().single());
+                const { data, error } = await directInsert('bowser_refills', toBowserRefillInsert({ ...refill, finalCostPerLiter }) as any);
                 if (error || !data) { console.error('[fleet] addBowserRefill failed:', error); return { ok: false, error: error?.message || 'Could not save the refill.' }; }
                 const bowser = (stateRef.current.bowsers || []).find((b: any) => b.id === refill.bowserId);
                 if (bowser) {
-                    const { error: bErr } = await supabase.from('bowsers').update({ current_stock_liters: bowser.currentStock + refill.liters }).eq('id', refill.bowserId);
+                    const { error: bErr } = await directUpdate('bowsers', { id: refill.bowserId }, { current_stock_liters: bowser.currentStock + refill.liters });
                     if (bErr) console.error('[fleet] bowser stock cascade (add) failed:', bErr);
                 }
                 dispatch({ type: 'ADD_BOWSER_REFILL', payload: mapBowserRefill(data) });
@@ -548,12 +544,12 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 if (updates.supplier !== undefined) updRow.supplier = updates.supplier;
                 if (updates.date !== undefined) updRow.date = updates.date;
                 if (updates.referenceNumber !== undefined) updRow.reference_number = updates.referenceNumber;
-                const { error } = await runWrite(() => supabase.from('bowser_refills').update(updRow).eq('id', id).select().single());
+                const { error } = await directUpdate('bowser_refills', { id }, updRow);
                 if (error) { console.error('[fleet] updateBowserRefill failed:', error); return { ok: false, error: error.message }; }
                 const litersDiff = (updates.liters !== undefined ? updates.liters : old.liters) - old.liters;
                 if (litersDiff !== 0) {
                     const bowser = (stateRef.current.bowsers || []).find((b: any) => b.id === old.bowserId);
-                    if (bowser) await supabase.from('bowsers').update({ current_stock_liters: bowser.currentStock + litersDiff }).eq('id', old.bowserId);
+                    if (bowser) await directUpdate('bowsers', { id: old.bowserId }, { current_stock_liters: bowser.currentStock + litersDiff });
                 }
                 dispatch({ type: 'UPDATE_BOWSER_REFILL', payload: { id, updates: { ...updates, finalCostPerLiter } } });
                 return { ok: true };
@@ -562,11 +558,11 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
         handleDeleteBowserRefill: async (id: string): Promise<{ ok: boolean; error?: string }> => {
             try {
                 const refill = (stateRef.current.bowserRefills || []).find((r: any) => r.id === id);
-                const { error } = await runWrite(() => supabase.from('bowser_refills').delete().eq('id', id).select());
+                const { error } = await directDelete('bowser_refills', { id });
                 if (error) { console.error('[fleet] deleteBowserRefill failed:', error); return { ok: false, error: error.message }; }
                 if (refill) {
                     const bowser = (stateRef.current.bowsers || []).find((b: any) => b.id === refill.bowserId);
-                    if (bowser) await supabase.from('bowsers').update({ current_stock_liters: bowser.currentStock - refill.liters }).eq('id', refill.bowserId);
+                    if (bowser) await directUpdate('bowsers', { id: refill.bowserId }, { current_stock_liters: bowser.currentStock - refill.liters });
                 }
                 dispatch({ type: 'DELETE_BOWSER_REFILL', payload: id });
                 return { ok: true };

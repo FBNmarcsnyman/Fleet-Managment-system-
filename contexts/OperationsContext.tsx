@@ -129,7 +129,7 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
       ${emailButton(trackLink, 'Track your shipment &rarr;')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, subject: `FBN shipment ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client phase update failed:', e);
     }
@@ -147,7 +147,7 @@ export const sendClientPodEmail = async (lc: any): Promise<void> => {
       ${emailButton(`${base}?track=${lc.id}`, 'Track shipment')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, subject: `POD available - shipment ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client POD notify failed:', e);
     }

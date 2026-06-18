@@ -6,6 +6,7 @@ import { supabase, directInvoke, invokeFn } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
+import { sendOrderToClient } from '../../lib/loadEmails';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -135,6 +136,11 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             });
             if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message || 'unknown error'}`); return; }
             onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
+            // Send the client their Order at the SAME time the LoadCon goes to the
+            // transporter — all subsequent client updates thread under this email.
+            if (lc.clientEmail) {
+                void sendOrderToClient(lc).then(r => { if (r.ok) showToast(`Client order also emailed to ${lc.clientEmail}.`); else if (r.error) console.error('[loads] auto client order:', r.error); });
+            }
             // File the LoadCon + Client Order PDFs into the load's Google Drive folder (fire-and-forget).
             void (async () => {
                 try {

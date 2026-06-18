@@ -611,6 +611,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     podEmail: row.pod_email ?? undefined,
     ccEmail: row.cc_email ?? undefined,
     updateCc: (row as any).cc_updates ?? undefined,
+    clientCc: (row as any).client_cc ?? undefined,
     delayReason: row.delay_reason ?? undefined,
     eta: row.eta ?? undefined,
 });

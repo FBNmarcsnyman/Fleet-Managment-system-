@@ -88,10 +88,10 @@ export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<v
       <p style="font-size:13px;color:#5b6573">POD to be returned on delivery (you can upload it from the same portal).</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        // Status updates go to the controller (To) + the "updates" contacts only —
-        // NOT accounts (who only need the LoadCon + POD).
-        const cc = String(lc.updateCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
-        await invokeFn('send-email', { body: { to, cc: cc.length ? cc : undefined, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
+        // Status updates go to the controller (To) + the "updates" contacts + ops.
+        // (Accounts are excluded unless ticked for updates.)
+        const cc = [...String(lc.updateCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'];
+        await invokeFn('send-email', { body: { to, cc, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
     } catch (e) { console.error('[ops] supplier phase update failed:', e); }
 };
 
@@ -132,7 +132,8 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
       ${emailButton(trackLink, 'Track your shipment &rarr;')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'];
+        await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client phase update failed:', e);
     }
@@ -150,7 +151,8 @@ export const sendClientPodEmail = async (lc: any): Promise<void> => {
       ${emailButton(`${base}?track=${lc.id}`, 'Track shipment')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'];
+        await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client POD notify failed:', e);
     }
@@ -167,7 +169,7 @@ export const sendSupplierPodEmail = async (lc: any): Promise<void> => {
       <p style="font-size:13px;color:#5b6573">Please keep this for your records and quote the load number on your invoice.</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, cc: String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, cc: [...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'], subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] supplier POD copy failed:', e);
     }
@@ -218,7 +220,7 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
       <p>Thank you,<br>FBN Transport</p>`);
     try {
         await invokeFn('send-email', {
-            body: { to, cc: String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+            body: { to, cc: [...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'], subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
         });
     } catch (e) {
         console.error('[ops] auto POD request failed:', e);
@@ -587,6 +589,12 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const _updCc = _pick(c => c.getsUpdates);
                 if (_docsCc.length) (row as any).cc_email = _docsCc.join(', ');
                 (row as any).cc_updates = _updCc.length ? _updCc.join(', ') : null;
+                // Client team CC: all the client's other saved contact emails, so the
+                // whole client team is copied on the order + every status update.
+                const _client = (stateRef.current.clients || []).find((c: any) => (data.clientId && c.id === data.clientId) || (c.name || '').toLowerCase() === (data.clientName || '').toLowerCase());
+                const _clientMain = (data.clientEmail || '').toLowerCase();
+                const _clientCc = (_client?.contacts || []).map((c: any) => c.email).filter((e: string) => e && e.toLowerCase() !== _clientMain);
+                (row as any).client_cc = _clientCc.length ? _clientCc.join(', ') : null;
                 // Back-dated load (loading AND delivery dates both already past) = the
                 // cargo has already been delivered. Land it straight in Delivered/POD
                 // and flag it so the board badges it; the POD-first flow takes over below.

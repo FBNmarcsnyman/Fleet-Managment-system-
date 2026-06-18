@@ -208,6 +208,14 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                 if (s.contactEmail && !subcontractorEmail) setSubcontractorEmail(s.contactEmail);
             }
         }
+        // Pull this subbie's most recent transport rate through so it pre-fills
+        // (you just tweak it). Only fills when the rate box is still blank.
+        if (!transportRate) {
+            const past = (loadConfirmations as any[])
+                .filter(l => (l.subcontractorName || '').toLowerCase() === name.toLowerCase() && l.supplierRate)
+                .sort((a, b) => new Date(b.date || b.collectionDate || 0).getTime() - new Date(a.date || a.collectionDate || 0).getTime());
+            if (past[0]?.supplierRate) setTransportRate(String(past[0].supplierRate));
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

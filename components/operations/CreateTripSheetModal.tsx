@@ -32,7 +32,21 @@ const CreateTripSheetModal: React.FC<CreateTripSheetModalProps> = ({ availableLo
         onSubmit({ vehicleId, driverId, loadConIds: selectedLoadIds, branch: selectedBranch });
     };
 
-    const localVehicles = vehicles.filter(v => v.status === 'On the road' && ['BAKKIE', '1 TONNER', '2 TONNER', '5 TONNER', '8 TONNER', '12 TONNER', '15 TONNER'].includes(v.weightCategory));
+    // Local delivery vehicles for this branch + the line-haul (LOADMASTER) fleet,
+    // smallest first; drivers scoped the same way, A–Z. (Same rule as collections.)
+    const SIZE_ORDER = ['BAKKIE', '1 TONNER', '2 TONNER', '5 TONNER', '8 TONNER', '12 TONNER', '15 TONNER'];
+    const sizeOf = (v: any) => {
+        if (typeof v.payloadKg === 'number' && v.payloadKg > 0) return v.payloadKg;
+        const i = SIZE_ORDER.indexOf(v.weightCategory);
+        return i >= 0 ? i : Number.MAX_SAFE_INTEGER;
+    };
+    const localVehicles = vehicles
+        .filter(v => v.status === 'On the road' && SIZE_ORDER.includes(v.weightCategory) && ((v as any).branch === selectedBranch || (v as any).branch === 'LOADMASTER'))
+        .sort((a, b) => sizeOf(a) - sizeOf(b));
+    const tripDrivers = users
+        .filter(u => (u.role === 'Driver' || u.role === 'Staff') && u.name)
+        .filter(u => { const ab = (u as any).assignedBranches || []; return ab.length === 0 || ab.includes(selectedBranch) || ab.includes('LOADMASTER'); })
+        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";
 
     const getGoodsSummary = (lc: LoadConfirmation) => {
@@ -68,7 +82,7 @@ const CreateTripSheetModal: React.FC<CreateTripSheetModalProps> = ({ availableLo
                 </select>
                 <select value={driverId} onChange={e => setDriverId(e.target.value)} required className={inputClasses}>
                     <option value="" disabled>-- Select Driver --</option>
-                    {users.filter(u => u.role === 'Staff').map(d => <option key={d.email} value={d.email}>{d.name}</option>)}
+                    {tripDrivers.map(d => <option key={d.email} value={d.email}>{d.name}</option>)}
                 </select>
             </div>
 

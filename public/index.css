@@ -61,3 +61,8 @@ input::placeholder, textarea::placeholder { color: #94a3b8 !important; }
 
 /* Scrollbars a touch lighter */
 .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1 !important; }
+
+/* Neaten data entry — show text UPPERCASE as you type (emails/phones/numbers excluded). */
+input:not([type="email"]):not([type="number"]):not([type="tel"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="password"]):not([type="search"]),
+textarea { text-transform: uppercase; }
+input::placeholder, textarea::placeholder { text-transform: none; }

@@ -80,7 +80,7 @@ const LoadBoard: React.FC = () => {
     });
 
     const transporterOf = (lc: LoadConfirmation): string =>
-        lc.supplierId ? (supplierMap.get(lc.supplierId) || lc.subcontractorName || 'Subcontractor') : (isAssigned(lc) ? 'Own fleet' : '');
+        lc.supplierId ? (supplierMap.get(lc.supplierId) || lc.subcontractorName || 'Subcontractor') : (lc.subcontractorName || (isAssigned(lc) ? 'Own fleet' : ''));
 
     return (
         <div className="space-y-4">
@@ -173,7 +173,14 @@ const LoadBoard: React.FC = () => {
                                                 )}
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className={`flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest transition-all ${assigned ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}>{assigned ? 'Reassign' : 'Assign'}</button>
+                                                {!assigned ? (
+                                                    <>
+                                                        <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-emerald-600 hover:bg-emerald-500 text-white">Assign FBN</button>
+                                                        <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-amber-500 hover:bg-amber-400 text-white">Subbie</button>
+                                                    </>
+                                                ) : (
+                                                    <button onClick={() => showModal(lc.supplierId ? 'assignLoadCon' : 'assignFbn', { loadCon: lc })} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-slate-200 hover:bg-slate-300 text-slate-700">Reassign</button>
+                                                )}
                                                 {showPod ? (
                                                     <button onClick={() => getPod(lc)} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest">Get POD</button>
                                                 ) : step ? (

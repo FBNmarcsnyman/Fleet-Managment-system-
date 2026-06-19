@@ -82,7 +82,10 @@ export const nextStep = (lc: LoadConfirmation): { status: LoadConfirmationStatus
     return { status: next, label: ADVANCE_LABEL[next] || `Mark ${STATUS_LABEL[next]}` };
 };
 
-export const isAssigned = (lc: LoadConfirmation): boolean => !!(lc.supplierId || lc.vehicleId);
+// Assigned = brokered to a subbie (supplierId), OR put on our own fleet
+// (a vehicle or a named driver — the "Assign to FBN" path for collections).
+export const isAssigned = (lc: LoadConfirmation): boolean =>
+    !!(lc.supplierId || lc.vehicleId || lc.subcontractorDriverName || lc.subcontractorDriverCell);
 
 // Which board owns the load right now.
 const COLLECTION_STATUSES = new Set<LoadConfirmationStatus>(['Booked', 'Driver Assigned', 'At Collection Point', 'Loading', 'Collected', 'At Collection Depot']);

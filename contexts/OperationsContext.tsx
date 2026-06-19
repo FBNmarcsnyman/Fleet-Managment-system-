@@ -62,6 +62,22 @@ const CLIENT_PHASE_MSG: Record<string, string> = {
     'Delivered': 'has been delivered',
 };
 
+// Neaten data entry: store free-text fields in UPPERCASE (transport-doc style),
+// but NEVER emails or phone numbers. Applied at the save layer so the board,
+// LoadCons and emails all read consistently.
+const upStr = (v: any) => (typeof v === 'string' && v.trim() ? v.toUpperCase() : v);
+const upContacts = (cs: any) => Array.isArray(cs) ? cs.map((c: any) => ({ ...c, name: upStr(c.name), role: upStr(c.role) })) : cs;
+const LOAD_UP = ['clientName', 'clientContact', 'collectionPoint', 'deliveryPoint', 'commodity', 'packaging', 'loadType', 'route', 'customerOrderNumber', 'loadRefNo', 'subcontractorName', 'forAttention', 'subcontractorDriverName', 'subcontractorVehicleReg', 'specialInstructions', 'dimensions'];
+export const upcaseLoad = (o: any) => { if (!o || typeof o !== 'object') return o; const x = { ...o }; for (const k of LOAD_UP) if (k in x) x[k] = upStr(x[k]); return x; };
+const PARTY_UP = ['name', 'contactPerson', 'address'];
+export const upcaseParty = (o: any) => {
+    if (!o || typeof o !== 'object') return o; const x = { ...o };
+    for (const k of PARTY_UP) if (k in x) x[k] = upStr(x[k]);
+    if ('contacts' in x) x.contacts = upContacts(x.contacts);
+    if ('branches' in x) x.branches = Array.isArray(x.branches) ? x.branches.map((b: any) => ({ ...b, name: upStr(b.name), address: upStr(b.address), contactPerson: upStr(b.contactPerson), contacts: upContacts(b.contacts) })) : x.branches;
+    return x;
+};
+
 // Normalise a SA cell ("0832496150" / "27 83…" / "+2783…") to E.164 (+2783…).
 const waNumber = (raw?: string): string | null => {
     if (!raw) return null;
@@ -316,6 +332,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         // -- Clients ----------------------------------------------------------
         handleAddClient: async (client: Omit<Client, 'id'>): Promise<Result<Client>> => {
             try {
+                client = upcaseParty(client);
                 const row = toClientInsert(client);
                 const { data, error } = await supabase
                     .from('clients').insert(row).select().single();
@@ -330,6 +347,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleUpdateClient: async (id: string, updates: Partial<Client>): Promise<Result<void>> => {
             try {
+                updates = upcaseParty(updates);
                 // directUpdate (freeze-proof REST) - supabase.from() here wedged on the
                 // auth lock so client edits silently never saved.
                 const { error } = await directUpdate('clients', { id }, toClientUpdate(updates) as any);
@@ -385,7 +403,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         handleAddSupplier: async (supplier: Omit<Supplier, 'id'>): Promise<Result<Supplier>> => {
             try {
                 // Default complianceStatus matches the pre-migration reducer behavior.
-                const withDefaults: Omit<Supplier, 'id'> = { complianceStatus: 'Pending', complianceDocs: [], rateCards: [], ...supplier };
+                const withDefaults: Omit<Supplier, 'id'> = upcaseParty({ complianceStatus: 'Pending', complianceDocs: [], rateCards: [], ...supplier });
                 const row = toSupplierInsert(withDefaults);
                 const { data, error } = await supabase
                     .from('suppliers').insert(row).select().single();
@@ -400,6 +418,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleUpdateSupplier: async (id: string, updates: Partial<Supplier>): Promise<Result<void>> => {
             try {
+                updates = upcaseParty(updates);
                 // directUpdate (freeze-proof REST) - supabase.from() wedged so subbie edits never saved.
                 const { error } = await directUpdate('suppliers', { id }, toSupplierUpdate(updates) as any);
                 if (error) { console.error('[ops] updateSupplier failed:', error); return { ok: false, error: error.message }; }
@@ -542,6 +561,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         // -- Load Confirmations ----------------------------------------------
         handleCreateLoadConfirmation: async (data: any): Promise<Result<LoadConfirmation>> => {
             try {
+                data = upcaseLoad(data);
                 // Clean running number per month: FBN-2026-06-0001, -0002, …
                 const now = new Date();
                 const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -715,6 +735,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         handleUpdateLoadConfirmation: async (id: string, updates: Partial<LoadConfirmation>): Promise<Result<void>> => {
             try {
+                updates = upcaseLoad(updates);
                 const prev = (stateRef.current.loadConfirmations || []).find((l: LoadConfirmation) => l.id === id);
                 const row = toLoadConfirmationUpdate(updates, branchIdByName);
                 // Direct REST update — the freeze-proof path (editing a load used to

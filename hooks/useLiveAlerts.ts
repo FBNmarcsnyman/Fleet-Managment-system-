@@ -19,6 +19,18 @@ export const useLiveAlerts = (): Notification[] => {
         const add = (id: string, type: Notification['type'], message: string, view: ViewType) =>
             alerts.push({ id, type, message, timestamp: now, link: { view }, isRead: false });
 
+        // NEW LOAD needing action — every freshly-booked collection that hasn't
+        // been given a driver/subbie yet shows here on-screen for ops, on every
+        // load, and clears itself the moment it's assigned. The `load-` id prefix
+        // lets the notification centre open the load straight from the alert.
+        (loadConfirmations || []).forEach((lc: any) => {
+            if (!lc.isCollection) return;
+            if (lc.status !== 'Booked') return;
+            if (lc.supplierId || lc.vehicleId || lc.subcontractorName) return;
+            const lane = [lc.collectionPoint, lc.deliveryPoint].filter(Boolean).join(' → ');
+            add(`load-${lc.id}`, 'JOB_CARD', `NEW collection ${lc.loadConNumber || ''} — ${lc.clientName || 'client'}${lane ? `: ${lane}` : ''}. Assign driver & ETA.`, 'operations');
+        });
+
         (vehicles || []).filter((v: any) => v.status === 'Off the road').forEach((v: any) =>
             add(`offroad-${v.id}`, 'JOB_CARD', `${v.name} (${v.registration}) is OFF THE ROAD`, 'fleet'));
 

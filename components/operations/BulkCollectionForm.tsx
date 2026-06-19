@@ -70,7 +70,8 @@ const BulkCollectionForm: React.FC = () => {
               <p>Please assign a vehicle to collect all at ${depot}:</p>
               ${emailButton(`${base}?view=shipments`, 'Open Shipments board &rarr;', '#16a34a')}
               <p>Regards,<br>FBN Transport</p>`);
-            void invokeFn('send-email', { body: { to: 'loadcons@fbn-transport.co.za', subject: `BULK COLLECTION ${depot} (${collBranch}) - ${ok} shipments - ${ref}`, html, fromName: 'FBN Transport' } });
+            const opsTo = collBranch === 'FBN DBN' ? 'opsdbn@fbn-transport.co.za' : collBranch === 'FBN JHB' ? 'opsjhb@fbn-transport.co.za' : 'ops@fbn-transport.co.za';
+            void invokeFn('send-email', { body: { to: opsTo, cc: ['ops@fbn-transport.co.za'], subject: `BULK COLLECTION ${depot} (${collBranch}) - ${ok} shipments - ${ref}`, html, fromName: 'FBN Transport' } });
             void directInvoke('send-push', { title: `Bulk collection ${depot}`, body: `${ok} shipments, ${Math.round(totals.weight).toLocaleString('en-ZA')} kg to collect`, url: '?view=shipments' });
         } catch (e) { console.error('[bulk] summary', e); }
         setBusy(false);

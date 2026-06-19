@@ -110,7 +110,7 @@ export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<v
     try {
         // Status updates go to the controller (To) + the "updates" contacts + ops.
         // (Accounts are excluded unless ticked for updates.)
-        const cc = [...String(lc.updateCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'];
+        const cc = [...String(lc.updateCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, status)];
         await invokeFn('send-email', { body: { to, cc, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
     } catch (e) { console.error('[ops] supplier phase update failed:', e); }
 };
@@ -159,7 +159,7 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
       <p>Regards,<br>FBN Transport</p>`);
     try {
         // Client team + ops + (for rep-logged collections) the sales rep.
-        const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za', ...(lc.repEmail ? [lc.repEmail] : [])];
+        const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, status), ...(lc.repEmail ? [lc.repEmail] : [])];
         await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client phase update failed:', e);
@@ -178,7 +178,7 @@ export const sendClientPodEmail = async (lc: any): Promise<void> => {
       ${emailButton(`${base}?track=${lc.id}`, 'Track shipment')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'];
+        const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, 'Delivered')];
         await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client POD notify failed:', e);
@@ -196,7 +196,7 @@ export const sendSupplierPodEmail = async (lc: any): Promise<void> => {
       <p style="font-size:13px;color:#5b6573">Please keep this for your records and quote the load number on your invoice.</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, cc: [...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'], subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, cc: [...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, 'Delivered')], subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] supplier POD copy failed:', e);
     }
@@ -247,7 +247,7 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
       <p>Thank you,<br>FBN Transport</p>`);
     try {
         await invokeFn('send-email', {
-            body: { to, cc: [...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'], subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+            body: { to, cc: [...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, 'Delivered')], subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
         });
     } catch (e) {
         console.error('[ops] auto POD request failed:', e);
@@ -256,6 +256,20 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
 
 const OPS_EMAIL = 'loadcons@fbn-transport.co.za';
 const baseUrl = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
+
+// Branch ops mailboxes. Every ops notification also copies the general ops inbox.
+const OPS_GENERAL = 'ops@fbn-transport.co.za';
+const opsEmail = (branch?: string) => branch === 'FBN DBN' ? 'opsdbn@fbn-transport.co.za' : branch === 'FBN JHB' ? 'opsjhb@fbn-transport.co.za' : OPS_GENERAL;
+// Statuses before the inter-branch transfer (handled by the COLLECTING branch).
+const COLLECTION_PHASE = new Set(['Booked', 'Driver Assigned', 'At Collection Point', 'Loading', 'Collected', 'At Collection Depot']);
+// Which ops mailboxes to copy for a load at a given status: collecting branch up
+// to the transfer, then the destination branch (cc the origin) once it's moving.
+const opsCcForPhase = (lc: any, status: string): string[] => {
+    const origin = opsEmail(lc.collectionBranch || lc.arrangingBranch);
+    const dest = opsEmail(lc.destinationBranch);
+    const set = COLLECTION_PHASE.has(status) ? [origin] : (origin === dest ? [origin] : [dest, origin]);
+    return [...new Set([...set, OPS_GENERAL])];
+};
 
 // Mobile "Quick Collection" → email ops to action it (assign driver + ETA).
 export const notifyOpsNewCollection = async (lc: any): Promise<void> => {
@@ -266,7 +280,8 @@ export const notifyOpsNewCollection = async (lc: any): Promise<void> => {
       <p>Please assign a driver and collection ETA:</p>
       ${emailButton(acceptLink, 'Assign driver &amp; collection ETA &rarr;', '#16a34a')}
       <p>Regards,<br>FBN Transport</p>`);
-    try { await invokeFn('send-email', { body: { to: OPS_EMAIL, subject: `NEW COLLECTION ${lc.loadConNumber}${lc.arrangingBranch ? ` (${lc.arrangingBranch})` : ''} - ${lc.clientName || ''}`, html, fromName: 'FBN Transport' } }); }
+    const to = opsEmail(lc.collectionBranch || lc.arrangingBranch);
+    try { await invokeFn('send-email', { body: { to, cc: [OPS_GENERAL], subject: `NEW COLLECTION ${lc.loadConNumber}${lc.arrangingBranch ? ` (${lc.arrangingBranch})` : ''} - ${lc.clientName || ''}`, html, fromName: 'FBN Transport' } }); }
     catch (e) { console.error('[ops] collection ops-notify failed:', e); }
 };
 
@@ -279,7 +294,7 @@ export const sendCollectionAckToClient = async (lc: any): Promise<void> => {
       <p>Collection: <strong>${lc.collectionPoint || ''}</strong><br>Delivery: <strong>${lc.deliveryPoint || ''}</strong></p>
       ${emailButton(`${baseUrl()}?track=${lc.id}`, 'Track this collection &rarr;')}
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
-    const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), OPS_EMAIL];
+    const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), opsEmail(lc.collectionBranch || lc.arrangingBranch), OPS_GENERAL];
     try { await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } }); }
     catch (e) { console.error('[ops] collection ack failed:', e); }
 };
@@ -781,8 +796,21 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         .map(f => `${f.label}: ${(updates as any)[f.key] || '—'}`);
                     if (changed.length) sendAmendedLoadConEmail({ ...(prev || {}), ...updates, id }, changed);
                 }
+                // Inter-branch transfer: when the load is dispatched on the line-haul
+                // (In Transit), tell the DESTINATION branch ops it's coming — cc origin.
+                if (updates.status === 'In Transit' && prev?.status !== 'In Transit') {
+                    const m = { ...(prev || {}), ...updates, id } as any;
+                    if (m.collectionBranch && m.destinationBranch && m.collectionBranch !== m.destinationBranch) {
+                        const veh = [m.subcontractorVehicleReg, m.subcontractorDriverName].filter(Boolean).join(' · ');
+                        const html = brandedEmail(`<p><strong>Loaded for inter-branch transfer — ${m.collectionBranch} &rarr; ${m.destinationBranch}.</strong></p>
+                          <p>Load <strong>${m.loadConNumber}</strong> for <strong>${m.clientName || ''}</strong> is on the line-haul${veh ? ` (<strong>${veh}</strong>)` : ''}, delivering to ${m.deliveryPoint || ''}.</p>
+                          <p>Please prepare to receive and arrange delivery on arrival.</p>
+                          <p>Regards,<br>FBN Transport</p>`);
+                        void invokeFn('send-email', { body: { to: opsEmail(m.destinationBranch), cc: [opsEmail(m.collectionBranch), OPS_GENERAL], subject: `LINE-HAUL ${m.collectionBranch}→${m.destinationBranch} - ${m.loadConNumber} loaded`, html, fromName: 'FBN Transport' } });
+                    }
+                }
                 // Inter-branch handover: when the load reaches the destination depot,
-                // notify ops there to arrange the delivery leg (assign driver + ETA).
+                // notify the DESTINATION branch ops to arrange the delivery leg (cc origin).
                 if (updates.status === 'At Destination Depot' && prev?.status !== 'At Destination Depot') {
                     const m = { ...(prev || {}), ...updates, id } as any;
                     if (m.collectionBranch && m.destinationBranch && m.collectionBranch !== m.destinationBranch) {
@@ -792,7 +820,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                           <p>Please arrange the delivery leg — assign a driver and ETA:</p>
                           ${emailButton(`${base}?accept=${id}`, 'Assign delivery driver &amp; ETA &rarr;', '#16a34a')}
                           <p>Regards,<br>FBN Transport</p>`);
-                        void invokeFn('send-email', { body: { to: 'loadcons@fbn-transport.co.za', subject: `HANDOVER ${m.loadConNumber} at ${m.destinationBranch} - arrange delivery`, html, fromName: 'FBN Transport' } });
+                        void invokeFn('send-email', { body: { to: opsEmail(m.destinationBranch), cc: [opsEmail(m.collectionBranch), OPS_GENERAL], subject: `HANDOVER ${m.loadConNumber} at ${m.destinationBranch} - arrange delivery`, html, fromName: 'FBN Transport' } });
                     }
                 }
                 // Auto-fire the POD request the moment a load becomes Delivered

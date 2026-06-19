@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Client, Contact, Supplier } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
+import { directInsert } from '../../lib/supabase';
+import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
 
 const VEHICLE_SIZES = ['1 TON', '1.5 TON', '4 TON', '8 TON', 'LDV', 'FLATBED', 'TAUTLINER', 'TRI-AXLE', 'SUPERLINK', 'LINK', 'TANKER', 'REEFER'];
+const CONTAINER_SIZES = ['20FT', '40FT', '40HC', '45FT', 'REEFER 20FT', 'REEFER 40FT', 'FLAT RACK', 'OPEN TOP'];
 
 // Quick BROKING collection — the mirror of the ops Quick Collection, but the job
 // is brokered to a transporter. On send it creates a (partial) Load Confirmation
@@ -37,6 +40,13 @@ const BrokingCollectionForm: React.FC = () => {
     const [supContact, setSupContact] = useState('');
     const [supCc, setSupCc] = useState('');
     const [rate, setRate] = useState('');
+    // Container collection (FCL): capture the box details + empty turn-in.
+    const [isContainer, setIsContainer] = useState(false);
+    const [ctrNo, setCtrNo] = useState('');
+    const [seal, setSeal] = useState('');
+    const [ctrSize, setCtrSize] = useState('');
+    const [turnIn, setTurnIn] = useState('');
+    const [operator, setOperator] = useState('');
     const [busy, setBusy] = useState(false);
 
     const clientNames = useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
@@ -72,12 +82,17 @@ const BrokingCollectionForm: React.FC = () => {
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!clientName || !collectionPoint) { showToast('Add the client and collection address.'); return; }
+        if (isContainer && !ctrNo.trim()) { showToast('Add the container number.'); return; }
         setBusy(true);
+        const containerNote = isContainer
+            ? `CONTAINER #${ctrNo.toUpperCase()}${seal ? ` · Seal ${seal.toUpperCase()}` : ''}${ctrSize ? ` · ${ctrSize}` : ''}${operator ? ` · Operator ${operator.toUpperCase()}` : ''}${turnIn ? ` · Empty turn-in: ${turnIn.toUpperCase()}` : ''}`
+            : '';
         const data: any = {
             clientId: clientId || '', clientName, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined, clientCc: clientCc || undefined,
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Delivery' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint, collectionDate,
-            loadType: vehicleSize || undefined,
+            loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (vehicleSize || undefined),
+            specialInstructions: containerNote || undefined,
             packaging: packages ? `${packages}` : undefined,
             loadedPackages: packages ? Number(String(packages).replace(/[^\d]/g, '')) || undefined : undefined,
             weightKg: weight || undefined, volume: deckSpace || undefined,
@@ -95,6 +110,15 @@ const BrokingCollectionForm: React.FC = () => {
         try {
             const res = await onSubmit?.(data);
             if (res && res.ok === false) { showToast(`Could not log: ${res.error}`); setBusy(false); return; }
+            // Container collection → also log it on the Containers board for monitoring.
+            if (isContainer) {
+                void directInsert('containers', {
+                    organization_id: FBN_ORGANIZATION_ID, container_no: ctrNo.toUpperCase(), seal_no: seal ? seal.toUpperCase() : null,
+                    size: ctrSize || null, client_id: clientId || null, client_name: clientName || null,
+                    status: 'Collected', plan: 'full_delivery', turn_in_area: turnIn ? turnIn.toUpperCase() : null,
+                    notes: [operator ? `Operator: ${operator.toUpperCase()}` : '', res?.value?.loadConNumber ? `From collection ${res.value.loadConNumber}` : ''].filter(Boolean).join(' · ') || null,
+                }).then(() => window.dispatchEvent(new Event('containers-changed')));
+            }
             hideModal();
             showToast(supName ? 'Broking collection logged — LoadCon sent to transporter, order sent to client.' : 'Broking collection logged — assign a transporter to send the LoadCon.');
         } catch (err) { showToast(`Could not log: ${err instanceof Error ? err.message : 'error'}`); setBusy(false); }
@@ -128,6 +152,20 @@ const BrokingCollectionForm: React.FC = () => {
                     <div><label className={lbl}>Weight (kg)</label><input value={weight} onChange={e => setWeight(e.target.value)} className={inp} /></div>
                 </div>
                 <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>
+                <div className="border-t border-gray-700 pt-3">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
+                        <input type="checkbox" checked={isContainer} onChange={e => setIsContainer(e.target.checked)} /> 📦 Container collection
+                    </label>
+                    {isContainer && (
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                            <div><label className={lbl}>Container #</label><input value={ctrNo} onChange={e => setCtrNo(e.target.value)} className={inp} placeholder="ABCU1234567" /></div>
+                            <div><label className={lbl}>Seal #</label><input value={seal} onChange={e => setSeal(e.target.value)} className={inp} /></div>
+                            <div><label className={lbl}>Size</label><input list="brkCtrSizes" value={ctrSize} onChange={e => setCtrSize(e.target.value)} className={inp} placeholder="40HC" /><datalist id="brkCtrSizes">{CONTAINER_SIZES.map(s => <option key={s} value={s} />)}</datalist></div>
+                            <div><label className={lbl}>Operator</label><input value={operator} onChange={e => setOperator(e.target.value)} className={inp} placeholder="e.g. shipping line / depot" /></div>
+                            <div className="col-span-2"><label className={lbl}>Empty turn-in address</label><input value={turnIn} onChange={e => setTurnIn(e.target.value)} className={inp} placeholder="where the empty goes back" /></div>
+                        </div>
+                    )}
+                </div>
                 <div className="border-t border-gray-700 pt-3">
                     <label className={lbl}>Assign transporter</label>
                     <input list="bkSups" value={supName} onChange={e => onSup(e.target.value)} className={inp} placeholder="transporter / subcontractor" />

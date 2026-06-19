@@ -82,10 +82,10 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
                         title="Loads Awaiting POD"
                         items={loadsAwaitingPod}
                         renderItem={(lc: LoadConfirmation) => (
-                             <>
-                                <p className="font-semibold text-slate-900">{clientMap.get(lc.clientId)?.name || 'Unknown Client'}</p>
+                             <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-left hover:opacity-80">
+                                <p className="font-semibold text-slate-900 hover:text-blue-600">{clientMap.get(lc.clientId)?.name || lc.clientName || 'Unknown Client'}</p>
                                 <p className="font-mono text-xs text-slate-500">{lc.loadConNumber}</p>
-                            </>
+                            </button>
                         )}
                         renderAction={(lc: LoadConfirmation) => (
                             <div className="flex gap-2">
@@ -105,11 +105,11 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
                             title="Unassigned Jobs"
                             items={unassigned}
                             renderItem={(lc: LoadConfirmation) => (
-                                <>
-                                    <p className="font-semibold text-slate-900">{clientMap.get(lc.clientId)?.name || 'N/A'}</p>
+                                <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-left hover:opacity-80">
+                                    <p className="font-semibold text-slate-900 hover:text-blue-600">{clientMap.get(lc.clientId)?.name || lc.clientName || 'N/A'}</p>
                                     <p className="text-[10px] text-orange-400 font-bold uppercase">{lc.loadSpec}</p>
                                     <p className="text-xs text-slate-500">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</p>
-                                </>
+                                </button>
                             )}
                             renderAction={(lc: LoadConfirmation) => (
                                 <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="text-xs font-bold bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg">Assign</button>
@@ -119,10 +119,10 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
                             title="Overdue Collections"
                             items={overdue}
                             renderItem={(lc: LoadConfirmation) => (
-                                <>
-                                    <p className="font-semibold text-slate-900">{clientMap.get(lc.clientId)?.name || 'N/A'}</p>
+                                <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-left hover:opacity-80">
+                                    <p className="font-semibold text-slate-900 hover:text-blue-600">{clientMap.get(lc.clientId)?.name || lc.clientName || 'N/A'}</p>
                                     <p className="text-xs text-red-400 font-bold">{lc.collectionDate && formatDistanceToNowStrict(new Date(lc.collectionDate), { addSuffix: true })}</p>
-                                </>
+                                </button>
                             )}
                         />
                     </div>

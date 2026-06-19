@@ -98,6 +98,7 @@ export type AppAction =
     | { type: 'SET_BRANCHES', payload: Array<{ id: string; name: Branch }> }
     | { type: 'ADD_USER', payload: Omit<User, 'permissions'> }
     | { type: 'UPDATE_USER', payload: { id?: string, email: string, updates: Partial<User> } }
+    | { type: 'DELETE_USER', payload: { id: string, email: string } }
     | { type: 'SELECT_VEHICLE', payload: string | null }
     | { type: 'ADD_VEHICLE', payload: Vehicle }
     | { type: 'BULK_ADD_VEHICLES', payload: Vehicle[] }
@@ -208,6 +209,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'SET_BRANCHES': return { ...state, branches: action.payload };
         case 'ADD_USER': return { ...state, users: [...(state.users || []), { ...action.payload, permissions: [] }] };
         case 'UPDATE_USER': return { ...state, users: (state.users || []).map(u => (u.email === action.payload.email || (action.payload.id && u.id === action.payload.id)) ? { ...u, ...action.payload.updates } : u) };
+        case 'DELETE_USER': return { ...state, users: (state.users || []).filter(u => u.id !== action.payload.id && u.email !== action.payload.email) };
         case 'SELECT_VEHICLE': return { ...state, selectedVehicleId: action.payload };
         // Post-Commit-D: ADD/BULK_ADD vehicle + fuel actions expect the DB-assigned
         // id to already be in the payload (write handler does the Supabase insert

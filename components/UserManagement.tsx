@@ -4,13 +4,20 @@ import Modal from './Modal';
 import AddUserForm from './AddUserForm';
 import EditUserForm from './EditUserForm';
 import RoleAccessMatrix from './RoleAccessMatrix';
+import PortalLoginsView from './PortalLoginsView';
 import { PlusIcon } from './icons/PlusIcon';
 import { User } from '../types';
+
+// External portal logins live under their own tab; the staff table only shows
+// internal team members.
+const EXTERNAL_ROLES = ['Client', 'Supplier'];
 
 const UserManagement: React.FC = () => {
     const { users, handleAddUser } = useCommonData();
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [tab, setTab] = useState<'team' | 'portal'>('team');
+    const staffUsers = (users || []).filter((u: User) => !EXTERNAL_ROLES.includes(u.role as string));
 
     const handleSubmitNewUser = async (user: Omit<User, 'permissions' | 'assignedVehicleIds'>) => {
         const res = await handleAddUser(user);
@@ -21,13 +28,22 @@ const UserManagement: React.FC = () => {
 
     return (
         <>
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 gap-3 flex-wrap">
                 <h2 className="text-3xl font-bold text-white">User Management</h2>
-                <button onClick={() => setIsAddUserModalOpen(true)} className="flex items-center font-bold py-2 px-4 rounded-lg bg-brand-primary hover:bg-brand-secondary text-white">
-                    <PlusIcon className="h-5 w-5 mr-2" /> Add User
-                </button>
+                {tab === 'team' && (
+                    <button onClick={() => setIsAddUserModalOpen(true)} className="flex items-center font-bold py-2 px-4 rounded-lg bg-brand-primary hover:bg-brand-secondary text-white">
+                        <PlusIcon className="h-5 w-5 mr-2" /> Add User
+                    </button>
+                )}
             </div>
 
+            <div className="flex items-center gap-1 bg-gray-800 p-1 rounded-xl w-fit mb-5">
+                <button onClick={() => setTab('team')} className={`px-4 py-2 text-sm font-bold rounded-lg ${tab === 'team' ? 'bg-brand-primary text-white' : 'text-gray-400 hover:text-white'}`}>Team ({staffUsers.length})</button>
+                <button onClick={() => setTab('portal')} className={`px-4 py-2 text-sm font-bold rounded-lg ${tab === 'portal' ? 'bg-brand-primary text-white' : 'text-gray-400 hover:text-white'}`}>Client &amp; Supplier Logins</button>
+            </div>
+
+            {tab === 'portal' ? <PortalLoginsView /> : (
+            <>
             <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                 <table className="w-full text-left">
                     <thead className="bg-gray-700/50">
@@ -41,7 +57,7 @@ const UserManagement: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map((user: User) => (
+                        {staffUsers.map((user: User) => (
                             <tr key={user.email} className="border-b border-gray-700">
                                 <td className="p-4 font-medium text-white">{user.name}</td>
                                 <td className="p-4 text-gray-300">{user.email}</td>
@@ -70,6 +86,8 @@ const UserManagement: React.FC = () => {
             <Modal isOpen={!!editingUser} onClose={() => setEditingUser(null)}>
                 {editingUser && <EditUserForm user={editingUser} onClose={() => setEditingUser(null)} />}
             </Modal>
+            </>
+            )}
         </>
     );
 };

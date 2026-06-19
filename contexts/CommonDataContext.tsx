@@ -10,6 +10,7 @@ interface CommonDataContextType {
     messages: Message[];
     handleAddUser: (user: any) => Promise<{ ok: boolean; error?: string; tempPassword?: string }>;
     handleUpdateUser: (target: User, updates: any, opts?: { resetPassword?: boolean; newPassword?: string }) => Promise<{ ok: boolean; error?: string; tempPassword?: string }>;
+    handleDeleteUser: (target: User) => Promise<{ ok: boolean; error?: string }>;
     handleSendMessage: (vehicleId: string, message: any) => void;
     handleUpdateNavPreferences: (email: string, preferences: any) => void;
     handleDismissNotification: (id: string) => void;
@@ -64,6 +65,18 @@ export const CommonDataProvider: React.FC<{ children: ReactNode }> = ({ children
                 if (data?.error) return { ok: false, error: data.error };
                 dispatch({ type: 'UPDATE_USER', payload: { id: target.id, email: target.email, updates } });
                 return { ok: true, tempPassword: data?.tempPassword };
+            } catch (err) {
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        // Permanently delete a login (auth user + profile) via admin-update-user.
+        handleDeleteUser: async (target: User): Promise<{ ok: boolean; error?: string }> => {
+            try {
+                const { data, error } = await directInvoke('admin-update-user', { userId: target.id, delete: true });
+                if (error) return { ok: false, error: error.message || 'Could not delete the login.' };
+                if (data?.error) return { ok: false, error: data.error };
+                dispatch({ type: 'DELETE_USER', payload: { id: target.id, email: target.email } });
+                return { ok: true };
             } catch (err) {
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useVehicles, useUIState } from '../../contexts/AppContexts';
 import { directInvoke, directSelect, directUpdate } from '../../lib/supabase';
 import FuelQuickCapture from './FuelQuickCapture';
+import FuelReconciliation from './FuelReconciliation';
 import { Bowser, BowserRefill, FuelEntry, FuelPriceRecord, Vehicle, VehiclePerformanceStats } from '../../types';
 
 const rand = (n: number) => 'R ' + (Math.round(n * 100) / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -167,6 +168,9 @@ const FuelDashboard: React.FC = () => {
             </div>
             {/* Quick fillings capture */}
             <FuelQuickCapture />
+
+            {/* Tank reconciliation + anomalies */}
+            <FuelReconciliation />
 
             {/* Bowser gauges */}
             <div>

@@ -63,7 +63,7 @@ const LoadDetailModal: React.FC = () => {
         setD({
             status: lc.status, priority: lc.priority,
             arrangingBranch: lc.arrangingBranch || '', fbnRepresentative: lc.fbnRepresentative || '', route: lc.route || '',
-            loadRefNo: lc.loadRefNo || '', customerOrderNumber: lc.customerOrderNumber || '',
+            loadRefNo: lc.loadRefNo || '', customerOrderNumber: lc.customerOrderNumber || '', collectionRef: lc.collectionRef || '',
             clientName: lc.clientName || '', clientContact: lc.clientContact || '', clientEmail: lc.clientEmail || '', totalAmount: lc.totalAmount ?? '',
             subcontractorName: lc.subcontractorName || '', forAttention: lc.forAttention || '', subcontractorEmail: lc.subcontractorEmail || '',
             subcontractorDriverName: lc.subcontractorDriverName || '', subcontractorVehicleReg: lc.subcontractorVehicleReg || '', subcontractorDriverCell: lc.subcontractorDriverCell || '', supplierRate: lc.supplierRate ?? '',
@@ -148,6 +148,9 @@ const LoadDetailModal: React.FC = () => {
                 <div className="flex items-center gap-2">
                     {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-900/40 text-blue-300">{lc.status}</span>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">📷 Capture</button>}
+                    {!editing && !lc.supplierId && (
+                        <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} title="Shipment going onward (e.g. to CPT) after collection — raise a subcontractor LoadCon; it then shows on the Broking board to keep updating." className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg">+ Onward transport → Broking</button>
+                    )}
                     {!editing
                         ? <button onClick={startEdit} className="bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold py-1.5 px-3 rounded-lg">Edit</button>
                         : <><button onClick={() => setEditing(false)} className="bg-gray-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg">Cancel</button>
@@ -212,6 +215,7 @@ const LoadDetailModal: React.FC = () => {
                         <F label="FBN Rep" k="fbnRepresentative" value={lc.fbnRepresentative} />
                         <F label="Route" k="route" value={lc.route} />
                         <F label="Load Ref" k="loadRefNo" value={lc.loadRefNo} />
+                        <F label="Waybill" k="collectionRef" value={lc.collectionRef} />
                         <F label="Customer Order" k="customerOrderNumber" value={lc.customerOrderNumber} />
                     </div>
                 </Section>

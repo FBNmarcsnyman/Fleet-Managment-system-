@@ -1,7 +1,6 @@
 
 import React, { lazy, Suspense } from 'react';
 import { useUIState, useOperations, useVehicles } from '../../contexts/AppContexts';
-import OperationsDashboard from './OperationsDashboard';
 import LoadBoard from './LoadBoard';
 import DocumentSettingsView from './DocumentSettingsView';
 
@@ -13,6 +12,7 @@ const EmailLogView = lazy(() => import('./EmailLogView'));
 const OperationsOverview = lazy(() => import('./OperationsOverview'));
 const ImportsBoard = lazy(() => import('./ImportsBoard'));
 const DailyPlanningView = lazy(() => import('./DailyPlanningView'));
+const BrokingDashboard = lazy(() => import('./BrokingDashboard'));
 
 
 const OperationsPortal: React.FC = () => {
@@ -81,7 +81,7 @@ const OperationsPortal: React.FC = () => {
             case 'opsDashboard': return <Suspense fallback={<div>Loading…</div>}><OperationsOverview /></Suspense>;
             case 'dashboard':
             default:
-                return <OperationsDashboard />;
+                return <Suspense fallback={<div>Loading…</div>}><BrokingDashboard /></Suspense>;
         }
     };
     

@@ -20,6 +20,13 @@ const ShipmentsBoard: React.FC = () => {
     const { showModal, showToast } = useUIState();
     const [busy, setBusy] = useState<string | null>(null);
     const [q, setQ] = useState('');
+    const [branch, setBranch] = useState<string>('All');
+
+    const branches = useMemo(() => {
+        const set = new Set<string>();
+        (loadConfirmations as LoadConfirmation[]).forEach(lc => { if (lc.isCollection) { if (lc.collectionBranch) set.add(lc.collectionBranch); if (lc.destinationBranch) set.add(lc.destinationBranch); } });
+        return ['All', ...Array.from(set)];
+    }, [loadConfirmations]);
 
     useEffect(() => {
         let active = true;
@@ -35,8 +42,9 @@ const ShipmentsBoard: React.FC = () => {
         const needle = q.trim().toLowerCase();
         return (loadConfirmations as LoadConfirmation[])
             .filter(lc => lc.isCollection && !['Invoiced', 'Cancelled'].includes(lc.status))
+            .filter(lc => branch === 'All' || lc.collectionBranch === branch || lc.destinationBranch === branch)
             .filter(lc => !needle || `${lc.loadConNumber} ${clientName(lc)} ${lc.collectionPoint || ''} ${lc.deliveryPoint || ''}`.toLowerCase().includes(needle));
-    }, [loadConfirmations, clients, q]);
+    }, [loadConfirmations, clients, q, branch]);
 
     // Daily overview: cargo still to move, grouped by lane (from-area → to-area).
     const lanes = useMemo(() => {
@@ -73,7 +81,12 @@ const ShipmentsBoard: React.FC = () => {
                     <h3 className="text-xl font-black text-slate-900">Shipments</h3>
                     <p className="text-xs text-slate-500">Consolidation &amp; line-haul — collect → depot → transfer → deliver. Assign a subbie to broker the national leg.</p>
                 </div>
-                <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search shipments…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-48" />
+                <div className="flex items-center gap-2">
+                    <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm">
+                        {branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}
+                    </select>
+                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search shipments…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-48" />
+                </div>
             </div>
 
             {/* Cargo to move — overview by lane */}

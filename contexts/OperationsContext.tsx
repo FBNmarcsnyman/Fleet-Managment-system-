@@ -665,6 +665,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (backDated) { row.status = 'Delivered'; (row as any).back_dated = true; }
                 if (data.isCollection) (row as any).is_collection = true;
                 if (data.repEmail) (row as any).rep_email = data.repEmail;
+                if (data.collectionRef) (row as any).collection_ref = data.collectionRef;
                 // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
                 const { data: inserted, error } = await directInsert('load_confirmations', row as any);
                 if (error || !inserted) {
@@ -695,11 +696,14 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (data.isCollection) {
                     // Mobile Quick Collection: notify ops to action it + acknowledge the
                     // client. It then rides the normal LoadCon rails once ops assign.
-                    void notifyOpsNewCollection(forEmail);
+                    // A bulk/depot batch suppresses the per-row ops ping/push (the bulk
+                    // form sends ONE summary) but still acknowledges each client.
+                    if (!data.suppressOpsNotify) {
+                        void notifyOpsNewCollection(forEmail);
+                        void directInvoke('send-push', { title: `New collection ${mapped.loadConNumber}`, body: `${forEmail.clientName || 'Client'}: ${forEmail.collectionPoint || ''} → ${forEmail.deliveryPoint || ''}`, url: `?track=${newId}` });
+                    }
                     if (forEmail.clientEmail) void sendCollectionAckToClient(forEmail);
                     if (forEmail.subcontractorEmail) sendLoadConThenStamp();
-                    // Push to subscribed staff phones.
-                    void directInvoke('send-push', { title: `New collection ${mapped.loadConNumber}`, body: `${forEmail.clientName || 'Client'}: ${forEmail.collectionPoint || ''} → ${forEmail.deliveryPoint || ''}`, url: `?track=${newId}` });
                 } else if (backDated) {
                     sendLoadConThenStamp();
                     if (forEmail.subcontractorEmail) void sendPodRequestEmail(forEmail);

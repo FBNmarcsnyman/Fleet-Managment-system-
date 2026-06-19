@@ -457,6 +457,7 @@ export interface LoadConfirmation {
     backDated?: boolean;
     isCollection?: boolean;
     repEmail?: string;
+    collectionRef?: string;
     updateCc?: string;
     clientCc?: string;
     loadedPackages?: number;

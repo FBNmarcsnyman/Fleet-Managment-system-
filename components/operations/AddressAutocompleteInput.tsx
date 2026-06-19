@@ -62,12 +62,20 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({ val
 
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
-                const address = place?.formatted_address || place?.name;
+                const fa = place?.formatted_address || '';
+                const nm = (place?.name || '').trim();
+                // When a BUSINESS is picked, Google gives its name separately from
+                // the street address — prepend it so the company name pulls through
+                // (e.g. "JUST FLOUR, 2nd Floor, Block A, …"). For a plain street
+                // address, name is just part of the address, so we don't duplicate.
+                const faLow = fa.toLowerCase();
+                const isBusiness = nm && fa && !faLow.startsWith(nm.toLowerCase()) && !faLow.includes(nm.toLowerCase());
+                const address = isBusiness ? `${nm}, ${fa}` : (fa || nm);
                 if (address) {
                     onChangeRef.current(address);
                     onPlaceRef.current?.({
                         address,
-                        name: place?.name,
+                        name: nm || undefined,
                         phone: place?.formatted_phone_number || place?.international_phone_number,
                     });
                 }

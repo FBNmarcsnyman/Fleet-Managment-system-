@@ -3,6 +3,7 @@ import { Client, Contact, Branch } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import { invokeFn, directInvoke } from '../../lib/supabase';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
+import { usePickOptions } from '../../hooks/usePickOptions';
 
 // Import/export unpack depots we collect groupage from.
 const DEPOTS = ['ZACPAK', 'CHC', 'ICS', 'IWS', 'SACD'];
@@ -10,16 +11,17 @@ const AREAS: { code: Branch; label: string }[] = [
     { code: 'FBN DBN', label: 'Durban' }, { code: 'FBN JHB', label: 'Johannesburg' }, { code: 'FBN CPT', label: 'Cape Town' },
 ];
 
-type Row = { client: string; door: string; area: Branch; packages: string; weight: string; cube: string; commodity: string };
-const blankRow = (): Row => ({ client: '', door: '', area: 'FBN DBN', packages: '', weight: '', cube: '', commodity: '' });
+type Row = { client: string; waybill: string; ref: string; door: string; area: Branch; packages: string; weight: string; cube: string; commodity: string };
+const blankRow = (): Row => ({ client: '', waybill: '', ref: '', door: '', area: 'FBN DBN', packages: '', weight: '', cube: '', commodity: '' });
 
 // Log ONE depot collection that contains MANY consignments. Each row becomes its
 // own shipment (own door/POD/client), all linked by one collection reference so
 // the driver gets a single "collect all at <depot>" instruction.
 const BulkCollectionForm: React.FC = () => {
-    const { hideModal, showToast } = useUIState();
+    const { hideModal, showToast, showModal } = useUIState();
     const { clients = [], handleCreateLoadConfirmation } = useOperations() as any;
     const { currentUser } = useAuth();
+    const commodities = usePickOptions('commodity');
 
     const today = new Date().toISOString().split('T')[0];
     const [depot, setDepot] = useState('ZACPAK');
@@ -51,6 +53,7 @@ const BulkCollectionForm: React.FC = () => {
                 clientId: c?.id || '', clientName: r.client, clientEmail: cs[0]?.email || (c as any)?.contactEmail || undefined, clientContact: cs[0]?.name || c?.contactPerson || undefined,
                 items: [], legs: [{ id: 'leg-1', collectionPoint: depot, deliveryPoint: r.door, movementType: 'Collection' }],
                 collectionPoint: depot, deliveryPoint: r.door, collectionDate: date,
+                loadRefNo: r.waybill || undefined, customerOrderNumber: r.ref || undefined,
                 commodity: r.commodity || undefined, packaging: r.packages ? `${r.packages} PKGS` : undefined,
                 weightKg: r.weight || undefined, cubeM3: r.cube ? Number(r.cube) : undefined, loadedPackages: r.packages ? Number(r.packages) : undefined,
                 arrangingBranch: collBranch, collectionBranch: collBranch, destinationBranch: r.area,
@@ -91,25 +94,31 @@ const BulkCollectionForm: React.FC = () => {
             <div className="max-h-[46vh] overflow-y-auto pr-1">
                 <table className="w-full text-left">
                     <thead className="text-[10px] text-gray-500 uppercase tracking-wider"><tr>
-                        <th className="pb-1">Client</th><th className="pb-1">Deliver to (door)</th><th className="pb-1">Area</th><th className="pb-1 w-14">Pkgs</th><th className="pb-1 w-16">Kg</th><th className="pb-1 w-14">m³</th><th className="pb-1">Commodity</th><th></th>
+                        <th className="pb-1">Client</th><th className="pb-1 w-24">Waybill #</th><th className="pb-1 w-24">Client ref</th><th className="pb-1">Deliver to (door)</th><th className="pb-1 w-16">Area</th><th className="pb-1 w-12">Pkgs</th><th className="pb-1 w-14">Kg</th><th className="pb-1 w-12">m³</th><th className="pb-1">Commodity</th><th></th>
                     </tr></thead>
                     <tbody>
                         {rows.map((r, i) => (
                             <tr key={i}>
                                 <td className="pr-1 pb-1.5"><input list="bulkClients" value={r.client} onChange={e => setRow(i, 'client', e.target.value)} className={inp} placeholder="client" /></td>
+                                <td className="pr-1 pb-1.5"><input value={r.waybill} onChange={e => setRow(i, 'waybill', e.target.value)} className={inp} placeholder="FBN #" /></td>
+                                <td className="pr-1 pb-1.5"><input value={r.ref} onChange={e => setRow(i, 'ref', e.target.value)} className={inp} placeholder="ref" /></td>
                                 <td className="pr-1 pb-1.5"><input value={r.door} onChange={e => setRow(i, 'door', e.target.value)} className={inp} placeholder="delivery address" /></td>
                                 <td className="pr-1 pb-1.5"><select value={r.area} onChange={e => setRow(i, 'area', e.target.value as Branch)} className={inp}>{AREAS.map(a => <option key={a.code} value={a.code}>{a.label.slice(0, 3)}</option>)}</select></td>
                                 <td className="pr-1 pb-1.5"><input value={r.packages} onChange={e => setRow(i, 'packages', e.target.value)} className={inp} /></td>
                                 <td className="pr-1 pb-1.5"><input value={r.weight} onChange={e => setRow(i, 'weight', e.target.value)} className={inp} /></td>
                                 <td className="pr-1 pb-1.5"><input value={r.cube} onChange={e => setRow(i, 'cube', e.target.value)} className={inp} /></td>
-                                <td className="pr-1 pb-1.5"><input value={r.commodity} onChange={e => setRow(i, 'commodity', e.target.value)} className={inp} /></td>
+                                <td className="pr-1 pb-1.5"><input list="bulkComm" value={r.commodity} onChange={e => setRow(i, 'commodity', e.target.value)} className={inp} /></td>
                                 <td className="pb-1.5"><button type="button" onClick={() => removeRow(i)} className="text-gray-500 hover:text-red-400 px-1">×</button></td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
                 <datalist id="bulkClients">{clientNames.map(n => <option key={n} value={n} />)}</datalist>
-                <button type="button" onClick={addRow} className="mt-1 text-xs font-bold text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg">+ Add consignment</button>
+                <datalist id="bulkComm">{commodities.map(c => <option key={c} value={c} />)}</datalist>
+                <div className="flex items-center gap-3 mt-1">
+                    <button type="button" onClick={addRow} className="text-xs font-bold text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg">+ Add consignment</button>
+                    <button type="button" onClick={() => showModal('pickLists', {})} className="text-xs font-semibold text-blue-400 hover:text-blue-300">Manage commodity/packaging lists</button>
+                </div>
             </div>
 
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-700">

@@ -1,7 +1,6 @@
 
 import React, { lazy, Suspense } from 'react';
 import { useUIState, useOperations } from '../../contexts/AppContexts';
-import { OPS_SUBVIEWS } from '../shared/navConfig';
 import OperationsDashboard from './OperationsDashboard';
 import LoadBoard from './LoadBoard';
 import DocumentSettingsView from './DocumentSettingsView';
@@ -15,7 +14,7 @@ const OperationsOverview = lazy(() => import('./OperationsOverview'));
 
 
 const OperationsPortal: React.FC = () => {
-    const { operationsSubView, handleOperationsSubViewChange, showModal, showToast } = useUIState();
+    const { currentView, operationsSubView, handleOperationsSubViewChange, showModal, showToast } = useUIState();
     const {
         loadConfirmations, clients, suppliers,
         handleUpdateLoadConfirmation, handleCreateLoadConfirmation: createLoadCon
@@ -37,8 +36,12 @@ const OperationsPortal: React.FC = () => {
         { view: 'shipments', label: 'Shipments' },
         { view: 'containers', label: 'Containers' },
     ];
-    const isOps = OPS_SUBVIEWS.includes(operationsSubView);
+    // The sidebar has two flat tabs — Broking and Operations — that both open
+    // this portal. The current view decides which area's tab strip to show; the
+    // active sub-tab falls back to that area's first tab when switching across.
+    const isOps = currentView === 'operations';
     const navItems = isOps ? OPS_TABS : BROKING_TABS;
+    const activeTab = navItems.some(t => t.view === operationsSubView) ? operationsSubView : navItems[0].view;
 
     const handleNewTransportOrder = () => showModal('transportOrder', {
         onSubmit: async (data: any) => {
@@ -59,7 +62,7 @@ const OperationsPortal: React.FC = () => {
     });
 
     const renderView = () => {
-        switch (operationsSubView) {
+        switch (activeTab) {
             case 'subcontractorLoads': return <Suspense fallback={<div>Loading...</div>}><SubcontractorLoadsView loadConfirmations={loadConfirmations} suppliers={suppliers} clients={clients} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} /></Suspense>;
             case 'loadBoard': return <LoadBoard />;
             case 'shipments': return <Suspense fallback={<div>Loading…</div>}><ShipmentsBoard /></Suspense>;
@@ -84,7 +87,7 @@ const OperationsPortal: React.FC = () => {
                 <div className="flex items-center gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl">
                     {navItems.map(item => (
                         <button key={item.view} onClick={() => handleOperationsSubViewChange(item.view as any)}
-                            className={`px-4 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition ${operationsSubView === item.view ? 'bg-[#13294b] text-white shadow' : 'text-slate-600 hover:bg-white'}`}>
+                            className={`px-4 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition ${activeTab === item.view ? 'bg-[#13294b] text-white shadow' : 'text-slate-600 hover:bg-white'}`}>
                             {item.label}
                         </button>
                     ))}

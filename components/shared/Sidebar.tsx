@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ViewType } from '../../types';
 import { FuelIcon } from '../icons/FuelIcon';
 import { useUIState, useAuth, useOperations } from '../../contexts/AppContexts';
-import { ALL_NAV_ITEMS, SETTINGS_NAV_ITEMS, NavItem, NAV_GROUPS, NavGroup, OPS_SUBVIEWS } from './navConfig';
+import { ALL_NAV_ITEMS, SETTINGS_NAV_ITEMS, NavItem } from './navConfig';
 
 const NavLink: React.FC<{
     item: NavItem;
@@ -31,76 +31,16 @@ const NavLink: React.FC<{
     );
 };
 
-const GroupNav: React.FC<{
-    group: NavGroup;
-    isOpen: boolean;
-    onToggle: () => void;
-    activeSubView: string;
-    isPortalActive: boolean;
-    onChild: (view: ViewType, subView: string) => void;
-    badge?: number;
-}> = ({ group, isOpen, onToggle, activeSubView, isPortalActive, onChild, badge }) => {
-    const Icon = group.icon;
-    // The parent reads as "active" when its portal is open AND the current
-    // sub-view belongs to this group.
-    const groupActive = isPortalActive && group.children.some(c => c.subView === activeSubView);
-    return (
-        <div>
-            <button
-                onClick={onToggle}
-                title={group.label}
-                className={`relative w-full flex items-center px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group
-                    ${groupActive ? 'text-[#13294b]' : 'text-gray-400 hover:text-white hover:bg-gray-800/60'}`}
-            >
-                <Icon className={`h-5 w-5 shrink-0 ${groupActive ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-300'}`} />
-                <span className="ml-3 inline md:hidden lg:inline truncate">{group.label}</span>
-                {badge !== undefined && badge > 0 && (
-                    <span className="ml-2 inline md:hidden lg:inline-flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white">{badge}</span>
-                )}
-                <svg className={`ml-auto h-4 w-4 shrink-0 transition-transform inline md:hidden lg:inline ${isOpen ? 'rotate-90' : ''} ${groupActive ? 'text-blue-600' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                </svg>
-            </button>
-            {isOpen && (
-                <div className="mt-1 ml-3 pl-3 border-l border-slate-200 space-y-1 block md:hidden lg:block">
-                    {group.children.map(child => {
-                        const active = isPortalActive && activeSubView === child.subView;
-                        return (
-                            <button
-                                key={child.subView}
-                                onClick={() => onChild(child.view, child.subView)}
-                                className={`w-full text-left px-3 py-2 rounded-lg text-[13px] font-semibold transition
-                                    ${active ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white hover:bg-gray-800/60'}`}
-                            >
-                                {child.label}
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-    );
-};
-
 const Sidebar: React.FC = () => {
     const { currentUser, hasPermission, handleLogout } = useAuth();
-    const { currentView, handleViewChange, operationsSubView, handleOperationsSubViewChange, sidebarOpen, setSidebarOpen } = useUIState();
+    const { currentView, handleViewChange, sidebarOpen, setSidebarOpen } = useUIState();
     const { unassignedJobCount = 0 } = useOperations();
-
-    // Which collapsible groups are expanded. Default-open the group that owns the
-    // current sub-view so the active item is always visible.
-    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
-        broking: currentView === 'operations' && !OPS_SUBVIEWS.includes(operationsSubView),
-        operations: currentView === 'operations' && OPS_SUBVIEWS.includes(operationsSubView),
-    }));
 
     if (!currentUser) return null;
 
     // On mobile the sidebar is an off-canvas drawer; tapping a nav item navigates
     // AND closes it. On desktop it's always docked (the close is a no-op there).
     const goAndClose = (view: ViewType) => { handleViewChange(view); setSidebarOpen(false); };
-    const goChild = (view: ViewType, subView: string) => { handleOperationsSubViewChange(subView); handleViewChange(view); setSidebarOpen(false); };
-    const toggleGroup = (key: string) => setOpenGroups(g => ({ ...g, [key]: !g[key] }));
 
     // Respect the user's saved order + hidden preferences (same as before).
     const navItems = useMemo(() => {
@@ -145,18 +85,7 @@ const Sidebar: React.FC = () => {
                         item={item}
                         isActive={currentView === item.view}
                         onClick={goAndClose}
-                    />
-                ))}
-                {NAV_GROUPS.filter(g => hasPermission(g.permission)).map(group => (
-                    <GroupNav
-                        key={group.key}
-                        group={group}
-                        isOpen={!!openGroups[group.key]}
-                        onToggle={() => toggleGroup(group.key)}
-                        activeSubView={operationsSubView}
-                        isPortalActive={currentView === 'operations'}
-                        onChild={goChild}
-                        badge={group.key === 'broking' ? unassignedJobCount : undefined}
+                        badge={item.view === 'broking' ? unassignedJobCount : undefined}
                     />
                 ))}
             </nav>

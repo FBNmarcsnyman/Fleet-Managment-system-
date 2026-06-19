@@ -309,6 +309,7 @@ const App: React.FC = () => {
             case 'fleet': return <FleetPortal />;
             case 'fuel': return <FuelPortal />;
             case 'operations': return <OperationsPortal />;
+            case 'broking': return <OperationsPortal />;
             case 'partners': return <PartnersPortal />;
             case 'quotes': return <QuotesPortal />;
             case 'workshop': return <WorkshopPortal />;

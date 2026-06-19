@@ -60,7 +60,7 @@ const CLIENT_PHASE_MSG: Record<string, string> = {
     'At Collection Point': 'has a vehicle that has arrived at the collection point',
     'Collected': 'has been collected',
     'At Collection Depot': 'has been logged in at our depot',
-    'In Transit': 'has been loaded for inter-branch transfer and is on its way',
+    'In Transit': 'has been dispatched and is on its way',
     'At Destination Depot': 'has been received at our destination depot',
     'Unloaded': 'has been assigned to a local delivery vehicle',
     'Out for Delivery': 'has been loaded and dispatched for delivery',
@@ -155,9 +155,11 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
     // Title-case the greeting name so the (uppercase-stored) name isn't shouty.
     const greet = String(lc.clientContact || lc.clientName || '').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
-    const fmtDT = (s?: string) => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
-    const eta = (status === 'Driver Assigned' || status === 'At Collection Point') ? lc.loadingEta : status === 'Out for Delivery' ? lc.deliveryEta : '';
-    const etaLine = eta ? `<p style="font-size:15px;color:#13294b">ETA: <strong>${fmtDT(eta)}</strong></p>` : '';
+    const fmtDT = (s?: string) => { if (!s) return ''; const d = new Date(s); if (isNaN(d.getTime())) return s; return String(s).includes('T') ? d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }); };
+    // For a dispatch (In Transit) we tell the client the PLANNED DELIVERY date.
+    const eta = (status === 'Driver Assigned' || status === 'At Collection Point') ? lc.loadingEta : status === 'Out for Delivery' ? lc.deliveryEta : status === 'In Transit' ? (lc.deliveryEta || lc.deliveryDate) : '';
+    const etaLabel = status === 'In Transit' ? 'Planned delivery' : 'ETA';
+    const etaLine = eta ? `<p style="font-size:15px;color:#13294b">${etaLabel}: <strong>${fmtDT(eta)}</strong></p>` : '';
     const html = brandedEmail(`<p>Good day ${greet},</p>
       <p>An update on your shipment <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}: it <strong>${msg}</strong>.</p>
       ${etaLine}

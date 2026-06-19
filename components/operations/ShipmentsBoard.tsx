@@ -183,7 +183,7 @@ const ShipmentsBoard: React.FC = () => {
                                     {showPod ? (
                                         <button onClick={stop(() => getPod(lc))} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">Get POD</button>
                                     ) : step ? (
-                                        <button onClick={stop(() => advance(lc))} disabled={busy === lc.id} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">{busy === lc.id ? '…' : step.label}</button>
+                                        <button onClick={stop(() => step.status === 'In Transit' ? showModal('dispatchLoad', { loadCon: lc }) : advance(lc))} disabled={busy === lc.id} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">{busy === lc.id ? '…' : step.label}</button>
                                     ) : null}
                                 </div>
                             </div>

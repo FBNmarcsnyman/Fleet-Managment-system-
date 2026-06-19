@@ -842,7 +842,11 @@ export const toFuelEntryInsert = (
     liters: entry.liters,
     trip_distance_km: entry.tripDistance ?? null,
     source_bowser_id: entry.sourceBowserId ?? null,
-});
+    // Optional extras (who filled / time in notes, and per-fill cost).
+    notes: (entry as any).notes ?? null,
+    cost_per_liter: (entry as any).costPerLiter ?? null,
+    total_cost: (entry as any).totalCost ?? null,
+} as any);
 
 // -- Client -> clients row ---------------------------------------------------
 export const toClientInsert = (client: Omit<Client, 'id'>): Tables['clients']['Insert'] => ({

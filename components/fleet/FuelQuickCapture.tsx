@@ -5,28 +5,37 @@ import { useVehicles, useUIState } from '../../contexts/AppContexts';
 // branch's vehicles come up in a list with their odometer ready, type litres +
 // odometer per truck and save them all in one go.
 const BRANCH_RANK: Record<string, number> = { 'LOADMASTER': 0, 'FBN DBN': 1, 'FBN JHB': 2, 'FBN CPT': 3 };
+const MAIN_BRANCHES = ['LOADMASTER', 'FBN DBN', 'FBN JHB', 'FBN CPT'];
 const BRANCH_OPTS = [
     { v: 'LOADMASTER', label: 'Loadmaster (LM)' },
     { v: 'FBN DBN', label: 'Durban' },
     { v: 'FBN JHB', label: 'Johannesburg' },
     { v: 'FBN CPT', label: 'Cape Town' },
+    { v: 'PRIVATE', label: 'Private / Other' },
     { v: 'ALL', label: 'All branches' },
 ];
 
 const FuelQuickCapture: React.FC = () => {
-    const { vehicles = [], handleAddFuelEntry } = useVehicles() as any;
+    const { vehicles = [], fuelPriceRecords = [], handleAddFuelEntry } = useVehicles() as any;
     const { showToast } = useUIState();
     const today = new Date().toISOString().slice(0, 10);
     const nowTime = new Date().toTimeString().slice(0, 5);
     const [branch, setBranch] = useState<string>('LOADMASTER');
     const [date, setDate] = useState(today);
     const [time, setTime] = useState(nowTime);
+    const [filledBy, setFilledBy] = useState('');
     const [rows, setRows] = useState<Record<string, { odo: string; litres: string }>>({});
     const [busy, setBusy] = useState(false);
     const [open, setOpen] = useState(false);
 
+    const curPrice = useMemo(() => {
+        const sorted = [...(fuelPriceRecords as any[])].sort((a, b) => new Date(b.startDate || 0).getTime() - new Date(a.startDate || 0).getTime());
+        return sorted[0]?.pricePerLiter || 0;
+    }, [fuelPriceRecords]);
+
     const list = useMemo(() => (vehicles as any[])
-        .filter(v => v.status !== 'Sold' && (branch === 'ALL' || v.branch === branch))
+        .filter(v => v.status !== 'Sold')
+        .filter(v => branch === 'ALL' || (branch === 'PRIVATE' ? !MAIN_BRANCHES.includes(v.branch) : v.branch === branch))
         .sort((a, b) => (BRANCH_RANK[a.branch] ?? 9) - (BRANCH_RANK[b.branch] ?? 9) || String(a.name || a.registration).localeCompare(String(b.name || b.registration))),
         [vehicles, branch]);
 
@@ -37,10 +46,17 @@ const FuelQuickCapture: React.FC = () => {
         if (!entered.length) { showToast('Enter litres on at least one vehicle.'); return; }
         setBusy(true);
         let ok = 0;
+        const noteBase = [filledBy ? `Filled by ${filledBy.toUpperCase()}` : '', time ? `at ${time}` : ''].filter(Boolean).join(' ');
         for (const [vid, r] of entered) {
             const v = (vehicles as any[]).find(x => x.id === vid);
             const odo = Number(r.odo) || v?.currentOdometer || 0;
-            const res = await handleAddFuelEntry(vid, { date, odometer: odo, liters: Number(r.litres) } as any);
+            const litres = Number(r.litres);
+            const res = await handleAddFuelEntry(vid, {
+                date, odometer: odo, liters: litres,
+                notes: noteBase || undefined,
+                costPerLiter: curPrice || undefined,
+                totalCost: curPrice ? +(litres * curPrice).toFixed(2) : undefined,
+            } as any);
             if (!(res && res.ok === false)) ok++;
         }
         setBusy(false);
@@ -63,6 +79,7 @@ const FuelQuickCapture: React.FC = () => {
                             <select value={branch} onChange={e => setBranch(e.target.value)} className={inp}>{BRANCH_OPTS.map(b => <option key={b.v} value={b.v}>{b.label}</option>)}</select></div>
                         <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className={inp} /></div>
                         <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Time</label><input type="time" value={time} onChange={e => setTime(e.target.value)} className={inp} /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Filled by</label><input value={filledBy} onChange={e => setFilledBy(e.target.value)} placeholder="who filled" className={inp} /></div>
                         <button onClick={saveAll} disabled={busy || !entered.length} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black px-5 py-2 rounded-lg text-sm uppercase tracking-wider">{busy ? 'Saving…' : `Save ${entered.length || ''} filling${entered.length === 1 ? '' : 's'}`}</button>
                     </div>
                     <div className="max-h-[50vh] overflow-y-auto">

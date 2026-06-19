@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { LoadConfirmation, LoadConfirmationStatus } from '../../types';
-import { useOperations, useUIState } from '../../contexts/AppContexts';
+import { useOperations, useUIState, useAuth } from '../../contexts/AppContexts';
 import { isAssigned, nextStep, STATUS_LABEL, statusChip, isInterBranch } from '../../lib/loadStatus';
 import LoadProgress from './LoadProgress';
 import { TruckIcon } from '../icons/TruckIcon';
@@ -18,9 +18,13 @@ const COLUMNS: { title: string; statuses: LoadConfirmationStatus[] }[] = [
 const ShipmentsBoard: React.FC = () => {
     const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation, handleRefreshLoads } = useOperations() as any;
     const { showModal, showToast } = useUIState();
+    const { currentUser } = useAuth();
     const [busy, setBusy] = useState<string | null>(null);
     const [q, setQ] = useState('');
-    const [branch, setBranch] = useState<string>('All');
+    // Default the board to the user's own branch (DBN controller → Durban, etc.);
+    // managers with no single branch see All. They can still switch.
+    const myBranch = (currentUser?.assignedBranches || []).find((b: string) => ['FBN DBN', 'FBN JHB', 'FBN CPT'].includes(b));
+    const [branch, setBranch] = useState<string>(myBranch || 'All');
 
     const branches = useMemo(() => {
         const set = new Set<string>();
@@ -62,6 +66,19 @@ const ShipmentsBoard: React.FC = () => {
     }, [shipments]);
     const kg = (n: number) => Math.round(n).toLocaleString('en-ZA');
 
+    // Inter-depot cargo INCOMING to this branch (line-hauled from the other depot):
+    // en route or already arrived, so the receiving branch knows what to deliver.
+    const incoming = useMemo(() => {
+        if (branch === 'All') return [];
+        const yest = new Date(); yest.setDate(yest.getDate() - 1); yest.setHours(0, 0, 0, 0);
+        return (loadConfirmations as LoadConfirmation[])
+            .filter(lc => lc.isCollection && lc.destinationBranch === branch && lc.collectionBranch && lc.collectionBranch !== branch
+                && ['In Transit', 'At Destination Depot'].includes(lc.status)
+                && lc.importStage !== 'awaiting_release' && lc.importStage !== 'released')
+            .map(lc => ({ lc, arrived: lc.status === 'At Destination Depot', sinceYesterday: !!lc.updatedAt && new Date(lc.updatedAt) < new Date(new Date().setHours(0, 0, 0, 0)) }))
+            .sort((a, b) => Number(b.arrived) - Number(a.arrived));
+    }, [loadConfirmations, branch]);
+
     const advance = async (lc: LoadConfirmation) => {
         const step = nextStep(lc);
         if (!step) return;
@@ -91,6 +108,27 @@ const ShipmentsBoard: React.FC = () => {
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search shipments…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-48" />
                 </div>
             </div>
+
+            {/* Incoming from the other depot — line-hauled to this branch */}
+            {incoming.length > 0 && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                    <p className="text-[11px] font-black text-purple-700 uppercase tracking-widest mb-2">⇢ Incoming from other depots ({incoming.length})</p>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                        {incoming.map(({ lc, arrived, sinceYesterday }) => (
+                            <button key={lc.id} onClick={() => showModal('loadDetail', { loadCon: lc })}
+                                className="shrink-0 text-left bg-white border border-purple-200 rounded-xl px-3 py-2 shadow-sm min-w-[190px] hover:border-purple-400">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[10px] font-black text-purple-700 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</span>
+                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${arrived ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{arrived ? 'Arrived' : 'En route'}</span>
+                                </div>
+                                <div className="text-sm font-bold text-slate-900 truncate">{clientName(lc)}</div>
+                                <div className="text-[10px] text-slate-500 truncate">{lc.deliveryPoint || '—'}</div>
+                                <div className="text-[10px] text-slate-500 mt-0.5">{lc.subcontractorVehicleReg || lc.subcontractorName || 'Linehaul'}{sinceYesterday ? ' · since yesterday' : ''}</div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Cargo to move — overview by lane */}
             {lanes.length > 0 && (

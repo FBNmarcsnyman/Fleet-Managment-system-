@@ -9,7 +9,7 @@ const rand = (n: number) => 'R ' + Math.round(n).toLocaleString('en-ZA');
 const L = (n: number) => Math.round(n).toLocaleString('en-ZA') + ' ℓ';
 
 const FuelReconciliation: React.FC = () => {
-    const { vehicles = [], fuelEntries = [], bowserRefills = [] } = useVehicles() as any;
+    const { vehicles = [], fuelEntries = [], bowserRefills = [], bowsers = [] } = useVehicles() as any;
     const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
     const [personal, setPersonal] = useState<{ liters: number; cost: number }>({ liters: 0, cost: 0 });
     const [open, setOpen] = useState(true);
@@ -44,6 +44,36 @@ const FuelReconciliation: React.FC = () => {
         return { purchased, purchasedValue, dispensedFleet, dispensed, spend, prevSpend, variance: purchased - dispensed, fillsCount: fills.length, dropsCount: drops.length };
     }, [bowserRefills, fuelEntries, personal, month]);
     const spendMoM = recon.prevSpend > 0 ? ((recon.spend - recon.prevSpend) / recon.prevSpend) * 100 : 0;
+
+    // Per-tank (DBN / JHB) reconciliation: diesel IN (drops) vs OUT (fills
+    // allocated to that tank) for the month. Variance = in − out (the swing the
+    // tank level should have moved by). Unallocated fills (retail / untagged) are
+    // shown separately so it's clear what is NOT coming off a company tank.
+    const perTank = useMemo(() => {
+        const tanks = (bowsers as any[]).map(b => {
+            const dropsIn = (bowserRefills as any[]).filter(r => r.bowserId === b.id && inMonth(r.date)).reduce((s, r) => s + (Number(r.liters) || 0), 0);
+            const fills = (fuelEntries as any[]).filter(e => e.sourceBowserId === b.id && inMonth(e.date));
+            const out = fills.reduce((s, e) => s + (Number(e.liters) || 0), 0);
+            return { id: b.id, name: b.name, currentStock: Number(b.currentStock) || 0, dropsIn, out, fillCount: fills.length, net: dropsIn - out };
+        });
+        const unallocated = (fuelEntries as any[]).filter(e => !e.sourceBowserId && inMonth(e.date));
+        return { tanks, unallocLiters: unallocated.reduce((s, e) => s + (Number(e.liters) || 0), 0), unallocCount: unallocated.length };
+    }, [bowsers, bowserRefills, fuelEntries, month]);
+
+    // Possible duplicate drops: same tank, same litres, within ~4 days.
+    const dropFlags = useMemo(() => {
+        const drops = (bowserRefills as any[]).filter(r => inMonth(r.date));
+        const out: string[] = [];
+        const tankName = (id: string) => (bowsers as any[]).find(b => b.id === id)?.name || 'Tank';
+        for (let i = 0; i < drops.length; i++) for (let j = i + 1; j < drops.length; j++) {
+            const a = drops[i], b = drops[j];
+            if (a.bowserId === b.bowserId && Math.round(Number(a.liters)) === Math.round(Number(b.liters)) && Math.round(Number(a.liters)) > 0
+                && Math.abs((new Date(a.date).getTime() - new Date(b.date).getTime()) / 86400000) <= 4) {
+                out.push(`${tankName(a.bowserId)}: possible duplicate drop of ${Math.round(Number(a.liters)).toLocaleString('en-ZA')} ℓ on ${a.date} and ${b.date}`);
+            }
+        }
+        return [...new Set(out)];
+    }, [bowserRefills, bowsers, month]);
 
     // Anomalies on this month's fleet fills.
     const anomalies = useMemo(() => {
@@ -94,6 +124,30 @@ const FuelReconciliation: React.FC = () => {
                         <div className="bg-gray-900/40 rounded-xl p-3"><p className="text-[10px] font-black text-gray-500 uppercase">Last month spend</p><p className="text-xl font-black text-gray-300">{rand(recon.prevSpend)}</p></div>
                         <div className="bg-gray-900/40 rounded-xl p-3"><p className="text-[10px] font-black text-gray-500 uppercase">Avg cost / litre</p><p className="text-xl font-black text-gray-300">{recon.dispensedFleet > 0 ? rand(recon.spend / recon.dispensedFleet) : '—'}</p></div>
                     </div>
+                    {perTank.tanks.length > 0 && (
+                        <div>
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Per-tank reconciliation</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {perTank.tanks.map(t => (
+                                    <div key={t.id} className="bg-gray-900/40 rounded-xl p-3 border border-gray-700">
+                                        <div className="flex items-center justify-between mb-2"><p className="font-black text-white text-sm">{t.name}</p><span className="text-[11px] text-gray-400">in tank now: {L(t.currentStock)}</span></div>
+                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                            <div><p className="text-[10px] text-gray-500 uppercase">In (drops)</p><p className="text-sm font-black text-emerald-300">{L(t.dropsIn)}</p></div>
+                                            <div><p className="text-[10px] text-gray-500 uppercase">Out ({t.fillCount} fills)</p><p className="text-sm font-black text-amber-300">{L(t.out)}</p></div>
+                                            <div><p className="text-[10px] text-gray-500 uppercase">Net swing</p><p className={`text-sm font-black ${t.net < 0 ? 'text-red-300' : 'text-white'}`}>{t.net >= 0 ? '+' : ''}{L(t.net)}</p></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {perTank.unallocCount > 0 && <p className="text-[11px] text-gray-500 mt-2">{perTank.unallocCount} fills ({L(perTank.unallocLiters)}) this month are not tagged to a tank (retail / older import) — they aren't counted against either bowser.</p>}
+                        </div>
+                    )}
+                    {dropFlags.length > 0 && (
+                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                            <p className="text-[11px] font-black text-amber-300 uppercase tracking-widest mb-1">⚠ Check these drops</p>
+                            {dropFlags.map((f, i) => <p key={i} className="text-[11px] text-amber-200">{f}</p>)}
+                        </div>
+                    )}
                     {varianceBad && <p className="text-[11px] text-red-300">⚠ Diesel purchased and dispensed differ by more than 5% — possible unrecorded fills, capture errors, or shrinkage. (A positive variance = stock built up; negative = more dispensed than bought.)</p>}
                     {anomalies.length > 0 && (
                         <div className="bg-gray-900/40 rounded-xl border border-gray-700 divide-y divide-gray-700/50 max-h-72 overflow-y-auto">

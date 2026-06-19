@@ -113,10 +113,21 @@ const OperationsPortal: React.FC = () => {
                             </button>
                         </>
                     ) : (
-                        <button onClick={handleNewTransportOrder}
-                            className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                            + New Transport Order
-                        </button>
+                        <>
+                            <button onClick={() => showModal('brokingCollection', { onSubmit: async (data: any) => {
+                                const result = await createLoadCon(data);
+                                if (result.ok) showToast((result as any).warning ? `Collection ${result.value!.loadConNumber} logged — ⚠ ${(result as any).warning}` : `Broking collection ${result.value!.loadConNumber} logged.`);
+                                else showToast(`Failed: ${result.error}`);
+                                return result;
+                            } })}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                                + Collection
+                            </button>
+                            <button onClick={handleNewTransportOrder}
+                                className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                                + New Transport Order
+                            </button>
+                        </>
                     )}
                 </div>
             </div>

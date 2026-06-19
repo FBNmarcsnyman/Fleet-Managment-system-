@@ -198,24 +198,35 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                                 </div>
                             ) : (
                                 <>
+                                    {(load.driver_name || load.vehicle_reg || load.loading_eta) && (
+                                        <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 800, color: '#047857', textTransform: 'uppercase', letterSpacing: 1 }}>✓ Already assigned</div>
+                                            <p style={{ color: '#065f46', fontSize: 14, margin: '6px 0 0' }}>
+                                                {load.driver_name ? <>Driver: <strong>{load.driver_name}</strong>. </> : ''}
+                                                {load.vehicle_reg ? <>Vehicle: <strong>{load.vehicle_reg}</strong>. </> : ''}
+                                                {load.loading_eta ? <>ETA: <strong>{fmtDT(load.loading_eta)}</strong>.</> : ''}
+                                            </p>
+                                            <p style={{ color: '#047857', fontSize: 12, margin: '4px 0 0' }}>Already on file — only change these if something is different.</p>
+                                        </div>
+                                    )}
                                     <p style={{ color: '#374151', fontSize: 15, marginBottom: 18 }}>Please confirm you accept this load and enter the driver &amp; vehicle details.</p>
                                     {err && <p style={{ color: '#b91c1c', fontSize: 14 }}>{err}</p>}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                                         <div>
                                             <label style={lbl}>Driver name</label>
-                                            <input ref={driverName} style={inp} placeholder="Driver full name" />
+                                            <input ref={driverName} style={inp} placeholder="Driver full name" defaultValue={load.driver_name || ''} />
                                         </div>
                                         <div>
                                             <label style={lbl}>Vehicle registration</label>
-                                            <input ref={vehicleReg} style={inp} placeholder="e.g. ND 123-456" />
+                                            <input ref={vehicleReg} style={inp} placeholder="e.g. ND 123-456" defaultValue={load.vehicle_reg || ''} />
                                         </div>
                                         <div>
                                             <label style={lbl}>Driver cell</label>
-                                            <input ref={driverCell} style={inp} placeholder="082..." />
+                                            <input ref={driverCell} style={inp} placeholder="082..." defaultValue={(load as any).driver_cell || ''} />
                                         </div>
                                         <div>
                                             <label style={lbl}>ETA at loading point (date &amp; time)</label>
-                                            <input ref={loadingEta} type="datetime-local" style={inp} />
+                                            <input ref={loadingEta} type="datetime-local" style={inp} defaultValue={(load.loading_eta || '').slice(0, 16)} />
                                         </div>
                                     </div>
                                     <button onClick={submitAccept} disabled={busy} style={{ width: '100%', background: busy ? '#9ca3af' : '#16a34a', color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 17, fontWeight: 800, cursor: 'pointer', marginTop: 10 }}>

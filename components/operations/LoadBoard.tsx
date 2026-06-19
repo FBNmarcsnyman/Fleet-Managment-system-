@@ -123,8 +123,9 @@ const LoadBoard: React.FC = () => {
                                         if (d0 < t0) urgent = 'over'; else if (d0.getTime() === t0.getTime()) urgent = 'today';
                                     }
                                     const border = urgent === 'over' ? 'border-l-4 border-l-red-500' : urgent === 'today' ? 'border-l-4 border-l-amber-400' : '';
+                                    const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
                                     return (
-                                        <div key={lc.id} className={`bg-white p-3 rounded-xl border border-slate-200 shadow-sm ${border}`}>
+                                        <div key={lc.id} onClick={() => showModal('loadDetail', { loadCon: lc })} className={`bg-white p-3 rounded-xl border border-slate-200 shadow-sm cursor-pointer hover:border-blue-300 hover:shadow transition ${border}`}>
                                             <div className="flex justify-between items-start mb-1.5">
                                                 <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-[10px] font-black text-blue-600 hover:text-blue-700 hover:underline font-mono">{lc.loadConNumber}</button>
                                                 <div className="flex items-center gap-1">
@@ -170,16 +171,16 @@ const LoadBoard: React.FC = () => {
                                             <div className="flex gap-2">
                                                 {!assigned ? (
                                                     <>
-                                                        <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-emerald-600 hover:bg-emerald-500 text-white">Assign FBN</button>
-                                                        <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-amber-500 hover:bg-amber-400 text-white">Subbie</button>
+                                                        <button onClick={stop(() => showModal('assignFbn', { loadCon: lc }))} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-emerald-600 hover:bg-emerald-500 text-white">Assign FBN</button>
+                                                        <button onClick={stop(() => showModal('assignLoadCon', { loadCon: lc }))} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-amber-500 hover:bg-amber-400 text-white">Subbie</button>
                                                     </>
                                                 ) : (
-                                                    <button onClick={() => showModal(lc.supplierId ? 'assignLoadCon' : 'assignFbn', { loadCon: lc })} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-slate-200 hover:bg-slate-300 text-slate-700">Reassign</button>
+                                                    <button onClick={stop(() => showModal(lc.supplierId ? 'assignLoadCon' : 'assignFbn', { loadCon: lc }))} className="flex-1 font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest bg-slate-200 hover:bg-slate-300 text-slate-700">Reassign</button>
                                                 )}
                                                 {showPod ? (
-                                                    <button onClick={() => getPod(lc)} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest">Get POD</button>
+                                                    <button onClick={stop(() => getPod(lc))} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest">Get POD</button>
                                                 ) : step ? (
-                                                    <button onClick={() => advance(lc)} disabled={busy === lc.id} className="flex-1 flex items-center justify-center bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest"><TruckIcon className="h-3 w-3 mr-1" />{busy === lc.id ? '…' : step.label}</button>
+                                                    <button onClick={stop(() => advance(lc))} disabled={busy === lc.id} className="flex-1 flex items-center justify-center bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-widest"><TruckIcon className="h-3 w-3 mr-1" />{busy === lc.id ? '…' : step.label}</button>
                                                 ) : null}
                                             </div>
                                         </div>

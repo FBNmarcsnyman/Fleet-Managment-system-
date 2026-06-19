@@ -241,17 +241,24 @@ const LoadDetailModal: React.FC = () => {
                         <F label="Tel" k="deliveryTelephone" value={lc.deliveryTelephone} />
                     </div>
                 </Section>
-                <Section title="Subcontractor" accent="bg-amber-500">
-                    <div className="grid grid-cols-2 gap-3">
-                        <F label="Carrier" k="subcontractorName" value={lc.subcontractorName} />
-                        <F label="For Attention" k="forAttention" value={lc.forAttention} />
-                        <F label="Email" k="subcontractorEmail" value={lc.subcontractorEmail} />
-                        <F label="Driver" k="subcontractorDriverName" value={lc.subcontractorDriverName} />
-                        <F label="Driver Cell" k="subcontractorDriverCell" value={lc.subcontractorDriverCell} />
-                        <F label="Vehicle Reg" k="subcontractorVehicleReg" value={lc.subcontractorVehicleReg} />
-                        <F label="Transport Rate" k="supplierRate" type="number" value={rand(lc.supplierRate)} />
-                    </div>
-                </Section>
+                {(() => {
+                    // Own FBN fleet (collection leg) vs a real subcontractor (broking /
+                    // outlying leg). Don't call an own-fleet truck a "Subcontractor".
+                    const ownFleet = !lc.supplierId && (lc.subcontractorName || '').toUpperCase() === 'FBN TRANSPORT';
+                    return (
+                        <Section title={ownFleet ? 'FBN Vehicle / Driver' : 'Subcontractor'} accent={ownFleet ? 'bg-emerald-500' : 'bg-amber-500'}>
+                            <div className="grid grid-cols-2 gap-3">
+                                <F label={ownFleet ? 'Fleet' : 'Carrier'} k="subcontractorName" value={lc.subcontractorName} />
+                                <F label="For Attention" k="forAttention" value={lc.forAttention} />
+                                {!ownFleet && <F label="Email" k="subcontractorEmail" value={lc.subcontractorEmail} />}
+                                <F label="Driver" k="subcontractorDriverName" value={lc.subcontractorDriverName} />
+                                <F label="Driver Cell" k="subcontractorDriverCell" value={lc.subcontractorDriverCell} />
+                                <F label="Vehicle Reg" k="subcontractorVehicleReg" value={lc.subcontractorVehicleReg} />
+                                {!ownFleet && <F label="Transport Rate" k="supplierRate" type="number" value={rand(lc.supplierRate)} />}
+                            </div>
+                        </Section>
+                    );
+                })()}
                 <Section title="Cargo" accent="bg-gray-500">
                     <div className="grid grid-cols-2 gap-3">
                         <F label="Load Type" k="loadType" value={lc.loadType} />

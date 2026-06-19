@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-06-19 — Partners UX, contact prefs, HARD separation rule, containers on collections (DONE)
+- **Clients & Subcontractors lists**: search box + alphabetical sort.
+- **Contact prefs split** into 3 independent toggles — **Order/LoadCon · POD ·
+  Status updates** (added `contact.getsPod`). Clients show **Order** (never
+  "LoadCon"); suppliers show **LoadCon** (ContactsEditor `kind` prop).
+- **HARD client/subbie separation rule** (lib/loadEmails `dropAddrs` +
+  `lc_subbieAddrs`/`lc_clientAddrs`): client emails strip every subcontractor
+  address; subbie emails strip every client address. A client can NEVER receive
+  the LoadCon/rate and vice-versa. Do not remove.
+- **Collections capture who logged** (`fbnRepresentative`) + branch (Broking + ops).
+- **Container collection toggle** on both collection forms → container #/seal/size/
+  operator/empty-turn-in → load special instructions + a Container record.
+- Trip-sheet + Assign-FBN pickers branch-scoped (own branch + LM), vehicles
+  smallest-first, drivers A–Z. Delivered status email now asks for POD upload.
+
 ## 2026-06-19 — Depot workflow: branch boards, incoming, planning, broking collection (DONE)
 - **Branch-scoped Shipments board** — defaults to the user's own branch
   (assignedBranches); managers get All. **Incoming-from-other-depot strip** (en

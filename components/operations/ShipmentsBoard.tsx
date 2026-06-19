@@ -56,6 +56,9 @@ const ShipmentsBoard: React.FC = () => {
     // managers with no single branch see All. They can still switch.
     const myBranch = (currentUser?.assignedBranches || []).find((b: string) => ['FBN DBN', 'FBN JHB', 'FBN CPT'].includes(b));
     const [branch, setBranch] = useState<string>(myBranch || 'All');
+    // Show ONE floor at a time at full height so the desk never has to scroll —
+    // collection desk lives on the collection floor, delivery desk on delivery.
+    const [activeFloor, setActiveFloor] = useState<string>(FLOORS[0].floor);
 
     const branches = useMemo(() => {
         const set = new Set<string>();
@@ -237,17 +240,20 @@ const ShipmentsBoard: React.FC = () => {
                 </div>
             )}
 
-            {FLOORS.map(fl => {
-                const floorCount = shipments.filter(lc => fl.columns.some(c => c.statuses.includes(lc.status))).length;
-                return (
-                    <div key={fl.floor}>
-                        <p className={`text-[11px] font-black uppercase tracking-widest mb-2 ${fl.tone}`}>{fl.floor} <span className="text-slate-400">· {floorCount}</span></p>
-                        <div className="flex gap-3 pb-3 items-stretch overflow-x-auto">
-                            {fl.columns.map(renderColumn)}
-                        </div>
-                    </div>
-                );
-            })}
+            <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl w-fit">
+                {FLOORS.map(fl => {
+                    const count = shipments.filter(lc => fl.columns.some(c => c.statuses.includes(lc.status))).length;
+                    return (
+                        <button key={fl.floor} onClick={() => setActiveFloor(fl.floor)}
+                            className={`px-4 py-1.5 text-sm font-black rounded-lg whitespace-nowrap transition ${activeFloor === fl.floor ? `bg-white shadow ${fl.tone}` : 'text-slate-500 hover:text-slate-700'}`}>
+                            {fl.floor} <span className="text-slate-400">· {count}</span>
+                        </button>
+                    );
+                })}
+            </div>
+            <div className="flex gap-3 pb-3 items-stretch overflow-x-auto">
+                {(FLOORS.find(f => f.floor === activeFloor) || FLOORS[0]).columns.map(renderColumn)}
+            </div>
         </div>
     );
 };

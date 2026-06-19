@@ -14,16 +14,17 @@ import SupplierFleetRates from './supplier/SupplierFleetRates';
 type SupplierView = 'loads' | 'compliance' | 'profile' | 'fleet_rates';
 
 const SupplierPortal: React.FC = () => {
-    const { currentUser, handleLogout } = useAuth();
+    const { currentUser, handleLogout, viewingSupplierAsAdmin, setViewSupplierAsAdmin } = useAuth();
     const { loadConfirmations, suppliers } = useOperations();
     const [activeView, setActiveView] = useState<SupplierView>('loads');
 
-    if (!currentUser || !currentUser.supplierId) return null;
-    
-    const supplier = suppliers.find(s => s.id === currentUser.supplierId);
+    const user = viewingSupplierAsAdmin || currentUser;
+    if (!user || !user.supplierId) return null;
+
+    const supplier = suppliers.find(s => s.id === user.supplierId);
     if (!supplier) return <p className="text-white p-20 text-center">Supplier data not found. Please contact support.</p>;
 
-    const supplierLoads = loadConfirmations.filter(lc => lc.supplierId === currentUser.supplierId);
+    const supplierLoads = loadConfirmations.filter(lc => lc.supplierId === user.supplierId);
 
     const navItems = [
         { id: 'loads', label: 'My Loads', icon: DocumentTextIcon },
@@ -80,9 +81,15 @@ const SupplierPortal: React.FC = () => {
                         </div>
                         <p className="text-sm font-bold text-emerald-200">Fully Compliant</p>
                     </div>
-                    <button onClick={handleLogout} className="w-full flex items-center justify-center p-3 rounded-xl text-sm font-bold text-red-400 hover:bg-red-500/10 transition-all border border-red-500/10">
-                        Logout Session
-                    </button>
+                    {viewingSupplierAsAdmin ? (
+                        <button onClick={() => setViewSupplierAsAdmin(null)} className="w-full flex items-center justify-center p-3 rounded-xl text-sm font-bold text-yellow-300 bg-yellow-900/30 hover:bg-yellow-800/40 transition-all border border-yellow-500/20">
+                            ← Return to Admin View
+                        </button>
+                    ) : (
+                        <button onClick={handleLogout} className="w-full flex items-center justify-center p-3 rounded-xl text-sm font-bold text-red-400 hover:bg-red-500/10 transition-all border border-red-500/10">
+                            Logout Session
+                        </button>
+                    )}
                 </div>
             </aside>
 

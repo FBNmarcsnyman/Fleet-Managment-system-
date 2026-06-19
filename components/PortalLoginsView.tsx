@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useCommonData, useOperations } from '../contexts/AppContexts';
+import { useCommonData, useOperations, useAuth } from '../contexts/AppContexts';
 import { User } from '../types';
 
 // Client & supplier PORTAL logins — kept separate from internal staff users so
@@ -8,6 +8,12 @@ import { User } from '../types';
 const PortalLoginsView: React.FC = () => {
     const { users = [], handleAddUser, handleUpdateUser, handleDeleteUser } = useCommonData() as any;
     const { clients = [], suppliers = [] } = (useOperations() as any) || {};
+    const { setViewClientAsAdmin, setViewSupplierAsAdmin } = useAuth() as any;
+
+    const viewPortal = (u: User) => {
+        if (u.role === 'Client') setViewClientAsAdmin(u);
+        else setViewSupplierAsAdmin(u);
+    };
 
     const [filter, setFilter] = useState<'all' | 'Client' | 'Supplier'>('all');
     const [search, setSearch] = useState('');
@@ -124,6 +130,7 @@ const PortalLoginsView: React.FC = () => {
                                     <td className="p-3"><span className={`px-2 py-0.5 text-xs font-bold rounded-full ${u.role === 'Client' ? 'bg-blue-900/50 text-blue-300' : 'bg-amber-900/40 text-amber-300'}`}>{u.role}</span></td>
                                     <td className="p-3">{active ? <span className="text-xs font-semibold text-emerald-400">Active</span> : <span className="text-xs font-semibold text-gray-500">Inactive</span>}</td>
                                     <td className="p-3 text-right whitespace-nowrap">
+                                        <button onClick={() => viewPortal(u)} className="text-xs font-semibold text-purple-300 hover:text-white mr-3" title="See exactly what this account sees">View portal</button>
                                         <button onClick={() => reset(u)} disabled={busy === u.id} className="text-xs font-semibold text-blue-400 hover:text-white mr-3 disabled:opacity-50">Reset password</button>
                                         <button onClick={() => toggleActive(u)} disabled={busy === u.id} className={`text-xs font-semibold mr-3 disabled:opacity-50 ${active ? 'text-amber-400 hover:text-white' : 'text-emerald-400 hover:text-white'}`}>{active ? 'Deactivate' : 'Activate'}</button>
                                         <button onClick={() => del(u)} disabled={busy === u.id} className="text-xs font-semibold text-red-400 hover:text-white disabled:opacity-50">Delete</button>

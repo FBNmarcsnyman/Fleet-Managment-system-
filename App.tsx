@@ -218,7 +218,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
 
 
 const App: React.FC = () => {
-    const { currentUser, currentViewOverride, hasPermission } = useAuth();
+    const { currentUser, currentViewOverride, hasPermission, viewingClientAsAdmin, viewingSupplierAsAdmin } = useAuth();
     const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast } = useUIState();
     const { quotes, clients, handleAcceptQuote, handleRejectQuote, handleAddChecklistSubmission } = useOperations();
     const { vehicles, users, checklistTemplates, drivers } = useVehicles();
@@ -309,6 +309,11 @@ const App: React.FC = () => {
         return <Login />;
     }
     
+    // Admin "view portal as" — render the client/supplier portal over the top
+    // (the portals read the impersonated user and show a "Return to Admin" exit).
+    if (viewingClientAsAdmin) return <ClientPortal />;
+    if (viewingSupplierAsAdmin) return <SupplierPortal />;
+
     if (currentUser.role === 'Client') return <ClientPortal />;
     if (currentUser.role === 'Supplier') return <SupplierPortal />;
     if (currentUser.role === 'Driver') return <DriverDashboard />;

@@ -9,6 +9,7 @@ type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 interface AuthState {
   currentUser: User | null;
   viewingClientAsAdmin: User | null;
+  viewingSupplierAsAdmin: User | null;
 }
 
 export type LoginResult = { ok: true } | { ok: false; error: string };
@@ -19,6 +20,7 @@ interface AuthContextType extends AuthState {
   handleLogout: () => void;
   hasPermission: (permission: Permission) => boolean;
   setViewClientAsAdmin: (user: User | null) => void;
+  setViewSupplierAsAdmin: (user: User | null) => void;
   currentViewOverride: string | null;
   updateNavPreferences: (prefs: User['navigationPreferences']) => void;
   resetPassword: (email: string) => Promise<LoginResult>;
@@ -85,6 +87,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [state, setState] = useState<AuthState>({
         currentUser: null,
         viewingClientAsAdmin: null,
+        viewingSupplierAsAdmin: null,
     });
     const [currentViewOverride] = useState<string | null>(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
@@ -222,11 +225,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const handleLogout = useCallback(() => {
         intentionalLogoutRef.current = true;
         void supabase.auth.signOut();
-        setState({ currentUser: null, viewingClientAsAdmin: null });
+        setState({ currentUser: null, viewingClientAsAdmin: null, viewingSupplierAsAdmin: null });
     }, []);
 
+    // Only one impersonation at a time — choosing a client clears any supplier view and vice-versa.
     const setViewClientAsAdmin = useCallback((user: User | null) => {
-        setState(prev => ({ ...prev, viewingClientAsAdmin: user }));
+        setState(prev => ({ ...prev, viewingClientAsAdmin: user, viewingSupplierAsAdmin: null }));
+    }, []);
+    const setViewSupplierAsAdmin = useCallback((user: User | null) => {
+        setState(prev => ({ ...prev, viewingSupplierAsAdmin: user, viewingClientAsAdmin: null }));
     }, []);
 
     const hasPermission = useCallback((permission: Permission) => {
@@ -357,7 +364,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // token check hiccuped. The actual login-hang cause (the
                 // supabase-js auth lock) is fixed by the noop lock in
                 // lib/supabase.ts, so the reload is no longer needed.
-                setState({ currentUser: null, viewingClientAsAdmin: null });
+                setState({ currentUser: null, viewingClientAsAdmin: null, viewingSupplierAsAdmin: null });
                 intentionalLogoutRef.current = false;
             }
         });
@@ -376,11 +383,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         handleLogout,
         hasPermission,
         setViewClientAsAdmin,
+        setViewSupplierAsAdmin,
         currentViewOverride,
         updateNavPreferences,
         resetPassword,
         isAuthReady,
-    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady]);
+    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, setViewSupplierAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

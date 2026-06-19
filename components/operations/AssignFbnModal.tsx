@@ -7,7 +7,17 @@ import DateField from './DateField';
 // collecting branch + the line-haul (LOADMASTER) fleet. Picking a driver pulls
 // their cell and their assigned truck; picking a truck pulls its driver. The
 // collection date is pre-filled from the load — you just set the ETA time.
-const LM = 'LOADMASTER';
+// Branch comes in several spellings — the load carries the CODE ("FBN JHB")
+// while drivers/vehicles carry the NAME ("FBN Johannesburg") or "Loadmaster".
+// Normalise everything to a token so the scoping actually matches.
+const branchToken = (s?: string): string => {
+    const t = String(s || '').toUpperCase();
+    if (t.includes('LOADMASTER') || t === 'LM') return 'LM';
+    if (t.includes('DURBAN') || t.includes('DBN')) return 'DBN';
+    if (t.includes('JOHANNES') || t.includes('JHB') || t.includes('JBG')) return 'JHB';
+    if (t.includes('CAPE') || t.includes('CPT')) return 'CPT';
+    return t;
+};
 
 const AssignFbnModal: React.FC = () => {
     const { hideModal, modal, showToast } = useUIState();
@@ -15,19 +25,31 @@ const AssignFbnModal: React.FC = () => {
     const { vehicles = [], drivers = [] } = useVehicles() as any;
     const lc: LoadConfirmation = modal.payload?.loadCon;
     const collBranch = lc?.collectionBranch;
+    const collTok = branchToken(collBranch);
+    // Branch-scoped if we recognise the collecting branch; LM (line-haul) is
+    // always offered. If we don't recognise it, fall back to the whole fleet so
+    // the list is never empty.
+    const inScope = (b?: string) => {
+        if (!collTok) return true;
+        const t = branchToken(b);
+        return !b || t === collTok || t === 'LM';
+    };
 
     const sizeOf = (v: any) => {
         if (typeof v.payloadKg === 'number' && v.payloadKg > 0) return v.payloadKg;
         const n = parseFloat(String(v.weightCategory || '').replace(/[^0-9.]/g, ''));
         return isNaN(n) ? Number.MAX_SAFE_INTEGER : n;
     };
-    const fleetVehicles = useMemo(() => (vehicles as any[])
-        .filter(v => v.registration && v.status !== 'Sold' && (!collBranch || v.branch === collBranch || v.branch === LM))
-        .sort((a, b) => sizeOf(a) - sizeOf(b)), [vehicles, collBranch]);
-    const fleetDrivers = useMemo(() => (drivers as Driver[])
-        .filter(d => d.isActive !== false && d.name)
-        .filter(d => !collBranch || !d.branch || d.branch === collBranch || d.branch === LM)
-        .sort((a, b) => String(a.name).localeCompare(String(b.name))), [drivers, collBranch]);
+    const fleetVehicles = useMemo(() => {
+        const all = (vehicles as any[]).filter(v => v.registration && v.status !== 'Sold');
+        const scoped = all.filter(v => inScope(v.branch));
+        return (scoped.length ? scoped : all).sort((a, b) => sizeOf(a) - sizeOf(b));
+    }, [vehicles, collTok]);
+    const fleetDrivers = useMemo(() => {
+        const all = (drivers as Driver[]).filter(d => d.isActive !== false && d.name);
+        const scoped = all.filter(d => inScope(d.branch));
+        return (scoped.length ? scoped : all).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    }, [drivers, collTok]);
 
     const initDriver = useMemo(() => fleetDrivers.find(d => (d.name || '').toUpperCase() === (lc?.subcontractorDriverName || '').toUpperCase()), [fleetDrivers, lc]);
     const [driverId, setDriverId] = useState(initDriver?.id || '');

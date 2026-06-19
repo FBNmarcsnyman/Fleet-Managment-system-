@@ -23,6 +23,18 @@ const BRANCHES: Branch[] = ['FBN JHB', 'FBN DBN', 'FBN CPT', 'LOADMASTER'];
 const COLLECT = new Set(['Booked', 'Driver Assigned', 'At Collection Point', 'Loading', 'Collected']);
 const LINEHAUL = new Set(['At Collection Depot', 'In Transit']);
 const LOCAL = new Set(['At Destination Depot', 'Unloaded', 'Out for Delivery']);
+const DONE = new Set(['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled']);
+
+// Pull the delivery TOWN out of a free-form address so loads going to the same
+// area can be grouped for consolidation. We take the segment just before the
+// 4-digit postal code (e.g. "…, PHOENIX, 4156, SOUTH AFRICA" → PHOENIX).
+export const deliveryArea = (addr?: string): string => {
+    if (!addr) return '';
+    const parts = String(addr).split(',').map(s => s.trim()).filter(Boolean).filter(s => !/south africa/i.test(s));
+    for (let i = 0; i < parts.length; i++) if (/^\d{4}$/.test(parts[i])) return (parts[i - 1] || '').toUpperCase();
+    return (parts[parts.length - 1] || '').toUpperCase();
+};
+const kgOf = (lc: any) => { const n = parseFloat(String(lc.weightKg ?? '').replace(/[^0-9.]/g, '')); return isNaN(n) ? 0 : n; };
 
 const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
     loadConfirmations = [], vehicles = [], users = [], clients = [], manifests = [], tripSheets = [],
@@ -42,6 +54,27 @@ const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
         const availableDrivers = users.filter(u => u.role === 'Staff' && (u.assignedBranches.includes(activeBranch) || u.assignedBranches.length === 0));
         return { toCollect, linehaul, local, branchVehicles, availableDrivers };
     }, [loadConfirmations, vehicles, users, activeBranch]);
+
+    // Consolidation opportunities — active loads heading to the SAME delivery
+    // area, across all branches. 2+ in one area = combine onto one run; if they
+    // come from different branches it's an inter-branch consolidation.
+    const consolidation = useMemo(() => {
+        const map = new Map<string, LoadConfirmation[]>();
+        (loadConfirmations || []).forEach(lc => {
+            if (DONE.has(lc.status)) return;
+            const area = deliveryArea(lc.deliveryPoint);
+            if (!area) return;
+            const arr = map.get(area) || []; arr.push(lc); map.set(area, arr);
+        });
+        return [...map.entries()]
+            .filter(([, arr]) => arr.length >= 2)
+            .map(([area, arr]) => ({
+                area, loads: arr,
+                kg: arr.reduce((s, l) => s + kgOf(l), 0),
+                crossBranch: new Set(arr.map(l => l.collectionBranch).filter(Boolean)).size > 1,
+            }))
+            .sort((a, b) => Number(b.crossBranch) - Number(a.crossBranch) || b.loads.length - a.loads.length);
+    }, [loadConfirmations]);
 
     const advance = async (lc: LoadConfirmation) => {
         const step = nextStep(lc);
@@ -73,6 +106,32 @@ const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
                     <SparklesIcon className="h-4 w-4 mr-2" /> AI Dispatch Assistant
                 </button>
             </div>
+
+            {consolidation.length > 0 && (
+                <div className="bg-indigo-900/20 border border-indigo-500/30 p-4 rounded-2xl">
+                    <h3 className="text-sm font-black text-indigo-200 uppercase tracking-widest mb-1">🔗 Consolidation opportunities</h3>
+                    <p className="text-[11px] text-indigo-300/70 mb-3">Active loads heading to the same area — combine onto one run. Cross-branch matches are highlighted.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        {consolidation.map(g => (
+                            <div key={g.area} className={`rounded-xl p-3 border ${g.crossBranch ? 'bg-indigo-500/10 border-indigo-400/40' : 'bg-gray-900/40 border-gray-700/50'}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="font-black text-white text-sm">{g.area} <span className="text-gray-400 font-bold">· {g.loads.length} loads</span></p>
+                                    {g.crossBranch && <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase bg-indigo-500/30 text-indigo-200">Cross-branch</span>}
+                                </div>
+                                <div className="space-y-1">
+                                    {g.loads.map(lc => (
+                                        <button key={lc.id} onClick={() => onOpenModal('loadDetail', { loadCon: lc })} className="w-full text-left flex items-center justify-between gap-2 bg-black/20 hover:bg-black/40 rounded px-2 py-1">
+                                            <span className="text-[11px] text-gray-200 truncate"><span className="font-mono text-indigo-300">{lc.loadConNumber}</span> · {clientMap.get(lc.clientId || '') || lc.clientName || '—'}</span>
+                                            <span className="text-[10px] text-gray-500 shrink-0">{(lc.collectionBranch || '').replace('FBN ', '')} · {STATUS_LABEL[lc.status]}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-2">{g.kg > 0 ? `${Math.round(g.kg).toLocaleString('en-ZA')} kg combined` : ''}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <PlanningColumn title="To Collect" jobs={branchData.toCollect} clientMap={clientMap} busy={busy} onAssign={assign} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })} />

@@ -31,6 +31,27 @@ export const useLiveAlerts = (): Notification[] => {
             add(`load-${lc.id}`, 'JOB_CARD', `NEW collection ${lc.loadConNumber || ''} — ${lc.clientName || 'client'}${lane ? `: ${lane}` : ''}. Assign driver & ETA.`, 'operations');
         });
 
+        // CONSOLIDATION — 2+ active loads from different branches heading to the
+        // same delivery area can share a run. Surfaces on the planning board.
+        const areaOf = (addr?: string): string => {
+            if (!addr) return '';
+            const parts = String(addr).split(',').map(s => s.trim()).filter(Boolean).filter(s => !/south africa/i.test(s));
+            for (let i = 0; i < parts.length; i++) if (/^\d{4}$/.test(parts[i])) return (parts[i - 1] || '').toUpperCase();
+            return (parts[parts.length - 1] || '').toUpperCase();
+        };
+        const DONE_STATUSES = ['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'];
+        const byArea = new Map<string, any[]>();
+        (loadConfirmations || []).forEach((lc: any) => {
+            if (DONE_STATUSES.includes(lc.status)) return;
+            const a = areaOf(lc.deliveryPoint); if (!a) return;
+            const arr = byArea.get(a) || []; arr.push(lc); byArea.set(a, arr);
+        });
+        byArea.forEach((arr, area) => {
+            if (arr.length < 2) return;
+            if (new Set(arr.map((l: any) => l.collectionBranch).filter(Boolean)).size < 2) return; // only cross-branch
+            add(`consol-${area}`, 'JOB_CARD', `${arr.length} loads heading to ${area} from different branches — consolidate?`, 'operations');
+        });
+
         (vehicles || []).filter((v: any) => v.status === 'Off the road').forEach((v: any) =>
             add(`offroad-${v.id}`, 'JOB_CARD', `${v.name} (${v.registration}) is OFF THE ROAD`, 'fleet'));
 

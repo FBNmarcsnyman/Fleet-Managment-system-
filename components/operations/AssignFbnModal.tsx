@@ -81,6 +81,10 @@ const AssignFbnModal: React.FC = () => {
 
     const save = async () => {
         if (!driverName && !reg) { showToast('Choose a driver or a vehicle.'); return; }
+        // ETA is required so the collection is trackable and the 30-min on-track
+        // check can fire — a driver should never be assigned without a time.
+        if (!collDate) { showToast('Set the collection date.'); return; }
+        if (!etaTime) { showToast('Set the collection ETA time before assigning.'); return; }
         setBusy(true);
         const vehicleId = (vehicles as any[]).find(v => (v.registration || '').toUpperCase() === reg.toUpperCase())?.id;
         const eta = collDate && etaTime ? `${collDate}T${etaTime}` : (lc.loadingEta || undefined);
@@ -129,7 +133,7 @@ const AssignFbnModal: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div><label className={lbl}>Collection date</label><DateField value={collDate} onChange={setCollDate} className={inp} /></div>
-                    <div><label className={lbl}>ETA time</label><input type="time" value={etaTime} onChange={e => setEtaTime(e.target.value)} className={inp} /></div>
+                    <div><label className={lbl}>ETA time <span className="text-rose-400">*required</span></label><input type="time" value={etaTime} onChange={e => setEtaTime(e.target.value)} className={`${inp} ${!etaTime ? 'ring-2 ring-rose-500/60' : ''}`} /></div>
                 </div>
             </div>
             <div className="flex gap-3 mt-6">

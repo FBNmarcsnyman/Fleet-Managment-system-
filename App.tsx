@@ -63,6 +63,7 @@ const CaptureLoadModal = lazy(() => import('./components/operations/CaptureLoadM
 const AssignFbnModal = lazy(() => import('./components/operations/AssignFbnModal'));
 const BulkCollectionForm = lazy(() => import('./components/operations/BulkCollectionForm'));
 const PickListManager = lazy(() => import('./components/operations/PickListManager'));
+const LogContainerModal = lazy(() => import('./components/operations/LogContainerModal'));
 const CreateTripSheetModal = lazy(() => import('./components/operations/CreateTripSheetModal'));
 const DismountTireModal = lazy(() => import('./components/DismountTireModal'));
 const LinkTrailerModal = lazy(() => import('./components/LinkTrailerModal'));
@@ -129,6 +130,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     assignFbn: AssignFbnModal,
     bulkCollection: BulkCollectionForm,
     pickLists: PickListManager,
+    logContainer: LogContainerModal,
     editQuote: CreateQuoteForm,
     createTripSheet: CreateTripSheetModal,
     dismountTire: DismountTireModal,
@@ -179,6 +181,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     assignFbn: 'lg',
     bulkCollection: '4xl',
     pickLists: 'lg',
+    logContainer: '3xl',
     quotePdf: '4xl',
     supplierLoadConPdf: '4xl',
     loadDocuments: '5xl',

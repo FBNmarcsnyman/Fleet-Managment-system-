@@ -1,19 +1,50 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { LoadConfirmation, LoadConfirmationStatus } from '../../types';
 import { useOperations, useUIState, useAuth } from '../../contexts/AppContexts';
-import { isAssigned, nextStep, STATUS_LABEL, statusChip, isInterBranch } from '../../lib/loadStatus';
+import { isAssigned, nextStep, STATUS_LABEL, statusChip, isInterBranch, isCollectionStage, isDeliveryStage } from '../../lib/loadStatus';
 import LoadProgress from './LoadProgress';
 import { TruckIcon } from '../icons/TruckIcon';
 
 // Consolidation / line-haul Shipment manager — separate from the brokered Load
 // Board. Shows rep/ops-logged shipments through the depot lifecycle:
 // collect → origin depot → line-haul → destination depot → local delivery → POD.
-const COLUMNS: { title: string; statuses: LoadConfirmationStatus[] }[] = [
-    { title: 'Collecting', statuses: ['Booked', 'Driver Assigned', 'At Collection Point', 'Loading', 'Collected'] },
-    { title: 'At Depot / Line-haul', statuses: ['At Collection Depot', 'In Transit'] },
-    { title: 'Destination / Delivering', statuses: ['At Destination Depot', 'Unloaded', 'Out for Delivery'] },
-    { title: 'Delivered / POD', statuses: ['Delivered', 'POD Submitted'] },
+// The board has two FLOORS, matching how the branches actually work it:
+//  • Collection floor — the COLLECTING branch books, assigns & collects, then
+//    drops at its depot / loads the line-haul.
+//  • Delivery floor — once it's in transit it belongs to the DESTINATION branch,
+//    who receives, runs it out for delivery and closes the POD.
+// A local (same-branch) job simply moves from this branch's collection floor to
+// its own delivery floor once collected. The branch filter below routes each
+// load to the right branch for its current floor.
+const FLOORS: { floor: string; tone: string; columns: { title: string; statuses: LoadConfirmationStatus[] }[] }[] = [
+    {
+        floor: 'Collection floor', tone: 'text-emerald-700',
+        columns: [
+            { title: 'To collect', statuses: ['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'] },
+            { title: 'Collected / at depot', statuses: ['Collected', 'At Collection Depot'] },
+        ],
+    },
+    {
+        floor: 'Delivery floor', tone: 'text-blue-700',
+        columns: [
+            { title: 'In transit / arrived', statuses: ['In Transit', 'At Destination Depot', 'Unloaded'] },
+            { title: 'Out for delivery', statuses: ['Out for Delivery'] },
+            { title: 'Delivered / POD', statuses: ['Delivered', 'POD Submitted'] },
+        ],
+    },
 ];
+
+// FBN runs its own line-haul between JHB & DBN (and each branch's outlying
+// deliveries off its own floor). Anywhere off that network — e.g. CPT — FBN
+// still COLLECTS, but the long leg has to be brokered to a subbie. So we only
+// offer the "Subbie" (raise line-haul LoadCon) button on lanes that need it;
+// own-fleet lanes just get "Assign FBN".
+const OWN_FLEET_NETWORK = ['FBN JHB', 'FBN DBN'];
+const needsSubbieLeg = (lc: LoadConfirmation) => {
+    if (lc.collectionBranch && lc.destinationBranch && lc.collectionBranch === lc.destinationBranch) return false; // local
+    const offNetwork = (b?: string) => !!b && !OWN_FLEET_NETWORK.includes(b);
+    return offNetwork(lc.collectionBranch) || offNetwork(lc.destinationBranch);
+};
 
 const ShipmentsBoard: React.FC = () => {
     const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation, handleRefreshLoads } = useOperations() as any;
@@ -49,7 +80,16 @@ const ShipmentsBoard: React.FC = () => {
             // Import groupage awaiting unpack/release lives on the Imports board
             // until it's booked for collection.
             .filter(lc => lc.importStage !== 'awaiting_release' && lc.importStage !== 'released')
-            .filter(lc => branch === 'All' || lc.collectionBranch === branch || lc.destinationBranch === branch)
+            // Branch FLOOR rule: while it's being COLLECTED it belongs to the
+            // COLLECTING branch only; once it's IN TRANSIT / DELIVERING (or done)
+            // it moves to the DESTINATION branch's delivery floor. So a JHB→DBN
+            // load shows on JHB while collecting, then on DBN to deliver.
+            .filter(lc => {
+                if (branch === 'All') return true;
+                if (isCollectionStage(lc.status)) return lc.collectionBranch === branch;
+                if (isDeliveryStage(lc.status) || ['Delivered', 'POD Submitted'].includes(lc.status)) return lc.destinationBranch === branch;
+                return lc.collectionBranch === branch || lc.destinationBranch === branch;
+            })
             .filter(lc => !needle || `${lc.loadConNumber} ${clientName(lc)} ${lc.collectionPoint || ''} ${lc.deliveryPoint || ''}`.toLowerCase().includes(needle));
     }, [loadConfirmations, clients, q, branch]);
 
@@ -93,6 +133,57 @@ const ShipmentsBoard: React.FC = () => {
         onCancel: () => showModal('hide'),
     });
     const fmtEta = (s?: string) => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+
+    const renderColumn = (col: { title: string; statuses: LoadConfirmationStatus[] }) => {
+        const jobs = shipments.filter(lc => col.statuses.includes(lc.status))
+            .sort((a, b) => new Date(a.collectionDate || a.date).getTime() - new Date(b.collectionDate || b.date).getTime());
+        return (
+            <div key={col.title} className="bg-slate-100 rounded-2xl p-3 flex flex-col flex-1 min-w-[260px] border border-slate-200 h-[calc(100vh-17rem)]">
+                <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest mb-3 pb-2 border-b border-slate-200">{col.title} <span className="text-slate-400">{jobs.length}</span></h4>
+                <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+                    {jobs.map(lc => {
+                        const step = nextStep(lc);
+                        const assigned = isAssigned(lc);
+                        const showPod = lc.status === 'Out for Delivery' || (lc.status === 'Delivered' && !lc.podPhoto);
+                        const carrier = lc.supplierId ? (supplierName(lc.supplierId) || 'Subcontractor') : (lc.subcontractorName || (assigned ? 'Own fleet' : ''));
+                        return (
+                            <div key={lc.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                <div className="flex justify-between items-start mb-1">
+                                    <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-[10px] font-black text-blue-600 hover:underline font-mono">{lc.loadConNumber}</button>
+                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
+                                </div>
+                                <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block text-left font-bold text-slate-900 text-sm leading-tight">{clientName(lc)}</button>
+                                <p className="text-[10px] text-slate-500 mb-1 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                                {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-600 mb-1 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
+                                <LoadProgress lc={lc} />
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mb-2">
+                                    <TruckIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                    <span className="truncate">{carrier || 'Unassigned'}{lc.subcontractorVehicleReg ? ` · ${lc.subcontractorVehicleReg}` : ''}{lc.loadingEta ? ` · ETA ${fmtEta(lc.loadingEta)}` : ''}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {!assigned && (
+                                        <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">Assign FBN</button>
+                                    )}
+                                    {/* Off-network leg (e.g. CPT): FBN collects, then this raises the
+                                        line-haul LoadCon to a subbie and the load joins the Broking board. */}
+                                    {needsSubbieLeg(lc) && !lc.supplierId && (
+                                        <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider" title="Raise the line-haul LoadCon to a subcontractor — moves to the Broking board">{assigned ? 'Subbie line-haul' : 'Subbie'}</button>
+                                    )}
+                                    <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="flex-1 bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-1.5 rounded-lg text-[10px] uppercase tracking-wider">📷</button>
+                                    {showPod ? (
+                                        <button onClick={() => getPod(lc)} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">Get POD</button>
+                                    ) : step ? (
+                                        <button onClick={() => advance(lc)} disabled={busy === lc.id} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">{busy === lc.id ? '…' : step.label}</button>
+                                    ) : null}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {jobs.length === 0 && <p className="text-center text-slate-400 text-[11px] py-6 font-bold uppercase tracking-widest">Empty</p>}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-4">
@@ -146,54 +237,17 @@ const ShipmentsBoard: React.FC = () => {
                 </div>
             )}
 
-            <div className="flex gap-3 pb-3 items-stretch overflow-x-auto">
-                {COLUMNS.map(col => {
-                    const jobs = shipments.filter(lc => col.statuses.includes(lc.status))
-                        .sort((a, b) => new Date(a.collectionDate || a.date).getTime() - new Date(b.collectionDate || b.date).getTime());
-                    return (
-                        <div key={col.title} className="bg-slate-100 rounded-2xl p-3 flex flex-col flex-1 min-w-[280px] border border-slate-200 h-[calc(100vh-15rem)]">
-                            <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest mb-3 pb-2 border-b border-slate-200">{col.title} <span className="text-slate-400">{jobs.length}</span></h4>
-                            <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-                                {jobs.map(lc => {
-                                    const step = nextStep(lc);
-                                    const assigned = isAssigned(lc);
-                                    const showPod = lc.status === 'Out for Delivery' || (lc.status === 'Delivered' && !lc.podPhoto);
-                                    const carrier = lc.supplierId ? (supplierName(lc.supplierId) || 'Subcontractor') : (lc.subcontractorName || (assigned ? 'Own fleet' : ''));
-                                    return (
-                                        <div key={lc.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                                            <div className="flex justify-between items-start mb-1">
-                                                <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-[10px] font-black text-blue-600 hover:underline font-mono">{lc.loadConNumber}</button>
-                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
-                                            </div>
-                                            <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="block text-left font-bold text-slate-900 text-sm leading-tight">{clientName(lc)}</button>
-                                            <p className="text-[10px] text-slate-500 mb-1 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
-                                            {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-600 mb-1 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
-                                            <LoadProgress lc={lc} />
-                                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mb-2">
-                                                <TruckIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                                <span className="truncate">{carrier || 'Unassigned'}{lc.subcontractorVehicleReg ? ` · ${lc.subcontractorVehicleReg}` : ''}{lc.loadingEta ? ` · ETA ${fmtEta(lc.loadingEta)}` : ''}</span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {!assigned && <>
-                                                    <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">Assign FBN</button>
-                                                    <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">Subbie</button>
-                                                </>}
-                                                <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="flex-1 bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-1.5 rounded-lg text-[10px] uppercase tracking-wider">📷</button>
-                                                {showPod ? (
-                                                    <button onClick={() => getPod(lc)} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">Get POD</button>
-                                                ) : step ? (
-                                                    <button onClick={() => advance(lc)} disabled={busy === lc.id} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">{busy === lc.id ? '…' : step.label}</button>
-                                                ) : null}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {jobs.length === 0 && <p className="text-center text-slate-400 text-[11px] py-6 font-bold uppercase tracking-widest">Empty</p>}
-                            </div>
+            {FLOORS.map(fl => {
+                const floorCount = shipments.filter(lc => fl.columns.some(c => c.statuses.includes(lc.status))).length;
+                return (
+                    <div key={fl.floor}>
+                        <p className={`text-[11px] font-black uppercase tracking-widest mb-2 ${fl.tone}`}>{fl.floor} <span className="text-slate-400">· {floorCount}</span></p>
+                        <div className="flex gap-3 pb-3 items-stretch overflow-x-auto">
+                            {fl.columns.map(renderColumn)}
                         </div>
-                    );
-                })}
-            </div>
+                    </div>
+                );
+            })}
         </div>
     );
 };

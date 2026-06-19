@@ -756,7 +756,13 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         } catch (e) { console.error('[ops] background client merge failed:', e); }
                     })();
                 }
-                return { ok: true, value: mapped };
+                // Validation: flag anything that would stop the flow running smoothly
+                // so ops can fix it now (returned to the caller for a toast).
+                const warns: string[] = [];
+                if (!data.clientEmail) warns.push("no client email — the client won't get updates");
+                if (!data.collectionPoint || !data.deliveryPoint) warns.push('missing collection/delivery address');
+                if (!resolvedSupplierId && !data.subcontractorEmail && !data.isCollection) warns.push('no transporter yet — assign on the board');
+                return { ok: true, value: mapped, warning: warns.length ? warns.join('; ') : undefined } as any;
             } catch (err) {
                 console.error('[ops] createLoadConfirmation threw:', err);
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };

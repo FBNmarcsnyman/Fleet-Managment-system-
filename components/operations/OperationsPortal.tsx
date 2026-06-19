@@ -33,7 +33,7 @@ const OperationsPortal: React.FC = () => {
     const handleNewTransportOrder = () => showModal('transportOrder', {
         onSubmit: async (data: any) => {
             const result = await createLoadCon(data);
-            if (result.ok) showToast(`Transport Order ${result.value!.loadConNumber} created.`);
+            if (result.ok) showToast((result as any).warning ? `Order ${result.value!.loadConNumber} created — ⚠ ${(result as any).warning}` : `Transport Order ${result.value!.loadConNumber} created.`);
             else showToast(`Failed to create Transport Order: ${result.error}`);
             return result;
         },
@@ -42,7 +42,7 @@ const OperationsPortal: React.FC = () => {
     const handleNewCollection = () => showModal('quickCollection', {
         onSubmit: async (data: any) => {
             const result = await createLoadCon(data);
-            if (result.ok) showToast(`Collection ${result.value!.loadConNumber} logged — ops notified.`);
+            if (result.ok) showToast((result as any).warning ? `Collection ${result.value!.loadConNumber} logged — ⚠ ${(result as any).warning}` : `Collection ${result.value!.loadConNumber} logged — ops notified.`);
             else showToast(`Failed to log collection: ${result.error}`);
             return result;
         },

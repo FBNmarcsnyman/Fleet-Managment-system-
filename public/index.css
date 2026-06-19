@@ -16,6 +16,10 @@
    ============================================================ */
 
 html, body { background-color: #eef2f6 !important; color: #1e293b !important; }
+/* Never let the whole page scroll sideways — wide boards scroll inside their own
+   container; the page itself stays put. */
+html, body { overflow-x: hidden !important; max-width: 100vw; }
+#root { overflow-x: hidden; max-width: 100vw; }
 
 /* ---- Dark surface backgrounds -> light ---- */
 .bg-gray-900, .bg-gray-900\/95, .bg-gray-900\/60, .bg-gray-900\/50,

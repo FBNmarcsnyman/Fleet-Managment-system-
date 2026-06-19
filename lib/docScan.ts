@@ -29,6 +29,30 @@ export async function extractFromDocument(file: File, prompt: string, schema: an
     catch { throw new Error('The document could not be read clearly. Try a sharper scan or enter it manually.'); }
 }
 
+// ---- SA motor-vehicle licence disc (read the expiry date off the scan) ----
+export const LICENCE_DISC_PROMPT =
+    'This is a South African motor-vehicle licence document (licence disc / registration certificate). ' +
+    'Extract the vehicle registration number and the licence EXPIRY date — labelled "Date of expiry" / "Vervaldatum" (NOT the receipt or payment date). ' +
+    'Return the expiry as YYYY-MM-DD. Use empty strings for anything not present.';
+
+export const LICENCE_DISC_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        registration: { type: Type.STRING, description: 'Vehicle registration / licence number' },
+        expiry_date: { type: Type.STRING, description: 'Licence expiry date (Date of expiry / Vervaldatum), YYYY-MM-DD' },
+    },
+    required: ['expiry_date'],
+};
+
+// Build a File from a base64 string (e.g. a Drive doc fetched via drive-fetch)
+// so it can be passed to extractFromDocument.
+export function base64ToFile(base64: string, name: string, mimeType: string): File {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new File([bytes], name || 'document', { type: mimeType || 'application/octet-stream' });
+}
+
 // ---- Container arrival notification / bill of lading ----
 export const CONTAINER_DOC_PROMPT =
     'This is a shipping document (arrival notification, bill of lading, or container release). ' +

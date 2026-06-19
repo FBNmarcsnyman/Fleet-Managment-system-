@@ -22,7 +22,9 @@ import { RouteIcon } from './icons/RouteIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { SpeedometerIcon } from './icons/SpeedometerIcon';
 
-type DetailViewTab = 'overview' | 'financials' | 'performance' | 'fuel' | 'maintenance' | 'checklists' | 'operations' | 'ai';
+import VehicleDocuments from './fleet/VehicleDocuments';
+
+type DetailViewTab = 'overview' | 'financials' | 'performance' | 'fuel' | 'maintenance' | 'checklists' | 'operations' | 'documents' | 'ai';
 
 const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
     <div className="flex justify-between border-b border-gray-700/50 py-2">
@@ -301,6 +303,7 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
                         </div>
                     </div>
                 );
+            case 'documents': return <VehicleDocuments vehicleId={vehicle.id} vehicleName={vehicle.name} />;
             case 'ai':
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -324,6 +327,7 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
                 <TabButton tab="maintenance" label="Maintenance" icon={WrenchIcon} />
                 <TabButton tab="checklists" label="Checklists" icon={ClipboardDocumentListIcon} />
                 <TabButton tab="operations" label="Operations Log" icon={RouteIcon} />
+                <TabButton tab="documents" label="Documents" icon={ClipboardDocumentListIcon} />
                 <TabButton tab="ai" label="AI & Comms" icon={SparklesIcon} />
             </div>
 

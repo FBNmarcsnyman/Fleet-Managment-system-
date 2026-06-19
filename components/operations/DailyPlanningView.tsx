@@ -75,8 +75,10 @@ const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <PlanningColumn title="To Collect" jobs={branchData.toCollect} clientMap={clientMap} busy={busy} onAssign={assign} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })} />
-                <PlanningColumn title="In Transit" jobs={branchData.linehaul} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })} />
-                <PlanningColumn title="At Destination / Delivery" jobs={branchData.local} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })} />
+                <PlanningColumn title="At Depot / Line-haul" jobs={branchData.linehaul} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })}
+                    actionButton={branchData.linehaul.length > 0 && <button onClick={openCreateManifest} className="bg-purple-600 hover:bg-purple-500 text-white font-black py-1.5 px-3 rounded-lg text-[10px] uppercase tracking-wider">+ Manifest</button>} />
+                <PlanningColumn title="At Destination / Delivery" jobs={branchData.local} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })}
+                    actionButton={branchData.local.length > 0 && <button onClick={openCreateTripSheet} className="bg-blue-600 hover:bg-blue-500 text-white font-black py-1.5 px-3 rounded-lg text-[10px] uppercase tracking-wider">+ Trip sheet</button>} />
             </div>
         </div>
     );

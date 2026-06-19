@@ -1,6 +1,6 @@
 
 import React, { lazy, Suspense } from 'react';
-import { useUIState, useOperations } from '../../contexts/AppContexts';
+import { useUIState, useOperations, useVehicles } from '../../contexts/AppContexts';
 import OperationsDashboard from './OperationsDashboard';
 import LoadBoard from './LoadBoard';
 import DocumentSettingsView from './DocumentSettingsView';
@@ -12,14 +12,17 @@ const ContainersView = lazy(() => import('./ContainersView'));
 const EmailLogView = lazy(() => import('./EmailLogView'));
 const OperationsOverview = lazy(() => import('./OperationsOverview'));
 const ImportsBoard = lazy(() => import('./ImportsBoard'));
+const DailyPlanningView = lazy(() => import('./DailyPlanningView'));
 
 
 const OperationsPortal: React.FC = () => {
     const { currentView, operationsSubView, handleOperationsSubViewChange, showModal, showToast } = useUIState();
     const {
-        loadConfirmations, clients, suppliers,
-        handleUpdateLoadConfirmation, handleCreateLoadConfirmation: createLoadCon
+        loadConfirmations, clients, suppliers, users,
+        handleUpdateLoadConfirmation, handleCreateLoadConfirmation: createLoadCon,
+        handleCreateManifest, handleCreateTripSheet,
     } = useOperations();
+    const { vehicles = [] } = (useVehicles() as any) || {};
 
     // Two business areas share this portal: Broking (brokered freight) and
     // Operations (own consolidation / line-haul). Show only the active area's
@@ -35,6 +38,7 @@ const OperationsPortal: React.FC = () => {
     const OPS_TABS = [
         { view: 'opsDashboard', label: 'Dashboard' },
         { view: 'shipments', label: 'Shipments' },
+        { view: 'planning', label: 'Planning' },
         { view: 'imports', label: 'Imports' },
         { view: 'containers', label: 'Containers' },
     ];
@@ -70,6 +74,7 @@ const OperationsPortal: React.FC = () => {
             case 'shipments': return <Suspense fallback={<div>Loading…</div>}><ShipmentsBoard /></Suspense>;
             case 'containers': return <Suspense fallback={<div>Loading…</div>}><ContainersView /></Suspense>;
             case 'imports': return <Suspense fallback={<div>Loading…</div>}><ImportsBoard /></Suspense>;
+            case 'planning': return <Suspense fallback={<div>Loading…</div>}><DailyPlanningView loadConfirmations={loadConfirmations} vehicles={vehicles} users={users || []} clients={clients} manifests={[]} tripSheets={[]} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} onCreateManifest={handleCreateManifest} onCreateTripSheet={handleCreateTripSheet} onOpenModal={showModal} /></Suspense>;
             case 'driverChats': return <Suspense fallback={<div>Loading…</div>}><WhatsAppChatsView /></Suspense>;
             case 'emailLog': return <Suspense fallback={<div>Loading…</div>}><EmailLogView /></Suspense>;
             case 'docSettings': return <DocumentSettingsView />;

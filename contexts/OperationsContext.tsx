@@ -10,6 +10,7 @@ import {
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
     toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
+    mapManifest, mapTripSheet, FBN_ORGANIZATION_ID,
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
@@ -994,11 +995,33 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             }
         },
 
-        // -- Deferred to later push (still local-only) ------------------------
-        // Manifests, trip sheets, and supplier applications are not yet wired to
-        // Supabase. They mutate local state only via the reducer.
-        handleCreateManifest: (payload: any) => dispatch({ type: 'CREATE_MANIFEST', payload }),
-        handleCreateTripSheet: (payload: any) => dispatch({ type: 'CREATE_TRIP_SHEET', payload }),
+        // -- Line-haul manifests + delivery trip sheets (persisted) -----------
+        handleCreateManifest: async (payload: any) => {
+            try {
+                const ids: string[] = payload.loadConIds || [];
+                const loads = (stateRef.current.loadConfirmations || []).filter((l: any) => ids.includes(l.id));
+                const dest = payload.destinationBranch || loads.map((l: any) => l.destinationBranch).find((b: string) => b && b !== payload.originBranch) || payload.originBranch;
+                const today = new Date().toISOString().slice(0, 10);
+                const number = `MAN-${today.replace(/-/g, '')}-${String(Date.now()).slice(-4)}`;
+                const row: any = { organization_id: FBN_ORGANIZATION_ID, manifest_number: number, origin_branch_id: branchIdByName.get(payload.originBranch) || null, destination_branch_id: branchIdByName.get(dest) || null, dispatch_date: today, vehicle_id: payload.vehicleId || null, driver_id: payload.driverId || null, load_confirmation_ids: ids, status: 'In Transit' };
+                const { data, error } = await directInsert('manifests', row);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not save manifest.' };
+                dispatch({ type: 'CREATE_MANIFEST', payload: mapManifest(data, { branchById }) });
+                return { ok: true, value: mapManifest(data, { branchById }) };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+        handleCreateTripSheet: async (payload: any) => {
+            try {
+                const today = new Date().toISOString().slice(0, 10);
+                const number = `TRP-${today.replace(/-/g, '')}-${String(Date.now()).slice(-4)}`;
+                const row: any = { organization_id: FBN_ORGANIZATION_ID, trip_sheet_number: number, branch_id: branchIdByName.get(payload.branch) || null, dispatch_date: today, vehicle_id: payload.vehicleId || null, driver_id: payload.driverId || null, load_confirmation_ids: payload.loadConIds || [], status: 'Dispatched' };
+                const { data, error } = await directInsert('trip_sheets', row);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not save trip sheet.' };
+                dispatch({ type: 'CREATE_TRIP_SHEET', payload: mapTripSheet(data, { branchById }) });
+                return { ok: true, value: mapTripSheet(data, { branchById }) };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+        // Supplier applications still local-only (low priority).
         handleAddSupplierApplication: (data: any) => dispatch({ type: 'ADD_SUPPLIER_APPLICATION', payload: data }),
     }), [dispatch, branchIdByName, branchById]);
 

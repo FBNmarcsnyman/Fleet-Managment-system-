@@ -194,6 +194,7 @@ export type ViewType =
   | 'fuel'
   | 'operations'
   | 'broking'
+  | 'collectHome'
   | 'partners'
   | 'quotes'
   | 'workshop'

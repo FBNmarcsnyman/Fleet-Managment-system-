@@ -15,6 +15,9 @@ const ContactsEditor: React.FC<{
     // A client is NEVER offered "LoadCon" — they get the Client Order. This label
     // is the visual half of the hard client/subbie separation rule.
     const docLabel = kind === 'client' ? 'Order' : 'LoadCon';
+    // POD means different things per side: a subbie gets the digital POD to SIGN at
+    // delivery (then uploads it); a client only ever gets the final SIGNED POD.
+    const podLabel = kind === 'client' ? 'Signed POD' : 'POD to sign';
 
     const update = (i: number, field: keyof Contact, value: string) => {
         const next = contacts.map((c, idx) => {
@@ -67,7 +70,7 @@ const ContactsEditor: React.FC<{
                     <div className="flex items-center gap-4 pl-1 text-[11px] text-gray-400 flex-wrap">
                         <span className="uppercase tracking-wider text-gray-500">Send them:</span>
                         <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsDocs ?? false} onChange={() => toggle(i, 'getsDocs')} /> {docLabel}</label>
-                        <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsPod ?? false} onChange={() => toggle(i, 'getsPod')} /> POD</label>
+                        <label className="flex items-center gap-1.5 cursor-pointer" title={kind === 'client' ? 'The final signed POD, after delivery' : 'The digital POD to sign at delivery & upload back'}><input type="checkbox" checked={c.getsPod ?? false} onChange={() => toggle(i, 'getsPod')} /> {podLabel}</label>
                         <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsUpdates ?? false} onChange={() => toggle(i, 'getsUpdates')} /> Status updates</label>
                     </div>
                 </div>

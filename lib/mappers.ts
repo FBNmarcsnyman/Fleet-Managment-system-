@@ -572,6 +572,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     loadingEta: (row as any).loading_eta ?? undefined,
     deliveryEta: (row as any).delivery_eta ?? undefined,
     backDated: (row as any).back_dated ?? false,
+    updatedAt: (row as any).updated_at ?? undefined,
     isCollection: (row as any).is_collection ?? false,
     repEmail: (row as any).rep_email ?? undefined,
     collectionRef: (row as any).collection_ref ?? undefined,

@@ -3,6 +3,7 @@ import { WidgetType } from '../types';
 import WidgetWrapper from './dashboard-widgets/WidgetWrapper';
 import ActionCenterWidget from './dashboard-widgets/ActionCenterWidget';
 import OperationsSummaryWidget from './dashboard-widgets/OperationsSummaryWidget';
+import BrokingShipmentsSnapshotWidget from './dashboard-widgets/BrokingShipmentsSnapshotWidget';
 import FinancialSummaryStatsWidget from './dashboard-widgets/FinancialSummaryStatsWidget';
 import MonthlyFinancialsWidget from './dashboard-widgets/MonthlyFinancialsWidget';
 import TireStatusWidget from './dashboard-widgets/TireStatusWidget';
@@ -21,6 +22,7 @@ import { PlusIcon } from './icons/PlusIcon';
 
 const WIDGET_CONFIG: Record<WidgetType, { name: string; component: React.FC<any>; defaultSize: string; }> = {
     'ACTION_CENTER': { name: 'Action Center', component: ActionCenterWidget, defaultSize: 'col-span-12' },
+    'BROKING_SHIPMENTS_SNAPSHOT': { name: 'Broking & Shipments Snapshot', component: BrokingShipmentsSnapshotWidget, defaultSize: 'col-span-12' },
     'OPERATIONS_SUMMARY': { name: 'Operations Summary', component: OperationsSummaryWidget, defaultSize: 'col-span-12' },
     'FINANCIAL_SUMMARY_STATS': { name: 'Financial Snapshot', component: FinancialSummaryStatsWidget, defaultSize: 'col-span-12' },
     'MONTHLY_FINANCIALS_CHART': { name: 'Monthly Financials', component: MonthlyFinancialsWidget, defaultSize: 'col-span-12 md:col-span-8' },
@@ -39,6 +41,7 @@ const WIDGET_CONFIG: Record<WidgetType, { name: string; component: React.FC<any>
 
 const DEFAULT_LAYOUT: { type: WidgetType; size: string; }[] = [
     { type: 'ACTION_CENTER', size: 'col-span-12' },
+    { type: 'BROKING_SHIPMENTS_SNAPSHOT', size: 'col-span-12' },
     { type: 'FINANCIAL_SUMMARY_STATS', size: 'col-span-12' },
     { type: 'LOAD_PIPELINE', size: 'col-span-12 md:col-span-6' },
     { type: 'SUBCONTRACTOR_MARGIN', size: 'col-span-12 md:col-span-6' },
@@ -55,7 +58,7 @@ const DEFAULT_LAYOUT: { type: WidgetType; size: string; }[] = [
 const Dashboard: React.FC = () => {
     const [layout, setLayout] = useState(() => {
         try {
-            const savedLayout = localStorage.getItem('dashboardLayout_v4');
+            const savedLayout = localStorage.getItem('dashboardLayout_v5');
             return savedLayout ? JSON.parse(savedLayout) : DEFAULT_LAYOUT;
         } catch (error) {
             return DEFAULT_LAYOUT;
@@ -67,7 +70,7 @@ const Dashboard: React.FC = () => {
     const dragOverItem = useRef<number | null>(null);
 
     useEffect(() => {
-        localStorage.setItem('dashboardLayout_v4', JSON.stringify(layout));
+        localStorage.setItem('dashboardLayout_v5', JSON.stringify(layout));
     }, [layout]);
     
     const onAddWidget = (widgetType: WidgetType) => {

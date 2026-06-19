@@ -4,6 +4,7 @@ export type Branch = 'FBN JHB' | 'FBN DBN' | 'FBN CPT' | 'LOADMASTER';
 
 export type WidgetType = 
   | 'ACTION_CENTER'
+  | 'BROKING_SHIPMENTS_SNAPSHOT'
   | 'OPERATIONS_SUMMARY'
   | 'FINANCIAL_SUMMARY_STATS'
   | 'MONTHLY_FINANCIALS_CHART'
@@ -456,6 +457,7 @@ export interface LoadConfirmation {
     loadingEta?: string;
     deliveryEta?: string;
     backDated?: boolean;
+    updatedAt?: string;
     isCollection?: boolean;
     repEmail?: string;
     collectionRef?: string;

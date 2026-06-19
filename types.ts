@@ -338,11 +338,14 @@ export interface Contact {
     email?: string;
     phone?: string;
     role?: string;
-    // Which emails this person receives. getsDocs = the LoadCon + POD; getsUpdates
-    // = the running status updates. Controller usually both, Accounts docs only,
-    // other controllers updates only (can also tick docs). Undefined = legacy
-    // (treated as both for the main contact).
+    // Which emails this person receives, each independently toggleable:
+    //  getsDocs    = the order doc — for a CLIENT that's the Client Order; for a
+    //                SUBCONTRACTOR that's the LoadCon. (A client NEVER gets a LoadCon.)
+    //  getsPod     = the signed POD.
+    //  getsUpdates = the running status updates.
+    // Undefined = legacy (treated as both docs + updates for the main contact).
     getsDocs?: boolean;
+    getsPod?: boolean;
     getsUpdates?: boolean;
 }
 

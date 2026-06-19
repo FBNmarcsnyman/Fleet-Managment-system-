@@ -20,6 +20,16 @@ const table = (rows: [string, string | undefined][]) => {
 const subjLoc = (lc: any, a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
 // Split a comma/semicolon list of CC emails into clean array entries.
 export const splitEmails = (s?: string): string[] => String(s || '').split(/[,;]/).map(t => t.trim()).filter(Boolean);
+
+// ---------------------------------------------------------------------------
+// HARD RULE — client/subcontractor separation. A client must NEVER receive the
+// subcontractor's LoadCon or transport rate, and a subcontractor must NEVER
+// receive the client's identity or client rate. These helpers strip the other
+// party's addresses from any recipient list as a last line of defence, on top
+// of the docs being built separately. Do not remove.
+const lc_subbieAddrs = (lc: any): string[] => [lc?.subcontractorEmail, ...splitEmails(lc?.ccEmail), ...splitEmails(lc?.updateCc)].filter(Boolean).map((e: string) => e.toLowerCase());
+const lc_clientAddrs = (lc: any): string[] => [lc?.clientEmail, ...splitEmails(lc?.clientCc)].filter(Boolean).map((e: string) => e.toLowerCase());
+const dropAddrs = (list: string[], forbidden: string[]): string[] => list.filter(e => e && !forbidden.includes(e.toLowerCase()));
 const base = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
 
 type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };
@@ -40,7 +50,9 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
       ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc: ['loadcons@fbn-transport.co.za', ...splitEmails(lc.ccEmail)], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
+        // Subbie LoadCon: cc the subbie docs team + ops — strip any CLIENT address.
+        const cc = dropAddrs(['loadcons@fbn-transport.co.za', ...splitEmails(lc.ccEmail)], lc_clientAddrs(lc));
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
     if (b64) { void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: b64, name: 'LoadCon.pdf', kind: 'loadcon', contentType: 'application/pdf' }] }); }
@@ -76,8 +88,8 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
         // Client Order goes to the client + the full CLIENT team (lc.clientCc) +
-        // operations. NEVER the subcontractor's list (that's lc.ccEmail).
-        const cc = [...splitEmails(lc.clientCc), 'loadcons@fbn-transport.co.za'];
+        // operations. NEVER the subcontractor's list — strip any SUBBIE address.
+        const cc = dropAddrs([...splitEmails(lc.clientCc), 'loadcons@fbn-transport.co.za'], lc_subbieAddrs(lc));
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }

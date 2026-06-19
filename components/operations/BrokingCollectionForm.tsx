@@ -86,7 +86,11 @@ const BrokingCollectionForm: React.FC = () => {
             subcontractorEmail: supEmail || undefined, forAttention: supContact || undefined, ccEmail: supCc || undefined,
             supplierRate: rate ? Number(rate) : 0,
             status: supId || supName ? 'Driver Assigned' : 'Booked',
-            priority: 'Medium', totalAmount: 0, isCollection: false, repEmail: currentUser?.email,
+            priority: 'Medium', totalAmount: 0, isCollection: false,
+            repEmail: currentUser?.email,
+            // Capture WHO logged it + their branch (shows as FBN REP / FBN BRANCH).
+            fbnRepresentative: currentUser?.name || currentUser?.email,
+            arrangingBranch: (currentUser?.assignedBranches || []).find((b: string) => ['FBN DBN', 'FBN JHB', 'FBN CPT'].includes(b)) || undefined,
         };
         try {
             const res = await onSubmit?.(data);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Client } from '../../types';
 import { PlusIcon } from '../icons/PlusIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -8,6 +8,15 @@ import * as XLSX from 'xlsx';
 const ClientManagementView: React.FC = () => {
     const { showModal, showToast } = useUIState();
     const { clients, handleBulkAddClients, handleDeleteClient } = useOperations();
+    const [q, setQ] = useState('');
+
+    const rows = useMemo(() => {
+        const needle = q.trim().toLowerCase();
+        return (clients as any[])
+            .filter(c => c.isActive !== false)
+            .filter(c => !needle || `${c.name || ''} ${c.contactPerson || ''} ${c.contactEmail || ''} ${(c.contacts || []).map((x: any) => `${x.name} ${x.email}`).join(' ')}`.toLowerCase().includes(needle))
+            .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }, [clients, q]);
 
     const handleDelete = async (client: any) => {
         if (!confirm(`Remove ${client.name}? They'll be hidden from your list (past loads & history are kept).`)) return;
@@ -48,8 +57,11 @@ const ClientManagementView: React.FC = () => {
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white">Clients</h3>
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-bold text-white">Clients</h3>
+                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search clients…" className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm w-56" />
+                </div>
                 <div className="flex items-center space-x-2">
                      <label htmlFor="bulk-upload" className="flex items-center font-bold py-2 px-4 rounded-lg bg-gray-600 hover:bg-gray-700 text-white cursor-pointer">
                         <UploadIcon className="h-5 w-5 mr-2" /> Bulk Import
@@ -71,7 +83,7 @@ const ClientManagementView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {clients.filter((c: any) => c.isActive !== false).map(client => {
+                        {rows.map(client => {
                             const contacts = client.contacts || [];
                             const primary = contacts[0];
                             return (

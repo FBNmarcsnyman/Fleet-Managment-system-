@@ -10,29 +10,34 @@ const ContactsEditor: React.FC<{
     onChange: (contacts: Contact[]) => void;
     accent?: string; // tailwind text colour for the accent, e.g. 'text-blue-400'
     label?: string;  // override the default "Contacts · the people you liaise with"
-}> = ({ contacts, onChange, accent = 'text-brand-secondary', label }) => {
+    kind?: 'client' | 'supplier'; // a client gets the ORDER; a subcontractor the LOADCON
+}> = ({ contacts, onChange, accent = 'text-brand-secondary', label, kind = 'supplier' }) => {
+    // A client is NEVER offered "LoadCon" — they get the Client Order. This label
+    // is the visual half of the hard client/subbie separation rule.
+    const docLabel = kind === 'client' ? 'Order' : 'LoadCon';
 
     const update = (i: number, field: keyof Contact, value: string) => {
         const next = contacts.map((c, idx) => {
             if (idx !== i) return c;
             const merged: Contact = { ...c, [field]: value };
             // When a Role is chosen, default the send toggles sensibly (only if the
-            // user hasn't set them yet) — Controller gets everything, Accounts gets
-            // the docs (LoadCon + POD), others get the running updates.
-            if (field === 'role' && c.getsDocs === undefined && c.getsUpdates === undefined) {
+            // user hasn't set them yet) — Controller gets order/loadcon + POD +
+            // updates, Accounts gets order/loadcon + POD only, others updates only.
+            if (field === 'role' && c.getsDocs === undefined && c.getsUpdates === undefined && c.getsPod === undefined) {
                 const r = value.toLowerCase();
-                if (r.includes('account')) { merged.getsDocs = true; merged.getsUpdates = false; }
-                else if (r.includes('controller')) { merged.getsDocs = true; merged.getsUpdates = true; }
-                else { merged.getsDocs = false; merged.getsUpdates = true; }
+                if (r.includes('account')) { merged.getsDocs = true; merged.getsPod = true; merged.getsUpdates = false; }
+                else if (r.includes('controller')) { merged.getsDocs = true; merged.getsPod = true; merged.getsUpdates = true; }
+                else if (r.includes('pod') || r.includes('doc')) { merged.getsDocs = false; merged.getsPod = true; merged.getsUpdates = false; }
+                else { merged.getsDocs = false; merged.getsPod = false; merged.getsUpdates = true; }
             }
             return merged;
         });
         onChange(next);
     };
-    const toggle = (i: number, field: 'getsDocs' | 'getsUpdates') => {
+    const toggle = (i: number, field: 'getsDocs' | 'getsPod' | 'getsUpdates') => {
         onChange(contacts.map((c, idx) => idx === i ? { ...c, [field]: !(c[field] ?? false) } : c));
     };
-    const add = () => onChange([...contacts, { name: '', email: '', phone: '', getsDocs: true, getsUpdates: true }]);
+    const add = () => onChange([...contacts, { name: '', email: '', phone: '', getsDocs: true, getsPod: true, getsUpdates: true }]);
     const remove = (i: number) => onChange(contacts.filter((_, idx) => idx !== i));
 
     const inputCls = "w-full bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-brand-secondary";
@@ -59,9 +64,10 @@ const ContactsEditor: React.FC<{
                         <input className={`${inputCls} col-span-2`} placeholder="Phone" value={c.phone || ''} onChange={e => update(i, 'phone', e.target.value)} />
                         <button type="button" onClick={() => remove(i)} title="Remove" className="col-span-1 text-gray-500 hover:text-red-400 text-lg font-bold">×</button>
                     </div>
-                    <div className="flex items-center gap-4 pl-1 text-[11px] text-gray-400">
+                    <div className="flex items-center gap-4 pl-1 text-[11px] text-gray-400 flex-wrap">
                         <span className="uppercase tracking-wider text-gray-500">Send them:</span>
-                        <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsDocs ?? false} onChange={() => toggle(i, 'getsDocs')} /> LoadCon &amp; POD</label>
+                        <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsDocs ?? false} onChange={() => toggle(i, 'getsDocs')} /> {docLabel}</label>
+                        <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsPod ?? false} onChange={() => toggle(i, 'getsPod')} /> POD</label>
                         <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsUpdates ?? false} onChange={() => toggle(i, 'getsUpdates')} /> Status updates</label>
                     </div>
                 </div>

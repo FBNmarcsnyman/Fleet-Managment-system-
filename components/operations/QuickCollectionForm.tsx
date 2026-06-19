@@ -67,6 +67,7 @@ const QuickCollectionForm: React.FC = () => {
             arrangingBranch: collArea, collectionBranch: collArea, destinationBranch: delArea,
             priority: 'Medium', totalAmount: 0, supplierRate: 0,
             isCollection: true, repEmail: currentUser?.email,
+            fbnRepresentative: currentUser?.name || currentUser?.email,
         };
         try {
             const res = await onSubmit?.(data);

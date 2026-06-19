@@ -73,7 +73,7 @@ const AddClientForm: React.FC = () => {
                 </div>
                 <textarea placeholder="Company Address" value={address} onChange={e => setAddress(e.target.value)} rows={3} className={inputClasses} />
                 <div className="border-t border-gray-700 pt-4">
-                    <ContactsEditor contacts={contacts} onChange={setContacts} accent="text-blue-400" />
+                    <ContactsEditor contacts={contacts} onChange={setContacts} accent="text-blue-400" kind="client" />
                 </div>
                 <div className="border-t border-gray-700 pt-4">
                     <div className="flex items-center justify-between mb-2">
@@ -99,6 +99,7 @@ const AddClientForm: React.FC = () => {
                                         contacts={b.contacts || []}
                                         onChange={cs => setBranchContacts(i, cs)}
                                         accent="text-emerald-400"
+                                        kind="client"
                                         label={`People at ${b.name || 'this branch'} who give us loads`}
                                     />
                                 </div>

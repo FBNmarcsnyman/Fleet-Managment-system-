@@ -76,7 +76,7 @@ const AddSupplierForm: React.FC = () => {
                 </div>
                  <textarea placeholder="Address (Optional)" value={address} onChange={e => setAddress(e.target.value)} rows={3} className={inputClasses} />
                 <div className="border-t border-gray-700 pt-4">
-                    <ContactsEditor contacts={contacts} onChange={setContacts} accent="text-amber-400" />
+                    <ContactsEditor contacts={contacts} onChange={setContacts} accent="text-amber-400" kind="supplier" />
                 </div>
             </div>
             <div className="flex justify-end space-x-4 mt-8">

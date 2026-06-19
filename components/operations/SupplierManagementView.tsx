@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Supplier } from '../../types';
 import { PlusIcon } from '../icons/PlusIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -8,8 +8,15 @@ const SubcontractorManagementView: React.FC = () => {
     const { showModal, showToast } = useUIState();
     const { suppliers = [], handleBulkAddSuppliers, handleDeleteSupplier } = useOperations();
     const { users = [], handleAddUser } = useCommonData();
+    const [q, setQ] = useState('');
 
-    const subcontractors = (suppliers || []).filter((s: Supplier) => s.type === 'Transport' && s.isActive !== false);
+    const subcontractors = useMemo(() => {
+        const needle = q.trim().toLowerCase();
+        return (suppliers || [])
+            .filter((s: Supplier) => s.type === 'Transport' && s.isActive !== false)
+            .filter((s: any) => !needle || `${s.name || ''} ${s.contactPerson || ''} ${s.contactEmail || ''} ${(s.contacts || []).map((x: any) => `${x.name} ${x.email}`).join(' ')}`.toLowerCase().includes(needle))
+            .sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || '')));
+    }, [suppliers, q]);
 
     const handleDelete = async (supplier: Supplier) => {
         if (!confirm(`Remove ${supplier.name}? They'll be hidden from your list (past loads & history are kept).`)) return;
@@ -48,8 +55,11 @@ const SubcontractorManagementView: React.FC = () => {
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white">Subcontractors</h3>
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-bold text-white">Subcontractors</h3>
+                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search subcontractors…" className="bg-gray-700 text-white p-2 rounded-md border border-gray-600 text-sm w-60" />
+                </div>
                 <div className="flex items-center space-x-2">
                      <button onClick={handleOpenBulkImport} className="flex items-center font-bold py-2 px-4 rounded-lg bg-gray-600 hover:bg-gray-700 text-white">
                         <UploadIcon className="h-5 w-5 mr-2" /> Bulk Import

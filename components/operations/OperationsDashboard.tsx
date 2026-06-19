@@ -27,11 +27,14 @@ const OperationsDashboard: React.FC<OperationsDashboardProps> = () => {
     ), [suppliers]);
 
     const { unassigned, overdue, quotesToBook, loadsAwaitingPod } = useMemo(() => {
+        // Broking dashboard = brokered freight only. Own consolidation/line-haul
+        // collections (is_collection) live on the Operations dashboard.
+        const broked = (loadConfirmations || []).filter(lc => !lc.isCollection);
         return {
-            unassigned: (loadConfirmations || []).filter(lc => lc.status === 'Booked'),
-            overdue: (loadConfirmations || []).filter(lc => ['Booked', 'Driver Assigned'].includes(lc.status) && lc.collectionDate && isPast(new Date(lc.collectionDate)) && !isToday(new Date(lc.collectionDate))),
+            unassigned: broked.filter(lc => lc.status === 'Booked'),
+            overdue: broked.filter(lc => ['Booked', 'Driver Assigned'].includes(lc.status) && lc.collectionDate && isPast(new Date(lc.collectionDate)) && !isToday(new Date(lc.collectionDate))),
             quotesToBook: (quotes || []).filter(q => q.status === 'Accepted' && !(loadConfirmations || []).some(lc => lc.quoteId === q.id)),
-            loadsAwaitingPod: (loadConfirmations || []).filter(lc => lc.status === 'Delivered' && !lc.podPhoto)
+            loadsAwaitingPod: broked.filter(lc => lc.status === 'Delivered' && !lc.podPhoto)
         };
     }, [loadConfirmations, quotes]);
     

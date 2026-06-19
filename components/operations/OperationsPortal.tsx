@@ -1,6 +1,7 @@
 
 import React, { lazy, Suspense } from 'react';
 import { useUIState, useOperations } from '../../contexts/AppContexts';
+import { OPS_SUBVIEWS } from '../shared/navConfig';
 import OperationsDashboard from './OperationsDashboard';
 import LoadBoard from './LoadBoard';
 import DocumentSettingsView from './DocumentSettingsView';
@@ -10,6 +11,7 @@ const WhatsAppChatsView = lazy(() => import('./WhatsAppChatsView'));
 const ShipmentsBoard = lazy(() => import('./ShipmentsBoard'));
 const ContainersView = lazy(() => import('./ContainersView'));
 const EmailLogView = lazy(() => import('./EmailLogView'));
+const OperationsOverview = lazy(() => import('./OperationsOverview'));
 
 
 const OperationsPortal: React.FC = () => {
@@ -19,16 +21,24 @@ const OperationsPortal: React.FC = () => {
         handleUpdateLoadConfirmation, handleCreateLoadConfirmation: createLoadCon
     } = useOperations();
 
-    const navItems = [
+    // Two business areas share this portal: Broking (brokered freight) and
+    // Operations (own consolidation / line-haul). Show only the active area's
+    // tabs so each reads as its own section, matching the sidebar groups.
+    const BROKING_TABS = [
         { view: 'dashboard', label: 'Dashboard' },
-        { view: 'shipments', label: 'Shipments' },
-        { view: 'containers', label: 'Containers' },
         { view: 'loadBoard', label: 'Load Board' },
         { view: 'subcontractorLoads', label: 'LoadCons' },
-        { view: 'driverChats', label: 'Driver Chats' },
         { view: 'emailLog', label: 'Emails' },
+        { view: 'driverChats', label: 'Driver Chats' },
         { view: 'docSettings', label: 'Doc Settings' },
     ];
+    const OPS_TABS = [
+        { view: 'opsDashboard', label: 'Dashboard' },
+        { view: 'shipments', label: 'Shipments' },
+        { view: 'containers', label: 'Containers' },
+    ];
+    const isOps = OPS_SUBVIEWS.includes(operationsSubView);
+    const navItems = isOps ? OPS_TABS : BROKING_TABS;
 
     const handleNewTransportOrder = () => showModal('transportOrder', {
         onSubmit: async (data: any) => {
@@ -57,6 +67,7 @@ const OperationsPortal: React.FC = () => {
             case 'driverChats': return <Suspense fallback={<div>Loading…</div>}><WhatsAppChatsView /></Suspense>;
             case 'emailLog': return <Suspense fallback={<div>Loading…</div>}><EmailLogView /></Suspense>;
             case 'docSettings': return <DocumentSettingsView />;
+            case 'opsDashboard': return <Suspense fallback={<div>Loading…</div>}><OperationsOverview /></Suspense>;
             case 'dashboard':
             default:
                 return <OperationsDashboard />;
@@ -66,6 +77,10 @@ const OperationsPortal: React.FC = () => {
     return (
         <div className="bg-slate-50 text-slate-800 rounded-2xl p-5 -m-2 min-h-[calc(100vh-7rem)] border border-slate-200">
             <div className="flex items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-3 min-w-0">
+                    <span className={`shrink-0 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${isOps ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800'}`}>
+                        {isOps ? 'Operations' : 'Broking'}
+                    </span>
                 <div className="flex items-center gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl">
                     {navItems.map(item => (
                         <button key={item.view} onClick={() => handleOperationsSubViewChange(item.view as any)}
@@ -74,19 +89,25 @@ const OperationsPortal: React.FC = () => {
                         </button>
                     ))}
                 </div>
+                </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => showModal('bulkCollection', {})}
-                        className="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                        + Bulk / Depot
-                    </button>
-                    <button onClick={handleNewCollection}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                        + Collection
-                    </button>
-                    <button onClick={handleNewTransportOrder}
-                        className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                        + New Transport Order
-                    </button>
+                    {isOps ? (
+                        <>
+                            <button onClick={() => showModal('bulkCollection', {})}
+                                className="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                                + Bulk / Depot
+                            </button>
+                            <button onClick={handleNewCollection}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                                + Collection
+                            </button>
+                        </>
+                    ) : (
+                        <button onClick={handleNewTransportOrder}
+                            className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                            + New Transport Order
+                        </button>
+                    )}
                 </div>
             </div>
             {renderView()}

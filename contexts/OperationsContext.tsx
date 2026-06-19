@@ -305,6 +305,23 @@ export const sendCollectionAckToClient = async (lc: any): Promise<void> => {
     catch (e) { console.error('[ops] collection ack failed:', e); }
 };
 
+// Collection time was reallocated (e.g. the 30-min check found it wasn't on
+// track) — tell the client the revised collection time.
+export const sendClientRevisedEtaEmail = async (lc: any): Promise<void> => {
+    const to = lc?.clientEmail; if (!to) return;
+    const d = lc.loadingEta ? new Date(lc.loadingEta) : null;
+    const when = d && !isNaN(d.getTime()) ? d.toLocaleString('en-ZA', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
+      <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
+      <p><strong>Please note an updated collection time.</strong> We now expect to collect from <strong>${lc.collectionPoint || ''}</strong>${when ? ` around <strong>${when}</strong>` : ' shortly'}.</p>
+      ${emailButton(`${baseUrl()}?track=${lc.id}`, 'Track this collection &rarr;')}
+      <p>Apologies for any inconvenience — we'll keep you posted.</p>
+      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+    const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), opsEmail(lc.collectionBranch || lc.arrangingBranch), OPS_GENERAL];
+    try { await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport ${lc.loadConNumber} — revised collection time`, html, fromName: 'FBN Transport' } }); }
+    catch (e) { console.error('[ops] revised-eta email failed:', e); }
+};
+
 export const OperationsContext = createContext<any>(undefined);
 
 type Result<T = void> = { ok: true; value?: T } | { ok: false; error: string };
@@ -731,9 +748,12 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     sendLoadConThenStamp();
                     if (forEmail.subcontractorEmail) void sendPodRequestEmail(forEmail);
                     // Client order intentionally NOT sent now — goes with the POD (submit-pod).
+                    void directInvoke('send-push', { title: `New load ${mapped.loadConNumber}`, body: `${forEmail.clientName || 'Client'}: ${forEmail.collectionPoint || ''} → ${forEmail.deliveryPoint || ''}`, url: `?track=${newId}` });
                 } else {
                     sendLoadConThenStamp();
                     if (forEmail.clientEmail) void sendOrderToClient(forEmail);
+                    // Pop a web-push for every new load so ops see it even off-app.
+                    void directInvoke('send-push', { title: `New load ${mapped.loadConNumber}`, body: `${forEmail.clientName || 'Client'}: ${forEmail.collectionPoint || ''} → ${forEmail.deliveryPoint || ''}`, url: `?track=${newId}` });
                 }
 
                 // The load is saved — return success NOW so the form closes instantly.
@@ -847,6 +867,14 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const merged = { ...(prev || {}), ...updates, id };
                     sendClientPhaseEmail(merged, updates.status);
                     sendSupplierPhaseEmail(merged, updates.status);
+                }
+                // Collection time reallocated (e.g. the 30-min check found it wasn't
+                // on track) → tell the client the new time, and re-arm the check so
+                // the next 30-min reminder fires against the new ETA.
+                if (updates.loadingEta && updates.loadingEta !== prev?.loadingEta && (prev?.isCollection ?? (updates as any).isCollection)) {
+                    const phaseEmailed = !!(updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]);
+                    if (!phaseEmailed) sendClientRevisedEtaEmail({ ...(prev || {}), ...updates, id });
+                    void directUpdate('load_confirmations', { id }, { eta_check_sent_at: null } as any);
                 }
                 // Message the DRIVER on WhatsApp at each phase with the next ask.
                 if (updates.status && updates.status !== prev?.status && DRIVER_PHASE_MSG[updates.status]) {

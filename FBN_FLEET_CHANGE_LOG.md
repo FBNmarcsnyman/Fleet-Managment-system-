@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-06-19 — Depot workflow: branch boards, incoming, planning, broking collection (DONE)
+- **Branch-scoped Shipments board** — defaults to the user's own branch
+  (assignedBranches); managers get All. **Incoming-from-other-depot strip** (en
+  route / arrived, "since yesterday").
+- **Planning tab** (Operations) surfaces DailyPlanningView; **+ Manifest** and
+  **+ Trip sheet** buttons now work and **persist** (manifests / trip_sheets tables,
+  auto-numbered) — were local-only before.
+- **Broking quick-collection** (`BrokingCollectionForm`, "+ Collection" in Broking):
+  mobile capture + assign transporter → auto-sends LoadCon + client order; finish
+  details later. Mirrors the ops collection.
+- **Status email fix:** once a load is Delivered the supplier email asks to UPLOAD
+  POD (?pod= link) instead of "push next update".
+- **Fuel tanks** show **last-filled date + litres**; one-click **Import fuel month**
+  across DBN/JHB/LM Drive folders.
+
 ## 2026-06-19 — Import / groupage module (FCL + LCL) (DONE)
 - **Scan a cartage advice / delivery order → create an import consignment**
   (`CartageAdviceScanModal`, "📄 Import (scan)" in the Operations area). Extracts

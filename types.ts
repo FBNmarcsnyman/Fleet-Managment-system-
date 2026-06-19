@@ -200,6 +200,7 @@ export type ViewType =
   | 'finance'
   | 'incidentManagement'
   | 'hr'
+  | 'compliance'
   | 'userManagement'
   | 'settings'
   | 'driverDashboard';

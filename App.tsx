@@ -25,6 +25,7 @@ import WorkshopPortal from './components/WorkshopPortal';
 import FinancePortal from './components/FinancePortal';
 import IncidentManagement from './components/IncidentManagement';
 import HRPortal from './components/HRPortal';
+import ComplianceHub from './components/ComplianceHub';
 import UserManagement from './components/UserManagement';
 import Settings from './components/Settings';
 import DriverDashboard from './components/DriverDashboard';
@@ -322,6 +323,7 @@ const App: React.FC = () => {
             case 'finance': return <FinancePortal />;
             case 'incidentManagement': return <IncidentManagement />;
             case 'hr': return <HRPortal />;
+            case 'compliance': return <ComplianceHub />;
             case 'userManagement': return <UserManagement />;
             case 'settings': return <Settings />;
             case 'driverDashboard': return <DriverDashboard />;

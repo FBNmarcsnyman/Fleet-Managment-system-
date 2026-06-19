@@ -30,6 +30,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     { view: 'finance', label: 'Finance', icon: CurrencyDollarIcon, permission: 'access_finance' },
     { view: 'incidentManagement', label: 'Incidents', icon: ExclamationTriangleIcon, permission: 'access_incidents' },
     { view: 'hr', label: 'HR', icon: BriefcaseIcon, permission: 'access_hr' },
+    { view: 'compliance', label: 'Compliance', icon: DocumentTextIcon, permission: 'access_hr' },
 ];
 
 // Sub-views (in-portal tabs) that belong to the Operations (consolidation) side.
@@ -55,6 +56,7 @@ export const VIEW_TITLES: Partial<Record<ViewType, string>> = {
     finance: 'Finance',
     incidentManagement: 'Incident Management',
     hr: 'Human Resources',
+    compliance: 'Compliance & Documents',
     userManagement: 'User Management',
     settings: 'Settings',
     driverDashboard: 'Driver Dashboard',

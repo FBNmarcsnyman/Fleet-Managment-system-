@@ -16,8 +16,24 @@ const AssignFbnModal: React.FC = () => {
     const [eta, setEta] = useState(lc?.loadingEta || '');
     const [busy, setBusy] = useState(false);
 
-    const drivers = useMemo(() => (users as any[]).filter(u => u.role === 'Driver' || u.role === 'Staff').map(u => u.name).filter(Boolean), [users]);
-    const regs = useMemo(() => (vehicles as any[]).map(v => v.registration).filter(Boolean), [vehicles]);
+    // Only the collecting branch's OWN vehicles + the line-haul (LOADMASTER)
+    // fleet can do this collection. Vehicles sorted smallest-first, drivers A–Z.
+    const LM = 'LOADMASTER';
+    const collBranch = lc?.collectionBranch;
+    const sizeOf = (v: any) => {
+        if (typeof v.payloadKg === 'number' && v.payloadKg > 0) return v.payloadKg;
+        const n = parseFloat(String(v.weightCategory || '').replace(/[^0-9.]/g, ''));
+        return isNaN(n) ? Number.MAX_SAFE_INTEGER : n;
+    };
+    const regs = useMemo(() => (vehicles as any[])
+        .filter(v => v.registration && (!collBranch || v.branch === collBranch || v.branch === LM))
+        .sort((a, b) => sizeOf(a) - sizeOf(b))
+        .map(v => v.registration), [vehicles, collBranch]);
+    const drivers = useMemo(() => (users as any[])
+        .filter(u => (u.role === 'Driver' || u.role === 'Staff') && u.name)
+        .filter(u => { const ab = u.assignedBranches || []; return !collBranch || ab.length === 0 || ab.includes(collBranch) || ab.includes(LM); })
+        .map(u => u.name)
+        .sort((a, b) => String(a).localeCompare(String(b))), [users, collBranch]);
 
     if (!lc) return null;
 

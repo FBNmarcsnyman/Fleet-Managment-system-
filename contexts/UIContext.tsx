@@ -42,7 +42,11 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // string here was not a valid ViewType and only worked because the switch
   // fell through to default. Setting a proper initial value removes the
   // mismatch while keeping the same observable behavior.
-  const [currentView, setCurrentView] = useState<ViewType>('management');
+  // On phones, land on the Collections home (one-tap booking); desktop lands on
+  // the management overview. The menu reaches everything either way.
+  const [currentView, setCurrentView] = useState<ViewType>(
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'collectHome' : 'management'
+  );
   // Drawer state for the mobile sidebar only (desktop sidebar is always docked).
   // Starts closed so a phone doesn't open it over the content.
   const [sidebarOpen, setSidebarOpen] = useState(false);

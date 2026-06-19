@@ -46,6 +46,7 @@ export const SETTINGS_NAV_ITEMS: NavItem[] = [
 // Human-friendly title for the current view — shown in the top bar.
 export const VIEW_TITLES: Partial<Record<ViewType, string>> = {
     management: 'Management Overview',
+    collectHome: 'Collections',
     fleet: 'FBN Fleet',
     fuel: 'Fuel',
     broking: 'Broking',

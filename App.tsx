@@ -70,6 +70,7 @@ const CartageAdviceScanModal = lazy(() => import('./components/operations/Cartag
 const BrokingCollectionForm = lazy(() => import('./components/operations/BrokingCollectionForm'));
 const PartnerDetailModal = lazy(() => import('./components/operations/PartnerDetailModal'));
 const ManifestDoc = lazy(() => import('./components/operations/ManifestDoc'));
+const CollectHome = lazy(() => import('./components/operations/CollectHome'));
 const CreateTripSheetModal = lazy(() => import('./components/operations/CreateTripSheetModal'));
 const DismountTireModal = lazy(() => import('./components/DismountTireModal'));
 const LinkTrailerModal = lazy(() => import('./components/LinkTrailerModal'));
@@ -324,6 +325,7 @@ const App: React.FC = () => {
             case 'fuel': return <FuelPortal />;
             case 'operations': return <OperationsPortal />;
             case 'broking': return <OperationsPortal />;
+            case 'collectHome': return <Suspense fallback={<div />}><CollectHome /></Suspense>;
             case 'partners': return <PartnersPortal />;
             case 'quotes': return <QuotesPortal />;
             case 'workshop': return <WorkshopPortal />;

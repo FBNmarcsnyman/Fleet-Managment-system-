@@ -38,6 +38,19 @@ const ShipmentsBoard: React.FC = () => {
             .filter(lc => !needle || `${lc.loadConNumber} ${clientName(lc)} ${lc.collectionPoint || ''} ${lc.deliveryPoint || ''}`.toLowerCase().includes(needle));
     }, [loadConfirmations, clients, q]);
 
+    // Daily overview: cargo still to move, grouped by lane (from-area → to-area).
+    const lanes = useMemo(() => {
+        const map = new Map<string, { lane: string; count: number; pkgs: number; weight: number; cube: number }>();
+        shipments.filter(lc => !['Delivered', 'POD Submitted'].includes(lc.status)).forEach(lc => {
+            const key = `${lc.collectionBranch || '?'} → ${lc.destinationBranch || '?'}`;
+            const m = map.get(key) || { lane: key, count: 0, pkgs: 0, weight: 0, cube: 0 };
+            m.count++; m.pkgs += Number(lc.loadedPackages) || 0; m.weight += Number(lc.weightKg) || 0; m.cube += Number((lc as any).cubeM3) || 0;
+            map.set(key, m);
+        });
+        return [...map.values()].sort((a, b) => b.count - a.count);
+    }, [shipments]);
+    const kg = (n: number) => Math.round(n).toLocaleString('en-ZA');
+
     const advance = async (lc: LoadConfirmation) => {
         const step = nextStep(lc);
         if (!step) return;
@@ -62,6 +75,22 @@ const ShipmentsBoard: React.FC = () => {
                 </div>
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search shipments…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-48" />
             </div>
+
+            {/* Cargo to move — overview by lane */}
+            {lanes.length > 0 && (
+                <div>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Cargo to move</p>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                        {lanes.map(l => (
+                            <div key={l.lane} className="shrink-0 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm min-w-[150px]">
+                                <div className="text-sm font-black text-[#13294b]">{l.lane}</div>
+                                <div className="text-[11px] text-slate-500 mt-0.5">{l.count} shipment{l.count !== 1 ? 's' : ''}</div>
+                                <div className="text-[11px] text-slate-700 font-bold mt-1">{l.pkgs} pkgs · {kg(l.weight)} kg{l.cube ? ` · ${l.cube.toFixed(1)} m³` : ''}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="flex gap-3 pb-3 items-stretch overflow-x-auto">
                 {COLUMNS.map(col => {

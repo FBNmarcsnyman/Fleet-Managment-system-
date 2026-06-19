@@ -13,6 +13,7 @@ const CaptureLoadModal: React.FC = () => {
 
     const [weight, setWeight] = useState<string>(lc?.weightKg ? String(lc.weightKg) : '');
     const [dims, setDims] = useState<string>(lc?.dimensions || '');
+    const [cube, setCube] = useState<string>(lc?.cubeM3 != null ? String(lc.cubeM3) : '');
     const [packages, setPackages] = useState<string>(lc?.loadedPackages != null ? String(lc.loadedPackages) : '');
     const [commodity, setCommodity] = useState<string>(lc?.commodity || '');
     const [files, setFiles] = useState<File[]>([]);
@@ -31,13 +32,13 @@ const CaptureLoadModal: React.FC = () => {
         try {
             const photos = await Promise.all(files.map(async f => ({ base64: await toBase64(f), name: f.name, contentType: f.type || 'image/jpeg' })));
             const { data, error } = await directInvoke('capture-load', {
-                loadId: lc.id, weightKg: weight || undefined, dimensions: dims || undefined,
+                loadId: lc.id, weightKg: weight || undefined, dimensions: dims || undefined, cube: cube || undefined,
                 packages: packages || undefined, commodity: commodity || undefined, photos,
             });
             if (error || (data as any)?.error) { showToast(`Capture failed: ${(data as any)?.error || error?.message}`); setBusy(false); return; }
             // Reflect locally so the detail updates without a reload.
             handleUpdateLoadConfirmation && handleUpdateLoadConfirmation(lc.id, {
-                weightKg: weight || undefined, dimensions: dims || undefined,
+                weightKg: weight || undefined, dimensions: dims || undefined, cubeM3: cube ? Number(cube) : undefined,
                 loadedPackages: packages ? Number(packages) : undefined, commodity: commodity || undefined,
                 cargoPhotoUrls: (data as any)?.urls,
             } as any);
@@ -58,7 +59,10 @@ const CaptureLoadModal: React.FC = () => {
                     <div><label className={lbl}>Weight (kg)</label><input type="number" value={weight} onChange={e => setWeight(e.target.value)} className={inp} placeholder="0" /></div>
                     <div><label className={lbl}>Packages</label><input type="number" value={packages} onChange={e => setPackages(e.target.value)} className={inp} placeholder="0" /></div>
                 </div>
-                <div><label className={lbl}>Dimensions</label><input value={dims} onChange={e => setDims(e.target.value)} className={inp} placeholder="e.g. 1.2 x 0.8 x 1.0 m" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                    <div><label className={lbl}>Dimensions</label><input value={dims} onChange={e => setDims(e.target.value)} className={inp} placeholder="e.g. 1.2 x 0.8 x 1.0 m" /></div>
+                    <div><label className={lbl}>Cube (m³)</label><input type="number" step="0.01" value={cube} onChange={e => setCube(e.target.value)} className={inp} placeholder="0.00" /></div>
+                </div>
                 <div><label className={lbl}>Commodity</label><input value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} /></div>
                 <div>
                     <label className={lbl}>Photos</label>

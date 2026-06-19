@@ -462,6 +462,7 @@ export interface LoadConfirmation {
     loadedPackages?: number;
     loadingIssues?: string;
     dimensions?: string;
+    cubeM3?: number;
     cargoPhotoUrls?: string[];
     clientRequest?: string;
     clientRequestAt?: string;

@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-06-19 — Broking / Operations split into grouped nav (DONE)
+- Sidebar now has **collapsible groups**: **Broking** (Dashboard / Load Board /
+  LoadCons / Emails / Driver Chats / Doc Settings) and **Operations** (Dashboard /
+  Shipments / Containers). Each child deep-links into the operations portal sub-view.
+- New **Operations Dashboard** (`OperationsOverview`) for own consolidation/line-haul:
+  stage KPIs, cargo-to-move by lane, awaiting-driver + awaiting-POD queues.
+- **Broking Dashboard** now shows brokered freight only (excludes `is_collection`).
+- Portal shows only the active area's tab strip + an area badge so the two
+  "Dashboard" tabs are clear. Files: `navConfig.tsx`, `Sidebar.tsx`,
+  `OperationsPortal.tsx`, `OperationsOverview.tsx`, `OperationsDashboard.tsx`.
+
 ## 2026-06-18/19 — Operations sub-system + go-live hardening (DONE)
 - **Google sign-in** for staff (@fbn-transport.co.za); fixed the wedge + auto clean-reload after OAuth.
 - **Freeze-proof everything**: client/subbie edits, fuel/bowser saves, the 38-table hydrate, and ALL emails (`invokeFn`/`directSelect`) — the supabase-js auth-lock wedge was silently dropping saves + sends.

@@ -82,7 +82,7 @@ const SubcontractorManagementView: React.FC = () => {
                     <tbody>
                         {subcontractors.map((supplier: Supplier) => (
                             <tr key={supplier.id} className="border-b border-gray-700/50">
-                                <td className="p-2 font-semibold text-white">{supplier.name}</td>
+                                <td className="p-2 font-semibold"><button onClick={() => showModal('partnerDetail', { partner: supplier, kind: 'supplier' })} className="text-white hover:text-brand-secondary hover:underline text-left">{supplier.name}</button></td>
                                 <td className="p-2">{supplier.contactPerson}</td>
                                 <td className="p-2">{supplier.contactEmail} / {supplier.contactPhone}</td>
                                 <td className="p-2 text-right space-x-2">

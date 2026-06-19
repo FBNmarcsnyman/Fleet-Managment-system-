@@ -88,7 +88,7 @@ const ClientManagementView: React.FC = () => {
                             const primary = contacts[0];
                             return (
                             <tr key={client.id} className="border-b border-gray-700/50">
-                                <td className="p-2 font-semibold text-white">{client.name}</td>
+                                <td className="p-2 font-semibold"><button onClick={() => showModal('partnerDetail', { partner: client, kind: 'client' })} className="text-white hover:text-brand-secondary hover:underline text-left">{client.name}</button></td>
                                 <td className="p-2">
                                     {contacts.length > 0
                                         ? <span>{primary?.name}{contacts.length > 1 && <span className="text-gray-500"> +{contacts.length - 1} more</span>}</span>

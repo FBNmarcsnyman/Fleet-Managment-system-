@@ -132,7 +132,8 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
       ${emailButton(trackLink, 'Track your shipment &rarr;')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za'];
+        // Client team + ops + (for rep-logged collections) the sales rep.
+        const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), 'loadcons@fbn-transport.co.za', ...(lc.repEmail ? [lc.repEmail] : [])];
         await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client phase update failed:', e);
@@ -633,6 +634,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const backDated = _isPast(data.collectionDate) && _isPast(data.deliveryDate);
                 if (backDated) { row.status = 'Delivered'; (row as any).back_dated = true; }
                 if (data.isCollection) (row as any).is_collection = true;
+                if (data.repEmail) (row as any).rep_email = data.repEmail;
                 // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
                 const { data: inserted, error } = await directInsert('load_confirmations', row as any);
                 if (error || !inserted) {

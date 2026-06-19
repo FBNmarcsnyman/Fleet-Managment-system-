@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Client, Contact, Branch } from '../../types';
-import { useUIState, useOperations } from '../../contexts/AppContexts';
+import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
 
@@ -17,6 +17,7 @@ const AREAS: { code: Branch; label: string }[] = [
 const QuickCollectionForm: React.FC = () => {
     const { hideModal, modal, showToast } = useUIState();
     const { clients = [], loadConfirmations = [] } = useOperations() as any;
+    const { currentUser } = useAuth();
     const onSubmit = modal.payload?.onSubmit as (data: any) => Promise<any>;
 
     const today = new Date().toISOString().split('T')[0];
@@ -65,7 +66,7 @@ const QuickCollectionForm: React.FC = () => {
             specialInstructions: notes || undefined,
             arrangingBranch: collArea, collectionBranch: collArea, destinationBranch: delArea,
             priority: 'Medium', totalAmount: 0, supplierRate: 0,
-            isCollection: true,
+            isCollection: true, repEmail: currentUser?.email,
         };
         try {
             const res = await onSubmit?.(data);

@@ -1,6 +1,19 @@
 # FBN Fleet Management System — Change Log
-> Maintained by Marc Snyman | Last updated: 2026-06-17
+> Maintained by Marc Snyman | Last updated: 2026-06-19
 > Use this file at the start of every Claude Code session — paste it in with the instruction: "Read this change log and action the next PENDING item."
+
+---
+
+## 2026-06-18/19 — Operations sub-system + go-live hardening (DONE)
+- **Google sign-in** for staff (@fbn-transport.co.za); fixed the wedge + auto clean-reload after OAuth.
+- **Freeze-proof everything**: client/subbie edits, fuel/bowser saves, the 38-table hydrate, and ALL emails (`invokeFn`/`directSelect`) — the supabase-js auth-lock wedge was silently dropping saves + sends.
+- **Live status tracking**: board progress bar + timestamped Status Timeline; back-dated POD-first flow; "loaded" confirmation (packages/issues).
+- **Email tracking** (email_log + open pixel) grouped per load (Client vs Supplier/Driver). **Client-order threading** (one subject per load). Fixed multi-CC (553) + client-order leaking to subbie CC.
+- **Per-contact email routing** (docs vs updates) + **multiple supplier emails**.
+- **Fuel** is its own sidebar module (tanks, CPK, Google-Drive auto-import).
+- **Operations sub-system**: renamed Broking→Operations; **Shipments** board (consolidation/line-haul), **Containers** monitoring, **+Collection** & **+Bulk/Depot** intake, capture (weigh/measure/photos/cube), inter-branch handover, **branch-routed ops emails** (opsdbn/opsjhb/ops@).
+- **Web push** notifications; **UPPERCASE** data entry (emails/phones excluded); **editable commodity/packaging lists**; **validation loop** (on-create warnings + `validate-flows` watchdog cron).
+- See memory `operations-shipments`, `collections-and-push`, `scheduled-jobs`, `email-sending`, `google-signin` for detail.
 
 ---
 

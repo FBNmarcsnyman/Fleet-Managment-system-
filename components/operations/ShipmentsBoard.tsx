@@ -42,6 +42,9 @@ const ShipmentsBoard: React.FC = () => {
         const needle = q.trim().toLowerCase();
         return (loadConfirmations as LoadConfirmation[])
             .filter(lc => lc.isCollection && !['Invoiced', 'Cancelled'].includes(lc.status))
+            // Import groupage awaiting unpack/release lives on the Imports board
+            // until it's booked for collection.
+            .filter(lc => lc.importStage !== 'awaiting_release' && lc.importStage !== 'released')
             .filter(lc => branch === 'All' || lc.collectionBranch === branch || lc.destinationBranch === branch)
             .filter(lc => !needle || `${lc.loadConNumber} ${clientName(lc)} ${lc.collectionPoint || ''} ${lc.deliveryPoint || ''}`.toLowerCase().includes(needle));
     }, [loadConfirmations, clients, q, branch]);

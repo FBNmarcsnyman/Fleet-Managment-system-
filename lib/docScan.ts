@@ -51,6 +51,40 @@ export const CONTAINER_DOC_SCHEMA = {
     required: ['container_no'],
 };
 
+// ---- Cartage advice / delivery order (the road-transport instruction) ----
+// One job: collect from A, deliver to B. Works for FCL (collect from a port
+// terminal) and LCL (collect from an unpack depot like ZACPAK).
+export const CARTAGE_DOC_PROMPT =
+    'This is a road cartage advice / delivery order instructing a trucking company to collect and deliver goods. ' +
+    'Extract the job. collect_from = the full PICKUP / "goods available at" address on one line. ' +
+    'deliver_to = the full DELIVERY / consignee address on one line. ' +
+    'client_name = the freight forwarder / company that ISSUED this instruction and books the transport (e.g. the DHL / forwarding entity), NOT the shipper or consignee. ' +
+    'consignee_name = the party the goods are delivered to. Use empty strings for anything absent; numbers as digits only.';
+
+export const CARTAGE_DOC_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        client_name: { type: Type.STRING, description: 'Forwarder / company that issued the cartage advice (books the transport)' },
+        consignee_name: { type: Type.STRING, description: 'Delivery party / consignee' },
+        shipper_name: { type: Type.STRING, description: 'Shipper / exporter' },
+        collect_from: { type: Type.STRING, description: 'Full pickup / goods-available-at address, one line' },
+        deliver_to: { type: Type.STRING, description: 'Full delivery / consignee address, one line' },
+        commodity: { type: Type.STRING, description: 'Goods description / commodity' },
+        packages: { type: Type.STRING, description: 'Package count + type, e.g. "3 PCE" or "54 PALLETS"' },
+        weight: { type: Type.STRING, description: 'Weight in kg, digits only' },
+        volume: { type: Type.STRING, description: 'Volume in cubic metres' },
+        container_no: { type: Type.STRING, description: 'Container number if FCL, else empty' },
+        house_bill: { type: Type.STRING, description: 'House bill / waybill number' },
+        ocean_bill: { type: Type.STRING, description: 'Ocean / master bill of lading' },
+        shipment_ref: { type: Type.STRING, description: 'Shipment reference (e.g. S...)' },
+        booking_ref: { type: Type.STRING, description: 'Transport booking reference (e.g. TB...)' },
+        contact_name: { type: Type.STRING, description: 'Issuing contact person' },
+        contact_email: { type: Type.STRING, description: 'Issuing contact email' },
+        contact_phone: { type: Type.STRING, description: 'Issuing contact phone' },
+    },
+    required: ['collect_from', 'deliver_to'],
+};
+
 // ---- Depot groupage / packing manifest (many consignments) ----
 export const BULK_DOC_PROMPT =
     'This is a depot groupage / packing manifest listing multiple consignments to collect. ' +

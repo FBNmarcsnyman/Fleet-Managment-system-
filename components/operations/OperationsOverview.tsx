@@ -21,7 +21,8 @@ const OperationsOverview: React.FC = () => {
     const clientName = (lc: LoadConfirmation) => (clients as any[]).find(c => c.id === lc.clientId)?.name || lc.clientName || '—';
 
     const shipments = useMemo(() =>
-        (loadConfirmations as LoadConfirmation[]).filter(lc => lc.isCollection && !['Invoiced', 'Cancelled'].includes(lc.status)),
+        (loadConfirmations as LoadConfirmation[]).filter(lc => lc.isCollection && !['Invoiced', 'Cancelled'].includes(lc.status)
+            && lc.importStage !== 'awaiting_release' && lc.importStage !== 'released'),
         [loadConfirmations]);
 
     const buckets = useMemo(() => STAGE_BUCKETS.map(b => ({

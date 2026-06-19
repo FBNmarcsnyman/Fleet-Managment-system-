@@ -11,6 +11,7 @@ const ShipmentsBoard = lazy(() => import('./ShipmentsBoard'));
 const ContainersView = lazy(() => import('./ContainersView'));
 const EmailLogView = lazy(() => import('./EmailLogView'));
 const OperationsOverview = lazy(() => import('./OperationsOverview'));
+const ImportsBoard = lazy(() => import('./ImportsBoard'));
 
 
 const OperationsPortal: React.FC = () => {
@@ -34,6 +35,7 @@ const OperationsPortal: React.FC = () => {
     const OPS_TABS = [
         { view: 'opsDashboard', label: 'Dashboard' },
         { view: 'shipments', label: 'Shipments' },
+        { view: 'imports', label: 'Imports' },
         { view: 'containers', label: 'Containers' },
     ];
     // The sidebar has two flat tabs — Broking and Operations — that both open
@@ -67,6 +69,7 @@ const OperationsPortal: React.FC = () => {
             case 'loadBoard': return <LoadBoard />;
             case 'shipments': return <Suspense fallback={<div>Loading…</div>}><ShipmentsBoard /></Suspense>;
             case 'containers': return <Suspense fallback={<div>Loading…</div>}><ContainersView /></Suspense>;
+            case 'imports': return <Suspense fallback={<div>Loading…</div>}><ImportsBoard /></Suspense>;
             case 'driverChats': return <Suspense fallback={<div>Loading…</div>}><WhatsAppChatsView /></Suspense>;
             case 'emailLog': return <Suspense fallback={<div>Loading…</div>}><EmailLogView /></Suspense>;
             case 'docSettings': return <DocumentSettingsView />;
@@ -96,6 +99,10 @@ const OperationsPortal: React.FC = () => {
                 <div className="flex items-center gap-2 shrink-0">
                     {isOps ? (
                         <>
+                            <button onClick={() => showModal('cartageScan', {})}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                                📄 Import (scan)
+                            </button>
                             <button onClick={() => showModal('bulkCollection', {})}
                                 className="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
                                 + Bulk / Depot

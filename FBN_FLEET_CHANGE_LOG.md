@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-06-19 — Import / groupage module (FCL + LCL) (DONE)
+- **Scan a cartage advice / delivery order → create an import consignment**
+  (`CartageAdviceScanModal`, "📄 Import (scan)" in the Operations area). Extracts
+  collect-from / deliver-to / forwarder + consignee / packages / weight / refs;
+  ops picks who to bill (forwarder vs consignee). FCL = collect-now; LCL = lands
+  in the depot watch.
+- **Imports / Depot Watch board** (`ImportsBoard`, Operations → Imports): LCL
+  consignments grouped by unpack depot (ZACPAK/CHC/ICS/IWS/SACD), awaiting
+  unpack → **Mark released** → **Book collection** sends one vehicle for all the
+  depot's ready cargo (shared collection_ref + branch ops email), then they ride
+  the Shipments board to consolidate.
+- New columns `unpack_depot`, `import_stage` (awaiting_release→released→collected)
+  on load_confirmations; awaiting/released hidden from the Shipments board + Ops
+  dashboard until booked. Cartage schema added to `lib/docScan.ts`.
+
 ## 2026-06-19 — Doc scan, management snapshot, flat Broking/Operations tabs (DONE)
 - **Broking + Operations are flat sidebar tabs** (dropped the dropdowns); both
   open the Operations portal, which shows the matching area's tab strip + its own

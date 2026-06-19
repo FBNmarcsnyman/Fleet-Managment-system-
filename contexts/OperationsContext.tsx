@@ -681,6 +681,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (data.isCollection) (row as any).is_collection = true;
                 if (data.repEmail) (row as any).rep_email = data.repEmail;
                 if (data.collectionRef) (row as any).collection_ref = data.collectionRef;
+                if (data.unpackDepot) (row as any).unpack_depot = data.unpackDepot;
+                if (data.importStage) (row as any).import_stage = data.importStage;
                 // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
                 const { data: inserted, error } = await directInsert('load_confirmations', row as any);
                 if (error || !inserted) {

@@ -459,6 +459,11 @@ export interface LoadConfirmation {
     backDated?: boolean;
     updatedAt?: string;
     isCollection?: boolean;
+    // Import groupage (LCL/FCL from forwarders): the unpack depot the cargo waits
+    // at, and the stage (awaiting_release → released → collected) before it joins
+    // the normal collection flow.
+    unpackDepot?: string;
+    importStage?: 'awaiting_release' | 'released' | 'collected' | string;
     repEmail?: string;
     collectionRef?: string;
     updateCc?: string;

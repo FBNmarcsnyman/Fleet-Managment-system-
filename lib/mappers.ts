@@ -574,6 +574,8 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     backDated: (row as any).back_dated ?? false,
     updatedAt: (row as any).updated_at ?? undefined,
     isCollection: (row as any).is_collection ?? false,
+    unpackDepot: (row as any).unpack_depot ?? undefined,
+    importStage: (row as any).import_stage ?? undefined,
     repEmail: (row as any).rep_email ?? undefined,
     collectionRef: (row as any).collection_ref ?? undefined,
     loadedPackages: (row as any).loaded_packages ?? undefined,
@@ -1308,6 +1310,9 @@ export const toLoadConfirmationUpdate = (
     if (updates.subcontractorDriverName !== undefined) row.subcontractor_driver_name = updates.subcontractorDriverName ?? null;
     if ((updates as any).clientRequestStatus !== undefined) (row as any).client_request_status = (updates as any).clientRequestStatus ?? null;
     if ((updates as any).clientRequestReply !== undefined) (row as any).client_request_reply = (updates as any).clientRequestReply ?? null;
+    if ((updates as any).unpackDepot !== undefined) (row as any).unpack_depot = (updates as any).unpackDepot ?? null;
+    if ((updates as any).importStage !== undefined) (row as any).import_stage = (updates as any).importStage ?? null;
+    if ((updates as any).collectionRef !== undefined) (row as any).collection_ref = (updates as any).collectionRef ?? null;
     if (updates.subcontractorDriverCell !== undefined) row.subcontractor_driver_cell = updates.subcontractorDriverCell ?? null;
     // Transport Order document fields — needed so assigning a subbie (and later
     // edits) persist the details that print on the LoadCon / Client Order.

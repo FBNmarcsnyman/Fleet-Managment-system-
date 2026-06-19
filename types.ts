@@ -621,7 +621,7 @@ export interface TireInspection {
     notes?: string;
 }
 
-export type QuoteStatus = 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Expired';
+export type QuoteStatus = 'Requested' | 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Expired';
 
 export interface QuoteItem {
     id: string;

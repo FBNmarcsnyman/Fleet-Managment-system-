@@ -943,7 +943,7 @@ export const toQuoteInsert = (
 
 export const toQuoteUpdate = (updates: Partial<Quote>): Tables['quotes']['Update'] => {
     const row: Tables['quotes']['Update'] = {};
-    if (updates.status !== undefined) row.status = updates.status;
+    if (updates.status !== undefined) row.status = updates.status as any;
     if (updates.sentToClient !== undefined) row.sent_to_client = updates.sentToClient;
     if (updates.items !== undefined) row.items = updates.items as unknown as Tables['quotes']['Update']['items'];
     if (updates.legs !== undefined) row.legs = updates.legs as unknown as Tables['quotes']['Update']['legs'];

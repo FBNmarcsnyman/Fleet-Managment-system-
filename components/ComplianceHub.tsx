@@ -123,16 +123,17 @@ const ComplianceHub: React.FC = () => {
 
             const table = isDriver ? 'driver_documents' : 'vehicle_compliance_docs';
             const fk = isDriver ? 'driver_id' : 'vehicle_id';
+            const isFire = g.doc_type.includes('Fire');
             const docType = isDriver
                 ? g.doc_type // LICENCE | PDP | HAZCHEM | MEDICAL
-                : (g.status.includes('inspection') ? 'OTHER' : 'LICENSE_DISC');
+                : (isFire ? 'FIRE_PERMIT' : (g.status.includes('inspection') ? 'OTHER' : 'LICENSE_DISC'));
             const status = expiry ? (expiry < today() ? 'Expired' : 'Valid') : 'Valid';
 
             const { error } = await directInsert(table, {
                 organization_id: g.organization_id,
                 [fk]: g.entity_id,
                 type: docType,
-                name: isDriver ? g.doc_type : 'Motor Vehicle Licence Disc',
+                name: isDriver ? g.doc_type : (isFire ? 'Fire Permit / Extinguisher Certificate' : 'Motor Vehicle Licence Disc'),
                 file_url: up.url,
                 file_name: file.name,
                 issue_date: issue || null,

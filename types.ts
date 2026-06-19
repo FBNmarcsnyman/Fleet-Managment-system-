@@ -781,6 +781,7 @@ export type VehicleComplianceType =
     | 'PERMIT'
     | 'CROSS_BORDER'
     | 'DG_PERMIT'
+    | 'FIRE_PERMIT'
     | 'OTHER';
 
 export type DocStatus = 'Valid' | 'Expired' | 'Pending Review';

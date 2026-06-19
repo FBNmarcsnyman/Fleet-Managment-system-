@@ -27,6 +27,11 @@ const FuelReconciliation: React.FC = () => {
         });
     }, [month]);
 
+    // Previous month window for the spend comparison.
+    const pMm = mm === 1 ? 12 : mm - 1, pYy = mm === 1 ? yy - 1 : yy;
+    const pStart = `${pYy}-${String(pMm).padStart(2, '0')}-01`;
+    const entryCost = (e: any) => Number(e.totalCost) || (Number(e.liters) || 0) * (Number(e.costPerLiter) || 0);
+
     const recon = useMemo(() => {
         const drops = (bowserRefills as any[]).filter(r => inMonth(r.date));
         const fills = (fuelEntries as any[]).filter(e => inMonth(e.date));
@@ -34,8 +39,11 @@ const FuelReconciliation: React.FC = () => {
         const purchasedValue = drops.reduce((s, r) => s + (Number(r.liters) || 0) * (Number(r.finalCostPerLiter || r.costPerLiter) || 0), 0);
         const dispensedFleet = fills.reduce((s, e) => s + (Number(e.liters) || 0), 0);
         const dispensed = dispensedFleet + personal.liters;
-        return { purchased, purchasedValue, dispensedFleet, dispensed, variance: purchased - dispensed, fillsCount: fills.length, dropsCount: drops.length };
+        const spend = fills.reduce((s, e) => s + entryCost(e), 0);
+        const prevSpend = (fuelEntries as any[]).filter(e => e.date && e.date >= pStart && e.date < start).reduce((s, e) => s + entryCost(e), 0);
+        return { purchased, purchasedValue, dispensedFleet, dispensed, spend, prevSpend, variance: purchased - dispensed, fillsCount: fills.length, dropsCount: drops.length };
     }, [bowserRefills, fuelEntries, personal, month]);
+    const spendMoM = recon.prevSpend > 0 ? ((recon.spend - recon.prevSpend) / recon.prevSpend) * 100 : 0;
 
     // Anomalies on this month's fleet fills.
     const anomalies = useMemo(() => {
@@ -80,6 +88,11 @@ const FuelReconciliation: React.FC = () => {
                         <div className="bg-gray-900/40 rounded-xl p-3"><p className="text-[10px] font-black text-gray-500 uppercase">Dispensed</p><p className="text-xl font-black text-white">{L(recon.dispensed)}</p><p className="text-[11px] text-gray-500">{recon.fillsCount} fleet fills + {L(personal.liters)} personal</p></div>
                         <div className={`rounded-xl p-3 ${varianceBad ? 'bg-red-500/15 border border-red-500/30' : 'bg-gray-900/40'}`}><p className="text-[10px] font-black text-gray-500 uppercase">Variance (in − out)</p><p className={`text-xl font-black ${varianceBad ? 'text-red-300' : 'text-emerald-300'}`}>{L(recon.variance)}</p><p className="text-[11px] text-gray-500">{variancePct.toFixed(1)}% {varianceBad ? '· check!' : 'ok'}</p></div>
                         <div className="bg-gray-900/40 rounded-xl p-3"><p className="text-[10px] font-black text-gray-500 uppercase">Anomalies</p><p className={`text-xl font-black ${anomalies.length ? 'text-amber-300' : 'text-white'}`}>{anomalies.length}</p><p className="text-[11px] text-gray-500">flagged fills</p></div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="bg-gray-900/40 rounded-xl p-3"><p className="text-[10px] font-black text-gray-500 uppercase">Fuel spend (month)</p><p className="text-xl font-black text-white">{rand(recon.spend)}</p>{recon.prevSpend > 0 && <p className={`text-[11px] font-bold ${spendMoM > 0 ? 'text-red-300' : 'text-emerald-300'}`}>{spendMoM > 0 ? '▲' : '▼'} {Math.abs(spendMoM).toFixed(0)}% vs last month</p>}</div>
+                        <div className="bg-gray-900/40 rounded-xl p-3"><p className="text-[10px] font-black text-gray-500 uppercase">Last month spend</p><p className="text-xl font-black text-gray-300">{rand(recon.prevSpend)}</p></div>
+                        <div className="bg-gray-900/40 rounded-xl p-3"><p className="text-[10px] font-black text-gray-500 uppercase">Avg cost / litre</p><p className="text-xl font-black text-gray-300">{recon.dispensedFleet > 0 ? rand(recon.spend / recon.dispensedFleet) : '—'}</p></div>
                     </div>
                     {varianceBad && <p className="text-[11px] text-red-300">⚠ Diesel purchased and dispensed differ by more than 5% — possible unrecorded fills, capture errors, or shrinkage. (A positive variance = stock built up; negative = more dispensed than bought.)</p>}
                     {anomalies.length > 0 && (

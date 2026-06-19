@@ -34,6 +34,7 @@ import SupplierPortal from './components/SupplierPortal';
 
 import Sidebar from './components/shared/Sidebar';
 import Topbar from './components/shared/Topbar';
+import CollectFab from './components/shared/CollectFab';
 import LiveAssistant from './components/LiveAssistant';
 import Modal from './components/Modal';
 import Toast from './components/Toast';
@@ -364,6 +365,7 @@ const App: React.FC = () => {
                 </Modal>
             </Suspense>
             <Toast message={toastMessage} onDismiss={dismissToast} />
+            <CollectFab />
         </div>
     );
 };

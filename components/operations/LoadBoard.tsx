@@ -21,7 +21,6 @@ const LoadBoard: React.FC = () => {
     const { showModal, showToast } = useUIState();
     const [busy, setBusy] = useState<string | null>(null);
     const [branch, setBranch] = useState<string>('All');
-    const [scope, setScope] = useState<'all' | 'collection' | 'brokered'>('all');
     const [q, setQ] = useState('');
     const [refreshing, setRefreshing] = useState(false);
 
@@ -48,14 +47,15 @@ const LoadBoard: React.FC = () => {
         const needle = q.trim().toLowerCase();
         return (loadConfirmations || []).filter((lc: LoadConfirmation) => {
             if (lc.status === 'Invoiced' || lc.status === 'Cancelled') return false;
-            if (scope === 'collection' && !lc.isCollection) return false;
-            if (scope === 'brokered' && !lc.supplierId) return false;
+            // Own-fleet collection shipments live on the Shipments board; only show
+            // them here once brokered to a subcontractor (the national leg).
+            if (lc.isCollection && !lc.supplierId) return false;
             if (branch !== 'All' && lc.collectionBranch !== branch && lc.destinationBranch !== branch) return false;
             if (!needle) return true;
             const hay = `${lc.loadConNumber} ${clientMap.get(lc.clientId || '') || lc.clientName || ''} ${lc.route || ''} ${lc.collectionPoint || ''} ${lc.deliveryPoint || ''} ${lc.subcontractorName || ''}`.toLowerCase();
             return hay.includes(needle);
         });
-    }, [loadConfirmations, branch, scope, q, clientMap]);
+    }, [loadConfirmations, branch, q, clientMap]);
 
     const fmtR = (n: number) => 'R ' + Math.round(n).toLocaleString('en-ZA');
     const fmtEta = (s?: string) => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
@@ -87,11 +87,6 @@ const LoadBoard: React.FC = () => {
             <div className="flex items-center justify-between flex-wrap gap-2">
                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Load Board</h3>
                 <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-                        {([['all', 'All'], ['collection', 'Collections'], ['brokered', 'Brokered']] as [typeof scope, string][]).map(([v, l]) => (
-                            <button key={v} onClick={() => setScope(v)} className={`px-3 py-1.5 text-xs font-bold rounded-md ${scope === v ? 'bg-[#13294b] text-white' : 'text-slate-600 hover:bg-white'}`}>{l}</button>
-                        ))}
-                    </div>
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search loads…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-44" />
                     <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm">
                         {branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}

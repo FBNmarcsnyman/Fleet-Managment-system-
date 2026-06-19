@@ -55,10 +55,14 @@ const writeWithRecovery = async <T,>(
 // used both by the manual "Request" button and automatically on delivery.
 // Client-facing milestone copy for automatic phase updates.
 const CLIENT_PHASE_MSG: Record<string, string> = {
-    'Collected': 'has been collected and is being prepared for transit',
-    'In Transit': 'is now in transit',
-    'At Destination Depot': 'has arrived at our destination depot',
-    'Out for Delivery': 'is out for delivery',
+    'Driver Assigned': 'has been assigned a vehicle and driver',
+    'At Collection Point': 'has a vehicle that has arrived at the collection point',
+    'Collected': 'has been collected',
+    'At Collection Depot': 'has been logged in at our depot',
+    'In Transit': 'has been loaded for inter-branch transfer and is on its way',
+    'At Destination Depot': 'has been received at our destination depot',
+    'Unloaded': 'has been assigned to a local delivery vehicle',
+    'Out for Delivery': 'has been loaded and dispatched for delivery',
     'Delivered': 'has been delivered',
 };
 
@@ -143,8 +147,14 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
     const trackLink = `${base}?track=${lc.id}`;
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
-    const html = brandedEmail(`<p>Good day ${lc.clientContact || lc.clientName || ''},</p>
+    // Title-case the greeting name so the (uppercase-stored) name isn't shouty.
+    const greet = String(lc.clientContact || lc.clientName || '').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    const fmtDT = (s?: string) => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+    const eta = (status === 'Driver Assigned' || status === 'At Collection Point') ? lc.loadingEta : status === 'Out for Delivery' ? lc.deliveryEta : '';
+    const etaLine = eta ? `<p style="font-size:15px;color:#13294b">ETA: <strong>${fmtDT(eta)}</strong></p>` : '';
+    const html = brandedEmail(`<p>Good day ${greet},</p>
       <p>An update on your shipment <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}: it <strong>${msg}</strong>.</p>
+      ${etaLine}
       ${emailButton(trackLink, 'Track your shipment &rarr;')}
       <p>Regards,<br>FBN Transport</p>`);
     try {

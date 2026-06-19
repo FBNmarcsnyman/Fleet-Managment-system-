@@ -25,9 +25,10 @@ const LINEHAUL = new Set(['At Collection Depot', 'In Transit']);
 const LOCAL = new Set(['At Destination Depot', 'Unloaded', 'Out for Delivery']);
 
 const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
-    loadConfirmations = [], vehicles = [], users = [], clients = [],
+    loadConfirmations = [], vehicles = [], users = [], clients = [], manifests = [], tripSheets = [],
     onUpdateLoadConfirmation, onCreateManifest, onCreateTripSheet, onOpenModal
 }) => {
+    const vReg = (id?: string) => (vehicles as any[]).find(v => v.id === id)?.registration || '';
     const [activeBranch, setActiveBranch] = useState<Branch>('FBN JHB');
     const [busy, setBusy] = useState<string | null>(null);
     const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c.name])), [clients]);
@@ -80,6 +81,28 @@ const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
                 <PlanningColumn title="At Destination / Delivery" jobs={branchData.local} clientMap={clientMap} busy={busy} onAdvance={advance} onOpenDetail={lc => onOpenModal('loadDetail', { loadCon: lc })}
                     actionButton={branchData.local.length > 0 && <button onClick={openCreateTripSheet} className="bg-blue-600 hover:bg-blue-500 text-white font-black py-1.5 px-3 rounded-lg text-[10px] uppercase tracking-wider">+ Trip sheet</button>} />
             </div>
+
+            {/* Created line-haul manifests — print / email / receive */}
+            {manifests.length > 0 && (
+                <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700/50">
+                    <h3 className="text-sm font-black text-gray-300 uppercase tracking-widest mb-3">Line-haul Manifests</h3>
+                    <div className="space-y-2">
+                        {[...manifests].sort((a, b) => String(b.dispatchDate || '').localeCompare(String(a.dispatchDate || ''))).slice(0, 12).map(m => (
+                            <div key={m.id} className="flex items-center justify-between gap-2 bg-gray-900/50 rounded-lg px-3 py-2">
+                                <div className="min-w-0">
+                                    <span className="font-mono text-[11px] text-blue-400">{m.manifestNumber}</span>
+                                    <span className="text-sm font-bold text-white ml-2">{m.originBranch} → {m.destinationBranch}</span>
+                                    <span className="text-[11px] text-gray-500 ml-2">{vReg(m.vehicleId)} · {(m.loadConfirmationIds || []).length} loads · {m.dispatchDate}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${m.status === 'Arrived' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'}`}>{m.status}</span>
+                                    <button onClick={() => onOpenModal('manifestDoc', { manifest: m })} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-1.5 px-3 rounded-lg text-[10px] uppercase tracking-wider">Open / Print</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -18,10 +18,10 @@ const DailyPlanningView = lazy(() => import('./DailyPlanningView'));
 const OperationsPortal: React.FC = () => {
     const { currentView, operationsSubView, handleOperationsSubViewChange, showModal, showToast } = useUIState();
     const {
-        loadConfirmations, clients, suppliers, users,
+        loadConfirmations, clients, suppliers, users, manifests, tripSheets,
         handleUpdateLoadConfirmation, handleCreateLoadConfirmation: createLoadCon,
         handleCreateManifest, handleCreateTripSheet,
-    } = useOperations();
+    } = useOperations() as any;
     const { vehicles = [] } = (useVehicles() as any) || {};
 
     // Two business areas share this portal: Broking (brokered freight) and
@@ -74,7 +74,7 @@ const OperationsPortal: React.FC = () => {
             case 'shipments': return <Suspense fallback={<div>Loading…</div>}><ShipmentsBoard /></Suspense>;
             case 'containers': return <Suspense fallback={<div>Loading…</div>}><ContainersView /></Suspense>;
             case 'imports': return <Suspense fallback={<div>Loading…</div>}><ImportsBoard /></Suspense>;
-            case 'planning': return <Suspense fallback={<div>Loading…</div>}><DailyPlanningView loadConfirmations={loadConfirmations} vehicles={vehicles} users={users || []} clients={clients} manifests={[]} tripSheets={[]} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} onCreateManifest={handleCreateManifest} onCreateTripSheet={handleCreateTripSheet} onOpenModal={showModal} /></Suspense>;
+            case 'planning': return <Suspense fallback={<div>Loading…</div>}><DailyPlanningView loadConfirmations={loadConfirmations} vehicles={vehicles} users={users || []} clients={clients} manifests={manifests || []} tripSheets={tripSheets || []} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} onCreateManifest={handleCreateManifest} onCreateTripSheet={handleCreateTripSheet} onOpenModal={showModal} /></Suspense>;
             case 'driverChats': return <Suspense fallback={<div>Loading…</div>}><WhatsAppChatsView /></Suspense>;
             case 'emailLog': return <Suspense fallback={<div>Loading…</div>}><EmailLogView /></Suspense>;
             case 'docSettings': return <DocumentSettingsView />;

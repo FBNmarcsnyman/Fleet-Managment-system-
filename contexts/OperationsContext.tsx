@@ -1016,11 +1016,34 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const today = new Date().toISOString().slice(0, 10);
                 const number = `TRP-${today.replace(/-/g, '')}-${String(Date.now()).slice(-4)}`;
                 const trpDriver = payload.driverId && String(payload.driverId).includes('@') ? ((users || []).find((u: any) => u.email === payload.driverId)?.id || null) : (payload.driverId || null);
-                const row: any = { organization_id: FBN_ORGANIZATION_ID, trip_sheet_number: number, branch_id: branchIdByName.get(payload.branch) || null, dispatch_date: today, vehicle_id: payload.vehicleId || null, driver_id: trpDriver, load_confirmation_ids: payload.loadConIds || [], status: 'Dispatched' };
+                const row: any = { organization_id: FBN_ORGANIZATION_ID, trip_sheet_number: number, branch_id: branchIdByName.get(payload.branch) || null, dispatch_date: today, vehicle_id: payload.vehicleId || null, driver_id: trpDriver, load_confirmation_ids: payload.loadConIds || [], status: 'Out for Delivery' };
                 const { data, error } = await directInsert('trip_sheets', row);
                 if (error || !data) return { ok: false, error: error?.message || 'Could not save trip sheet.' };
                 dispatch({ type: 'CREATE_TRIP_SHEET', payload: mapTripSheet(data, { branchById }) });
                 return { ok: true, value: mapTripSheet(data, { branchById }) };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+        // Receive a line-haul manifest at the destination depot: mark it Arrived
+        // and advance every load on it to "At Destination Depot" (notifies client
+        // + subbie), ready for the delivery run.
+        handleReceiveManifest: async (manifestId: string) => {
+            try {
+                const man = (stateRef.current.manifests || []).find((m: any) => m.id === manifestId);
+                const today = new Date().toISOString().slice(0, 10);
+                await directUpdate('manifests', { id: manifestId }, { status: 'Arrived', arrival_date: today } as any);
+                const done = ['At Destination Depot', 'Unloaded', 'Out for Delivery', 'Delivered', 'POD Submitted', 'Invoiced'];
+                for (const id of (man?.loadConfirmationIds || [])) {
+                    const lc = (stateRef.current.loadConfirmations || []).find((l: any) => l.id === id);
+                    if (!lc || done.includes(lc.status)) continue;
+                    await directUpdate('load_confirmations', { id }, { status: 'At Destination Depot' } as any);
+                    dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id, updates: { status: 'At Destination Depot' } } });
+                    const merged = { ...lc, status: 'At Destination Depot' };
+                    sendClientPhaseEmail(merged, 'At Destination Depot');
+                    sendSupplierPhaseEmail(merged, 'At Destination Depot');
+                }
+                const { data } = await directSelect('manifests?select=*');
+                if (Array.isArray(data)) dispatch({ type: 'SET_MANIFESTS', payload: data.map((r: any) => mapManifest(r, { branchById })) });
+                return { ok: true };
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
         // Supplier applications still local-only (low priority).

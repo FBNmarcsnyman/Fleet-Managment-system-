@@ -1,14 +1,34 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Client, Supplier } from '../../types';
-import { useOperations } from '../../contexts/AppContexts';
+import { useOperations, useUIState } from '../../contexts/AppContexts';
 
 const money = (n: number) => 'R ' + Math.round(n).toLocaleString('en-ZA');
 const pct = (n: number) => `${n.toFixed(0)}%`;
+const DAY = 86400000;
+const CLOSED = ['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'];
+const PRE_COLLECT = ['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'];
+const daysSince = (d?: string) => { if (!d) return 0; const t = new Date(d).getTime(); return isNaN(t) ? 0 : Math.max(0, Math.floor((Date.now() - t) / DAY)); };
 
 // Margin dashboard + carrier scorecard, computed from load data (no schema needs).
 const BrokingAnalytics: React.FC = () => {
     const { loadConfirmations = [], clients = [], suppliers = [] } = useOperations();
+    const { showModal } = useUIState();
     const [period, setPeriod] = useState<'all' | '30' | '90'>('all');
+
+    // ---- Needs attention: live exceptions on brokered loads ----
+    const exceptions = useMemo(() => {
+        const broked = (loadConfirmations as LoadConfirmation[]).filter(lc => !lc.isCollection && lc.status !== 'Cancelled');
+        const tag = (lc: LoadConfirmation, reason: string, days: number) => ({ lc, reason, days });
+        const noResponse = broked.filter(lc => lc.sentToSupplierDate && !lc.acceptedAt && PRE_COLLECT.includes(lc.status))
+            .map(lc => tag(lc, 'Awaiting transporter response', daysSince(lc.sentToSupplierDate)));
+        const stale = broked.filter(lc => !CLOSED.includes(lc.status) && (lc as any).updatedAt && daysSince((lc as any).updatedAt) >= 2)
+            .map(lc => tag(lc, 'Not updated', daysSince((lc as any).updatedAt)));
+        const noPod = broked.filter(lc => lc.status === 'Delivered' && !lc.podPhoto)
+            .map(lc => tag(lc, 'POD not uploaded', daysSince(lc.deliveryDate || (lc as any).updatedAt)));
+        const overdueColl = broked.filter(lc => PRE_COLLECT.includes(lc.status) && lc.collectionDate && new Date(lc.collectionDate) < new Date(new Date().setHours(0, 0, 0, 0)))
+            .map(lc => tag(lc, 'Overdue collection', daysSince(lc.collectionDate)));
+        return { noResponse, stale, noPod, overdueColl };
+    }, [loadConfirmations]);
 
     const clientMap = useMemo(() => new Map<string, string>((clients as Client[]).map(c => [c.id, c.name])), [clients]);
     const supplierMap = useMemo(() => new Map<string, string>((suppliers as Supplier[]).map(s => [s.id, s.name])), [suppliers]);
@@ -83,8 +103,46 @@ const BrokingAnalytics: React.FC = () => {
         </div>
     );
 
+    const clientName = (lc: LoadConfirmation) => (lc.clientId && clientMap.get(lc.clientId)) || lc.clientName || 'Client';
+    const ExcCard: React.FC<{ label: string; items: { lc: LoadConfirmation; days: number }[]; tone: string }> = ({ label, items, tone }) => {
+        const worst = items.reduce((m, x) => Math.max(m, x.days), 0);
+        return (
+            <div className={`rounded-xl p-4 border shadow-sm ${items.length ? tone : 'bg-white border-slate-200'}`}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+                <p className={`text-3xl font-black ${items.length ? 'text-slate-900' : 'text-slate-300'}`}>{items.length}</p>
+                {items.length > 0 && <p className="text-[11px] font-bold text-red-600 mt-0.5">up to {worst} day{worst !== 1 ? 's' : ''} overdue</p>}
+            </div>
+        );
+    };
+    const flagged = [...exceptions.noResponse, ...exceptions.overdueColl, ...exceptions.noPod, ...exceptions.stale].sort((a, b) => b.days - a.days);
+
     return (
         <div className="space-y-5">
+            {/* Needs attention — live exceptions */}
+            <div>
+                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter mb-3">Needs Attention</h3>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <ExcCard label="Awaiting transporter response" items={exceptions.noResponse} tone="bg-amber-50 border-amber-200" />
+                    <ExcCard label="Overdue collections" items={exceptions.overdueColl} tone="bg-orange-50 border-orange-200" />
+                    <ExcCard label="POD not uploaded" items={exceptions.noPod} tone="bg-blue-50 border-blue-200" />
+                    <ExcCard label="Not updated (2 days+)" items={exceptions.stale} tone="bg-red-50 border-red-200" />
+                </div>
+                {flagged.length > 0 && (
+                    <div className="mt-3 bg-white rounded-xl border border-slate-200 shadow-sm divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                        {flagged.slice(0, 25).map(({ lc, reason, days }) => (
+                            <button key={`${lc.id}-${reason}`} onClick={() => showModal('loadDetail', { loadCon: lc })} className="w-full text-left flex items-center justify-between gap-3 px-3 py-2 hover:bg-slate-50">
+                                <div className="min-w-0">
+                                    <span className="font-mono text-[11px] text-blue-600">{lc.loadConNumber}</span>
+                                    <span className="text-sm font-semibold text-slate-800 ml-2">{clientName(lc)}</span>
+                                    <span className="text-[11px] text-slate-500 ml-2">{reason}</span>
+                                </div>
+                                <span className={`shrink-0 text-[10px] font-black px-2 py-0.5 rounded uppercase ${days >= 3 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{days}d</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter">Broking Performance</h3>
                 <select value={period} onChange={e => setPeriod(e.target.value as any)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm">

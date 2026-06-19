@@ -37,6 +37,7 @@ const TankGauge: React.FC<{ bowser: Bowser; refills: BowserRefill[]; dispensedTo
                 <p className="text-3xl font-black text-white leading-tight">{L(level)}</p>
                 <p className="text-xs text-gray-400 mb-3">of {L(cap)} capacity</p>
                 <div className="space-y-1 text-[11px]">
+                    <div className="flex justify-between"><span className="text-gray-400">Last filled</span><span className="text-white font-bold">{lastFill ? `${new Date(lastFill.date).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}${lastFill.liters ? ` · ${L(lastFill.liters)}` : ''}` : '—'}</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">Avg cost/L in tank</span><span className="text-white font-bold">{rand(blended)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">Last fill price</span><span className="text-emerald-300 font-bold">{lastFill ? rand(lastFill.finalCostPerLiter) : '—'}</span></div>
                     {prevFill && <div className="flex justify-between"><span className="text-gray-500">Previous fill price</span><span className="text-gray-400">{rand(prevFill.finalCostPerLiter)}</span></div>}

@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-06-19 — Doc scan, management snapshot, flat Broking/Operations tabs (DONE)
+- **Broking + Operations are flat sidebar tabs** (dropped the dropdowns); both
+  open the Operations portal, which shows the matching area's tab strip + its own
+  dashboard keyed off `currentView`. They appear in Workspace Personalization.
+- **Management dashboard snapshot** (`BrokingShipmentsSnapshotWidget`): per side of
+  the business — not collected, not delivered, not updated since yesterday,
+  awaiting POD. Added `updatedAt` (load_confirmations.updated_at). Layout → v5.
+- **Document scan** (reuses the app's Gemini pattern, `lib/docScan.ts` +
+  `DocScanButton`): Log Container has "📄 Scan arrival doc" (fills container #/seal/
+  size/weight/vessel/line/ETA/client/ref); Bulk/Depot has "📄 Scan manifest"
+  (extracts the whole consignment table into rows). Upload image/PDF, review, save.
+
 ## 2026-06-19 — Broking / Operations split into grouped nav (DONE)
 - Sidebar now has **collapsible groups**: **Broking** (Dashboard / Load Board /
   LoadCons / Emails / Driver Chats / Doc Settings) and **Operations** (Dashboard /

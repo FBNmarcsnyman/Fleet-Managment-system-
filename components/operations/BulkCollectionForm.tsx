@@ -4,6 +4,8 @@ import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import { invokeFn, directInvoke } from '../../lib/supabase';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { usePickOptions } from '../../hooks/usePickOptions';
+import DocScanButton from '../shared/DocScanButton';
+import { BULK_DOC_PROMPT, BULK_DOC_SCHEMA } from '../../lib/docScan';
 
 // Import/export unpack depots we collect groupage from.
 const DEPOTS = ['ZACPAK', 'CHC', 'ICS', 'IWS', 'SACD'];
@@ -31,6 +33,30 @@ const BulkCollectionForm: React.FC = () => {
     const [busy, setBusy] = useState(false);
 
     const clientNames = useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
+
+    // AI-extracted manifest → replace the rows so the user can review/edit/delete
+    // before logging. Area defaults to the collecting branch (the doc rarely
+    // states it); the user picks per row if needed.
+    const applyScan = (d: any) => {
+        const list = Array.isArray(d?.consignments) ? d.consignments : [];
+        if (d?.depot && String(d.depot).trim()) setDepot(String(d.depot).trim().toUpperCase());
+        const mapped: Row[] = list.map((c: any) => ({
+            ...blankRow(),
+            area: collBranch,
+            client: (c.client || '').toString().trim(),
+            waybill: (c.waybill || '').toString().trim(),
+            ref: (c.ref || '').toString().trim(),
+            door: (c.door || '').toString().trim(),
+            packages: (c.packages || '').toString().replace(/[^\d]/g, ''),
+            weight: (c.weight || '').toString().replace(/[^\d.]/g, ''),
+            cube: (c.cube || '').toString().replace(/[^\d.]/g, ''),
+            commodity: (c.commodity || '').toString().trim(),
+        }));
+        if (!mapped.length) { showToast('No consignments found in that document.'); return; }
+        setRows(mapped);
+        showToast(`Read ${mapped.length} consignment${mapped.length !== 1 ? 's' : ''} — please check before logging.`);
+    };
+
     const setRow = (i: number, k: keyof Row, v: string) => setRows(p => p.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
     const addRow = () => setRows(p => [...p, blankRow()]);
     const removeRow = (i: number) => setRows(p => p.filter((_, idx) => idx !== i));
@@ -84,8 +110,14 @@ const BulkCollectionForm: React.FC = () => {
 
     return (
         <div>
-            <h2 className="text-xl font-black text-white mb-1">Depot / Bulk Collection</h2>
-            <p className="text-xs text-gray-400 mb-4">One pickup at an unpack depot → many consignments, each delivered to its own door.</p>
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+                <div>
+                    <h2 className="text-xl font-black text-white mb-1">Depot / Bulk Collection</h2>
+                    <p className="text-xs text-gray-400">One pickup at an unpack depot → many consignments, each delivered to its own door.</p>
+                </div>
+                <DocScanButton prompt={BULK_DOC_PROMPT} schema={BULK_DOC_SCHEMA} onResult={applyScan}
+                    label="📄 Scan manifest" />
+            </div>
             <div className="grid grid-cols-3 gap-3 mb-4">
                 <div><label className={lbl}>Unpack depot</label><input list="depots" value={depot} onChange={e => setDepot(e.target.value.toUpperCase())} className={inp} /><datalist id="depots">{DEPOTS.map(d => <option key={d} value={d} />)}</datalist></div>
                 <div><label className={lbl}>Collecting branch</label><select value={collBranch} onChange={e => setCollBranch(e.target.value as Branch)} className={inp}>{AREAS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}</select></div>

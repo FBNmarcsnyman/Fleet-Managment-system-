@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useUIState, useOperations } from '../../contexts/AppContexts';
 import { directInsert, directUpdate } from '../../lib/supabase';
 import { usePickOptions } from '../../hooks/usePickOptions';
+import DocScanButton from '../shared/DocScanButton';
+import { CONTAINER_DOC_PROMPT, CONTAINER_DOC_SCHEMA } from '../../lib/docScan';
 
 const SIZES = ['20FT', '40FT', '45FT', 'REEFER 20FT', 'REEFER 40FT', 'FLAT RACK', 'OPEN TOP'];
 const BRANCHES = ['FBN DBN', 'FBN JHB', 'FBN CPT'];
@@ -20,6 +22,21 @@ const LogContainerModal: React.FC = () => {
     const [f, setF] = useState<any>(editing ? { ...editing } : { status: 'At Sea', plan: 'unpack', branch: 'FBN DBN', size: '40FT' });
     const [busy, setBusy] = useState(false);
     const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
+
+    // Merge AI-extracted fields onto the form (only non-empty values), so the
+    // user can review/correct before saving.
+    const applyScan = (d: any) => {
+        if (!d) return;
+        setF((p: any) => {
+            const next = { ...p };
+            ['container_no', 'seal_no', 'size', 'weight', 'commodity', 'client_name', 'client_ref', 'vessel_name', 'shipping_line', 'eta_port'].forEach(k => {
+                const v = d[k];
+                if (v !== undefined && v !== null && String(v).trim() !== '') next[k] = String(v).trim();
+            });
+            return next;
+        });
+        showToast('Document read — please check the details below.');
+    };
 
     const save = async () => {
         if (!f.container_no) { showToast('Add the container number.'); return; }
@@ -46,7 +63,11 @@ const LogContainerModal: React.FC = () => {
 
     return (
         <div>
-            <h2 className="text-xl font-black text-white mb-4">{editing ? 'Edit' : 'Log'} Container</h2>
+            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                <h2 className="text-xl font-black text-white">{editing ? 'Edit' : 'Log'} Container</h2>
+                <DocScanButton prompt={CONTAINER_DOC_PROMPT} schema={CONTAINER_DOC_SCHEMA} onResult={applyScan}
+                    label="📄 Scan arrival doc" />
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div><label className={lbl}>Container #</label><input value={f.container_no || ''} onChange={e => set('container_no', e.target.value)} className={inp} placeholder="ABCU1234567" /></div>
                 <div><label className={lbl}>Seal #</label><input value={f.seal_no || ''} onChange={e => set('seal_no', e.target.value)} className={inp} /></div>

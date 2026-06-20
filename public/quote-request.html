@@ -150,7 +150,7 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);mi
           </div>
           <div class="field">
             <label>Preferred Loading Date</label>
-            <input type="date" id="rq-date">
+            <input type="text" id="rq-date" placeholder="dd/mm/yyyy" maxlength="10" inputmode="numeric" oninput="maskDate(this)">
           </div>
         </div>
         <div class="cb-row">
@@ -192,6 +192,19 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);mi
 <script>
 const INTAKE_URL = 'https://kyosepbdxjwugunylvyo.supabase.co/functions/v1/quote-intake';
 let selectedSvc = '';
+
+// Auto-format the date field as dd/mm/yyyy while typing, and convert to ISO
+// (yyyy-mm-dd) for the backend.
+function maskDate(el) {
+  var v = el.value.replace(/\D/g, '').slice(0, 8);
+  if (v.length > 4) el.value = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+  else if (v.length > 2) el.value = v.slice(0, 2) + '/' + v.slice(2);
+  else el.value = v;
+}
+function dateToIso(s) {
+  var m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+}
 
 function selSvc(el) {
   document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('sel'));
@@ -243,7 +256,7 @@ async function submitQuote() {
     load_type: document.getElementById('rq-loadtype').value,
     total_weight: document.getElementById('rq-weight').value.trim(),
     hazardous: document.getElementById('rq-hazardous').checked,
-    loading_date: document.getElementById('rq-date').value,
+    loading_date: dateToIso(document.getElementById('rq-date').value),
     cross_border: document.getElementById('rq-xborder').checked,
     notes: document.getElementById('rq-notes').value.trim()
   };

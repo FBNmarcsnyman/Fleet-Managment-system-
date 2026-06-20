@@ -164,6 +164,11 @@ const ShipmentsBoard: React.FC = () => {
                                 </div>
                                 <p className="font-bold text-slate-900 text-sm leading-tight">{clientName(lc)}</p>
                                 <p className="text-[10px] text-slate-500 mb-1 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                                {lc.collectionDate && (
+                                    <div className="inline-flex items-center gap-1 bg-amber-100 border border-amber-300 text-amber-800 text-[11px] font-black px-2 py-0.5 rounded-md mb-1">
+                                        📅 Collect {new Date(lc.collectionDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' })}{lc.loadingTime ? ` · ${lc.loadingTime}` : ''}
+                                    </div>
+                                )}
                                 {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-600 mb-1 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
                                 <LoadProgress lc={lc} />
                                 <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mb-2">

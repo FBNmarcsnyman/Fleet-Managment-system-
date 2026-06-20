@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Additional Information — FBN Transport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#13294b;--yellow:#f5b700;--green:#16a34a;--green2:#15803d;--white:#fff;--bg:#f8fafc;--border:#e2e8f0;--text:#1e293b;--text2:#6b7280;--text3:#9ca3af;--red:#dc2626}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:680px;margin:0 auto;padding:0 16px 40px}
+.hdr{background:var(--navy);padding:22px 30px;border-radius:12px 12px 0 0;margin-top:20px}
+.hdr img{height:42px;background:#fff;border-radius:4px;padding:3px}
+.hdr-label{color:var(--yellow);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-top:8px}
+.yellow-bar{height:4px;background:var(--yellow)}
+.body{background:var(--white);padding:30px 28px 36px;border-radius:0 0 12px 12px;box-shadow:0 4px 20px rgba(0,0,0,0.06)}
+.body h2{font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--navy);margin-bottom:4px}
+.body .sub{color:var(--text2);font-size:14px;margin-bottom:24px;line-height:1.5}
+.summary-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:24px;font-size:13px;line-height:1.7;color:var(--text2)}
+.summary-box strong{color:var(--text)}
+.section{margin-bottom:24px}
+.section-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--navy);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--navy);display:flex;align-items:center;gap:8px}
+.grid{display:grid;gap:14px}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+@media(max-width:520px){.grid-2,.grid-4{grid-template-columns:1fr 1fr}}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2)}
+.field input,.field textarea{
+  background:var(--white);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;
+  transition:border-color .2s;width:100%
+}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(19,41,75,0.1)}
+.field textarea{height:80px;resize:vertical}
+.dim-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
+@media(max-width:520px){.dim-row{grid-template-columns:1fr 1fr 1fr 1fr auto}}
+.dim-row input{padding:8px 10px;font-size:13px}
+.add-row-btn{background:none;border:1px dashed var(--border);border-radius:6px;padding:8px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .2s;font-family:'Barlow',sans-serif}
+.add-row-btn:hover{border-color:var(--navy);color:var(--navy)}
+.remove-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;padding:8px;line-height:1}
+.equip-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:520px){.equip-grid{grid-template-columns:1fr}}
+.equip-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .2s;user-select:none}
+.equip-item:hover{border-color:#cbd5e1}
+.equip-item.checked{border-color:var(--navy);background:#eef2ff}
+.equip-item input{width:16px;height:16px;accent-color:var(--navy)}
+.equip-item label{font-size:13px;cursor:pointer;flex:1}
+.submit-btn{
+  width:100%;padding:14px;border:none;border-radius:8px;
+  background:var(--green);color:var(--white);
+  font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;
+  letter-spacing:0.5px;text-transform:uppercase;cursor:pointer;
+  transition:background .2s;margin-top:8px
+}
+.submit-btn:hover{background:var(--green2)}
+.submit-btn:disabled{opacity:0.5;cursor:not-allowed}
+.error-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;display:none}
+.success{display:none;text-align:center;padding:40px 20px}
+.success-icon{font-size:56px;margin-bottom:16px}
+.success h3{font-family:'Barlow Condensed',sans-serif;font-size:26px;color:var(--navy);margin-bottom:8px}
+.success p{color:var(--text2);font-size:14px;line-height:1.6;max-width:420px;margin:0 auto}
+.footer{text-align:center;padding:20px 0;font-size:11px;color:var(--text3)}
+.footer strong{color:var(--text2)}
+.loading{text-align:center;padding:40px;color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <img src="https://fleet-managment-system.marcsnyman.workers.dev/fbn-logo.jpg" alt="FBN Transport" onerror="this.style.display='none'">
+    <div class="hdr-label">Additional Information Required</div>
+  </div>
+  <div class="yellow-bar"></div>
+  <div class="body">
+    <div id="loading-view" class="loading">Loading your quote details...</div>
+
+    <div id="form-view" style="display:none">
+      <h2>We Need a Bit More Detail</h2>
+      <p class="sub">To give you the most accurate quote, please provide the additional cargo information below.</p>
+
+      <div class="summary-box" id="quote-summary"></div>
+
+      <div class="error-msg" id="error-msg"></div>
+
+      <div class="section">
+        <div class="section-title">📦 Commodity Details</div>
+        <div class="field">
+          <label>Detailed Commodity Description</label>
+          <textarea id="mi-commodity" placeholder="e.g. 10x pallets of cleaning chemicals in 25L drums, shrink-wrapped, non-hazardous, total weight approx 8 tonnes"></textarea>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📐 Dimensions Per Unit</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Enter the dimensions for each type of package/pallet. Add more rows if you have mixed sizes.</p>
+        <div id="dim-rows">
+          <div class="dim-row" data-row="0">
+            <div class="field"><label>Length (cm)</label><input type="number" class="dim-l" placeholder="120"></div>
+            <div class="field"><label>Width (cm)</label><input type="number" class="dim-w" placeholder="100"></div>
+            <div class="field"><label>Height (cm)</label><input type="number" class="dim-h" placeholder="150"></div>
+            <div class="field"><label>Qty</label><input type="number" class="dim-q" placeholder="10" value="1"></div>
+            <button class="remove-btn" onclick="removeRow(this)" title="Remove" style="visibility:hidden">&times;</button>
+          </div>
+        </div>
+        <button class="add-row-btn" onclick="addDimRow()">+ Add another size</button>
+        <div class="field" style="margin-top:14px">
+          <label>Total Cube (m³) — if known</label>
+          <input type="text" id="mi-cube" placeholder="e.g. 12.5">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">🔧 Equipment Requirements</div>
+        <div class="equip-grid" id="equip-grid">
+          <label class="equip-item" onclick="toggleEquip(this)"><input type="checkbox" value="crane_truck"><span>🏗️ Crane truck</span></label>
+          <label class="equip-item" onclick="toggleEquip(this)"><input type="checkbox" value="forklift"><span>🏭 Forklift</span></label>
+          <label class="equip-item" onclick="toggleEquip(this)"><input type="checkbox" value="driver_hire"><span>👷 Driver hire</span></label>
+          <label class="equip-item" onclick="toggleEquip(this)"><input type="checkbox" value="taillift_collection"><span>⬆️ Tail-lift (collection)</span></label>
+          <label class="equip-item" onclick="toggleEquip(this)"><input type="checkbox" value="taillift_delivery"><span>⬇️ Tail-lift (delivery)</span></label>
+          <label class="equip-item" onclick="toggleEquip(this)"><input type="checkbox" value="labour"><span>💪 Labour (loading/offloading)</span></label>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📝 Special Instructions</div>
+        <div class="field">
+          <textarea id="mi-special" placeholder="e.g. Temperature controlled, requires tautliner, offloading at multiple drops, time-sensitive delivery..."></textarea>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitInfo()">Submit Information →</button>
+    </div>
+
+    <div class="success" id="success-screen">
+      <div class="success-icon">✅</div>
+      <h3>Information Received!</h3>
+      <p>Thank you for the additional details. Our team now has everything needed to finalise your quote. We'll be in touch shortly.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong>FBN Transport (Pty) Ltd</strong><br>
+    31 Claude Neon Road, Maydon Wharf, Durban 4057<br>
+    Tel: 031 205 1705 | quotes@fbn-transport.co.za
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://kyosepbdxjwugunylvyo.supabase.co/functions/v1/quote-more-info';
+const params = new URLSearchParams(window.location.search);
+const QUOTE_ID = params.get('id');
+let dimCounter = 1;
+
+async function init() {
+  if (!QUOTE_ID) {
+    document.getElementById('loading-view').innerHTML = '<p style="color:#dc2626">Invalid link — no quote ID provided.</p>';
+    return;
+  }
+  try {
+    const r = await fetch(`${SB_URL}?id=${QUOTE_ID}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    const rd = data.request_data || {};
+    let html = `<strong>${data.quote_number}</strong>`;
+    if (data.company) html += ` · ${data.company}`;
+    if (rd.collect_from || rd.collection_area) html += `<br>Collect: ${[rd.collect_from, rd.collection_area].filter(Boolean).join(' — ')}`;
+    if (rd.deliver_to || rd.delivery_area) html += `<br>Deliver: ${[rd.deliver_to, rd.delivery_area].filter(Boolean).join(' — ')}`;
+    if (data.commodity) html += `<br>Commodity: ${data.commodity}`;
+    if (data.packaging) html += `<br>Packages: ${data.packaging}`;
+
+    document.getElementById('quote-summary').innerHTML = html;
+    document.getElementById('loading-view').style.display = 'none';
+    document.getElementById('form-view').style.display = 'block';
+  } catch (e) {
+    document.getElementById('loading-view').innerHTML = `<p style="color:#dc2626">Could not load quote details. Please contact us on 031 205 1705.</p>`;
+  }
+}
+
+function addDimRow() {
+  const container = document.getElementById('dim-rows');
+  const row = document.createElement('div');
+  row.className = 'dim-row';
+  row.dataset.row = dimCounter++;
+  row.innerHTML = `
+    <div class="field"><label>Length (cm)</label><input type="number" class="dim-l" placeholder="120"></div>
+    <div class="field"><label>Width (cm)</label><input type="number" class="dim-w" placeholder="100"></div>
+    <div class="field"><label>Height (cm)</label><input type="number" class="dim-h" placeholder="150"></div>
+    <div class="field"><label>Qty</label><input type="number" class="dim-q" placeholder="1" value="1"></div>
+    <button class="remove-btn" onclick="removeRow(this)" title="Remove">&times;</button>`;
+  container.appendChild(row);
+}
+
+function removeRow(btn) {
+  btn.closest('.dim-row').remove();
+}
+
+function toggleEquip(label) {
+  setTimeout(() => {
+    label.classList.toggle('checked', label.querySelector('input').checked);
+  }, 0);
+}
+
+function getDimensions() {
+  const rows = document.querySelectorAll('.dim-row');
+  const dims = [];
+  rows.forEach(row => {
+    const l = row.querySelector('.dim-l')?.value;
+    const w = row.querySelector('.dim-w')?.value;
+    const h = row.querySelector('.dim-h')?.value;
+    const q = row.querySelector('.dim-q')?.value;
+    if (l || w || h) dims.push({ length_cm: +l || 0, width_cm: +w || 0, height_cm: +h || 0, qty: +q || 1 });
+  });
+  return dims;
+}
+
+function getEquipment() {
+  const eq = {};
+  document.querySelectorAll('#equip-grid input[type=checkbox]').forEach(cb => {
+    eq[cb.value] = cb.checked;
+  });
+  return eq;
+}
+
+async function submitInfo() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  document.getElementById('error-msg').style.display = 'none';
+
+  try {
+    const resp = await fetch(SB_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        quote_id: QUOTE_ID,
+        commodity_details: document.getElementById('mi-commodity').value.trim(),
+        dimensions: getDimensions(),
+        total_cube: document.getElementById('mi-cube').value.trim(),
+        special_instructions: document.getElementById('mi-special').value.trim(),
+        equipment: getEquipment()
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('form-view').style.display = 'none';
+    document.getElementById('success-screen').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) {
+    const el = document.getElementById('error-msg');
+    el.textContent = 'Something went wrong. Please try again or call us on 031 205 1705.';
+    el.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Submit Information →';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

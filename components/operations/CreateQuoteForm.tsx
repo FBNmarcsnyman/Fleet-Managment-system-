@@ -14,11 +14,13 @@ interface CreateQuoteFormProps {
     suppliers: Supplier[];
     onSubmit: (quote: Omit<Quote, 'id' | 'quoteNumber' | 'status'> | Quote) => void;
     quoteData?: Quote;
+    // Pre-fill a brand-new quote from an inbound quote request ("Quote It").
+    prefill?: any;
 }
 
 const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
-const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTypes?: string[]) => {
+const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTypes?: string[], prefill?: any) => {
     if (quoteData) {
         return {
             ...quoteData,
@@ -26,29 +28,33 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
             expiryDate: format(new Date(quoteData.expiryDate), 'yyyy-MM-dd'),
         };
     }
+    const rd = prefill?.requestData || {};
+    const commodity = prefill?.commodity || rd.commodity || commodities?.[0] || 'General Cargo';
+    const packaging = prefill?.packaging || packagingTypes?.[0] || 'Pallets';
     return {
-        clientId: '',
+        clientId: prefill?.clientId || '',
         date: format(new Date(), 'yyyy-MM-dd'),
         expiryDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
-        items: [{ id: generateId(), description: '', packagingType: (packagingTypes?.[0] || 'Pallets'), quantity: 1, rate: 0, total: 0 }],
-        legs: [{ id: generateId(), collectionPoint: '', deliveryPoint: '', movementType: 'Internal' }],
+        items: [{ id: generateId(), description: commodity, packagingType: packaging, quantity: 1, rate: 0, total: 0 }],
+        legs: [{ id: generateId(), collectionPoint: rd.collect_from || '', deliveryPoint: rd.deliver_to || '', movementType: 'Internal' }],
         totalAmount: 0,
         sentToClient: false,
-        commodity: commodities?.[0] || 'General Cargo',
-        packaging: packagingTypes?.[0] || 'Pallets',
-        loadSpec: LOAD_SPECS[0] as any,
+        commodity,
+        packaging,
+        loadSpec: (prefill?.loadSpec || LOAD_SPECS[0]) as any,
         subcontractorQuotes: [] as SubcontractorQuote[],
+        notes: prefill?.notes || undefined,
     };
 };
 
-const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, onSubmit, quoteData }) => {
+const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, onSubmit, quoteData, prefill }) => {
     const { hideModal } = useUIState();
     const { commodities, packagingTypes, handleAddCommodity, handleAddPackagingType } = useFleetData();
     // Form state is the union of "new quote literal" and "loaded existing Quote".
     // Typed as `any` here because CreateQuoteForm uses many internal `as any`
     // casts and a fully typed shape requires a rewrite that's out of scope for
     // the typing-cleanup push.
-    const [quote, setQuote] = useState<any>(() => getInitialState(quoteData, commodities, packagingTypes));
+    const [quote, setQuote] = useState<any>(() => getInitialState(quoteData, commodities, packagingTypes, prefill));
     
     const [showNewCommodityInput, setShowNewCommodityInput] = useState(false);
     const [newCommodity, setNewCommodity] = useState('');

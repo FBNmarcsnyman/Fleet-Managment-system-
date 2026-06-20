@@ -529,6 +529,8 @@ export const mapQuote = (row: Tables['quotes']['Row']): Quote => ({
     commodity: row.commodity ?? undefined,
     packaging: row.packaging ?? undefined,
     loadSpec: row.load_spec ?? undefined,
+    requestData: (row as any).request_data ?? undefined,
+    requestMoreInfo: (row as any).request_more_info ?? undefined,
 });
 
 // -- load_confirmations → LoadConfirmation -----------------------------------

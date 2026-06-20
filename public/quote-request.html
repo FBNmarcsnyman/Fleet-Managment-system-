@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Request a Quote — FBN Transport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#13294b;--yellow:#f5b700;--green:#16a34a;--green2:#15803d;--white:#fff;--bg:#f8fafc;--border:#e2e8f0;--text:#1e293b;--text2:#6b7280;--text3:#9ca3af;--red:#dc2626}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:0}
+.wrap{max-width:680px;margin:0 auto;padding:0 16px 40px}
+.hdr{background:var(--navy);padding:22px 30px;border-radius:12px 12px 0 0;margin-top:20px}
+.hdr img{height:42px;background:#fff;border-radius:4px;padding:3px}
+.hdr-label{color:var(--yellow);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-top:8px}
+.yellow-bar{height:4px;background:var(--yellow)}
+.body{background:var(--white);padding:30px 28px 36px;border-radius:0 0 12px 12px;box-shadow:0 4px 20px rgba(0,0,0,0.06)}
+.body h2{font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--navy);margin-bottom:4px}
+.body .sub{color:var(--text2);font-size:14px;margin-bottom:24px;line-height:1.5}
+.section{margin-bottom:24px}
+.section-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--navy);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--navy);display:flex;align-items:center;gap:8px}
+.grid{display:grid;gap:14px}
+.grid-2{grid-template-columns:1fr 1fr}
+@media(max-width:520px){.grid-2{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2)}
+.field label .req{color:var(--red);margin-left:2px}
+.field input,.field select,.field textarea{
+  background:var(--white);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;padding:10px 12px;
+  transition:border-color .2s,box-shadow .2s;width:100%
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(19,41,75,0.1)}
+.field textarea{height:80px;resize:vertical}
+.field select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.svc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media(max-width:520px){.svc-grid{grid-template-columns:1fr 1fr}}
+.svc-card{
+  background:var(--bg);border:2px solid var(--border);border-radius:8px;
+  padding:14px 8px;cursor:pointer;text-align:center;transition:all .2s;user-select:none
+}
+.svc-card:hover{border-color:#cbd5e1;background:#f1f5f9}
+.svc-card.sel{border-color:var(--navy);background:#eef2ff}
+.svc-icon{font-size:22px;margin-bottom:4px}
+.svc-name{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--text)}
+.svc-desc{font-size:10px;color:var(--text3);margin-top:2px}
+.cb-row{display:flex;align-items:center;gap:8px;padding:10px 0}
+.cb-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy)}
+.cb-row label{font-size:14px;color:var(--text);cursor:pointer}
+.submit-btn{
+  width:100%;padding:14px;border:none;border-radius:8px;
+  background:var(--green);color:var(--white);
+  font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;
+  letter-spacing:0.5px;text-transform:uppercase;cursor:pointer;
+  transition:background .2s,transform .1s;margin-top:8px
+}
+.submit-btn:hover{background:var(--green2);transform:translateY(-1px)}
+.submit-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.error-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;display:none}
+.success{display:none;text-align:center;padding:40px 20px}
+.success-icon{font-size:56px;margin-bottom:16px}
+.success h3{font-family:'Barlow Condensed',sans-serif;font-size:26px;color:var(--navy);margin-bottom:8px}
+.success p{color:var(--text2);font-size:14px;line-height:1.6;max-width:420px;margin:0 auto}
+.success .ref-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin:20px auto;max-width:300px;font-family:'Barlow Condensed',sans-serif;font-size:18px;color:var(--navy);letter-spacing:1px}
+.footer{text-align:center;padding:20px 0;font-size:11px;color:var(--text3)}
+.footer strong{color:var(--text2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <img src="https://fleet-managment-system.marcsnyman.workers.dev/fbn-logo.jpg" alt="FBN Transport" onerror="this.style.display='none'">
+    <div class="hdr-label">Request a Freight Quote</div>
+  </div>
+  <div class="yellow-bar"></div>
+  <div class="body">
+    <h2>Get a Competitive Freight Quote</h2>
+    <p class="sub">Fill in the details below and our team will get back to you with a quote — usually within 1 hour during business hours (Mon–Fri, 07:30–17:00).</p>
+
+    <div id="form-view">
+      <div class="error-msg" id="error-msg"></div>
+
+      <div class="section">
+        <div class="section-title">👤 Your Details</div>
+        <div class="grid grid-2">
+          <div class="field">
+            <label>Company Name<span class="req">*</span></label>
+            <input type="text" id="rq-company" placeholder="ABC Logistics (Pty) Ltd">
+          </div>
+          <div class="field">
+            <label>Contact Person<span class="req">*</span></label>
+            <input type="text" id="rq-name" placeholder="John Smith">
+          </div>
+          <div class="field">
+            <label>Email<span class="req">*</span></label>
+            <input type="email" id="rq-email" placeholder="john@company.co.za">
+          </div>
+          <div class="field">
+            <label>Phone<span class="req">*</span></label>
+            <input type="tel" id="rq-phone" placeholder="082 123 4567">
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📦 Service Required</div>
+        <div class="svc-grid" id="svc-grid">
+          <div class="svc-card" data-svc="courier" onclick="selSvc(this)">
+            <div class="svc-icon">📦</div>
+            <div class="svc-name">Courier</div>
+            <div class="svc-desc">Cartons &amp; parcels</div>
+          </div>
+          <div class="svc-card" data-svc="consolidation" onclick="selSvc(this)">
+            <div class="svc-icon">🏭</div>
+            <div class="svc-name">Consolidation</div>
+            <div class="svc-desc">LCL / shared loads</div>
+          </div>
+          <div class="svc-card" data-svc="container" onclick="selSvc(this)">
+            <div class="svc-icon">🚢</div>
+            <div class="svc-name">Container</div>
+            <div class="svc-desc">FCL 20ft / 40ft</div>
+          </div>
+          <div class="svc-card" data-svc="dedicated" onclick="selSvc(this)">
+            <div class="svc-icon">🚛</div>
+            <div class="svc-name">Dedicated</div>
+            <div class="svc-desc">Full vehicle hire</div>
+          </div>
+          <div class="svc-card" data-svc="linehaul" onclick="selSvc(this)">
+            <div class="svc-icon">🛣️</div>
+            <div class="svc-name">Linehaul</div>
+            <div class="svc-desc">Full loads DBN↔JHB</div>
+          </div>
+          <div class="svc-card" data-svc="other" onclick="selSvc(this)">
+            <div class="svc-icon">❓</div>
+            <div class="svc-name">Not Sure</div>
+            <div class="svc-desc">Help me choose</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">🚚 Route</div>
+        <div class="grid grid-2">
+          <div class="field">
+            <label>Collection From<span class="req">*</span></label>
+            <input type="text" id="rq-collect" placeholder="e.g. 12 Main Rd, Mobeni, Durban">
+          </div>
+          <div class="field">
+            <label>Deliver To<span class="req">*</span></label>
+            <input type="text" id="rq-deliver" placeholder="e.g. 5 Industry Ave, Kempton Park">
+          </div>
+          <div class="field">
+            <label>Collection Area / Suburb</label>
+            <input type="text" id="rq-col-area" placeholder="e.g. Mobeni, Durban">
+          </div>
+          <div class="field">
+            <label>Delivery Area / Suburb</label>
+            <input type="text" id="rq-del-area" placeholder="e.g. Kempton Park, JHB">
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📋 Cargo Details</div>
+        <div class="grid grid-2">
+          <div class="field">
+            <label>Commodity / Cargo Description<span class="req">*</span></label>
+            <input type="text" id="rq-commodity" placeholder="e.g. Cleaning chemicals, palletised">
+          </div>
+          <div class="field">
+            <label>Number of Packages / Pallets</label>
+            <input type="text" id="rq-packages" placeholder="e.g. 10 pallets or 25 cartons">
+          </div>
+          <div class="field">
+            <label>Load Type</label>
+            <select id="rq-loadtype">
+              <option value="">Select...</option>
+              <option value="Palletised">Palletised</option>
+              <option value="Loose cargo">Loose cargo</option>
+              <option value="Containerised">Containerised</option>
+              <option value="Bulk">Bulk</option>
+              <option value="Abnormal">Abnormal / oversized</option>
+              <option value="Hazardous">Hazardous (DG)</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Preferred Loading Date</label>
+            <input type="date" id="rq-date">
+          </div>
+        </div>
+        <div class="cb-row">
+          <input type="checkbox" id="rq-xborder">
+          <label for="rq-xborder">This is a cross-border shipment</label>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <label>Additional Notes</label>
+          <textarea id="rq-notes" placeholder="e.g. Requires tail-lift, collection window 08:00-12:00, temperature controlled..."></textarea>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitQuote()">
+        Submit Quote Request →
+      </button>
+    </div>
+
+    <div class="success" id="success-screen">
+      <div class="success-icon">✅</div>
+      <h3>Quote Request Submitted!</h3>
+      <p>Thank you. Our team will review your request and send you a detailed quote via email — usually within 1 hour during business hours.</p>
+      <div class="ref-box">Reference: <strong id="success-ref"></strong></div>
+      <p style="font-size:12px;color:var(--text3);margin-top:8px">Keep this reference for your records. You'll hear from us shortly.</p>
+      <button class="submit-btn" style="max-width:280px;margin:20px auto 0" onclick="resetForm()">Submit Another Request</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong>FBN Transport (Pty) Ltd</strong><br>
+    31 Claude Neon Road, Maydon Wharf, Durban 4057<br>
+    Tel: 031 205 1705 | quotes@fbn-transport.co.za
+  </div>
+</div>
+
+<script>
+const INTAKE_URL = 'https://kyosepbdxjwugunylvyo.supabase.co/functions/v1/quote-intake';
+let selectedSvc = '';
+
+function selSvc(el) {
+  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedSvc = el.dataset.svc;
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function submitQuote() {
+  const company = document.getElementById('rq-company').value.trim();
+  const name = document.getElementById('rq-name').value.trim();
+  const email = document.getElementById('rq-email').value.trim();
+  const phone = document.getElementById('rq-phone').value.trim();
+  const collect = document.getElementById('rq-collect').value.trim();
+  const deliver = document.getElementById('rq-deliver').value.trim();
+  const commodity = document.getElementById('rq-commodity').value.trim();
+
+  if (!company) { showError('Please enter your company name.'); return; }
+  if (!name) { showError('Please enter a contact person.'); return; }
+  if (!email) { showError('Please enter your email address.'); return; }
+  if (!phone) { showError('Please enter your phone number.'); return; }
+  if (!collect) { showError('Please enter a collection address.'); return; }
+  if (!deliver) { showError('Please enter a delivery address.'); return; }
+  if (!commodity) { showError('Please describe your cargo.'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  document.getElementById('error-msg').style.display = 'none';
+
+  const payload = {
+    company_name: company,
+    contact_person: name,
+    email: email,
+    phone: phone,
+    collect_from: collect,
+    deliver_to: deliver,
+    service: selectedSvc,
+    collection_area: document.getElementById('rq-col-area').value.trim(),
+    delivery_area: document.getElementById('rq-del-area').value.trim(),
+    commodity: commodity,
+    packages: document.getElementById('rq-packages').value.trim(),
+    load_type: document.getElementById('rq-loadtype').value,
+    loading_date: document.getElementById('rq-date').value,
+    cross_border: document.getElementById('rq-xborder').checked,
+    notes: document.getElementById('rq-notes').value.trim()
+  };
+
+  try {
+    const resp = await fetch(INTAKE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('form-view').style.display = 'none';
+    document.getElementById('success-screen').style.display = 'block';
+    document.getElementById('success-ref').textContent = data.quote_number || '—';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (window.parent !== window) window.parent.postMessage({ fbnQuoteSubmitted: true, ref: data.quote_number }, '*');
+  } catch (e) {
+    console.error('Submit error:', e);
+    showError('Something went wrong. Please try again or call us on 031 205 1705.');
+    btn.disabled = false;
+    btn.textContent = 'Submit Quote Request →';
+  }
+}
+
+function resetForm() {
+  document.getElementById('form-view').style.display = 'block';
+  document.getElementById('success-screen').style.display = 'none';
+  document.querySelectorAll('input:not([type=checkbox]),textarea').forEach(el => el.value = '');
+  document.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
+  document.getElementById('rq-xborder').checked = false;
+  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('sel'));
+  selectedSvc = '';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('submit-btn').textContent = 'Submit Quote Request →';
+  window.scrollTo({ top: 0 });
+}
+</script>
+</body>
+</html>

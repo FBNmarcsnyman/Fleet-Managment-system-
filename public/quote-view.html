@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FBN Transport — Your Quotation</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+:root{--navy:#13294b;--yellow:#f5b700;--green:#16a34a;--red:#dc2626}
+
+/* Header */
+.header{background:var(--navy);padding:20px 0}
+.header-inner{max-width:800px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{height:44px;background:#fff;border-radius:4px;padding:3px}
+.header-label{color:var(--yellow);font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.yellow-bar{height:4px;background:var(--yellow)}
+
+/* Loading / Error */
+.loading-wrap{max-width:800px;margin:60px auto;text-align:center;padding:24px}
+.loading-wrap h2{color:var(--navy);margin-bottom:8px}
+.spinner{display:inline-block;width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:var(--navy);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{color:var(--red);font-weight:700}
+
+/* Card */
+.card{max-width:800px;margin:24px auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.06);overflow:hidden}
+.card-body{padding:32px}
+
+/* Quote header */
+.quote-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:2px solid #f1f5f9;margin-bottom:24px}
+.quote-title{font-size:28px;font-weight:900;color:var(--navy)}
+.quote-ref{font-size:14px;color:#6b7280;margin-top:4px}
+.quote-ref strong{color:var(--navy);font-family:'Courier New',monospace}
+.status-badge{display:inline-block;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px}
+.status-sent{background:#dbeafe;color:#1d4ed8}
+.status-accepted{background:#dcfce7;color:#15803d}
+.status-rejected{background:#fee2e2;color:#b91c1c}
+.status-expired{background:#fef3c7;color:#92400e}
+
+/* Section */
+.section{margin-bottom:24px}
+.section-title{font-size:11px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+
+/* Client info */
+.client-name{font-size:22px;font-weight:900;color:#1e40af}
+.client-detail{font-size:14px;color:#6b7280;margin-top:4px;line-height:1.6}
+
+/* Specs grid */
+.specs{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.spec-item .spec-label{font-size:10px;font-weight:800;color:#9ca3af;text-transform:uppercase;letter-spacing:1px}
+.spec-item .spec-value{font-size:14px;font-weight:800;color:var(--navy);margin-top:2px}
+
+/* Route */
+.route-leg{display:flex;align-items:center;gap:12px;background:#f8fafc;padding:14px 18px;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:8px}
+.leg-num{width:28px;height:28px;border-radius:50%;background:#1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+.leg-points{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.leg-label{font-size:10px;font-weight:800;color:#9ca3af;text-transform:uppercase}
+.leg-value{font-size:13px;font-weight:700;color:#1e293b}
+
+/* Items table */
+.items-table{width:100%;border-collapse:collapse}
+.items-table thead{background:#0f172a;color:#fff}
+.items-table th{padding:12px 16px;text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px}
+.items-table th:nth-child(2){text-align:center}
+.items-table th:nth-child(3),.items-table th:nth-child(4){text-align:right}
+.items-table th:first-child{border-radius:8px 0 0 0}
+.items-table th:last-child{border-radius:0 8px 0 0}
+.items-table td{padding:12px 16px;border-bottom:1px solid #f1f5f9;font-size:14px}
+.items-table td:nth-child(2){text-align:center;font-weight:700;color:#6b7280}
+.items-table td:nth-child(3){text-align:right;font-family:'Courier New',monospace;color:#6b7280}
+.items-table td:nth-child(4){text-align:right;font-family:'Courier New',monospace;font-weight:900}
+.items-table td:first-child{font-weight:700}
+
+/* Totals */
+.totals{display:flex;justify-content:flex-end;margin-top:24px}
+.totals-box{width:50%;min-width:280px;background:#0f172a;color:#fff;padding:20px 24px;border-radius:12px}
+.total-row{display:flex;justify-content:space-between;align-items:center}
+.total-row.sub{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.1)}
+.total-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:2px;opacity:.5}
+.total-label.main{font-size:13px;opacity:1}
+.total-value{font-size:18px;font-weight:700;font-family:'Courier New',monospace}
+.total-value.main{font-size:28px;font-weight:900;color:#60a5fa}
+
+/* Notes */
+.notes-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;font-size:13px;color:#92400e;line-height:1.6}
+
+/* T&Cs */
+.terms{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px;padding-top:24px;border-top:1px solid #e2e8f0}
+.terms h4{font-size:10px;font-weight:800;color:#1e293b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.terms p{font-size:10px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:1px;line-height:2}
+.terms .right{text-align:right}
+
+/* Action buttons */
+.actions{max-width:800px;margin:0 auto 40px;padding:0 24px;display:flex;gap:12px}
+.btn{flex:1;padding:16px;border:none;border-radius:10px;font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1px;cursor:pointer;transition:all .15s}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-accept{background:var(--green);color:#fff}
+.btn-decline{background:var(--red);color:#fff}
+.btn-print{background:var(--navy);color:#fff}
+.btn-download{background:#f8fafc;color:var(--navy);border:2px solid #e2e8f0}
+.responded-msg{text-align:center;padding:20px;font-size:16px;font-weight:700;border-radius:10px}
+.responded-accepted{background:#dcfce7;color:#15803d}
+.responded-rejected{background:#fee2e2;color:#b91c1c}
+
+/* Footer */
+.footer{text-align:center;padding:16px;font-size:11px;color:#9ca3af}
+
+/* Print styles */
+@media print{
+  body{background:#fff}
+  .header,.yellow-bar,.actions,.footer,.no-print{display:none!important}
+  .card{box-shadow:none;margin:0;border-radius:0}
+  .card-body{padding:20px 0}
+  .totals-box{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .items-table thead{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media(max-width:600px){
+  .quote-header{flex-direction:column;gap:12px}
+  .specs{grid-template-columns:1fr}
+  .leg-points{grid-template-columns:1fr}
+  .totals-box{width:100%}
+  .totals{justify-content:stretch}
+  .actions{flex-direction:column}
+  .terms{grid-template-columns:1fr}
+  .terms .right{text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <img src="/fbn-logo.jpg" alt="FBN Transport" class="logo">
+    <span class="header-label">Quotation</span>
+  </div>
+</div>
+<div class="yellow-bar"></div>
+
+<div id="loading" class="loading-wrap">
+  <div class="spinner"></div>
+  <h2>Loading your quotation...</h2>
+</div>
+<div id="error" class="loading-wrap" style="display:none"></div>
+<div id="content" style="display:none">
+  <div class="card" id="quote-card">
+    <div class="card-body">
+      <div class="quote-header">
+        <div>
+          <div class="quote-title">QUOTATION</div>
+          <div class="quote-ref">Ref #: <strong id="q-number"></strong> &nbsp;|&nbsp; Date: <span id="q-date"></span> &nbsp;|&nbsp; Expires: <span id="q-expiry"></span></div>
+        </div>
+        <span class="status-badge" id="q-status"></span>
+      </div>
+
+      <div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div>
+          <div class="section-title">Prepared For</div>
+          <div class="client-name" id="q-client"></div>
+          <div class="client-detail" id="q-client-detail"></div>
+        </div>
+        <div>
+          <div class="section-title">Shipment Specifications</div>
+          <div class="specs" id="q-specs"></div>
+        </div>
+      </div>
+
+      <div class="section" id="route-section">
+        <div class="section-title">Route Plan</div>
+        <div id="q-legs"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Costing Breakdown</div>
+        <table class="items-table">
+          <thead><tr><th>Description</th><th>Qty</th><th>Unit Rate</th><th>Line Total</th></tr></thead>
+          <tbody id="q-items"></tbody>
+        </table>
+        <div class="totals">
+          <div class="totals-box">
+            <div class="total-row sub">
+              <span class="total-label">Subtotal (Excl. VAT)</span>
+              <span class="total-value" id="q-subtotal"></span>
+            </div>
+            <div class="total-row">
+              <span class="total-label main">Total Amount</span>
+              <span class="total-value main" id="q-total"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="notes-section" style="display:none">
+        <div class="section-title">Notes</div>
+        <div class="notes-box" id="q-notes"></div>
+      </div>
+
+      <div class="terms">
+        <div>
+          <h4>Terms & Conditions</h4>
+          <p>1. Validity is 7 days from the quote date.</p>
+          <p>2. Subject to availability of equipment at time of booking.</p>
+          <p>3. Standard STC terms apply to all movements.</p>
+        </div>
+        <div class="right">
+          <h4>Banking Details</h4>
+          <p>FBN TRANSPORT SOLUTIONS</p>
+          <p>FNB CORPORATE - ACC: 6281726351</p>
+          <p>BRANCH CODE: 250655</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="actions no-print" id="action-buttons"></div>
+
+  <div class="footer no-print">FBN Transport (Pty) Ltd &middot; 31 Claude Neon Road, Maydon Wharf, Durban 4057 &middot; 031 205 1705</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+const API = 'https://kyosepbdxjwugunylvyo.supabase.co/functions/v1/quote-respond';
+const params = new URLSearchParams(location.search);
+const quoteId = params.get('id');
+
+function fmt(n) { return 'R ' + Number(n).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtDate(d) { return new Date(d).toLocaleDateString('en-ZA', {day:'2-digit', month:'short', year:'numeric'}); }
+
+async function load() {
+  if (!quoteId) return showError('No quote ID provided.');
+  try {
+    const r = await fetch(`${API}?id=${quoteId}`);
+    const q = await r.json();
+    if (q.error) return showError(q.error);
+    render(q);
+  } catch(e) { showError('Failed to load quotation. Please try again.'); }
+}
+
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  const el = document.getElementById('error');
+  el.innerHTML = `<h2 class="error-msg">${msg}</h2>`;
+  el.style.display = 'block';
+}
+
+function render(q) {
+  const c = q.clients || {};
+  document.getElementById('q-number').textContent = q.quote_number;
+  document.getElementById('q-date').textContent = fmtDate(q.date);
+  document.getElementById('q-expiry').textContent = fmtDate(q.expiry_date);
+
+  const badge = document.getElementById('q-status');
+  badge.textContent = q.status;
+  badge.className = 'status-badge status-' + q.status.toLowerCase();
+
+  document.getElementById('q-client').textContent = c.name || '';
+  let detail = '';
+  if (c.contact_person) detail += `<strong>${c.contact_person}</strong><br>`;
+  if (c.address) detail += c.address;
+  document.getElementById('q-client-detail').innerHTML = detail;
+
+  // Specs
+  const specs = document.getElementById('q-specs');
+  const specItems = [
+    {label:'Commodity', value: q.commodity || 'General Cargo'},
+    {label:'Packaging', value: q.packaging || 'Pallets'},
+    {label:'Vehicle Spec', value: q.load_spec || 'Superlink'}
+  ];
+  specs.innerHTML = specItems.map(s => `<div class="spec-item"><div class="spec-label">${s.label}</div><div class="spec-value">${s.value}</div></div>`).join('');
+
+  // Legs
+  const legs = q.legs || [];
+  if (legs.length) {
+    document.getElementById('q-legs').innerHTML = legs.map((l,i) => `
+      <div class="route-leg">
+        <div class="leg-num">${i+1}</div>
+        <div class="leg-points">
+          <div><div class="leg-label">Collection</div><div class="leg-value">${l.collectionPoint || l.collection_point || ''}</div></div>
+          <div><div class="leg-label">Delivery</div><div class="leg-value">${l.deliveryPoint || l.delivery_point || ''}</div></div>
+        </div>
+      </div>`).join('');
+  } else {
+    document.getElementById('route-section').style.display = 'none';
+  }
+
+  // Items
+  const items = q.items || [];
+  document.getElementById('q-items').innerHTML = items.map(it => `
+    <tr>
+      <td>${it.description}</td>
+      <td>${it.quantity}</td>
+      <td>${fmt(it.rate)}</td>
+      <td>${fmt(it.total)}</td>
+    </tr>`).join('');
+
+  document.getElementById('q-subtotal').textContent = fmt(q.total_amount);
+  document.getElementById('q-total').textContent = fmt(q.total_amount * 1.15);
+
+  // Notes
+  const notes = q.notes || q.special_requirements;
+  if (notes) {
+    document.getElementById('notes-section').style.display = 'block';
+    document.getElementById('q-notes').textContent = notes;
+  }
+
+  // Actions
+  const actions = document.getElementById('action-buttons');
+  if (q.status === 'Sent') {
+    actions.innerHTML = `
+      <button class="btn btn-accept" onclick="respond('Accepted')">Accept Quote</button>
+      <button class="btn btn-decline" onclick="respond('Rejected')">Decline Quote</button>
+      <button class="btn btn-print" onclick="window.print()">Print</button>
+      <button class="btn btn-download" onclick="downloadPDF()">Download PDF</button>`;
+  } else if (q.status === 'Accepted') {
+    actions.innerHTML = `
+      <div class="responded-msg responded-accepted" style="flex:1">You have accepted this quotation. We will be in touch shortly.</div>
+      <button class="btn btn-print" onclick="window.print()">Print</button>
+      <button class="btn btn-download" onclick="downloadPDF()">Download PDF</button>`;
+  } else if (q.status === 'Rejected') {
+    actions.innerHTML = `
+      <div class="responded-msg responded-rejected" style="flex:1">This quotation was declined.</div>
+      <button class="btn btn-print" onclick="window.print()">Print</button>
+      <button class="btn btn-download" onclick="downloadPDF()">Download PDF</button>`;
+  } else {
+    actions.innerHTML = `
+      <button class="btn btn-print" onclick="window.print()">Print</button>
+      <button class="btn btn-download" onclick="downloadPDF()">Download PDF</button>`;
+  }
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+}
+
+async function respond(response) {
+  const action = response === 'Accepted' ? 'accept' : 'decline';
+  if (!confirm(`Are you sure you want to ${action} this quotation?`)) return;
+  const btns = document.querySelectorAll('.actions .btn');
+  btns.forEach(b => b.disabled = true);
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ quote_id: quoteId, response })
+    });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    location.reload();
+  } catch(e) {
+    alert('Something went wrong: ' + e.message);
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+function downloadPDF() {
+  const el = document.getElementById('quote-card');
+  const opt = {
+    margin: [10, 10, 10, 10],
+    filename: document.getElementById('q-number').textContent + '.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+  html2pdf().set(opt).from(el).save();
+}
+
+load();
+</script>
+</body>
+</html>

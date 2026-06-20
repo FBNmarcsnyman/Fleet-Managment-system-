@@ -9,11 +9,21 @@ interface SupplierApplicationDetailModalProps {
 }
 
 const SupplierApplicationDetailModal: React.FC<SupplierApplicationDetailModalProps> = ({ application }) => {
-    const { handleUpdateSupplierApplicationStatus } = useOperations();
-    const { hideModal } = useUIState();
+    const { handleUpdateSupplierApplicationStatus, handleCreateCarrierLogin } = useOperations();
+    const { hideModal, showToast } = useUIState();
+    const [busy, setBusy] = React.useState(false);
 
-    const handleAction = (status: 'Approved' | 'Rejected') => {
-        handleUpdateSupplierApplicationStatus(application.id, status);
+    const handleAction = async (status: 'Approved' | 'Rejected') => {
+        setBusy(true);
+        const res = await handleUpdateSupplierApplicationStatus(application.id, status);
+        if (status === 'Approved' && res?.ok && res.value) {
+            const loginRes = await handleCreateCarrierLogin(res.value);
+            if (loginRes?.ok) showToast(`${application.companyName} accepted — login emailed to ${res.value.contactEmail}${loginRes.value?.tempPassword ? ` (temp password: ${loginRes.value.tempPassword})` : ''}.`);
+            else showToast(`${application.companyName} accepted. Login not created: ${loginRes?.error || 'they may already have one.'}`);
+        } else if (status === 'Rejected') {
+            showToast(`${application.companyName} application rejected.`);
+        }
+        setBusy(false);
         hideModal();
     };
 
@@ -76,8 +86,8 @@ const SupplierApplicationDetailModal: React.FC<SupplierApplicationDetailModalPro
 
             {application.status === 'Pending' && (
                 <div className="flex justify-end space-x-4 mt-8">
-                    <button onClick={() => handleAction('Rejected')} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Reject</button>
-                    <button onClick={() => handleAction('Approved')} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Approve</button>
+                    <button disabled={busy} onClick={() => handleAction('Rejected')} className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg">Reject</button>
+                    <button disabled={busy} onClick={() => handleAction('Approved')} className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg">{busy ? 'Accepting…' : 'Approve & Create Login'}</button>
                 </div>
             )}
         </div>

@@ -11,12 +11,24 @@ import CarrierInviteCampaign from './CarrierInviteCampaign';
 import { format } from 'date-fns';
 
 const SubcontractorControlCenter: React.FC = () => {
-    const { suppliers = [], supplierApplications = [], handleUpdateSupplier, handleSendCarrierRegistrationLink } = useOperations();
+    const { suppliers = [], supplierApplications = [], users = [], handleUpdateSupplier, handleSendCarrierRegistrationLink, handleCreateCarrierLogin } = useOperations();
     const { showModal, showToast } = useUIState();
+
+    const supplierEmailsWithLogin = useMemo(
+        () => new Set((users || []).filter((u: any) => u.role === 'Supplier' && u.email).map((u: any) => u.email.toLowerCase())),
+        [users],
+    );
 
     const sendRegLink = async (s: Supplier) => {
         const res = await handleSendCarrierRegistrationLink(s);
         showToast(res?.ok ? `Profile link sent to ${s.name}.` : (res?.error || 'Could not send link.'));
+    };
+
+    const createLogin = async (s: Supplier) => {
+        showToast(`Creating login for ${s.name}…`);
+        const res = await handleCreateCarrierLogin(s);
+        if (res?.ok) showToast(`Login created & emailed to ${s.contactEmail}${res.value?.tempPassword ? ` (temp password: ${res.value.tempPassword})` : ''}.`);
+        else showToast(res?.error || 'Could not create login.');
     };
 
     const setVetted = async (s: Supplier, vetted: boolean) => {
@@ -166,6 +178,11 @@ const SubcontractorControlCenter: React.FC = () => {
                                     </td>
                                     <td className="p-4 text-right whitespace-nowrap">
                                         <button onClick={() => sendRegLink(s)} className="text-xs font-black text-blue-400 hover:text-white uppercase tracking-wider mr-4">Send Profile Link</button>
+                                        {supplierEmailsWithLogin.has((s.contactEmail || '').toLowerCase()) ? (
+                                            <span className="text-xs font-black text-emerald-500/70 uppercase tracking-wider mr-4">Login Active</span>
+                                        ) : (
+                                            <button onClick={() => createLogin(s)} className="text-xs font-black text-amber-400 hover:text-white uppercase tracking-wider mr-4">Create Login</button>
+                                        )}
                                         {s.isVetted ? (
                                             <button onClick={() => setVetted(s, false)} className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-wider">Unvet</button>
                                         ) : (

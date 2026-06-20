@@ -1216,6 +1216,34 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
+        // Create a Subcontractor Portal login for an accepted carrier (via the
+        // admin-create-user edge function) and email them their username +
+        // temporary password and the portal link.
+        handleCreateCarrierLogin: async (supplier: Supplier): Promise<Result<{ tempPassword?: string }>> => {
+            try {
+                const email = (supplier.contactEmail || '').trim();
+                if (!email) return { ok: false, error: 'No email address on file for this carrier.' };
+                const name = supplier.contactPerson || supplier.name;
+                const { data, error } = await directInvoke('admin-create-user', { name, email, role: 'Supplier', supplierId: supplier.id, assignedBranches: [] });
+                if (error) return { ok: false, error: error.message };
+                if ((data as any)?.error) return { ok: false, error: (data as any).error };
+                const tempPassword = (data as any)?.tempPassword;
+                dispatch({ type: 'ADD_USER', payload: { name, email, role: 'Supplier', assignedBranches: [], assignedVehicleIds: [], isActive: true } });
+                if (tempPassword) {
+                    const base = (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '';
+                    const link = `${base}?portal=supplier`;
+                    const cred = (label: string, val: string) => `<tr><td style="padding:4px 14px 4px 0;color:#13294b;font-size:13px;font-weight:700">${label}</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:700">${val}</td></tr>`;
+                    const html = brandedEmail(`<p>Good day ${name},</p>
+                      <p><strong>Welcome to the FBN carrier network — your account has been approved.</strong> You can now log in to the FBN Subcontractor Portal to view loads, manage your rates and documents, and receive quote requests.</p>
+                      <table style="border-collapse:collapse;margin:10px 0 4px;background:#f8fafc;border:1px solid #e6ebf1;border-radius:8px;padding:6px">${cred('Username', email)}${cred('Temporary password', tempPassword)}</table>
+                      ${emailButton(link, 'Log in to the carrier portal &rarr;', '#16a34a')}
+                      <p>For your security, please change your password after your first login.</p>
+                      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+                    await invokeFn('send-email', { body: { to: email, subject: 'Your FBN Carrier Portal login', html, fromName: 'FBN Transport' } });
+                }
+                return { ok: true, value: { tempPassword } };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
         // Approve/reject a carrier application. On approval, persist the status and
         // create the live Supplier record (so it appears in the Active Network and
         // can be invited to log in), and advance any matching invite to Vetted.

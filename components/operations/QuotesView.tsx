@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Quote, Client, Supplier, QuoteStatus } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { PlusIcon } from '../icons/PlusIcon';
@@ -24,6 +24,15 @@ const QuotesView: React.FC<{
     const [quoteToAccept, setQuoteToAccept] = useState<Quote | null>(null);
     const [quoteDetail, setQuoteDetail] = useState<Quote | null>(null);
     const [sending, setSending] = useState<string | null>(null);
+
+    // Arrived from the "Open Quotes to price" email (?quote=<id>) — open that
+    // quote's detail once it's loaded, then clear the param so it won't re-open.
+    useEffect(() => {
+        const qid = new URLSearchParams(window.location.search).get('quote');
+        if (!qid || quoteDetail) return;
+        const q = quotes.find(x => x.id === qid);
+        if (q) { setQuoteDetail(q); window.history.replaceState({}, '', window.location.pathname); }
+    }, [quotes]);
 
     const handleSendQuote = async (quote: Quote) => {
         if (!confirm(`Send quote ${quote.quoteNumber} to client?`)) return;

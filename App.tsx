@@ -1,5 +1,5 @@
 
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useAuth, useUIState, useOperations, useVehicles, useWorkshop } from './contexts/AppContexts';
 
 import Login from './components/Login';
@@ -223,7 +223,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
 
 const App: React.FC = () => {
     const { currentUser, currentViewOverride, hasPermission, viewingClientAsAdmin, viewingSupplierAsAdmin } = useAuth();
-    const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast } = useUIState();
+    const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast, handleViewChange } = useUIState();
     const { quotes, clients, handleAcceptQuote, handleRejectQuote, handleAddChecklistSubmission } = useOperations();
     const { vehicles, users, checklistTemplates, drivers } = useVehicles();
     const [checklistFlow, setChecklistFlow] = useState<{ step: 'vehicleScan' | 'form', user: User, vehicle: Vehicle } | null>(null);
@@ -237,6 +237,13 @@ const App: React.FC = () => {
     const updateLoadId = urlParams.get('update');
     const showTerms = urlParams.get('tcs');
     const portal = urlParams.get('portal');
+    const quoteDeepLink = urlParams.get('quote');
+
+    // Deep-link from the "Open Quotes to price" email → land a logged-in user on
+    // the Quotes screen; QuotesView opens that quote's detail from ?quote=<id>.
+    useEffect(() => {
+        if (quoteDeepLink && currentUser) handleViewChange('quotes');
+    }, [quoteDeepLink, currentUser]);
 
     // Public Subcontractor Terms & Conditions page (linked from LoadCons/emails).
     if (showTerms) {

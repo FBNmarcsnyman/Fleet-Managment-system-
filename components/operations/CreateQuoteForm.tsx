@@ -311,8 +311,8 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                                         {packagingTypes.map(p => <option key={p} value={p}>{p}</option>)}
                                     </select>
                                 </div>
-                                <div className="col-span-1"><label className={labelClasses}>Qty</label><input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} className={inputClasses} /></div>
-                                <div className="col-span-2"><label className={labelClasses}>Sell Rate (R)</label><input type="number" value={item.rate} onChange={e => handleItemChange(index, 'rate', Number(e.target.value))} className={inputClasses} /></div>
+                                <div className="col-span-1"><label className={labelClasses}>Qty</label><input type="number" min="0" value={item.quantity || ''} onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} className={inputClasses} /></div>
+                                <div className="col-span-2"><label className={labelClasses}>Sell Rate (R)</label><input type="number" min="0" step="0.01" placeholder="0.00" value={item.rate || ''} onChange={e => handleItemChange(index, 'rate', Number(e.target.value))} className={inputClasses} /></div>
                                 <div className="col-span-2"><label className={labelClasses}>Total</label><div className="p-2 bg-gray-800 rounded-md border border-gray-700 text-sm font-mono text-green-400">R {item.total.toFixed(2)}</div></div>
                                 <div className="col-span-1 flex justify-end">
                                     <button type="button" onClick={() => removeItem(index)} disabled={quote.items.length === 1} className="p-2 text-red-400/50 hover:text-red-400"><TrashIcon className="h-4 w-4"/></button>

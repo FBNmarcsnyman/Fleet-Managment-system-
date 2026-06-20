@@ -104,6 +104,20 @@ body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:
 .responded-accepted{background:#dcfce7;color:#15803d}
 .responded-rejected{background:#fee2e2;color:#b91c1c}
 
+/* Accept / booking-details form */
+#accept-form{max-width:800px;margin:0 auto 32px;padding:0 24px}
+.accept-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:26px;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.accept-card h3{color:var(--navy);font-size:19px;margin-bottom:4px}
+.accept-card .sub{color:#6b7280;font-size:13px;margin-bottom:18px}
+.bform{display:flex;flex-direction:column;gap:14px}
+.brow2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.bfield{display:flex;flex-direction:column;gap:5px}
+.bfield label{font-size:11px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
+.bfield label .rq{color:var(--red)}
+.bfield input{border:1px solid #cbd5e1;border-radius:8px;padding:11px 13px;font-size:14px;width:100%;font-family:inherit}
+.bfield input:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(19,41,75,.1)}
+@media(max-width:600px){.brow2{grid-template-columns:1fr}}
+
 /* Footer */
 .footer{text-align:center;padding:16px;font-size:11px;color:#9ca3af}
 
@@ -215,6 +229,34 @@ body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:
   <!-- Action buttons -->
   <div class="actions no-print" id="action-buttons"></div>
 
+  <!-- Booking details (shown when client accepts) -->
+  <div id="accept-form" class="no-print" style="display:none">
+    <div class="accept-card">
+      <h3>✅ Confirm &amp; Book</h3>
+      <p class="sub">Great choice! To arrange your collection, please confirm the full pickup &amp; delivery details below.</p>
+      <div class="bform">
+        <div class="bfield"><label>Collection address <span class="rq">*</span></label><input id="b-col-addr" placeholder="Full pickup address"></div>
+        <div class="brow2">
+          <div class="bfield"><label>Collection contact</label><input id="b-col-contact" placeholder="Name"></div>
+          <div class="bfield"><label>Collection cell</label><input id="b-col-cell" placeholder="082..."></div>
+        </div>
+        <div class="bfield"><label>Delivery address <span class="rq">*</span></label><input id="b-del-addr" placeholder="Full delivery address"></div>
+        <div class="brow2">
+          <div class="bfield"><label>Delivery contact</label><input id="b-del-contact" placeholder="Name"></div>
+          <div class="bfield"><label>Delivery cell</label><input id="b-del-cell" placeholder="082..."></div>
+        </div>
+        <div class="brow2">
+          <div class="bfield"><label>Preferred collection date</label><input id="b-date" type="text" placeholder="dd/mm/yyyy" maxlength="10" inputmode="numeric" oninput="maskD(this)"></div>
+          <div class="bfield"><label>Your reference / PO</label><input id="b-ref" placeholder="Optional"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:20px">
+        <button class="btn btn-accept" style="flex:2" onclick="submitAcceptance()">Confirm Acceptance &amp; Book &rarr;</button>
+        <button class="btn btn-download" style="flex:1" onclick="document.getElementById('accept-form').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <div class="footer no-print">FBN Transport (Pty) Ltd &middot; 31 Claude Neon Road, Maydon Wharf, Durban 4057 &middot; 031 205 1705</div>
 </div>
 
@@ -308,7 +350,7 @@ function render(q) {
   const actions = document.getElementById('action-buttons');
   if (q.status === 'Sent') {
     actions.innerHTML = `
-      <button class="btn btn-accept" onclick="respond('Accepted')">Accept Quote</button>
+      <button class="btn btn-accept" onclick="showAcceptForm()">Accept Quote</button>
       <button class="btn btn-decline" onclick="respond('Rejected')">Decline Quote</button>
       <button class="btn btn-print" onclick="window.print()">Print</button>
       <button class="btn btn-download" onclick="downloadPDF()">Download PDF</button>`;
@@ -352,6 +394,58 @@ async function respond(response) {
   }
 }
 
+function showAcceptForm() {
+  const f = document.getElementById('accept-form');
+  f.style.display = 'block';
+  f.scrollIntoView({ behavior: 'smooth' });
+}
+function maskD(el) {
+  var v = el.value.replace(/\D/g, '').slice(0, 8);
+  if (v.length > 4) el.value = v.slice(0, 2) + '/' + v.slice(2, 4) + '/' + v.slice(4);
+  else if (v.length > 2) el.value = v.slice(0, 2) + '/' + v.slice(2); else el.value = v;
+}
+function isoD(s) { var m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
+
+async function submitAcceptance() {
+  const colAddr = document.getElementById('b-col-addr').value.trim();
+  const delAddr = document.getElementById('b-del-addr').value.trim();
+  if (!colAddr) { alert('Please enter the collection address.'); return; }
+  if (!delAddr) { alert('Please enter the delivery address.'); return; }
+  const booking = {
+    collection_address: colAddr,
+    collection_contact: document.getElementById('b-col-contact').value.trim(),
+    collection_cell: document.getElementById('b-col-cell').value.trim(),
+    delivery_address: delAddr,
+    delivery_contact: document.getElementById('b-del-contact').value.trim(),
+    delivery_cell: document.getElementById('b-del-cell').value.trim(),
+    collection_date: isoD(document.getElementById('b-date').value),
+    client_reference: document.getElementById('b-ref').value.trim()
+  };
+  const btns = document.querySelectorAll('.btn');
+  btns.forEach(b => b.disabled = true);
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quote_id: quoteId, response: 'Accepted', booking }) });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    location.reload();
+  } catch (e) { alert('Something went wrong: ' + e.message); btns.forEach(b => b.disabled = false); }
+}
+
+function initAutocomplete() {
+  if (!(window.google && google.maps && google.maps.places)) return;
+  ['b-col-addr', 'b-del-addr'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var ac = new google.maps.places.Autocomplete(el, { componentRestrictions: { country: 'za' }, fields: ['formatted_address', 'name'] });
+    ac.addListener('place_changed', function () {
+      var p = ac.getPlace(); var fa = p.formatted_address || ''; var nm = (p.name || '').trim();
+      var low = fa.toLowerCase();
+      var biz = nm && fa && !low.startsWith(nm.toLowerCase()) && !low.includes(nm.toLowerCase());
+      el.value = biz ? (nm + ', ' + fa) : (fa || nm);
+    });
+  });
+}
+
 function downloadPDF() {
   const el = document.getElementById('quote-card');
   const opt = {
@@ -366,5 +460,6 @@ function downloadPDF() {
 
 load();
 </script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDO_QqVAA8P-kAw-FEeFoI54YC1O7jIPWk&libraries=places&callback=initAutocomplete" async defer></script>
 </body>
 </html>

@@ -44,9 +44,12 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // mismatch while keeping the same observable behavior.
   // On phones, land on the Collections home (one-tap booking); desktop lands on
   // the management overview. The menu reaches everything either way.
-  const [currentView, setCurrentView] = useState<ViewType>(
-    typeof window !== 'undefined' && window.innerWidth < 768 ? 'collectHome' : 'management'
-  );
+  // Remember the last screen the user was on, so a refresh / re-login returns
+  // them to the same tab instead of the default landing page.
+  const [currentView, setCurrentView] = useState<ViewType>(() => {
+    try { const saved = localStorage.getItem('fbn_view'); if (saved) return saved as ViewType; } catch { /* ignore */ }
+    return (typeof window !== 'undefined' && window.innerWidth < 768) ? 'collectHome' : 'management';
+  });
   // Drawer state for the mobile sidebar only (desktop sidebar is always docked).
   // Starts closed so a phone doesn't open it over the content.
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -75,7 +78,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
   }, []);
 
-  const handleViewChange = (view: ViewType) => setCurrentView(view);
+  const handleViewChange = (view: ViewType) => { setCurrentView(view); try { localStorage.setItem('fbn_view', view); } catch { /* ignore */ } };
   const showModal = (type: string, payload: any = null) => setModal({ isOpen: true, type, payload });
   const hideModal = () => setModal({ isOpen: false, type: null, payload: null });
   const showToast = (message: string) => {

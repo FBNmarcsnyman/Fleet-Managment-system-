@@ -1,7 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { directSelect, directUpdate, invokeFn } from '../../lib/supabase';
+import { directSelect, directUpdate, directInsert, invokeFn } from '../../lib/supabase';
 import { extractFromDocument, LICENCE_DISC_PROMPT, LICENCE_DISC_SCHEMA, base64ToFile } from '../../lib/docScan';
+import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import { useUIState } from '../../contexts/AppContexts';
+
+const DOC_TYPES: [string, string][] = [
+    ['LICENSE_DISC', 'Licence Disc'], ['LOGBOOK', 'Logbook'], ['FIRE_PERMIT', 'Fire Permit'], ['INSURANCE', 'Insurance'],
+    ['ROADWORTHY', 'Roadworthy'], ['PERMIT', 'Permit / Cross-border'], ['OTHER', 'Other document'],
+];
+// Drive sub-folder per document type, e.g. Fleet/<reg>/Licenses/
+const CATEGORY: Record<string, string> = {
+    LICENSE_DISC: 'Licenses', LOGBOOK: 'Logbooks', FIRE_PERMIT: 'Fire Permits', INSURANCE: 'Insurance',
+    ROADWORTHY: 'Roadworthy', PERMIT: 'Permits', OTHER: 'Other',
+};
+const fileToB64 = (file: File): Promise<string> => new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new Error('read fail')); r.readAsDataURL(file);
+});
 
 // Per-vehicle documents: the licence discs / fire permits / other compliance
 // docs linked to this vehicle (from the Drive import or manual uploads). You can
@@ -12,7 +26,7 @@ import { useUIState } from '../../contexts/AppContexts';
 type Doc = { id: string; type: string; name?: string; file_url?: string; file_name?: string; expiry_date?: string | null; status?: string; issue_date?: string | null };
 
 const TYPE_LABEL: Record<string, string> = {
-    LICENSE_DISC: 'Licence Disc', FIRE_PERMIT: 'Fire Permit', INSURANCE: 'Insurance',
+    LICENSE_DISC: 'Licence Disc', LOGBOOK: 'Logbook', FIRE_PERMIT: 'Fire Permit', INSURANCE: 'Insurance',
     ROADWORTHY: 'Roadworthy', PERMIT: 'Permit', OTHER: 'Other document',
 };
 const today = () => new Date().toISOString().slice(0, 10);
@@ -25,12 +39,17 @@ const badge = (status?: string, expiry?: string | null) => {
     return 'bg-gray-600/40 text-gray-300 ring-1 ring-gray-600/40';
 };
 
-const VehicleDocuments: React.FC<{ vehicleId: string; vehicleName?: string }> = ({ vehicleId }) => {
+const VehicleDocuments: React.FC<{ vehicleId: string; vehicleName?: string; registration?: string }> = ({ vehicleId, registration }) => {
     const { showToast } = useUIState();
     const [docs, setDocs] = useState<Doc[]>([]);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState<string | null>(null);
     const [bulk, setBulk] = useState(false);
+    const [showUpload, setShowUpload] = useState(false);
+    const [upFile, setUpFile] = useState<File | null>(null);
+    const [upType, setUpType] = useState('LICENSE_DISC');
+    const [upExpiry, setUpExpiry] = useState('');
+    const [uploading, setUploading] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -73,6 +92,29 @@ const VehicleDocuments: React.FC<{ vehicleId: string; vehicleName?: string }> = 
         showToast(`Read ${ok} of ${targets.length} expiry date${targets.length === 1 ? '' : 's'}.`);
     };
 
+    // Upload a new document → files to the company Drive under Fleet/<reg>/ and
+    // records it against the vehicle (with the Drive view link).
+    const handleUpload = async () => {
+        if (!upFile) { showToast('Choose a file to upload.'); return; }
+        if (!registration) { showToast('This vehicle has no registration to file under.'); return; }
+        setUploading(true);
+        try {
+            const base64 = await fileToB64(upFile);
+            const { data, error } = await invokeFn('file-doc', { body: { scope: 'vehicle', subject: registration, category: CATEGORY[upType] || 'Other', docType: label(upType), fileName: upFile.name, contentType: upFile.type, base64, date: upExpiry || today(), archivePrevious: true } });
+            if (error || !data?.link) { showToast(`Drive upload failed: ${error?.message || data?.error || 'unknown'}`); return; }
+            const status = upExpiry ? (upExpiry < today() ? 'Expired' : 'Valid') : 'Valid';
+            const { error: insErr } = await directInsert('vehicle_compliance_docs', {
+                organization_id: FBN_ORGANIZATION_ID, vehicle_id: vehicleId, type: upType, name: label(upType),
+                file_url: data.link, file_name: data.fileName || upFile.name, expiry_date: upExpiry || null, status,
+            });
+            if (insErr) { showToast(`Filed to Drive but could not record it: ${insErr.message}`); return; }
+            showToast(`${label(upType)} filed to Drive (${data.folder}).`);
+            setUpFile(null); setUpExpiry(''); setShowUpload(false);
+            await load();
+        } catch (e) { showToast(e instanceof Error ? e.message : 'Upload failed.'); }
+        finally { setUploading(false); }
+    };
+
     const missing = docs.filter(d => d.file_url && !d.expiry_date).length;
 
     return (
@@ -80,10 +122,28 @@ const VehicleDocuments: React.FC<{ vehicleId: string; vehicleName?: string }> = 
             <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <h3 className="text-xl font-semibold text-white">Documents &amp; Licences</h3>
                 <div className="flex items-center gap-3">
+                    <button onClick={() => setShowUpload(s => !s)} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white uppercase tracking-widest px-3 py-1.5 rounded-lg">{showUpload ? 'Close' : '＋ Upload'}</button>
                     {missing > 0 && <button onClick={readAll} disabled={bulk || !!busy} className="text-xs font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white uppercase tracking-widest px-3 py-1.5 rounded-lg">{bulk ? 'Reading…' : `Read ${missing} expiry date${missing === 1 ? '' : 's'} (AI)`}</button>}
                     <button onClick={load} className="text-sm font-semibold text-blue-400 hover:text-white">↻</button>
                 </div>
             </div>
+
+            {showUpload && (
+                <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">Document type</label>
+                        <select value={upType} onChange={e => setUpType(e.target.value)} className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm">
+                            {DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                        </select></div>
+                    <div><label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">Expiry date (optional)</label>
+                        <input type="date" value={upExpiry} onChange={e => setUpExpiry(e.target.value)} className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" /></div>
+                    <div className="md:col-span-2"><label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">File (PDF or photo)</label>
+                        <input type="file" accept="image/*,application/pdf" onChange={e => setUpFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-300 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-blue-600 file:text-white file:font-semibold" /></div>
+                    <div className="md:col-span-2 flex items-center justify-between gap-3">
+                        <p className="text-[11px] text-gray-500">Files to Drive: <span className="font-mono text-gray-400">Fleet/{registration || '—'}/{CATEGORY[upType] || 'Other'}/</span> · old one archived</p>
+                        <button onClick={handleUpload} disabled={uploading || !upFile} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg text-sm">{uploading ? 'Uploading…' : 'Upload to Drive'}</button>
+                    </div>
+                </div>
+            )}
 
             {loading ? (
                 <p className="text-gray-400 text-center py-8 text-sm">Loading documents…</p>

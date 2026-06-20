@@ -44,6 +44,13 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
         loadSpec: (prefill?.loadSpec || LOAD_SPECS[0]) as any,
         subcontractorQuotes: [] as SubcontractorQuote[],
         notes: prefill?.notes || undefined,
+        // Carry the cargo request payload (weight / cubes / areas) so it can be
+        // edited here and saved with the quote. Seed cubes from the "more info"
+        // dimensions if the client supplied them.
+        requestData: {
+            ...(prefill?.requestData || {}),
+            ...(prefill?.requestMoreInfo?.total_cube ? { total_cube: prefill.requestMoreInfo.total_cube } : {}),
+        },
     };
 };
 
@@ -55,12 +62,6 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     // casts and a fully typed shape requires a rewrite that's out of scope for
     // the typing-cleanup push.
     const [quote, setQuote] = useState<any>(() => getInitialState(quoteData, commodities, packagingTypes, prefill));
-    
-    const [showNewCommodityInput, setShowNewCommodityInput] = useState(false);
-    const [newCommodity, setNewCommodity] = useState('');
-    
-    const [showNewPackagingInput, setShowNewPackagingInput] = useState(false);
-    const [newPackaging, setNewPackaging] = useState('');
 
     const transportSuppliers = suppliers.filter(s => s.type === 'Transport');
 
@@ -88,22 +89,9 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
         setQuote(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleAddCustomCommodity = () => {
-        if (newCommodity.trim()) {
-            handleAddCommodity(newCommodity.trim());
-            handleFieldChange('commodity', newCommodity.trim());
-            setNewCommodity('');
-            setShowNewCommodityInput(false);
-        }
-    };
-
-    const handleAddCustomPackaging = () => {
-        if (newPackaging.trim()) {
-            handleAddPackagingType(newPackaging.trim());
-            handleFieldChange('packaging', newPackaging.trim());
-            setNewPackaging('');
-            setShowNewPackagingInput(false);
-        }
+    // Edit a value inside the cargo request payload (weight / cubes).
+    const handleReqChange = (key: string, value: any) => {
+        setQuote(prev => ({ ...prev, requestData: { ...(prev.requestData || {}), [key]: value } }));
     };
 
     const handleSubQuoteChange = (index: number, field: keyof SubcontractorQuote, value: any) => {
@@ -146,6 +134,12 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // Persist any newly-typed commodity / packaging so they appear in the
+        // pick-lists next time (and stay consistently spelled).
+        const commodityVal = (quote.commodity || '').trim();
+        if (commodityVal && !commodities.includes(commodityVal)) handleAddCommodity(commodityVal);
+        const packagingVal = (quote.packaging || '').trim();
+        if (packagingVal && !packagingTypes.includes(packagingVal)) handleAddPackagingType(packagingVal);
         onSubmit(quote);
         hideModal();
     };
@@ -210,55 +204,49 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     </div>
                 </div>
 
-                {/* Section 2: Commodity & Packaging */}
+                {/* Section 2: Commodity & Packaging — type to search, new names are saved */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-gray-800/40 p-4 rounded-xl border border-gray-700">
-                        <div className="flex justify-between items-center mb-1">
-                            <label className={labelClasses}>Commodity Type</label>
-                            <button type="button" onClick={() => setShowNewCommodityInput(!showNewCommodityInput)} className="text-[10px] text-blue-400 font-bold hover:underline">
-                                {showNewCommodityInput ? 'Cancel' : '+ Add New'}
-                            </button>
-                        </div>
-                        {showNewCommodityInput ? (
-                            <div className="flex gap-2">
-                                <input 
-                                    type="text" 
-                                    value={newCommodity} 
-                                    onChange={e => setNewCommodity(e.target.value)} 
-                                    className={inputClasses} 
-                                    placeholder="Enter commodity..."
-                                />
-                                <button type="button" onClick={handleAddCustomCommodity} className="bg-blue-600 px-3 py-2 rounded-md text-sm font-bold">Add</button>
-                            </div>
-                        ) : (
-                            <select value={quote.commodity} onChange={e => handleFieldChange('commodity', e.target.value)} className={inputClasses}>
-                                {commodities.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        )}
+                        <label className={labelClasses}>Commodity Type</label>
+                        <input
+                            list="commodity-options"
+                            value={quote.commodity || ''}
+                            onChange={e => handleFieldChange('commodity', e.target.value)}
+                            className={inputClasses}
+                            placeholder="Type to search or add…"
+                            autoComplete="off"
+                        />
+                        <datalist id="commodity-options">
+                            {commodities.map(c => <option key={c} value={c} />)}
+                        </datalist>
+                        <p className="text-[10px] text-gray-500 mt-1">Start typing — pick a match or add a new one (saved for next time).</p>
                     </div>
                     <div className="bg-gray-800/40 p-4 rounded-xl border border-gray-700">
-                        <div className="flex justify-between items-center mb-1">
-                            <label className={labelClasses}>Packaging Type</label>
-                             <button type="button" onClick={() => setShowNewPackagingInput(!showNewPackagingInput)} className="text-[10px] text-blue-400 font-bold hover:underline">
-                                {showNewPackagingInput ? 'Cancel' : '+ Add New'}
-                            </button>
-                        </div>
-                         {showNewPackagingInput ? (
-                            <div className="flex gap-2">
-                                <input 
-                                    type="text" 
-                                    value={newPackaging} 
-                                    onChange={e => setNewPackaging(e.target.value)} 
-                                    className={inputClasses} 
-                                    placeholder="Enter packaging..."
-                                />
-                                <button type="button" onClick={handleAddCustomPackaging} className="bg-blue-600 px-3 py-2 rounded-md text-sm font-bold">Add</button>
-                            </div>
-                        ) : (
-                            <select value={quote.packaging} onChange={e => handleFieldChange('packaging', e.target.value)} className={inputClasses}>
-                                {packagingTypes.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                        )}
+                        <label className={labelClasses}>Packaging Type</label>
+                        <input
+                            list="packaging-options"
+                            value={quote.packaging || ''}
+                            onChange={e => handleFieldChange('packaging', e.target.value)}
+                            className={inputClasses}
+                            placeholder="Type to search or add…"
+                            autoComplete="off"
+                        />
+                        <datalist id="packaging-options">
+                            {packagingTypes.map(p => <option key={p} value={p} />)}
+                        </datalist>
+                        <p className="text-[10px] text-gray-500 mt-1">Start typing — pick a match or add a new one (saved for next time).</p>
+                    </div>
+                </div>
+
+                {/* Section 2b: Cargo measurements you're pricing on */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gray-800/40 p-4 rounded-xl border border-gray-700">
+                        <label className={labelClasses}>Total Weight (kg)</label>
+                        <input type="number" min="0" value={quote.requestData?.total_weight ?? ''} onChange={e => handleReqChange('total_weight', e.target.value)} className={inputClasses} placeholder="e.g. 8000" />
+                    </div>
+                    <div className="bg-gray-800/40 p-4 rounded-xl border border-gray-700">
+                        <label className={labelClasses}>Total Cubes (m³)</label>
+                        <input type="number" min="0" step="0.01" value={quote.requestData?.total_cube ?? ''} onChange={e => handleReqChange('total_cube', e.target.value)} className={inputClasses} placeholder="e.g. 12.5" />
                     </div>
                 </div>
 

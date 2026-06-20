@@ -922,26 +922,32 @@ export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Upd
 export const toQuoteInsert = (
     quote: Omit<Quote, 'id' | 'quoteNumber' | 'status'>,
     quoteNumber: string,
-): Tables['quotes']['Insert'] => ({
-    organization_id: FBN_ORGANIZATION_ID,
-    client_id: quote.clientId,
-    quote_number: quoteNumber,
-    date: quote.date,
-    expiry_date: quote.expiryDate || null,
-    items: (quote.items ?? []) as unknown as Tables['quotes']['Insert']['items'],
-    legs: (quote.legs ?? []) as unknown as Tables['quotes']['Insert']['legs'],
-    total_amount: quote.totalAmount,
-    status: 'Draft',
-    sent_to_client: quote.sentToClient ?? false,
-    customer_order_number: quote.customerOrderNumber ?? null,
-    notes: quote.notes ?? null,
-    special_requirements: quote.specialRequirements ?? null,
-    collection_date: quote.collectionDate ?? null,
-    subcontractor_quotes: (quote.subcontractorQuotes ?? []) as unknown as Tables['quotes']['Insert']['subcontractor_quotes'],
-    commodity: quote.commodity ?? null,
-    packaging: quote.packaging ?? null,
-    load_spec: quote.loadSpec ?? null,
-});
+): Tables['quotes']['Insert'] => {
+    // `request_data` exists in the DB (jsonb) but isn't in the generated types
+    // yet, so build via an untyped object to carry it through.
+    const row: any = {
+        organization_id: FBN_ORGANIZATION_ID,
+        client_id: quote.clientId,
+        quote_number: quoteNumber,
+        date: quote.date,
+        expiry_date: quote.expiryDate || null,
+        items: quote.items ?? [],
+        legs: quote.legs ?? [],
+        total_amount: quote.totalAmount,
+        status: 'Draft',
+        sent_to_client: quote.sentToClient ?? false,
+        customer_order_number: quote.customerOrderNumber ?? null,
+        notes: quote.notes ?? null,
+        special_requirements: quote.specialRequirements ?? null,
+        collection_date: quote.collectionDate ?? null,
+        subcontractor_quotes: quote.subcontractorQuotes ?? [],
+        commodity: quote.commodity ?? null,
+        packaging: quote.packaging ?? null,
+        load_spec: quote.loadSpec ?? null,
+        request_data: quote.requestData ?? null,
+    };
+    return row as Tables['quotes']['Insert'];
+};
 
 export const toQuoteUpdate = (updates: Partial<Quote>): Tables['quotes']['Update'] => {
     const row: Tables['quotes']['Update'] = {};
@@ -958,6 +964,7 @@ export const toQuoteUpdate = (updates: Partial<Quote>): Tables['quotes']['Update
     if (updates.commodity !== undefined) row.commodity = updates.commodity ?? null;
     if (updates.packaging !== undefined) row.packaging = updates.packaging ?? null;
     if (updates.loadSpec !== undefined) row.load_spec = updates.loadSpec ?? null;
+    if (updates.requestData !== undefined) (row as any).request_data = updates.requestData ?? null;
     if (updates.date !== undefined) row.date = updates.date;
     if (updates.expiryDate !== undefined) row.expiry_date = updates.expiryDate ?? null;
     return row;

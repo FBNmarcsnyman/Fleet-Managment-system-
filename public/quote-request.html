@@ -143,19 +143,11 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);mi
         <div class="section-title">🚚 Route</div>
         <div class="grid grid-2">
           <div class="field">
-            <label>Collection From<span class="req">*</span></label>
-            <input type="text" id="rq-collect" placeholder="e.g. 12 Main Rd, Mobeni, Durban">
+            <label>Area From — suburb / town<span class="req">*</span></label>
+            <input type="text" id="rq-col-area" placeholder="e.g. Polokwane">
           </div>
           <div class="field">
-            <label>Deliver To<span class="req">*</span></label>
-            <input type="text" id="rq-deliver" placeholder="e.g. 5 Industry Ave, Kempton Park">
-          </div>
-          <div class="field">
-            <label>Collection Area / Suburb</label>
-            <input type="text" id="rq-col-area" placeholder="e.g. Mobeni, Durban">
-          </div>
-          <div class="field">
-            <label>Delivery Area / Suburb</label>
+            <label>Area To — suburb / town<span class="req">*</span></label>
             <input type="text" id="rq-del-area" placeholder="e.g. Kempton Park, JHB">
           </div>
         </div>
@@ -244,16 +236,16 @@ async function submitQuote() {
   const name = document.getElementById('rq-name').value.trim();
   const email = document.getElementById('rq-email').value.trim();
   const phone = document.getElementById('rq-phone').value.trim();
-  const collect = document.getElementById('rq-collect').value.trim();
-  const deliver = document.getElementById('rq-deliver').value.trim();
+  const colArea = document.getElementById('rq-col-area').value.trim();
+  const delArea = document.getElementById('rq-del-area').value.trim();
   const commodity = document.getElementById('rq-commodity').value.trim();
 
   if (!company) { showError('Please enter your company name.'); return; }
   if (!name) { showError('Please enter a contact person.'); return; }
   if (!email) { showError('Please enter your email address.'); return; }
   if (!phone) { showError('Please enter your phone number.'); return; }
-  if (!collect) { showError('Please enter a collection address.'); return; }
-  if (!deliver) { showError('Please enter a delivery address.'); return; }
+  if (!colArea) { showError('Please enter the collection area / town.'); return; }
+  if (!delArea) { showError('Please enter the delivery area / town.'); return; }
   if (!commodity) { showError('Please describe your cargo.'); return; }
 
   const btn = document.getElementById('submit-btn');
@@ -266,11 +258,11 @@ async function submitQuote() {
     contact_person: name,
     email: email,
     phone: phone,
-    collect_from: collect,
-    deliver_to: deliver,
+    collect_from: colArea,
+    deliver_to: delArea,
     service: selectedSvc,
-    collection_area: document.getElementById('rq-col-area').value.trim(),
-    delivery_area: document.getElementById('rq-del-area').value.trim(),
+    collection_area: colArea,
+    delivery_area: delArea,
     commodity: commodity,
     packages: document.getElementById('rq-packages').value.trim(),
     load_type: document.getElementById('rq-loadtype').value,
@@ -319,15 +311,13 @@ function resetForm() {
 // business name to the address when a company is picked.
 function initAutocomplete() {
   if (!(window.google && google.maps && google.maps.places)) return;
-  ['rq-collect', 'rq-deliver'].forEach(function (id) {
+  ['rq-col-area', 'rq-del-area'].forEach(function (id) {
     var el = document.getElementById(id);
     if (!el) return;
-    var ac = new google.maps.places.Autocomplete(el, { componentRestrictions: { country: 'za' }, fields: ['formatted_address', 'name'] });
+    // Suggest SA towns / suburbs (regions), not full street addresses.
+    var ac = new google.maps.places.Autocomplete(el, { componentRestrictions: { country: 'za' }, types: ['(regions)'], fields: ['name'] });
     ac.addListener('place_changed', function () {
-      var p = ac.getPlace(); var fa = p.formatted_address || ''; var nm = (p.name || '').trim();
-      var low = fa.toLowerCase();
-      var isBiz = nm && fa && !low.startsWith(nm.toLowerCase()) && !low.includes(nm.toLowerCase());
-      el.value = isBiz ? (nm + ', ' + fa) : (fa || nm);
+      var p = ac.getPlace(); if (p && p.name) el.value = p.name;
     });
   });
 }

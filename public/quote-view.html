@@ -118,6 +118,13 @@ body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:
 .bfield input:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(19,41,75,.1)}
 @media(max-width:600px){.brow2{grid-template-columns:1fr}}
 
+/* Branded document header — inside the card so it prints AND lands in the PDF */
+.doc-header{background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:18px 28px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc-logo{height:42px;background:#fff;border-radius:4px;padding:3px}
+.doc-label{color:var(--yellow);font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.doc-yellow{height:4px;background:var(--yellow);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.card{overflow:hidden}
+
 /* Footer */
 .footer{text-align:center;padding:16px;font-size:11px;color:#9ca3af}
 
@@ -143,14 +150,6 @@ body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-inner">
-    <img src="/fbn-logo.jpg" alt="FBN Transport" class="logo">
-    <span class="header-label">Quotation</span>
-  </div>
-</div>
-<div class="yellow-bar"></div>
-
 <div id="loading" class="loading-wrap">
   <div class="spinner"></div>
   <h2>Loading your quotation...</h2>
@@ -158,6 +157,11 @@ body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:
 <div id="error" class="loading-wrap" style="display:none"></div>
 <div id="content" style="display:none">
   <div class="card" id="quote-card">
+    <div class="doc-header">
+      <img src="/fbn-logo.jpg" alt="FBN Transport" class="doc-logo">
+      <span class="doc-label">Quotation</span>
+    </div>
+    <div class="doc-yellow"></div>
     <div class="card-body">
       <div class="quote-header">
         <div>
@@ -218,9 +222,13 @@ body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:
         </div>
         <div class="right">
           <h4>Banking Details</h4>
-          <p>FBN TRANSPORT SOLUTIONS</p>
-          <p>FNB CORPORATE - ACC: 6281726351</p>
-          <p>BRANCH CODE: 250655</p>
+          <p>FBN TRANSPORT CC &middot; Standard Bank</p>
+          <p>Acc No: 051176262 (Business Current)</p>
+          <p>Branch: Glenwood &middot; Code: 051001</p>
+          <p>SWIFT: SBZAZAJJ</p>
+          <p style="margin-top:8px">VAT No: 4360117727</p>
+          <p>Reg No: 1989/001182/23</p>
+          <p>463 Sydney Rd, Congella, Durban</p>
         </div>
       </div>
     </div>
@@ -246,7 +254,7 @@ body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:
           <div class="bfield"><label>Delivery cell</label><input id="b-del-cell" placeholder="082..."></div>
         </div>
         <div class="brow2">
-          <div class="bfield"><label>Preferred collection date</label><input id="b-date" type="text" placeholder="dd/mm/yyyy" maxlength="10" inputmode="numeric" oninput="maskD(this)"></div>
+          <div class="bfield"><label>Preferred collection date</label><input id="b-date" type="date"></div>
           <div class="bfield"><label>Your reference / PO</label><input id="b-ref" placeholder="Optional"></div>
         </div>
       </div>
@@ -418,7 +426,7 @@ async function submitAcceptance() {
     delivery_address: delAddr,
     delivery_contact: document.getElementById('b-del-contact').value.trim(),
     delivery_cell: document.getElementById('b-del-cell').value.trim(),
-    collection_date: isoD(document.getElementById('b-date').value),
+    collection_date: document.getElementById('b-date').value,
     client_reference: document.getElementById('b-ref').value.trim()
   };
   const btns = document.querySelectorAll('.btn');

@@ -120,9 +120,12 @@ const QuotePDFView: React.FC<QuotePDFViewProps> = ({ quote, client }) => {
                     </div>
                     <div className="text-right">
                         <p className="text-gray-900 mb-2">Banking Details</p>
-                        <p>FBN TRANSPORT SOLUTIONS</p>
-                        <p>FNB CORPORATE - ACC: 6281726351</p>
-                        <p>BRANCH CODE: 250655</p>
+                        <p>FBN TRANSPORT CC · Standard Bank</p>
+                        <p>Acc No: 051176262 (Business Current)</p>
+                        <p>Branch: Glenwood · Code: 051001</p>
+                        <p>SWIFT: SBZAZAJJ</p>
+                        <p className="mt-2">VAT No: 4360117727 · Reg 1989/001182/23</p>
+                        <p>463 Sydney Rd, Congella, Durban</p>
                     </div>
                 </div>
             </footer>

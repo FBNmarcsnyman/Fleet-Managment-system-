@@ -6,8 +6,10 @@ import { STATUS_LABEL, statusChip } from '../../lib/loadStatus';
 // Mobile front page: book a collection in one tap. Everything else is a tap away
 // via the ☰ menu. Defaults as the landing view on phones.
 const CollectHome: React.FC = () => {
-    const { showModal, showToast, setSidebarOpen } = useUIState();
-    const { loadConfirmations = [], handleCreateLoadConfirmation: createLoadCon } = useOperations() as any;
+    const { showModal, showToast, setSidebarOpen, handleViewChange } = useUIState();
+    const { loadConfirmations = [], quotes = [], handleCreateLoadConfirmation: createLoadCon } = useOperations() as any;
+    // New quote requests waiting to be priced/attended — surfaced on the phone.
+    const newQuotes = useMemo(() => (quotes as any[]).filter(q => q.status === 'Requested' || q.status === 'More Info Requested').length, [quotes]);
 
     const onSubmit = async (data: any) => {
         const r = await createLoadCon(data);
@@ -37,6 +39,14 @@ const CollectHome: React.FC = () => {
                     className="bg-[#13294b] hover:bg-[#1d3a66] active:scale-[0.99] text-white rounded-2xl p-5 text-left shadow-lg">
                     <div className="text-lg font-black">📋 Broking Collection</div>
                     <div className="text-xs text-blue-100 mt-1">Assign a transporter → LoadCon + client order sent.</div>
+                </button>
+                <button onClick={() => handleViewChange('quotes')}
+                    className="bg-amber-500 hover:bg-amber-400 active:scale-[0.99] text-white rounded-2xl p-5 text-left shadow-lg flex items-center justify-between">
+                    <div>
+                        <div className="text-lg font-black">📝 Quotes</div>
+                        <div className="text-xs text-amber-50 mt-1">View &amp; price new quote requests on the road.</div>
+                    </div>
+                    {newQuotes > 0 && <span className="shrink-0 bg-white text-amber-600 text-xs font-black px-3 py-1 rounded-full">{newQuotes} new</span>}
                 </button>
             </div>
 

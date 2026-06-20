@@ -12,6 +12,15 @@ const SPECIALIZATIONS = [
     'Breakbulk', 'Courier', 'Full Loads', 'Tipper Bulk', 'Tankers', 'Abnormals', 'Hazchem'
 ];
 
+const VEHICLE_TYPES = [
+    'LDV / Bakkie', '4-ton', '8-ton', '14-ton', 'Rigid', 'Horse (Truck-Tractor)'
+];
+
+const TRAILER_TYPES = [
+    'Tautliner', 'Flatbed', 'Superlink', 'Tri-Axle', 'Tipper', 'Side-Tipper',
+    'Tanker', 'Lowbed / Lowboy', 'Reefer / Refrigerated', 'Container Skeletal', 'Dropside', 'Car Carrier'
+];
+
 const BEE_LEVELS = ['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5+', 'Non-Compliant'];
 
 const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({ inviteToken }) => {
@@ -24,6 +33,8 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
         contactPhone: '',
         address: '',
         specializations: [] as string[],
+        vehicleTypes: [] as string[],
+        trailerTypes: [] as string[],
         routes: '',
         fleetSize: '',
         beeStatus: 'Non-Compliant',
@@ -42,14 +53,15 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
-    const handleSpecializationChange = (spec: string) => {
+    const toggleInList = (field: 'specializations' | 'vehicleTypes' | 'trailerTypes', value: string) => {
         setFormData(prev => ({
             ...prev,
-            specializations: prev.specializations.includes(spec)
-                ? prev.specializations.filter(s => s !== spec)
-                : [...prev.specializations, spec]
+            [field]: prev[field].includes(value)
+                ? prev[field].filter(s => s !== value)
+                : [...prev[field], value]
         }));
     };
+    const handleSpecializationChange = (spec: string) => toggleInList('specializations', spec);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, files: inputFiles } = e.target;
@@ -69,13 +81,21 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
     const nextStep = () => setStep(s => s + 1);
     const prevStep = () => setStep(s => s - 1);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!files.fleetList || !files.rateCard || !files.insurance) {
             alert("Please upload all required documents.");
             return;
         }
-        handleAddSupplierApplication({ ...formData, ...files, inviteToken: inviteToken || undefined });
+        setSubmitting(true);
+        const res = await handleAddSupplierApplication({ ...formData, ...files, inviteToken: inviteToken || undefined });
+        setSubmitting(false);
+        if (res && res.ok === false) {
+            alert(res.error || 'We could not submit your application. Please try again.');
+            return;
+        }
         setIsSubmitted(true);
     };
 
@@ -161,8 +181,28 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
                                 <label className={labelClasses}>Logistics Specializations</label>
                                 <div className="flex flex-wrap gap-2">
                                     {SPECIALIZATIONS.map(spec => (
-                                        <button key={spec} type="button" onClick={() => handleSpecializationChange(spec)} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${formData.specializations.includes(spec) ? 'bg-brand-primary text-white border-brand-primary shadow-lg shadow-blue-900/30' : 'bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-500'}`}>
+                                        <button key={spec} type="button" onClick={() => toggleInList('specializations', spec)} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${formData.specializations.includes(spec) ? 'bg-brand-primary text-white border-brand-primary shadow-lg shadow-blue-900/30' : 'bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-500'}`}>
                                             {spec}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className={labelClasses}>Vehicle / Horse Types</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {VEHICLE_TYPES.map(v => (
+                                        <button key={v} type="button" onClick={() => toggleInList('vehicleTypes', v)} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${formData.vehicleTypes.includes(v) ? 'bg-brand-primary text-white border-brand-primary shadow-lg shadow-blue-900/30' : 'bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-500'}`}>
+                                            {v}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className={labelClasses}>Trailer Types</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {TRAILER_TYPES.map(t => (
+                                        <button key={t} type="button" onClick={() => toggleInList('trailerTypes', t)} className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${formData.trailerTypes.includes(t) ? 'bg-brand-primary text-white border-brand-primary shadow-lg shadow-blue-900/30' : 'bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-500'}`}>
+                                            {t}
                                         </button>
                                     ))}
                                 </div>
@@ -203,7 +243,7 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
                             <FileInput name="insurance" label="Goods-In-Transit (GIT) Policy" />
                             <div className="flex justify-between mt-8">
                                 <button type="button" onClick={prevStep} className="bg-gray-800 hover:bg-gray-700 text-gray-400 font-black py-3 px-8 rounded-xl uppercase tracking-widest text-xs transition-all">Back</button>
-                                <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-10 rounded-xl uppercase tracking-widest text-xs shadow-lg shadow-emerald-900/30 active:scale-95 transition-all">Submit Profile</button>
+                                <button type="submit" disabled={submitting} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black py-3 px-10 rounded-xl uppercase tracking-widest text-xs shadow-lg shadow-emerald-900/30 active:scale-95 transition-all">{submitting ? 'Submitting…' : 'Submit Profile'}</button>
                             </div>
                         </div>
                     )}

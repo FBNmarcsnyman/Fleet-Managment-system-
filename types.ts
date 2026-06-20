@@ -368,6 +368,8 @@ export interface Supplier {
     specializations?: string[];
     regions?: string;
     fleetSize?: string;
+    vehicleTypes?: string[];
+    trailerTypes?: string[];
     controllerContact?: string;
     accountsContact?: string;
     complianceDocs: ComplianceDoc[];
@@ -393,6 +395,9 @@ export interface SupplierApplication {
     fleetSize?: string;
     beeStatus?: string;
     hazCompliant?: boolean;
+    vehicleTypes?: string[];
+    trailerTypes?: string[];
+    inviteToken?: string;
     fleetList: Attachment;
     rateCard: Attachment;
     insurance: Attachment;

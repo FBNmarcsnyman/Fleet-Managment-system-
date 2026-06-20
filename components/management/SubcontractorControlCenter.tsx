@@ -11,8 +11,13 @@ import CarrierInviteCampaign from './CarrierInviteCampaign';
 import { format } from 'date-fns';
 
 const SubcontractorControlCenter: React.FC = () => {
-    const { suppliers = [], supplierApplications = [], handleUpdateSupplier } = useOperations();
+    const { suppliers = [], supplierApplications = [], handleUpdateSupplier, handleSendCarrierRegistrationLink } = useOperations();
     const { showModal, showToast } = useUIState();
+
+    const sendRegLink = async (s: Supplier) => {
+        const res = await handleSendCarrierRegistrationLink(s);
+        showToast(res?.ok ? `Profile link sent to ${s.name}.` : (res?.error || 'Could not send link.'));
+    };
 
     const setVetted = async (s: Supplier, vetted: boolean) => {
         const res = await handleUpdateSupplier(s.id, { isVetted: vetted, vettedAt: vetted ? new Date().toISOString() : undefined });
@@ -160,6 +165,7 @@ const SubcontractorControlCenter: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="p-4 text-right whitespace-nowrap">
+                                        <button onClick={() => sendRegLink(s)} className="text-xs font-black text-blue-400 hover:text-white uppercase tracking-wider mr-4">Send Profile Link</button>
                                         {s.isVetted ? (
                                             <button onClick={() => setVetted(s, false)} className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-wider">Unvet</button>
                                         ) : (

@@ -392,6 +392,15 @@ CREATE POLICY supplier_apps_all ON supplier_applications
     USING (organization_id = auth_org_id() AND auth_is_ops())
     WITH CHECK (organization_id = auth_org_id() AND auth_is_ops());
 
+-- Public "Join Carrier Network" form: anonymous visitors may submit a Pending
+-- application for FBN (vetted by ops before becoming a live carrier).
+CREATE POLICY supplier_apps_anon_insert ON supplier_applications
+    FOR INSERT TO anon
+    WITH CHECK (
+        organization_id = '00000000-0000-0000-0000-000000000001'
+        AND status = 'Pending'
+    );
+
 ALTER TABLE subcontractor_invites ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY subcontractor_invites_all ON subcontractor_invites

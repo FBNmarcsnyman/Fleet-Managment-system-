@@ -1084,10 +1084,42 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true };
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
-        // Public registration submissions still land in local state (the anon
-        // applicant has no authenticated session to write to Postgres — wiring a
-        // service-role intake function is the next phase).
-        handleAddSupplierApplication: (data: any) => dispatch({ type: 'ADD_SUPPLIER_APPLICATION', payload: data }),
+        // Public "Join Carrier Network" submission. Persists to supplier_applications
+        // via the anon client (a tightly-scoped anon INSERT policy permits Pending
+        // FBN applications); document uploads are stored inline as data URLs. Lands
+        // in the ops Onboarding Queue for vetting.
+        handleAddSupplierApplication: async (data: any): Promise<Result<void>> => {
+            try {
+                const row = {
+                    organization_id: FBN_ORG_ID,
+                    status: 'Pending',
+                    submitted_date: new Date().toISOString().slice(0, 10),
+                    company_name: data.companyName,
+                    contact_person: data.contactPerson || null,
+                    contact_email: data.contactEmail || null,
+                    contact_phone: data.contactPhone || null,
+                    address: data.address || null,
+                    specializations: data.specializations || [],
+                    routes: data.routes || null,
+                    fleet_size: data.fleetSize || null,
+                    bee_status: data.beeStatus || null,
+                    haz_compliant: !!data.hazCompliant,
+                    vehicle_types: data.vehicleTypes || [],
+                    trailer_types: data.trailerTypes || [],
+                    invite_token: data.inviteToken || null,
+                    fleet_list_url: data.fleetList?.data || null,
+                    rate_card_url: data.rateCard?.data || null,
+                    insurance_url: data.insurance?.data || null,
+                };
+                const { data: inserted, error } = await supabase.from('supplier_applications').insert(row as any).select().single();
+                if (error || !inserted) { console.error('[ops] addSupplierApplication failed:', error); return { ok: false, error: error?.message || 'Could not submit application.' }; }
+                dispatch({ type: 'ADD_SUPPLIER_APPLICATION', payload: data });
+                return { ok: true };
+            } catch (err) {
+                console.error('[ops] addSupplierApplication threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Could not submit application.' };
+            }
+        },
 
         // --- Carrier (subcontractor) invitation campaign --------------------
         // Add a batch of transporter emails to the invite list. De-dupes against
@@ -1167,6 +1199,23 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
+        // Email an existing carrier the link to complete their online profile
+        // (rates, routes, vehicle/trailer types, documents) via the public form.
+        handleSendCarrierRegistrationLink: async (supplier: Supplier): Promise<Result<void>> => {
+            try {
+                const to = (supplier.contactEmail || '').trim();
+                if (!to) return { ok: false, error: 'No email address on file for this carrier.' };
+                const base = (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '';
+                const link = `${base}?portal=become-supplier`;
+                const html = brandedEmail(`<p>Good day ${supplier.contactPerson || supplier.name},</p>
+                  <p>As an approved FBN carrier, please complete your profile on our platform so we can match you to the right loads. Confirm the routes you specialise in, your vehicle &amp; trailer types, and upload your latest fleet list, rate card and Goods-in-Transit cover using the link below.</p>
+                  ${emailButton(link, 'Complete your carrier profile &rarr;', '#16a34a')}
+                  <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+                const { data, error } = await invokeFn('send-email', { body: { to, subject: 'Complete your FBN carrier profile', html, fromName: 'FBN Transport' } });
+                if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message || 'Send failed.' };
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
         // Approve/reject a carrier application. On approval, persist the status and
         // create the live Supplier record (so it appears in the Active Network and
         // can be invited to log in), and advance any matching invite to Vetted.
@@ -1177,24 +1226,38 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 await directUpdate('supplier_applications', { id: appId }, { status, updated_at: new Date().toISOString() });
                 let createdSupplier: Supplier | undefined;
                 if (status === 'Approved' && app) {
-                    const supplierInput = {
-                        name: app.companyName,
-                        type: 'Transport' as const,
+                    // Don't duplicate a carrier we already have — if a Transport
+                    // supplier with this email exists, update it in place instead.
+                    const existing = (stateRef.current.suppliers || []).find((s: Supplier) => s.type === 'Transport' && s.contactEmail && app.contactEmail && s.contactEmail.toLowerCase() === app.contactEmail.toLowerCase());
+                    const profileUpdates = {
                         contactPerson: app.contactPerson,
-                        contactEmail: app.contactEmail,
                         contactPhone: app.contactPhone,
                         address: app.address,
-                        complianceStatus: 'Pending' as const,
                         specializations: app.specializations,
                         regions: app.routes,
                         fleetSize: app.fleetSize,
                         beeStatus: app.beeStatus,
                         hazCompliant: app.hazCompliant,
+                        vehicleTypes: app.vehicleTypes,
+                        trailerTypes: app.trailerTypes,
+                        isVetted: true,
+                        vettedAt: new Date().toISOString(),
+                    };
+                    if (existing) {
+                        await directUpdate('suppliers', { id: existing.id }, toSupplierUpdate(profileUpdates) as any);
+                        dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: existing.id, updates: profileUpdates } });
+                        createdSupplier = { ...existing, ...profileUpdates } as Supplier;
+                        await directUpdate('supplier_applications', { id: appId }, { approved_supplier_id: existing.id });
+                    } else {
+                    const supplierInput = {
+                        name: app.companyName,
+                        type: 'Transport' as const,
+                        contactEmail: app.contactEmail,
+                        complianceStatus: 'Pending' as const,
                         complianceDocs: [],
                         rateCards: [],
                         isActive: true,
-                        isVetted: true,
-                        vettedAt: new Date().toISOString(),
+                        ...profileUpdates,
                     };
                     const { data, error } = await directInsert('suppliers', toSupplierInsert(supplierInput));
                     if (error || !data) { console.error('[ops] approve -> createSupplier failed:', error); }
@@ -1202,6 +1265,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         createdSupplier = mapSupplier(data, new Map(), new Map());
                         dispatch({ type: 'ADD_SUPPLIER', payload: createdSupplier });
                         await directUpdate('supplier_applications', { id: appId }, { approved_supplier_id: createdSupplier.id });
+                    }
+                    }
+                    if (createdSupplier) {
                         const inv = (stateRef.current.subcontractorInvites || []).find((i: SubcontractorInvite) => i.email.toLowerCase() === String(app.contactEmail || '').toLowerCase());
                         if (inv) {
                             const { data: ud } = await directUpdate('subcontractor_invites', { id: inv.id }, { status: 'Vetted', supplier_id: createdSupplier.id, updated_at: new Date().toISOString() });

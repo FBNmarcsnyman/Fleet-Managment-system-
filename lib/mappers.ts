@@ -510,6 +510,8 @@ export const mapSupplier = (
     isActive: (row as any).is_active ?? true,
     isVetted: (row as any).is_vetted ?? false,
     vettedAt: (row as any).vetted_at ?? undefined,
+    vehicleTypes: (row as any).vehicle_types ?? undefined,
+    trailerTypes: (row as any).trailer_types ?? undefined,
 });
 
 // -- quotes → Quote ----------------------------------------------------------
@@ -693,6 +695,9 @@ export const mapSupplierApplication = (row: Tables['supplier_applications']['Row
     fleetSize: row.fleet_size ?? undefined,
     beeStatus: row.bee_status ?? undefined,
     hazCompliant: row.haz_compliant ?? undefined,
+    vehicleTypes: (row as any).vehicle_types ?? undefined,
+    trailerTypes: (row as any).trailer_types ?? undefined,
+    inviteToken: (row as any).invite_token ?? undefined,
     fleetList: urlToAttachment(row.fleet_list_url) ?? { name: '', type: '', data: '' },
     rateCard: urlToAttachment(row.rate_card_url) ?? { name: '', type: '', data: '' },
     insurance: urlToAttachment(row.insurance_url) ?? { name: '', type: '', data: '' },
@@ -917,6 +922,8 @@ export const toSupplierInsert = (supplier: Omit<Supplier, 'id'>): Tables['suppli
     accounts_contact: supplier.accountsContact ?? null,
     is_vetted: supplier.isVetted ?? false,
     vetted_at: supplier.vettedAt ?? null,
+    vehicle_types: supplier.vehicleTypes ?? [],
+    trailer_types: supplier.trailerTypes ?? [],
 } as Tables['suppliers']['Insert']);
 
 export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Update'] => {
@@ -936,6 +943,8 @@ export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Upd
     if (u.complianceStatus !== undefined) row.compliance_status = u.complianceStatus;
     if (u.isVetted !== undefined) (row as any).is_vetted = u.isVetted;
     if (u.vettedAt !== undefined) (row as any).vetted_at = u.vettedAt;
+    if (u.vehicleTypes !== undefined) (row as any).vehicle_types = u.vehicleTypes;
+    if (u.trailerTypes !== undefined) (row as any).trailer_types = u.trailerTypes;
     return row;
 };
 

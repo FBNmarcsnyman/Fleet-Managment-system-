@@ -201,6 +201,8 @@ CREATE TABLE suppliers (
     is_active           BOOLEAN NOT NULL DEFAULT true,
     is_vetted           BOOLEAN NOT NULL DEFAULT false,
     vetted_at           TIMESTAMPTZ,
+    vehicle_types       TEXT[] DEFAULT '{}',
+    trailer_types       TEXT[] DEFAULT '{}',
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -260,6 +262,9 @@ CREATE TABLE supplier_applications (
     fleet_size          TEXT,
     bee_status          TEXT,
     haz_compliant       BOOLEAN DEFAULT false,
+    vehicle_types       TEXT[] DEFAULT '{}',
+    trailer_types       TEXT[] DEFAULT '{}',
+    invite_token        TEXT,
     fleet_list_url      TEXT,
     rate_card_url       TEXT,
     insurance_url       TEXT,

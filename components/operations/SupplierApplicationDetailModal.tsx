@@ -48,6 +48,19 @@ const SupplierApplicationDetailModal: React.FC<SupplierApplicationDetailModalPro
                  <div className="bg-gray-900/50 p-3 rounded-lg">
                      <DetailItem label="Specializations" value={application.specializations} />
                  </div>
+                 {!!application.vehicleTypes?.length && (
+                     <div className="bg-gray-900/50 p-3 rounded-lg">
+                         <DetailItem label="Vehicle / Horse Types" value={application.vehicleTypes} />
+                     </div>
+                 )}
+                 {!!application.trailerTypes?.length && (
+                     <div className="bg-gray-900/50 p-3 rounded-lg">
+                         <DetailItem label="Trailer Types" value={application.trailerTypes} />
+                     </div>
+                 )}
+                 <div className="bg-gray-900/50 p-3 rounded-lg">
+                    <DetailItem label="Fleet Size" value={application.fleetSize} />
+                 </div>
                  <div className="bg-gray-900/50 p-3 rounded-lg">
                     <DetailItem label="Primary Routes" value={application.routes} />
                  </div>

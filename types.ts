@@ -373,6 +373,8 @@ export interface Supplier {
     complianceDocs: ComplianceDoc[];
     rateCards: Attachment[];
     isActive?: boolean;
+    isVetted?: boolean;
+    vettedAt?: string;
 }
 
 export type SupplierApplicationStatus = 'Pending' | 'Approved' | 'Rejected';

@@ -11,8 +11,22 @@ import CarrierInviteCampaign from './CarrierInviteCampaign';
 import { format } from 'date-fns';
 
 const SubcontractorControlCenter: React.FC = () => {
-    const { suppliers = [], supplierApplications = [] } = useOperations();
+    const { suppliers = [], supplierApplications = [], handleUpdateSupplier } = useOperations();
     const { showModal, showToast } = useUIState();
+
+    const setVetted = async (s: Supplier, vetted: boolean) => {
+        const res = await handleUpdateSupplier(s.id, { isVetted: vetted, vettedAt: vetted ? new Date().toISOString() : undefined });
+        showToast(res?.ok === false ? (res.error || 'Could not update carrier.') : `${s.name} marked ${vetted ? 'vetted' : 'not vetted'}.`);
+    };
+
+    const markAllVetted = async () => {
+        const unvetted = transportSuppliers.filter(s => !s.isVetted);
+        if (!unvetted.length) { showToast('All carriers are already vetted.'); return; }
+        for (const s of unvetted) {
+            await handleUpdateSupplier(s.id, { isVetted: true, vettedAt: new Date().toISOString() });
+        }
+        showToast(`${unvetted.length} carrier(s) marked vetted.`);
+    };
     const [activeTab, setActiveTab] = useState<'network' | 'onboarding' | 'invite'>('network');
 
     const transportSuppliers = useMemo(() => 
@@ -88,12 +102,24 @@ const SubcontractorControlCenter: React.FC = () => {
                 <CarrierInviteCampaign />
             ) : activeTab === 'network' ? (
                 <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-2xl">
+                    <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-900/40">
+                        <p className="text-xs font-bold text-gray-400">
+                            <span className="text-emerald-400 font-black">{transportSuppliers.filter(s => s.isVetted).length}</span> of {transportSuppliers.length} carriers vetted
+                        </p>
+                        <button
+                            onClick={markAllVetted}
+                            className="flex items-center bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all border border-emerald-500/30"
+                        >
+                            <CheckCircleIcon className="h-4 w-4 mr-2" /> Mark all as vetted
+                        </button>
+                    </div>
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gray-900/60 border-b border-gray-700">
                             <tr>
                                 <th className="p-4 text-gray-400 uppercase text-[10px] font-black tracking-widest">Carrier Details</th>
                                 <th className="p-4 text-gray-400 uppercase text-[10px] font-black tracking-widest text-center">Specialization</th>
-                                <th className="p-4 text-gray-400 uppercase text-[10px] font-black tracking-widest text-center">Status</th>
+                                <th className="p-4 text-gray-400 uppercase text-[10px] font-black tracking-widest text-center">Compliance</th>
+                                <th className="p-4 text-gray-400 uppercase text-[10px] font-black tracking-widest text-center">Vetting</th>
                                 <th className="p-4 text-gray-400 uppercase text-[10px] font-black tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
@@ -124,8 +150,21 @@ const SubcontractorControlCenter: React.FC = () => {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="p-4 text-right">
-                                        <button className="text-xs font-black text-blue-400 hover:text-white uppercase tracking-wider">View Profile</button>
+                                    <td className="p-4 text-center">
+                                        {s.isVetted ? (
+                                            <span className="inline-flex items-center text-emerald-400 font-bold bg-emerald-900/30 px-3 py-1 rounded-full text-xs">
+                                                <CheckCircleIcon className="h-4 w-4 mr-1.5" /> Vetted
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center text-gray-500 font-bold bg-gray-700/40 px-3 py-1 rounded-full text-xs">Not vetted</span>
+                                        )}
+                                    </td>
+                                    <td className="p-4 text-right whitespace-nowrap">
+                                        {s.isVetted ? (
+                                            <button onClick={() => setVetted(s, false)} className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-wider">Unvet</button>
+                                        ) : (
+                                            <button onClick={() => setVetted(s, true)} className="text-xs font-black text-emerald-400 hover:text-white uppercase tracking-wider">Mark Vetted</button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

@@ -508,6 +508,8 @@ export const mapSupplier = (
     complianceDocs: complianceDocsBySupplier.get(row.id) || [],
     rateCards: rateCardsBySupplier.get(row.id) || [],
     isActive: (row as any).is_active ?? true,
+    isVetted: (row as any).is_vetted ?? false,
+    vettedAt: (row as any).vetted_at ?? undefined,
 });
 
 // -- quotes → Quote ----------------------------------------------------------
@@ -913,7 +915,9 @@ export const toSupplierInsert = (supplier: Omit<Supplier, 'id'>): Tables['suppli
     fleet_size: supplier.fleetSize ?? null,
     controller_contact: supplier.controllerContact ?? null,
     accounts_contact: supplier.accountsContact ?? null,
-});
+    is_vetted: supplier.isVetted ?? false,
+    vetted_at: supplier.vettedAt ?? null,
+} as Tables['suppliers']['Insert']);
 
 export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Update'] => {
     const row: Tables['suppliers']['Update'] = {};
@@ -930,6 +934,8 @@ export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Upd
     if (u.regions !== undefined) row.regions = u.regions || null;
     if (u.fleetSize !== undefined) row.fleet_size = u.fleetSize || null;
     if (u.complianceStatus !== undefined) row.compliance_status = u.complianceStatus;
+    if (u.isVetted !== undefined) (row as any).is_vetted = u.isVetted;
+    if (u.vettedAt !== undefined) (row as any).vetted_at = u.vettedAt;
     return row;
 };
 

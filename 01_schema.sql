@@ -199,6 +199,8 @@ CREATE TABLE suppliers (
     controller_contact  TEXT,
     accounts_contact    TEXT,
     is_active           BOOLEAN NOT NULL DEFAULT true,
+    is_vetted           BOOLEAN NOT NULL DEFAULT false,
+    vetted_at           TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

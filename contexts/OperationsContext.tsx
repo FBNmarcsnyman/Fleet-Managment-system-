@@ -1193,6 +1193,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         complianceDocs: [],
                         rateCards: [],
                         isActive: true,
+                        isVetted: true,
+                        vettedAt: new Date().toISOString(),
                     };
                     const { data, error } = await directInsert('suppliers', toSupplierInsert(supplierInput));
                     if (error || !data) { console.error('[ops] approve -> createSupplier failed:', error); }

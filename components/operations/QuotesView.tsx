@@ -59,12 +59,24 @@ const QuotesView: React.FC<{
         const open = quotes.filter(q => ['Requested', 'More Info Requested', 'Draft', 'Sent'].includes(q.status));
         const sum = (arr: Quote[]) => arr.reduce((s, q) => s + (q.totalAmount || 0), 0);
         const decided = accepted.length + rejected.length;
+        // Average rate per kg across priced quotes (those with a weight + amount).
+        const priced = quotes.filter(q => Number(q.requestData?.total_weight) > 0 && (q.totalAmount || 0) > 0);
+        const avgPerKg = priced.length
+            ? priced.reduce((s, q) => s + (q.totalAmount / Number(q.requestData!.total_weight)), 0) / priced.length
+            : 0;
         return {
             acceptedCount: accepted.length, rejectedCount: rejected.length, openCount: open.length,
             acceptedValue: sum(accepted), rejectedValue: sum(rejected), openValue: sum(open),
             winRate: decided ? Math.round((accepted.length / decided) * 100) : 0,
+            avgPerKg,
         };
     }, [quotes]);
+
+    // Per-quote rate per kg, or null when we don't have a weight to divide by.
+    const ratePerKg = (q: Quote): number | null => {
+        const w = Number(q.requestData?.total_weight);
+        return w > 0 && (q.totalAmount || 0) > 0 ? q.totalAmount / w : null;
+    };
 
     // Arrived from the "Open Quotes to price" email — open that quote's detail
     // once it's loaded, then clear the stash so it won't re-open. We read from
@@ -158,7 +170,7 @@ const QuotesView: React.FC<{
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
             {/* Win / loss dashboard */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
                 <div className="rounded-xl p-4 bg-green-900/20 border border-green-700/40">
                     <div className="text-xs font-bold text-green-400 uppercase tracking-widest">Accepted</div>
                     <div className="text-2xl font-black text-white mt-1">R {stats.acceptedValue.toLocaleString()}</div>
@@ -178,6 +190,11 @@ const QuotesView: React.FC<{
                     <div className="text-xs font-bold text-amber-400 uppercase tracking-widest">Win Rate</div>
                     <div className="text-2xl font-black text-white mt-1">{stats.winRate}%</div>
                     <div className="text-xs text-amber-300/70 mt-0.5">accepted vs declined</div>
+                </div>
+                <div className="rounded-xl p-4 bg-slate-700/30 border border-slate-500/40">
+                    <div className="text-xs font-bold text-slate-300 uppercase tracking-widest">Avg Rate / kg</div>
+                    <div className="text-2xl font-black text-white mt-1">R {stats.avgPerKg.toFixed(2)}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">across priced quotes</div>
                 </div>
             </div>
 
@@ -207,6 +224,7 @@ const QuotesView: React.FC<{
                             <th className="p-2">Client</th>
                             <th className="p-2">Date</th>
                             <th className="p-2 text-right">Amount</th>
+                            <th className="p-2 text-right">R / kg</th>
                             <th className="p-2 text-center">Status</th>
                             <th className="p-2 text-right">Actions</th>
                         </tr>
@@ -224,6 +242,7 @@ const QuotesView: React.FC<{
                                 <td className="p-2">{clientMap.get(quote.clientId) || 'Unknown'}</td>
                                 <td className="p-2">{format(new Date(quote.date), 'dd MMM yyyy')}</td>
                                 <td className="p-2 text-right font-mono">R {quote.totalAmount.toFixed(2)}</td>
+                                <td className="p-2 text-right font-mono text-green-400">{ratePerKg(quote) !== null ? `R ${ratePerKg(quote)!.toFixed(2)}` : '—'}</td>
                                 <td className="p-2 text-center"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(quote.status)}`}>{quote.status}</span></td>
                                 <td className="p-2 text-right space-x-1" onClick={e => e.stopPropagation()}>
                                     {quote.status === 'Archived' && (

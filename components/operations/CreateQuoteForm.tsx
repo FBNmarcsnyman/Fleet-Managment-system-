@@ -418,6 +418,12 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                         <p className={labelClasses}>Total Sell</p>
                         <p className="text-3xl font-black text-white">R {quote.totalAmount.toLocaleString()}</p>
                     </div>
+                    {Number(quote.requestData?.total_weight) > 0 && (
+                        <div>
+                            <p className={labelClasses}>Rate / kg</p>
+                            <p className="text-xl font-bold text-green-400">R {(quote.totalAmount / Number(quote.requestData.total_weight)).toFixed(2)}</p>
+                        </div>
+                    )}
                     {quote.subcontractorQuotes.length > 0 && (
                         <div>
                              <p className={labelClasses}>Best Buy Rate</p>

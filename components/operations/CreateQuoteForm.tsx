@@ -33,11 +33,17 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
     // The client states cargo type as "Load Type" on the request (e.g. Cartons),
     // so honour that before falling back to the default packaging.
     const packaging = prefill?.packaging || rd.load_type || rd.packaging || packagingTypes?.[0] || 'Pallets';
+    // Pull the quantity through: prefer the sum of parcel quantities, else the
+    // number in the "packages" field (e.g. "10 pallets" → 10), else 1.
+    const dimSource = prefill?.requestMoreInfo?.dimensions || rd.dimensions;
+    const dimQty = Array.isArray(dimSource) ? dimSource.reduce((s: number, d: any) => s + (Number(d.qty) || 0), 0) : 0;
+    const pkgQty = parseInt(String(rd.packages || '').replace(/[^0-9]/g, ''), 10) || 0;
+    const initialQty = dimQty || pkgQty || 1;
     return {
         clientId: prefill?.clientId || '',
         date: format(new Date(), 'yyyy-MM-dd'),
         expiryDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
-        items: [{ id: generateId(), description: commodity, packagingType: packaging, quantity: 1, rate: 0, total: 0 }],
+        items: [{ id: generateId(), description: commodity, packagingType: packaging, quantity: initialQty, rate: 0, total: 0 }],
         legs: [{ id: generateId(), collectionPoint: rd.collect_from || rd.collection_area || '', deliveryPoint: rd.deliver_to || rd.delivery_area || '', movementType: 'Internal' }],
         totalAmount: 0,
         sentToClient: false,
@@ -164,11 +170,14 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         // Persist any newly-typed commodity / packaging so they appear in the
-        // pick-lists next time (and stay consistently spelled).
-        const commodityVal = (quote.commodity || '').trim();
-        if (commodityVal && !commodities.includes(commodityVal)) handleAddCommodity(commodityVal);
-        const packagingVal = (quote.packaging || '').trim();
-        if (packagingVal && !packagingTypes.includes(packagingVal)) handleAddPackagingType(packagingVal);
+        // pick-lists next time. Wrapped so a pick-list hiccup can never block the
+        // actual quote from being created.
+        try {
+            const commodityVal = (quote.commodity || '').trim();
+            if (commodityVal && !commodities.includes(commodityVal) && typeof handleAddCommodity === 'function') handleAddCommodity(commodityVal);
+            const packagingVal = (quote.packaging || '').trim();
+            if (packagingVal && !packagingTypes.includes(packagingVal) && typeof handleAddPackagingType === 'function') handleAddPackagingType(packagingVal);
+        } catch (err) { console.error('[quote] add commodity/packaging failed (continuing):', err); }
         onSubmit(quote);
         hideModal();
     };

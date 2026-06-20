@@ -615,6 +615,17 @@ export const FleetDataProvider: React.FC<{ children: ReactNode }> = ({ children 
                 return { ok: true, count: mapped.length };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
+        // Add a commodity / packaging type to the in-session pick-lists. Quote and
+        // booking forms call these when a new name is typed; without them the call
+        // was `undefined(...)` and threw, silently killing "Generate Quote".
+        handleAddCommodity: (name: string) => {
+            const v = (name || '').trim();
+            if (v) dispatch({ type: 'ADD_COMMODITY', payload: v });
+        },
+        handleAddPackagingType: (name: string) => {
+            const v = (name || '').trim();
+            if (v) dispatch({ type: 'ADD_PACKAGING_TYPE', payload: v });
+        },
     }), [dispatch, branchIdByName, branchById]);
 
     const value = useMemo(() => ({

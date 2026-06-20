@@ -313,6 +313,25 @@ function resetForm() {
   document.getElementById('submit-btn').textContent = 'Submit Quote Request →';
   window.scrollTo({ top: 0 });
 }
+
+// Google Places address autocomplete on the address fields. Loaded via the
+// callback on the Maps script below. Restricted to South Africa; prepends a
+// business name to the address when a company is picked.
+function initAutocomplete() {
+  if (!(window.google && google.maps && google.maps.places)) return;
+  ['rq-collect', 'rq-deliver'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var ac = new google.maps.places.Autocomplete(el, { componentRestrictions: { country: 'za' }, fields: ['formatted_address', 'name'] });
+    ac.addListener('place_changed', function () {
+      var p = ac.getPlace(); var fa = p.formatted_address || ''; var nm = (p.name || '').trim();
+      var low = fa.toLowerCase();
+      var isBiz = nm && fa && !low.startsWith(nm.toLowerCase()) && !low.includes(nm.toLowerCase());
+      el.value = isBiz ? (nm + ', ' + fa) : (fa || nm);
+    });
+  });
+}
 </script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDO_QqVAA8P-kAw-FEeFoI54YC1O7jIPWk&libraries=places&callback=initAutocomplete" async defer></script>
 </body>
 </html>

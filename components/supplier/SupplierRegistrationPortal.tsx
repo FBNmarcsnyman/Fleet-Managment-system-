@@ -34,7 +34,9 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
         address: '',
         specializations: [] as string[],
         vehicleTypes: [] as string[],
+        vehicleTypesOther: '',
         trailerTypes: [] as string[],
+        trailerTypesOther: '',
         routes: '',
         fleetSize: '',
         beeStatus: 'Non-Compliant',
@@ -89,8 +91,14 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
             alert("Please upload all required documents.");
             return;
         }
+        const splitList = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);
+        const merged = {
+            ...formData,
+            vehicleTypes: [...formData.vehicleTypes, ...splitList(formData.vehicleTypesOther)],
+            trailerTypes: [...formData.trailerTypes, ...splitList(formData.trailerTypesOther)],
+        };
         setSubmitting(true);
-        const res = await handleAddSupplierApplication({ ...formData, ...files, inviteToken: inviteToken || undefined });
+        const res = await handleAddSupplierApplication({ ...merged, ...files, inviteToken: inviteToken || undefined });
         setSubmitting(false);
         if (res && res.ok === false) {
             alert(res.error || 'We could not submit your application. Please try again.');
@@ -196,6 +204,7 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
                                         </button>
                                     ))}
                                 </div>
+                                <input name="vehicleTypesOther" value={formData.vehicleTypesOther} onChange={handleInputChange} placeholder="Other vehicle types (comma-separated)" className={`${inputClasses} mt-2`} />
                             </div>
                             <div>
                                 <label className={labelClasses}>Trailer Types</label>
@@ -206,6 +215,7 @@ const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({
                                         </button>
                                     ))}
                                 </div>
+                                <input name="trailerTypesOther" value={formData.trailerTypesOther} onChange={handleInputChange} placeholder="Other trailer types (comma-separated)" className={`${inputClasses} mt-2`} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

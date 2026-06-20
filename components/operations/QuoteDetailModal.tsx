@@ -170,7 +170,7 @@ const QuoteDetailModal: React.FC<{
                 <div className="flex gap-3 mt-6">
                     <button
                         onClick={() => onQuoteIt(quote)}
-                        className="flex-1 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
+                        className="btn-on-color flex-1 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
                         style={{ background: GREEN }}
                     >
                         Quote It →
@@ -178,7 +178,7 @@ const QuoteDetailModal: React.FC<{
                     <button
                         onClick={handleRequestMoreInfo}
                         disabled={requesting}
-                        className="flex-1 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
+                        className="btn-on-color flex-1 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
                         style={{ background: NAVY }}
                     >
                         {requesting ? 'Sending...' : 'Request More Info'}
@@ -194,7 +194,7 @@ const QuoteDetailModal: React.FC<{
                             try { await onSendQuote(quote); onClose(); } catch {} finally { setSending(false); }
                         }}
                         disabled={sending}
-                        className="flex-1 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
+                        className="btn-on-color flex-1 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
                         style={{ background: GREEN }}
                     >
                         {sending ? 'Sending...' : 'Send Quote to Client →'}

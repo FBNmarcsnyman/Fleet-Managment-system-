@@ -44,6 +44,9 @@ html, body { overflow-x: hidden !important; max-width: 100vw; }
 .text-gray-400 { color: #64748b !important; }
 .text-gray-500, .text-gray-600 { color: #94a3b8 !important; }
 .hover\:text-white:hover { color: #0f172a !important; }
+/* Buttons with a solid colour background must keep WHITE text even though the
+   light theme remaps .text-white to dark. Add `btn-on-color` to such buttons. */
+.btn-on-color, .btn-on-color:hover { color: #ffffff !important; }
 
 /* ---- Borders ---- */
 .border-gray-800, .border-gray-800\/60, .border-gray-700, .border-gray-700\/50,

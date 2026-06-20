@@ -698,6 +698,64 @@ export interface Quote {
     loadSpec?: string;
 }
 
+// ── Carrier RFQ board ────────────────────────────────────────────────────────
+// Ops raise a load request and broadcast it to multiple carriers who run the
+// lane; carriers reply with a price if they can assist.
+export type RfqStatus = 'Open' | 'Awarded' | 'Closed' | 'Cancelled';
+export type RfqChannel = 'email' | 'whatsapp' | 'portal';
+
+export interface RfqRecipient {
+    id: string;
+    rfqRequestId: string;
+    supplierId?: string;
+    email?: string;
+    companyName?: string;
+    channel: RfqChannel;
+    token: string;
+    status: string;            // Sent / Viewed / Quoted / Declined
+    sentAt?: string;
+}
+
+export interface CarrierQuote {
+    id: string;
+    rfqRequestId: string;
+    recipientId?: string;
+    supplierId?: string;
+    companyName?: string;
+    canAssist: boolean;
+    price?: number;
+    vehicleOffered?: string;
+    availableDate?: string;
+    eta?: string;
+    notes?: string;
+    status: string;            // Submitted / Shortlisted / Awarded / Rejected
+    submittedAt: string;
+}
+
+export interface RfqRequest {
+    id: string;
+    requestNumber: string;
+    arrangingBranch?: string;  // sets the from-address (DBN/JHB)
+    origin: string;
+    destination: string;
+    vehicleType?: string;
+    loadType?: string;         // Full Load / Mixed Load
+    commodity?: string;
+    weightKg?: number;
+    gitRequired: boolean;
+    collectionDate?: string;
+    collectionTime?: string;
+    deliveryDate?: string;
+    deliveryTime?: string;
+    notes?: string;
+    status: RfqStatus;
+    awardedQuoteId?: string;
+    closesAt?: string;
+    createdAt: string;
+    recipients: RfqRecipient[];
+    quotes: CarrierQuote[];
+}
+
 export interface Manifest {
     id: string;
     manifestNumber: string;

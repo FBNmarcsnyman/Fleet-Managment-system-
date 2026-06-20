@@ -9,6 +9,7 @@ import type {
     LoadConfirmation, LoadConfirmationStatus, Manifest, TripSheet, IncidentReport,
     IncidentStatus, IncidentQuote, AtFaultParty, SupplierApplication,
     SupplierApplicationStatus, SubcontractorInvite, SubcontractorInviteStatus,
+    RfqRequest, RfqRecipient, CarrierQuote, RfqStatus,
     Notification, NotificationType, Message, Route,
     VehicleComplianceDoc, VehicleComplianceType, DocStatus, ViewType,
 } from '../types';
@@ -1392,3 +1393,95 @@ export const toLoadConfirmationUpdate = (
     if (updates.podSignature !== undefined) row.pod_signature_url = updates.podSignature ?? null;
     return row;
 };
+
+// ── Carrier RFQ board ────────────────────────────────────────────────────────
+export const mapRfqRecipient = (row: any): RfqRecipient => ({
+    id: row.id,
+    rfqRequestId: row.rfq_request_id,
+    supplierId: row.supplier_id ?? undefined,
+    email: row.email ?? undefined,
+    companyName: row.company_name ?? undefined,
+    channel: (row.channel ?? 'email') as RfqRecipient['channel'],
+    token: row.token,
+    status: row.status ?? 'Sent',
+    sentAt: row.sent_at ?? undefined,
+});
+
+export const mapCarrierQuote = (row: any): CarrierQuote => ({
+    id: row.id,
+    rfqRequestId: row.rfq_request_id,
+    recipientId: row.recipient_id ?? undefined,
+    supplierId: row.supplier_id ?? undefined,
+    companyName: row.company_name ?? undefined,
+    canAssist: row.can_assist ?? true,
+    price: row.price ?? undefined,
+    vehicleOffered: row.vehicle_offered ?? undefined,
+    availableDate: row.available_date ?? undefined,
+    eta: row.eta ?? undefined,
+    notes: row.notes ?? undefined,
+    status: row.status ?? 'Submitted',
+    submittedAt: row.submitted_at ?? row.created_at,
+});
+
+export const mapRfqRequest = (
+    row: any,
+    recipientsByRfq?: Record<string, RfqRecipient[]>,
+    quotesByRfq?: Record<string, CarrierQuote[]>,
+): RfqRequest => ({
+    id: row.id,
+    requestNumber: row.request_number,
+    arrangingBranch: row.arranging_branch ?? undefined,
+    origin: row.origin,
+    destination: row.destination,
+    vehicleType: row.vehicle_type ?? undefined,
+    loadType: row.load_type ?? undefined,
+    commodity: row.commodity ?? undefined,
+    weightKg: row.weight_kg ?? undefined,
+    gitRequired: row.git_required ?? false,
+    collectionDate: row.collection_date ?? undefined,
+    collectionTime: row.collection_time ?? undefined,
+    deliveryDate: row.delivery_date ?? undefined,
+    deliveryTime: row.delivery_time ?? undefined,
+    notes: row.notes ?? undefined,
+    status: (row.status ?? 'Open') as RfqStatus,
+    awardedQuoteId: row.awarded_quote_id ?? undefined,
+    closesAt: row.closes_at ?? undefined,
+    createdAt: row.created_at,
+    recipients: recipientsByRfq?.[row.id] ?? [],
+    quotes: quotesByRfq?.[row.id] ?? [],
+});
+
+export const toRfqRequestInsert = (rfq: Partial<RfqRequest>, requestNumber: string, createdBy?: string) => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    request_number: requestNumber,
+    arranging_branch: rfq.arrangingBranch ?? null,
+    origin: rfq.origin ?? '',
+    destination: rfq.destination ?? '',
+    vehicle_type: rfq.vehicleType ?? null,
+    load_type: rfq.loadType ?? null,
+    commodity: rfq.commodity ?? null,
+    weight_kg: rfq.weightKg ?? null,
+    git_required: rfq.gitRequired ?? false,
+    collection_date: rfq.collectionDate || null,
+    collection_time: rfq.collectionTime ?? null,
+    delivery_date: rfq.deliveryDate || null,
+    delivery_time: rfq.deliveryTime ?? null,
+    notes: rfq.notes ?? null,
+    status: rfq.status ?? 'Open',
+    closes_at: rfq.closesAt ?? null,
+    created_by: createdBy ?? null,
+});
+
+export const toCarrierQuoteInsert = (rfqRequestId: string, q: Partial<CarrierQuote>) => ({
+    rfq_request_id: rfqRequestId,
+    recipient_id: q.recipientId ?? null,
+    supplier_id: q.supplierId ?? null,
+    company_name: q.companyName ?? null,
+    can_assist: q.canAssist ?? true,
+    price: q.price ?? null,
+    vehicle_offered: q.vehicleOffered ?? null,
+    available_date: q.availableDate || null,
+    eta: q.eta ?? null,
+    notes: q.notes ?? null,
+    status: q.status ?? 'Submitted',
+});

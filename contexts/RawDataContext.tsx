@@ -6,7 +6,7 @@ import {
   ChecklistSubmission, Tire, TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase,
   PlannedService, Bowser, BowserRefill, FuelPriceRecord, Budget, Forecast, Notification, Message,
   JobCardStatus, SupplierApplication, SubcontractorInvite, IncidentReport, IncidentQuote, Branch, Route, VehicleComplianceDoc,
-  ComplianceDoc, Attachment, Driver,
+  ComplianceDoc, Attachment, Driver, RfqRequest,
 } from '../types';
 import { COMMODITIES, PACKAGING_TYPES } from '../constants';
 import { supabase, directSelect } from '../lib/supabase';
@@ -17,7 +17,7 @@ import {
   mapTireInspection, mapPart, mapPurchaseRequest, mapPurchaseOrder, mapHRCase, mapClient,
   mapSupplier, mapSupplierComplianceDoc, mapSupplierRateCard, mapQuote, mapLoadConfirmation,
   mapManifest, mapTripSheet, mapIncidentReport, mapSupplierApplication, mapSubcontractorInvite, mapNotification, mapMessage,
-  mapRoute, mapVehicleComplianceDoc, mapDriver,
+  mapRoute, mapVehicleComplianceDoc, mapDriver, mapRfqRequest, mapRfqRecipient, mapCarrierQuote,
 } from '../lib/mappers';
 
 export const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -27,6 +27,7 @@ export interface AppState {
     vehicles: Vehicle[]; fuelEntries: FuelEntry[]; serviceEntries: ServiceEntry[]; otherCosts: OtherCost[]; recurringCosts: RecurringCost[]; revenueEntries: RevenueEntry[]; serviceIntervals: ServiceInterval[]; plannedServices: PlannedService[]; fuelPriceRecords: FuelPriceRecord[]; bowsers: Bowser[]; bowserRefills: BowserRefill[]; budgets: Budget[]; forecasts: Forecast[];
     jobCards: JobCard[]; checklistTemplates: ChecklistTemplate[]; checklistSubmissions: ChecklistSubmission[]; tires: Tire[]; tireInspections: TireInspection[]; parts: Part[]; purchaseRequests: PurchaseRequest[]; purchaseOrders: PurchaseOrder[]; hrCases: HRCase[];
     clients: Client[]; suppliers: Supplier[]; quotes: Quote[]; loadConfirmations: LoadConfirmation[]; manifests: Manifest[]; tripSheets: TripSheet[]; incidentReports: IncidentReport[]; supplierApplications: SupplierApplication[]; subcontractorInvites: SubcontractorInvite[];
+    rfqRequests: RfqRequest[];
     drivers: Driver[];
     notifications: Notification[];
     messages: Message[];
@@ -44,7 +45,7 @@ const getEmptyState = (): AppState => ({
     bowserRefills: [], budgets: [], forecasts: [], jobCards: [], checklistTemplates: [],
     checklistSubmissions: [], tires: [], tireInspections: [], parts: [], purchaseRequests: [],
     purchaseOrders: [], hrCases: [], clients: [], suppliers: [], quotes: [], loadConfirmations: [],
-    manifests: [], tripSheets: [], incidentReports: [], supplierApplications: [], subcontractorInvites: [], drivers: [], notifications: [],
+    manifests: [], tripSheets: [], incidentReports: [], supplierApplications: [], subcontractorInvites: [], rfqRequests: [], drivers: [], notifications: [],
     messages: [], selectedVehicleId: null, commodities: COMMODITIES, packagingTypes: PACKAGING_TYPES,
     routes: [], vehicleComplianceDocs: [], branches: [],
 });
@@ -94,6 +95,9 @@ export type AppAction =
     | { type: 'SET_SUBCONTRACTOR_INVITES', payload: SubcontractorInvite[] }
     | { type: 'ADD_SUBCONTRACTOR_INVITES', payload: SubcontractorInvite[] }
     | { type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: SubcontractorInvite }
+    | { type: 'SET_RFQ_REQUESTS', payload: RfqRequest[] }
+    | { type: 'ADD_RFQ_REQUEST', payload: RfqRequest }
+    | { type: 'UPDATE_RFQ_REQUEST', payload: RfqRequest }
     | { type: 'SET_NOTIFICATIONS', payload: Notification[] }
     | { type: 'SET_MESSAGES', payload: Message[] }
     | { type: 'SET_ROUTES', payload: Route[] }
@@ -208,6 +212,9 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'SET_SUBCONTRACTOR_INVITES': return { ...state, subcontractorInvites: action.payload };
         case 'ADD_SUBCONTRACTOR_INVITES': return { ...state, subcontractorInvites: [...action.payload, ...(state.subcontractorInvites || [])] };
         case 'UPDATE_SUBCONTRACTOR_INVITE': return { ...state, subcontractorInvites: (state.subcontractorInvites || []).map(i => i.id === action.payload.id ? action.payload : i) };
+        case 'SET_RFQ_REQUESTS': return { ...state, rfqRequests: action.payload };
+        case 'ADD_RFQ_REQUEST': return { ...state, rfqRequests: [action.payload, ...(state.rfqRequests || [])] };
+        case 'UPDATE_RFQ_REQUEST': return { ...state, rfqRequests: (state.rfqRequests || []).map(r => r.id === action.payload.id ? action.payload : r) };
         case 'SET_NOTIFICATIONS': return { ...state, notifications: action.payload };
         case 'SET_MESSAGES': return { ...state, messages: action.payload };
         case 'SET_ROUTES': return { ...state, routes: action.payload };
@@ -624,6 +631,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             supplierComplianceDocs, supplierRateCards, quotes, loadConfirmations,
             manifests, tripSheets, incidentReports, supplierApplications, notifications,
             messages, routes, vehicleComplianceDocs, drivers, subcontractorInvites,
+            rfqRequests, rfqRecipients, rfqCarrierQuotes,
         ] = await Promise.all([
             // directSelect (plain fetch + stored token) instead of supabase.from():
             // the supabase-js client wedges on its auth lock so the whole hydrate
@@ -668,8 +676,11 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             directSelect('vehicle_compliance_docs?select=*'),
             directSelect('drivers?select=*'),
             directSelect('subcontractor_invites?select=*'),
+            directSelect('rfq_requests?select=*'),
+            directSelect('rfq_recipients?select=*'),
+            directSelect('rfq_carrier_quotes?select=*'),
         ]);
-        console.log('[hydrate] Promise.all settled (38 tables)');
+        console.log('[hydrate] Promise.all settled (41 tables)');
 
         const logIfError = (label: string, err: unknown) => {
             if (err) console.error(`RawDataContext: ${label} fetch failed`, err);
@@ -713,6 +724,9 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         logIfError('messages', messages.error);
         logIfError('routes', routes.error);
         logIfError('vehicle_compliance_docs', vehicleComplianceDocs.error);
+        logIfError('rfq_requests', (rfqRequests as any).error);
+        logIfError('rfq_recipients', (rfqRecipients as any).error);
+        logIfError('rfq_carrier_quotes', (rfqCarrierQuotes as any).error);
         logIfError('drivers', (drivers as any).error);
         logIfError('subcontractor_invites', (subcontractorInvites as any).error);
 
@@ -773,6 +787,13 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         if (incidentReports.data) dispatch({ type: 'SET_INCIDENT_REPORTS', payload: incidentReports.data.map(mapIncidentReport) });
         if (supplierApplications.data) dispatch({ type: 'SET_SUPPLIER_APPLICATIONS', payload: supplierApplications.data.map(mapSupplierApplication) });
         if ((subcontractorInvites as any).data) dispatch({ type: 'SET_SUBCONTRACTOR_INVITES', payload: (subcontractorInvites as any).data.map(mapSubcontractorInvite) });
+        if ((rfqRequests as any).data) {
+            const recipientsByRfq: Record<string, ReturnType<typeof mapRfqRecipient>[]> = {};
+            ((rfqRecipients as any).data || []).map(mapRfqRecipient).forEach((r: any) => { (recipientsByRfq[r.rfqRequestId] ||= []).push(r); });
+            const quotesByRfq: Record<string, ReturnType<typeof mapCarrierQuote>[]> = {};
+            ((rfqCarrierQuotes as any).data || []).map(mapCarrierQuote).forEach((q: any) => { (quotesByRfq[q.rfqRequestId] ||= []).push(q); });
+            dispatch({ type: 'SET_RFQ_REQUESTS', payload: (rfqRequests as any).data.map((r: any) => mapRfqRequest(r, recipientsByRfq, quotesByRfq)) });
+        }
         if (notifications.data) dispatch({ type: 'SET_NOTIFICATIONS', payload: notifications.data.map(mapNotification) });
         if (messages.data) dispatch({ type: 'SET_MESSAGES', payload: messages.data.map(mapMessage) });
         if (routes.data) dispatch({ type: 'SET_ROUTES', payload: routes.data.map(mapRoute) });

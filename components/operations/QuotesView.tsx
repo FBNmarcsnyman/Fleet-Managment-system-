@@ -10,6 +10,7 @@ import { ShareIcon } from '../icons/ShareIcon';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import Modal from '../Modal';
 import AcceptQuoteModal from './AcceptQuoteModal';
+import RfqBoard from './RfqBoard';
 
 const QuotesView: React.FC<{
     quotes: Quote[];
@@ -21,6 +22,7 @@ const QuotesView: React.FC<{
     const { loadConfirmations = [], handleCreateQuote, handleUpdateQuote } = useOperations();
     const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'All'>('All');
     const [quoteToAccept, setQuoteToAccept] = useState<Quote | null>(null);
+    const [tab, setTab] = useState<'quotes' | 'rfq'>('quotes');
     
     const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c.name])), [clients]);
 
@@ -67,6 +69,13 @@ const QuotesView: React.FC<{
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <div className="flex items-center gap-2 mb-5 border-b border-gray-700">
+                <button onClick={() => setTab('quotes')} className={`px-4 py-2 text-sm font-bold -mb-px border-b-2 ${tab === 'quotes' ? 'border-brand-secondary text-white' : 'border-transparent text-gray-400 hover:text-white'}`}>Client Quotes</button>
+                <button onClick={() => setTab('rfq')} className={`px-4 py-2 text-sm font-bold -mb-px border-b-2 ${tab === 'rfq' ? 'border-brand-secondary text-white' : 'border-transparent text-gray-400 hover:text-white'}`}>Carrier RFQs</button>
+            </div>
+
+            {tab === 'rfq' ? <RfqBoard suppliers={suppliers} /> : (
+            <>
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-white">Quotes</h3>
                 <div className="flex items-center space-x-2">
@@ -134,6 +143,8 @@ const QuotesView: React.FC<{
                         onCancel={() => setQuoteToAccept(null)}
                     />
                 </Modal>
+            )}
+            </>
             )}
         </div>
     );

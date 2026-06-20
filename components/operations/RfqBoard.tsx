@@ -1,0 +1,281 @@
+import React, { useMemo, useState } from 'react';
+import { Supplier, RfqRequest, RfqRecipient, CarrierQuote } from '../../types';
+import { useOperations, useUIState } from '../../contexts/AppContexts';
+import { PlusIcon } from '../icons/PlusIcon';
+import { CheckCircleIcon } from '../icons/CheckCircleIcon';
+import Modal from '../Modal';
+import { format } from 'date-fns';
+
+const BRANCHES = ['FBN DBN', 'FBN JHB', 'FBN CPT', 'LOADMASTER'];
+const VEHICLE_OPTIONS = ['Superlink', 'Tri-axle', 'Tautliner (6m)', 'Tautliner (12m)', 'Flat deck (6m)', 'Flat deck (12m)', 'Tanker', 'Tipper / Bulk', 'Lowbed / Abnormal', 'Container', '8 Ton', '4 Ton', '1 Ton'];
+const LOAD_TYPES = ['Full Load', 'Mixed Load', 'Part Load'];
+
+const input = 'w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-secondary focus:border-transparent outline-none';
+const label = 'block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1';
+const rand = (n?: number | null) => n || n === 0 ? `R ${Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
+
+// ── Raise-RFQ form ───────────────────────────────────────────────────────────
+const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ suppliers, onClose }) => {
+    const { handleCreateRfq } = useOperations() as any;
+    const { showToast } = useUIState();
+    const [saving, setSaving] = useState(false);
+    const [f, setF] = useState({
+        arrangingBranch: 'FBN DBN', origin: '', destination: '', vehicleType: VEHICLE_OPTIONS[0],
+        loadType: 'Full Load', commodity: '', weightKg: '', gitRequired: true,
+        collectionDate: '', collectionTime: '', deliveryDate: '', deliveryTime: '', notes: '',
+    });
+    const set = (k: string, v: any) => setF(prev => ({ ...prev, [k]: v }));
+
+    const carriers = useMemo(() => (suppliers || []).filter(s => s.type === 'Transport' && s.isActive !== false), [suppliers]);
+    const [picked, setPicked] = useState<Set<string>>(new Set());
+    const [extraEmails, setExtraEmails] = useState('');
+    const toggle = (id: string) => setPicked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+    const submit = async () => {
+        if (saving) return;
+        if (!f.origin.trim() || !f.destination.trim()) { showToast('Origin and destination are required.'); return; }
+        const recipients: { supplierId?: string; email?: string; companyName?: string; channel?: RfqRecipient['channel'] }[] = [];
+        carriers.filter(c => picked.has(c.id)).forEach(c => recipients.push({ supplierId: c.id, email: c.contactEmail || undefined, companyName: c.name, channel: 'email' }));
+        extraEmails.split(/[,;\n]/).map(e => e.trim()).filter(e => e.includes('@')).forEach(e => recipients.push({ email: e, companyName: e.split('@')[0], channel: 'email' }));
+        if (!recipients.length) { showToast('Pick at least one carrier (or add an email).'); return; }
+        setSaving(true);
+        const res = await handleCreateRfq(
+            { ...f, weightKg: f.weightKg ? Number(f.weightKg) : undefined },
+            recipients,
+        );
+        setSaving(false);
+        if (res?.ok) { showToast(`RFQ ${res.value.requestNumber} sent to ${recipients.length} carrier(s).`); onClose(); }
+        else showToast(`Could not send: ${res?.error || 'unknown error'}`);
+    };
+
+    return (
+        <div className="p-6 max-h-[85vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-white mb-1">Raise a quote request</h3>
+            <p className="text-sm text-gray-400 mb-5">Broadcast a load to carriers who run the lane. Replies route to the branch ops inbox.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label className={label}>Arranging branch</label>
+                    <select value={f.arrangingBranch} onChange={e => set('arrangingBranch', e.target.value)} className={input}>
+                        {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className={label}>Vehicle required</label>
+                    <select value={f.vehicleType} onChange={e => set('vehicleType', e.target.value)} className={input}>
+                        {VEHICLE_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                </div>
+                <div><label className={label}>Collection point *</label><input value={f.origin} onChange={e => set('origin', e.target.value)} placeholder="e.g. FBN DBN" className={input} /></div>
+                <div><label className={label}>Delivery point *</label><input value={f.destination} onChange={e => set('destination', e.target.value)} placeholder="e.g. FBN JHB" className={input} /></div>
+                <div>
+                    <label className={label}>Load type</label>
+                    <select value={f.loadType} onChange={e => set('loadType', e.target.value)} className={input}>
+                        {LOAD_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                </div>
+                <div><label className={label}>Commodity</label><input value={f.commodity} onChange={e => set('commodity', e.target.value)} placeholder="e.g. palletised general" className={input} /></div>
+                <div><label className={label}>Weight (kg)</label><input type="number" value={f.weightKg} onChange={e => set('weightKg', e.target.value)} placeholder="34000" className={input} /></div>
+                <div className="flex items-end pb-1">
+                    <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                        <input type="checkbox" checked={f.gitRequired} onChange={e => set('gitRequired', e.target.checked)} className="h-4 w-4 rounded" /> GIT cover required
+                    </label>
+                </div>
+                <div><label className={label}>Collection date</label><input type="date" value={f.collectionDate} onChange={e => set('collectionDate', e.target.value)} className={input} /></div>
+                <div><label className={label}>Onsite by (time)</label><input value={f.collectionTime} onChange={e => set('collectionTime', e.target.value)} placeholder="15:00" className={input} /></div>
+                <div><label className={label}>Delivery date</label><input type="date" value={f.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} className={input} /></div>
+                <div><label className={label}>Delivery time</label><input value={f.deliveryTime} onChange={e => set('deliveryTime', e.target.value)} placeholder="by 12:00" className={input} /></div>
+            </div>
+            <div className="mt-4"><label className={label}>Notes</label><textarea value={f.notes} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Any special requirements…" className={input} /></div>
+
+            <div className="mt-6">
+                <label className={label}>Send to carriers ({picked.size} selected)</label>
+                <div className="max-h-44 overflow-y-auto border border-gray-700 rounded-lg divide-y divide-gray-700/60">
+                    {carriers.length === 0 && <p className="text-sm text-gray-500 p-3">No active transport carriers yet.</p>}
+                    {carriers.map(c => (
+                        <label key={c.id} className="flex items-center gap-3 p-2.5 hover:bg-gray-700/40 cursor-pointer">
+                            <input type="checkbox" checked={picked.has(c.id)} onChange={() => toggle(c.id)} className="h-4 w-4 rounded" />
+                            <span className="flex-grow min-w-0">
+                                <span className="text-sm text-white font-semibold">{c.name}</span>
+                                <span className="block text-[11px] text-gray-500 truncate">{[c.regions, (c.vehicleTypes || []).join(', ')].filter(Boolean).join(' · ') || c.contactEmail || 'no lane info'}</span>
+                            </span>
+                            {!c.contactEmail && <span className="text-[10px] text-amber-400 font-bold">no email</span>}
+                        </label>
+                    ))}
+                </div>
+                <input value={extraEmails} onChange={e => setExtraEmails(e.target.value)} placeholder="Add other emails (comma-separated)" className={`${input} mt-2`} />
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+                <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-300 hover:text-white">Cancel</button>
+                <button onClick={submit} disabled={saving} className="px-5 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">{saving ? 'Sending…' : 'Send request'}</button>
+            </div>
+        </div>
+    );
+};
+
+// ── Inline "log a quote" capture (for replies by phone / WhatsApp) ───────────
+const LogQuote: React.FC<{ rfq: RfqRequest; onDone: () => void }> = ({ rfq, onDone }) => {
+    const { handleAddCarrierQuote } = useOperations() as any;
+    const { showToast } = useUIState();
+    const [supplierId, setSupplierId] = useState('');
+    const [price, setPrice] = useState('');
+    const [vehicle, setVehicle] = useState('');
+    const [notes, setNotes] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const save = async () => {
+        if (saving) return;
+        const rec = rfq.recipients.find(r => r.supplierId === supplierId || r.id === supplierId);
+        setSaving(true);
+        const res = await handleAddCarrierQuote(rfq.id, {
+            recipientId: rec?.id, supplierId: rec?.supplierId, companyName: rec?.companyName || 'Carrier',
+            price: price ? Number(price) : undefined, vehicleOffered: vehicle || undefined, notes: notes || undefined, canAssist: true,
+        });
+        setSaving(false);
+        if (res?.ok) { showToast('Quote logged.'); onDone(); } else showToast(`Failed: ${res?.error}`);
+    };
+
+    return (
+        <div className="mt-3 p-3 bg-gray-900/50 rounded-lg grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+            <div className="sm:col-span-2">
+                <label className={label}>Carrier</label>
+                <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className={input}>
+                    <option value="">Select…</option>
+                    {rfq.recipients.map(r => <option key={r.id} value={r.supplierId || r.id}>{r.companyName || r.email}</option>)}
+                </select>
+            </div>
+            <div><label className={label}>Price (R)</label><input type="number" value={price} onChange={e => setPrice(e.target.value)} className={input} /></div>
+            <div><label className={label}>Vehicle</label><input value={vehicle} onChange={e => setVehicle(e.target.value)} className={input} /></div>
+            <button onClick={save} disabled={saving || !supplierId} className="px-3 py-2.5 rounded-lg text-sm font-bold bg-brand-primary hover:bg-brand-secondary text-white disabled:opacity-50">Log</button>
+        </div>
+    );
+};
+
+// ── One RFQ card with ranked quotes + markup + award ─────────────────────────
+const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
+    const { handleAwardRfqQuote, handleUpdateRfq } = useOperations() as any;
+    const { showToast } = useUIState();
+    const [markup, setMarkup] = useState(15);
+    const [logging, setLogging] = useState(false);
+
+    const ranked = useMemo(() => [...rfq.quotes].sort((a, b) => {
+        if (a.canAssist !== b.canAssist) return a.canAssist ? -1 : 1;
+        return (a.price ?? Infinity) - (b.price ?? Infinity);
+    }), [rfq.quotes]);
+
+    const statusColor = { Open: 'bg-blue-900/50 text-blue-300', Awarded: 'bg-green-900/50 text-green-300', Closed: 'bg-gray-700 text-gray-300', Cancelled: 'bg-red-900/50 text-red-300' }[rfq.status];
+
+    const award = async (q: CarrierQuote) => {
+        const res = await handleAwardRfqQuote(rfq.id, q.id);
+        if (res?.ok) showToast(`Awarded to ${q.companyName || 'carrier'}.`); else showToast(`Failed: ${res?.error}`);
+    };
+
+    return (
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+            <div className="flex flex-wrap justify-between items-start gap-2">
+                <div>
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-gray-500">{rfq.requestNumber}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusColor}`}>{rfq.status}</span>
+                        {rfq.arrangingBranch && <span className="text-[10px] text-gray-500">{rfq.arrangingBranch}</span>}
+                    </div>
+                    <h4 className="text-white font-bold mt-1">{rfq.origin} → {rfq.destination}</h4>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                        {[rfq.vehicleType, rfq.loadType, rfq.commodity, rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')}kg` : null, rfq.gitRequired ? 'GIT' : null]
+                            .filter(Boolean).join(' · ')}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                        {rfq.collectionDate ? `Collect ${rfq.collectionDate}${rfq.collectionTime ? ' ' + rfq.collectionTime : ''}` : ''}
+                        {rfq.deliveryDate ? ` · Deliver ${rfq.deliveryDate}${rfq.deliveryTime ? ' ' + rfq.deliveryTime : ''}` : ''}
+                    </p>
+                </div>
+                <div className="text-right">
+                    <p className="text-[11px] text-gray-500">{rfq.recipients.length} sent · {rfq.quotes.length} quoted</p>
+                    <p className="text-[10px] text-gray-600">{format(new Date(rfq.createdAt), 'dd MMM HH:mm')}</p>
+                    {rfq.status !== 'Awarded' && rfq.status !== 'Cancelled' && (
+                        <button onClick={() => handleUpdateRfq(rfq.id, { status: 'Cancelled' })} className="text-[11px] text-gray-500 hover:text-red-400 mt-1">Cancel</button>
+                    )}
+                </div>
+            </div>
+
+            <div className="mt-3 flex items-center gap-2">
+                <span className="text-[11px] text-gray-400">Markup</span>
+                <input type="number" value={markup} onChange={e => setMarkup(Number(e.target.value))} className="w-16 bg-gray-700 border border-gray-600 rounded p-1 text-sm text-white" />
+                <span className="text-[11px] text-gray-400">% → client price shown per quote</span>
+            </div>
+
+            <div className="mt-3 space-y-1.5">
+                {ranked.length === 0 && <p className="text-sm text-gray-600 py-2">No quotes yet.</p>}
+                {ranked.map((q, i) => {
+                    const clientPrice = q.price ? q.price * (1 + markup / 100) : null;
+                    const isBest = i === 0 && q.canAssist && q.price != null;
+                    const isAwarded = q.id === rfq.awardedQuoteId || q.status === 'Awarded';
+                    return (
+                        <div key={q.id} className={`flex flex-wrap items-center gap-2 p-2 rounded-lg ${isAwarded ? 'bg-green-900/20 border border-green-800' : 'bg-gray-900/40'}`}>
+                            <span className={`text-[10px] font-bold w-5 text-center ${isBest ? 'text-green-400' : 'text-gray-600'}`}>{q.canAssist ? `#${i + 1}` : '—'}</span>
+                            <span className="flex-grow min-w-0">
+                                <span className="text-sm text-white font-semibold">{q.companyName || 'Carrier'}</span>
+                                {!q.canAssist && <span className="ml-2 text-[10px] text-amber-400">can't assist</span>}
+                                <span className="block text-[11px] text-gray-500 truncate">{[q.vehicleOffered, q.notes].filter(Boolean).join(' · ')}</span>
+                            </span>
+                            <span className="text-right">
+                                <span className="block text-sm font-mono font-bold text-white">{rand(q.price)}</span>
+                                {clientPrice != null && <span className="block text-[10px] text-gray-500">client {rand(clientPrice)}</span>}
+                            </span>
+                            {rfq.status !== 'Awarded' && q.canAssist && q.price != null && (
+                                <button onClick={() => award(q)} className="text-[11px] font-bold bg-green-600 hover:bg-green-700 text-white py-1 px-2.5 rounded-lg inline-flex items-center">
+                                    <CheckCircleIcon className="h-3.5 w-3.5 mr-1" />Award
+                                </button>
+                            )}
+                            {isAwarded && <span className="text-[11px] font-bold text-green-400 inline-flex items-center"><CheckCircleIcon className="h-3.5 w-3.5 mr-1" />Awarded</span>}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {rfq.status !== 'Awarded' && rfq.status !== 'Cancelled' && (
+                logging ? <LogQuote rfq={rfq} onDone={() => setLogging(false)} />
+                    : <button onClick={() => setLogging(true)} className="mt-3 text-[12px] font-semibold text-brand-secondary hover:text-blue-400">+ Log a quote (phone / WhatsApp reply)</button>
+            )}
+        </div>
+    );
+};
+
+// ── Board ────────────────────────────────────────────────────────────────────
+const RfqBoard: React.FC<{ suppliers: Supplier[] }> = ({ suppliers = [] }) => {
+    const { rfqRequests = [] } = useOperations() as any;
+    const [showForm, setShowForm] = useState(false);
+    const [filter, setFilter] = useState<'Active' | 'All'>('Active');
+
+    const list = useMemo(() => {
+        const sorted = [...(rfqRequests as RfqRequest[])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return filter === 'Active' ? sorted.filter(r => r.status === 'Open' || r.status === 'Awarded') : sorted;
+    }, [rfqRequests, filter]);
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                    <select value={filter} onChange={e => setFilter(e.target.value as any)} className="bg-gray-700 p-2 rounded-md text-sm">
+                        <option value="Active">Active</option>
+                        <option value="All">All</option>
+                    </select>
+                    <span className="text-sm text-gray-500">{list.length} request(s)</span>
+                </div>
+                <button onClick={() => setShowForm(true)} className="flex items-center font-bold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white">
+                    <PlusIcon className="h-5 w-5 mr-2" /> Raise RFQ
+                </button>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {list.map(rfq => <RfqCard key={rfq.id} rfq={rfq} />)}
+            </div>
+            {list.length === 0 && <p className="text-center text-gray-500 py-16">No quote requests yet. Raise one to broadcast a load to your carriers.</p>}
+
+            <Modal isOpen={showForm} onClose={() => setShowForm(false)} size="2xl">
+                <RfqForm suppliers={suppliers} onClose={() => setShowForm(false)} />
+            </Modal>
+        </div>
+    );
+};
+
+export default RfqBoard;

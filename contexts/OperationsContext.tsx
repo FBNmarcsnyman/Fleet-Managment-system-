@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite } from '../types';
+import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
 import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
@@ -11,6 +11,7 @@ import {
     toChecklistSubmissionInsert, mapChecklistSubmission,
     toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
     mapManifest, mapTripSheet, mapSubcontractorInvite, FBN_ORGANIZATION_ID,
+    mapRfqRequest, mapRfqRecipient, mapCarrierQuote, toRfqRequestInsert, toCarrierQuoteInsert,
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
@@ -1305,6 +1306,116 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 }
                 dispatch({ type: 'SET_SUPPLIER_APPLICATIONS', payload: (stateRef.current.supplierApplications || []).map((a: SupplierApplication) => a.id === appId ? { ...a, status } : a) });
                 return { ok: true, value: createdSupplier };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+
+        // --- Carrier RFQ board ----------------------------------------------
+        // Raise a load request and broadcast it to the chosen carriers. The
+        // request "comes from" the arranging branch: replies route to that ops
+        // mailbox (opsdbn@ / opsjhb@), which is also CC'd. Carriers without a
+        // portal login can quote via the public ?rfq=<token> link in the email.
+        handleCreateRfq: async (
+            rfq: Partial<RfqRequest>,
+            recipients: { supplierId?: string; email?: string; companyName?: string; channel?: RfqRecipient['channel'] }[],
+        ): Promise<Result<RfqRequest>> => {
+            try {
+                const year = new Date().getFullYear();
+                const seq = (stateRef.current.rfqRequests || []).length + 1;
+                const requestNumber = `RFQ-${year}-${String(seq).padStart(4, '0')}`;
+                const { data, error } = await directInsert('rfq_requests', toRfqRequestInsert(rfq, requestNumber) as any);
+                if (error || !data) { console.error('[ops] createRfq failed:', error); return { ok: false, error: error?.message || 'Could not create the request.' }; }
+                const rfqId = (data as any).id;
+
+                const savedRecipients: RfqRecipient[] = [];
+                for (const r of recipients) {
+                    const { data: rd, error: re } = await directInsert('rfq_recipients', {
+                        rfq_request_id: rfqId,
+                        supplier_id: r.supplierId || null,
+                        email: r.email || null,
+                        company_name: r.companyName || null,
+                        channel: r.channel || 'email',
+                        sent_at: new Date().toISOString(),
+                    } as any);
+                    if (re || !rd) { console.error('[ops] createRfq recipient failed:', re); continue; }
+                    savedRecipients.push(mapRfqRecipient(rd));
+                }
+
+                const domain = mapRfqRequest(data, { [rfqId]: savedRecipients }, {});
+                dispatch({ type: 'ADD_RFQ_REQUEST', payload: domain });
+
+                // Broadcast to recipients on the email channel.
+                const base = baseUrl();
+                const branchLabel = rfq.arrangingBranch === 'FBN DBN' ? 'FBN DBN Ops' : rfq.arrangingBranch === 'FBN JHB' ? 'FBN JHB Ops' : 'FBN Transport';
+                const replyTo = opsEmail(rfq.arrangingBranch);
+                const fmt = (v?: string | number | null) => (v === undefined || v === null || v === '') ? '&mdash;' : String(v);
+                const specRows = [
+                    ['Route', `${fmt(rfq.origin)} &rarr; ${fmt(rfq.destination)}`],
+                    ['Vehicle required', fmt(rfq.vehicleType)],
+                    ['Load', [rfq.loadType, rfq.commodity].filter(Boolean).join(' &middot; ') || '&mdash;'],
+                    ['Weight', rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')} kg` : '&mdash;'],
+                    ['GIT cover', rfq.gitRequired ? 'Required' : 'Not required'],
+                    ['Collection', [rfq.collectionDate, rfq.collectionTime].filter(Boolean).join(' &middot; ') || '&mdash;'],
+                    ['Delivery', [rfq.deliveryDate, rfq.deliveryTime].filter(Boolean).join(' &middot; ') || '&mdash;'],
+                ].map(([k, v]) => `<tr><td style="padding:6px 16px 6px 0;color:#64748b;font-size:13px;white-space:nowrap">${k}</td><td style="padding:6px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
+
+                for (const rec of savedRecipients) {
+                    if (rec.channel !== 'email' || !rec.email) continue;
+                    const link = `${base}?rfq=${rec.token}`;
+                    const html = brandedEmail(`<p>Good day ${rec.companyName || 'there'},</p>
+                      <p>We have a load available and would like your best rate if you can assist. Please review the details and submit your quote &mdash; or let us know you can't help on this one.</p>
+                      <table style="border-collapse:collapse;margin:8px 0 4px;background:#f8fafc;border:1px solid #e6ebf1;border-radius:10px;padding:8px">${specRows}</table>
+                      ${rfq.notes ? `<p style="color:#475569;font-size:13px"><strong>Notes:</strong> ${rfq.notes}</p>` : ''}
+                      ${emailButton(link, 'Submit your quote &rarr;', '#16a34a')}
+                      <p style="color:#94a3b8;font-size:12px">Reference ${requestNumber}. Reply to this email to reach ${branchLabel} directly.</p>`);
+                    void invokeFn('send-email', { body: { to: rec.email, cc: [replyTo], replyTo, subject: `Load available: ${rfq.origin} → ${rfq.destination} (${requestNumber})`, html, fromName: branchLabel } });
+                }
+                return { ok: true, value: domain };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Update an RFQ (status changes: close / cancel / re-open).
+        handleUpdateRfq: async (id: string, updates: Partial<RfqRequest>): Promise<Result<void>> => {
+            try {
+                const row: any = { updated_at: new Date().toISOString() };
+                if (updates.status) row.status = updates.status;
+                if (updates.awardedQuoteId !== undefined) row.awarded_quote_id = updates.awardedQuoteId ?? null;
+                if (updates.notes !== undefined) row.notes = updates.notes ?? null;
+                const { error } = await directUpdate('rfq_requests', { id }, row);
+                if (error) return { ok: false, error: error.message };
+                const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === id);
+                if (cur) dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: { ...cur, ...updates } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Manually capture a quote that came back by phone / WhatsApp / email, or
+        // record one on a carrier's behalf.
+        handleAddCarrierQuote: async (rfqId: string, q: Partial<CarrierQuote>): Promise<Result<void>> => {
+            try {
+                const { data, error } = await directInsert('rfq_carrier_quotes', toCarrierQuoteInsert(rfqId, q) as any);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not save the quote.' };
+                const cq = mapCarrierQuote(data);
+                const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === rfqId);
+                if (cur) dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: { ...cur, quotes: [...cur.quotes, cq] } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Award the RFQ to a carrier's quote: mark that quote Awarded, the others
+        // Rejected, and close the request.
+        handleAwardRfqQuote: async (rfqId: string, quoteId: string): Promise<Result<void>> => {
+            try {
+                const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === rfqId);
+                if (!cur) return { ok: false, error: 'Request not found.' };
+                for (const q of cur.quotes) {
+                    const status = q.id === quoteId ? 'Awarded' : (q.status === 'Awarded' ? 'Submitted' : q.status);
+                    if (status !== q.status) await directUpdate('rfq_carrier_quotes', { id: q.id }, { status });
+                }
+                await directUpdate('rfq_requests', { id: rfqId }, { status: 'Awarded', awarded_quote_id: quoteId, updated_at: new Date().toISOString() });
+                dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: {
+                    ...cur,
+                    status: 'Awarded',
+                    awardedQuoteId: quoteId,
+                    quotes: cur.quotes.map(q => ({ ...q, status: q.id === quoteId ? 'Awarded' : (q.status === 'Awarded' ? 'Submitted' : q.status) })),
+                } });
+                return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
     }), [dispatch, branchIdByName, branchById]);

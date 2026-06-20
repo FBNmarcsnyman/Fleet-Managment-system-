@@ -22,10 +22,29 @@ const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2
 
 const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTypes?: string[], prefill?: any) => {
     if (quoteData) {
+        // Editing an existing quote (incl. "Quote It" on an inbound request, which
+        // keeps the SAME quote number). If the request has no line item / route yet,
+        // seed them from the request payload so the pricer isn't staring at a blank.
+        const rdq: any = quoteData.requestData || {};
+        const commodityE = quoteData.commodity || rdq.commodity || commodities?.[0] || 'General Cargo';
+        const packagingE = quoteData.packaging || rdq.load_type || rdq.packaging || packagingTypes?.[0] || 'Pallets';
+        const dimsE = rdq.dimensions;
+        const dimQtyE = Array.isArray(dimsE) ? dimsE.reduce((s: number, d: any) => s + (Number(d.qty) || 0), 0) : 0;
+        const pkgQtyE = parseInt(String(rdq.packages || '').replace(/[^0-9]/g, ''), 10) || 0;
+        const qtyE = dimQtyE || pkgQtyE || 1;
+        const needItems = !quoteData.items || quoteData.items.length === 0;
+        const needLegs = !quoteData.legs || quoteData.legs.length === 0;
         return {
             ...quoteData,
             date: format(new Date(quoteData.date), 'yyyy-MM-dd'),
-            expiryDate: format(new Date(quoteData.expiryDate), 'yyyy-MM-dd'),
+            expiryDate: quoteData.expiryDate ? format(new Date(quoteData.expiryDate), 'yyyy-MM-dd') : format(addDays(new Date(), 7), 'yyyy-MM-dd'),
+            commodity: commodityE,
+            packaging: packagingE,
+            loadSpec: quoteData.loadSpec || 'Consolidated',
+            items: needItems ? [{ id: generateId(), description: commodityE, packagingType: packagingE, quantity: qtyE, rate: 0, total: 0 }] : quoteData.items,
+            legs: needLegs ? [{ id: generateId(), collectionPoint: rdq.collect_from || rdq.collection_area || '', deliveryPoint: rdq.deliver_to || rdq.delivery_area || '', movementType: 'Internal' }] : quoteData.legs,
+            subcontractorQuotes: quoteData.subcontractorQuotes || [],
+            requestData: { ...rdq },
         };
     }
     const rd = prefill?.requestData || {};
@@ -88,8 +107,10 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     const hasSummary = !!(reqSummary.total_weight || reqSummary.packages || reqSummary.load_type || cubes || reqSummary.collection_area);
 
     useEffect(() => {
+        // The sell rate is the price for the whole shipment, so the line total is
+        // the rate itself (NOT rate × qty — qty is just how many units there are).
         const total: number = (quote.items as QuoteItem[]).reduce(
-            (sum: number, item: QuoteItem) => sum + (item.quantity * item.rate),
+            (sum: number, item: QuoteItem) => sum + (Number(item.rate) || 0),
             0,
         );
         if (total !== quote.totalAmount) {
@@ -159,9 +180,8 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
         const newItems = [...quote.items];
         const item = newItems[index];
         (item as any)[field] = value;
-        if (field === 'quantity' || field === 'rate') {
-            item.total = item.quantity * item.rate;
-        }
+        // Line total = the sell rate (full-shipment price); quantity is informational.
+        item.total = Number(item.rate) || 0;
         setQuote(prev => ({ ...prev, items: newItems }));
     };
     const addItem = () => setQuote(prev => ({ ...prev, items: [...prev.items, { id: generateId(), description: '', packagingType: (packagingTypes?.[0] || 'Pallets'), quantity: 1, rate: 0, total: 0 }] }));

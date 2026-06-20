@@ -300,24 +300,20 @@ const QuotesView: React.FC<{
                         onSendQuote={async (q) => { await handleSendQuote(q); }}
                         onQuoteIt={(q) => {
                             setQuoteDetail(null);
-                            showModal('createQuote', {
+                            // Price the SAME quote in place — keep its number, just move
+                            // it from "Requested" to a priced "Draft". No duplicate row.
+                            showModal('editQuote', {
+                                quoteData: q,
                                 clients,
                                 suppliers,
-                                prefill: {
-                                    clientId: q.clientId,
-                                    commodity: q.commodity,
-                                    packaging: q.packaging,
-                                    loadSpec: q.loadSpec,
-                                    collectionDate: q.collectionDate,
-                                    specialRequirements: q.specialRequirements,
-                                    notes: q.notes,
-                                    requestData: q.requestData,
-                                    requestMoreInfo: q.requestMoreInfo,
-                                },
-                                onSubmit: async (quote: any) => {
-                                    const result = await handleCreateQuote(quote);
-                                    if (result.ok) showToast(`Quote ${result.value!.quoteNumber} created.`);
-                                    else showToast(`Failed to create quote: ${result.error}`);
+                                onSubmit: async (updated: any) => {
+                                    const next = {
+                                        ...updated,
+                                        status: (updated.status === 'Requested' || updated.status === 'More Info Requested') ? 'Draft' : updated.status,
+                                    };
+                                    const result = await handleUpdateQuote(next);
+                                    if (result.ok) showToast(`Quote ${next.quoteNumber} priced — ready to send.`);
+                                    else showToast(`Failed to update quote: ${result.error}`);
                                 },
                             });
                         }}

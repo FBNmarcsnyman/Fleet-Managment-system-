@@ -64,6 +64,7 @@ const QuickCollectionForm = lazy(() => import('./components/operations/QuickColl
 const CaptureLoadModal = lazy(() => import('./components/operations/CaptureLoadModal'));
 const AssignFbnModal = lazy(() => import('./components/operations/AssignFbnModal'));
 const DispatchModal = lazy(() => import('./components/operations/DispatchModal'));
+const DriverDocuments = lazy(() => import('./components/fleet/DriverDocuments'));
 const BulkCollectionForm = lazy(() => import('./components/operations/BulkCollectionForm'));
 const PickListManager = lazy(() => import('./components/operations/PickListManager'));
 const LogContainerModal = lazy(() => import('./components/operations/LogContainerModal'));
@@ -137,6 +138,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     captureLoad: CaptureLoadModal,
     assignFbn: AssignFbnModal,
     dispatchLoad: DispatchModal,
+    driverDocs: DriverDocuments,
     bulkCollection: BulkCollectionForm,
     pickLists: PickListManager,
     logContainer: LogContainerModal,

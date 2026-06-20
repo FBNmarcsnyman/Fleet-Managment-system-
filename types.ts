@@ -723,7 +723,7 @@ export interface TripSheet {
     status: 'Out for Delivery' | 'Completed';
 }
 
-export type NotificationType = 'JOB_CARD' | 'SERVICE' | 'INVENTORY' | 'PURCHASE';
+export type NotificationType = 'JOB_CARD' | 'SERVICE' | 'INVENTORY' | 'PURCHASE' | 'COMPLIANCE' | 'ONBOARDING' | 'RFQ';
 
 export interface Notification {
     id: string;

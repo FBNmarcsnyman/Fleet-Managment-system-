@@ -36,7 +36,7 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
         date: format(new Date(), 'yyyy-MM-dd'),
         expiryDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
         items: [{ id: generateId(), description: commodity, packagingType: packaging, quantity: 1, rate: 0, total: 0 }],
-        legs: [{ id: generateId(), collectionPoint: rd.collect_from || '', deliveryPoint: rd.deliver_to || '', movementType: 'Internal' }],
+        legs: [{ id: generateId(), collectionPoint: rd.collect_from || rd.collection_area || '', deliveryPoint: rd.deliver_to || rd.delivery_area || '', movementType: 'Internal' }],
         totalAmount: 0,
         sentToClient: false,
         commodity,
@@ -63,6 +63,16 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     const [newPackaging, setNewPackaging] = useState('');
 
     const transportSuppliers = suppliers.filter(s => s.type === 'Transport');
+
+    // What the client actually asked us to move — surfaced read-only at the top
+    // so the pricer can see weight / cubes / load type while keying the rate.
+    const reqSummary = prefill?.requestData || quoteData?.requestData || {};
+    const moreInfo = prefill?.requestMoreInfo || quoteData?.requestMoreInfo || {};
+    const cubes = moreInfo.total_cube
+        || (Array.isArray(moreInfo.dimensions) && moreInfo.dimensions.length
+            ? moreInfo.dimensions.reduce((s: number, d: any) => s + ((d.length_cm * d.width_cm * d.height_cm * (d.qty || 1)) / 1000000), 0).toFixed(2)
+            : null);
+    const hasSummary = !!(reqSummary.total_weight || reqSummary.packages || reqSummary.load_type || cubes || reqSummary.collection_area);
 
     useEffect(() => {
         const total: number = (quote.items as QuoteItem[]).reduce(
@@ -156,6 +166,31 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
             </h2>
 
             <div className="space-y-8 max-h-[75vh] overflow-y-auto pr-4 custom-scrollbar">
+                {/* What you're pricing — read-only summary from the client request */}
+                {hasSummary && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                        <h3 className="text-xs font-black text-amber-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            📦 What you're pricing
+                            {reqSummary.hazardous && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">HAZARDOUS</span>}
+                            {reqSummary.cross_border && <span className="bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full">CROSS-BORDER</span>}
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div><div className={labelClasses}>Total Weight</div><div className="text-lg font-bold text-white">{reqSummary.total_weight ? `${reqSummary.total_weight} kg` : '—'}</div></div>
+                            <div><div className={labelClasses}>Cubes</div><div className="text-lg font-bold text-white">{cubes ? `${cubes} m³` : '—'}</div></div>
+                            <div><div className={labelClasses}>Packages</div><div className="text-lg font-bold text-white">{reqSummary.packages || '—'}</div></div>
+                            <div><div className={labelClasses}>Load Type</div><div className="text-lg font-bold text-white">{reqSummary.load_type || '—'}</div></div>
+                        </div>
+                        {(reqSummary.collection_area || reqSummary.delivery_area) && (
+                            <div className="mt-3 pt-3 border-t border-amber-500/20 text-sm text-gray-300">
+                                <span className="font-bold text-white">{reqSummary.collection_area || '—'}</span>
+                                <span className="mx-2 text-amber-400">→</span>
+                                <span className="font-bold text-white">{reqSummary.delivery_area || '—'}</span>
+                                {reqSummary.commodity && <span className="ml-3 text-gray-400">· {reqSummary.commodity}</span>}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Section 1: Core Details */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-800/40 p-4 rounded-xl border border-gray-700">
                     <div>

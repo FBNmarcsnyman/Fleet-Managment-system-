@@ -24,6 +24,47 @@ const QuotesView: React.FC<{
     const [quoteToAccept, setQuoteToAccept] = useState<Quote | null>(null);
     const [quoteDetail, setQuoteDetail] = useState<Quote | null>(null);
     const [sending, setSending] = useState<string | null>(null);
+    // Test-quote tidy-up: Marc ticks the ones he wants gone, then archives them
+    // (reversible — sets status to 'Archived', never deletes).
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+
+    const toggleSelected = (id: string) => setSelected(prev => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+    });
+
+    const archiveSelected = async () => {
+        const ids = [...selected];
+        if (!ids.length) return;
+        if (!confirm(`Archive ${ids.length} quote(s)? They move to the "Archived" filter — not deleted, you can restore them.`)) return;
+        for (const id of ids) {
+            const q = quotes.find(x => x.id === id);
+            if (q) await handleUpdateQuote({ ...q, status: 'Archived' as QuoteStatus });
+        }
+        setSelected(new Set());
+        showToast(`Archived ${ids.length} quote(s).`);
+    };
+
+    const restoreQuote = async (q: Quote) => {
+        await handleUpdateQuote({ ...q, status: 'Requested' as QuoteStatus });
+        showToast(`Restored ${q.quoteNumber}.`);
+    };
+
+    // Win/loss board — values from accepted vs declined quotes (all quotes, not
+    // just the current filter), so the totals reflect the full pipeline.
+    const stats = useMemo(() => {
+        const accepted = quotes.filter(q => q.status === 'Accepted');
+        const rejected = quotes.filter(q => q.status === 'Rejected');
+        const open = quotes.filter(q => ['Requested', 'More Info Requested', 'Draft', 'Sent'].includes(q.status));
+        const sum = (arr: Quote[]) => arr.reduce((s, q) => s + (q.totalAmount || 0), 0);
+        const decided = accepted.length + rejected.length;
+        return {
+            acceptedCount: accepted.length, rejectedCount: rejected.length, openCount: open.length,
+            acceptedValue: sum(accepted), rejectedValue: sum(rejected), openValue: sum(open),
+            winRate: decided ? Math.round((accepted.length / decided) * 100) : 0,
+        };
+    }, [quotes]);
 
     // Arrived from the "Open Quotes to price" email — open that quote's detail
     // once it's loaded, then clear the stash so it won't re-open. We read from
@@ -72,7 +113,8 @@ const QuotesView: React.FC<{
 
     const filteredQuotes = useMemo(() => {
         return (quotes || [])
-            .filter(q => statusFilter === 'All' || q.status === statusFilter)
+            // Hide archived from the default view; show them only when explicitly filtered.
+            .filter(q => statusFilter === 'All' ? q.status !== 'Archived' : q.status === statusFilter)
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [quotes, statusFilter]);
 
@@ -115,12 +157,41 @@ const QuotesView: React.FC<{
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            {/* Win / loss dashboard */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <div className="rounded-xl p-4 bg-green-900/20 border border-green-700/40">
+                    <div className="text-xs font-bold text-green-400 uppercase tracking-widest">Accepted</div>
+                    <div className="text-2xl font-black text-white mt-1">R {stats.acceptedValue.toLocaleString()}</div>
+                    <div className="text-xs text-green-300/70 mt-0.5">{stats.acceptedCount} quote{stats.acceptedCount === 1 ? '' : 's'}</div>
+                </div>
+                <div className="rounded-xl p-4 bg-red-900/20 border border-red-700/40">
+                    <div className="text-xs font-bold text-red-400 uppercase tracking-widest">Declined</div>
+                    <div className="text-2xl font-black text-white mt-1">R {stats.rejectedValue.toLocaleString()}</div>
+                    <div className="text-xs text-red-300/70 mt-0.5">{stats.rejectedCount} quote{stats.rejectedCount === 1 ? '' : 's'}</div>
+                </div>
+                <div className="rounded-xl p-4 bg-blue-900/20 border border-blue-700/40">
+                    <div className="text-xs font-bold text-blue-400 uppercase tracking-widest">Open Pipeline</div>
+                    <div className="text-2xl font-black text-white mt-1">R {stats.openValue.toLocaleString()}</div>
+                    <div className="text-xs text-blue-300/70 mt-0.5">{stats.openCount} awaiting</div>
+                </div>
+                <div className="rounded-xl p-4 bg-amber-900/20 border border-amber-700/40">
+                    <div className="text-xs font-bold text-amber-400 uppercase tracking-widest">Win Rate</div>
+                    <div className="text-2xl font-black text-white mt-1">{stats.winRate}%</div>
+                    <div className="text-xs text-amber-300/70 mt-0.5">accepted vs declined</div>
+                </div>
+            </div>
+
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-white">Quotes</h3>
                 <div className="flex items-center space-x-2">
+                    {selected.size > 0 && (
+                        <button onClick={archiveSelected} className="flex items-center font-bold py-2 px-4 rounded-lg bg-gray-600 hover:bg-gray-500 text-white text-sm">
+                            Archive {selected.size} selected
+                        </button>
+                    )}
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="bg-gray-700 p-2 rounded-md text-sm">
                         <option value="All">All Statuses</option>
-                        {(['Requested', 'More Info Requested', 'Draft', 'Sent', 'Accepted', 'Rejected', 'Expired'] as QuoteStatus[]).map(s => <option key={s} value={s}>{s}</option>)}
+                        {(['Requested', 'More Info Requested', 'Draft', 'Sent', 'Accepted', 'Rejected', 'Expired', 'Archived'] as QuoteStatus[]).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                     <button onClick={handleCreateQuoteClick} className="flex items-center font-bold py-2 px-4 rounded-lg bg-brand-primary hover:bg-brand-secondary text-white">
                         <PlusIcon className="h-5 w-5 mr-2" /> New Quote
@@ -131,6 +202,7 @@ const QuotesView: React.FC<{
                 <table className="w-full text-left text-sm">
                     <thead>
                         <tr className="border-b border-gray-700">
+                            <th className="p-2 w-8"></th>
                             <th className="p-2">Quote #</th>
                             <th className="p-2">Client</th>
                             <th className="p-2">Date</th>
@@ -145,12 +217,20 @@ const QuotesView: React.FC<{
                             const isBooked = (loadConfirmations || []).some(lc => lc.quoteId === quote.id);
                             return (
                             <tr key={quote.id} className="border-b border-gray-700/50 hover:bg-gray-700/50 cursor-pointer" onClick={() => setQuoteDetail(quote)}>
+                                <td className="p-2" onClick={e => e.stopPropagation()}>
+                                    <input type="checkbox" checked={selected.has(quote.id)} onChange={() => toggleSelected(quote.id)} className="w-4 h-4 accent-blue-500 cursor-pointer" title="Select to archive" />
+                                </td>
                                 <td className="p-2 font-mono font-semibold text-white">{quote.quoteNumber}</td>
                                 <td className="p-2">{clientMap.get(quote.clientId) || 'Unknown'}</td>
                                 <td className="p-2">{format(new Date(quote.date), 'dd MMM yyyy')}</td>
                                 <td className="p-2 text-right font-mono">R {quote.totalAmount.toFixed(2)}</td>
                                 <td className="p-2 text-center"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(quote.status)}`}>{quote.status}</span></td>
                                 <td className="p-2 text-right space-x-1" onClick={e => e.stopPropagation()}>
+                                    {quote.status === 'Archived' && (
+                                        <button onClick={() => restoreQuote(quote)} className="text-xs font-bold bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded-lg inline-flex items-center">
+                                            Restore
+                                        </button>
+                                    )}
                                     {(quote.status === 'Requested' || quote.status === 'More Info Requested') && (
                                         <button
                                             onClick={() => setQuoteDetail(quote)}
@@ -213,6 +293,7 @@ const QuotesView: React.FC<{
                                     specialRequirements: q.specialRequirements,
                                     notes: q.notes,
                                     requestData: q.requestData,
+                                    requestMoreInfo: q.requestMoreInfo,
                                 },
                                 onSubmit: async (quote: any) => {
                                     const result = await handleCreateQuote(quote);

@@ -9,8 +9,8 @@
 <style>
 :root{--navy:#13294b;--yellow:#f5b700;--green:#16a34a;--green2:#15803d;--white:#fff;--bg:#f8fafc;--border:#e2e8f0;--text:#1e293b;--text2:#6b7280;--text3:#9ca3af;--red:#dc2626}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);min-height:100vh;padding:0}
-.wrap{max-width:680px;margin:0 auto;padding:0 16px 40px}
+body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);padding:0}
+.wrap{max-width:900px;margin:0 auto;padding:0 16px 40px}
 .hdr{background:var(--navy);padding:22px 30px;border-radius:12px 12px 0 0;margin-top:20px}
 .hdr img{height:42px;background:#fff;border-radius:4px;padding:3px}
 .hdr-label{color:var(--yellow);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-top:8px}
@@ -48,6 +48,13 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);mi
 .cb-row{display:flex;align-items:center;gap:8px;padding:10px 0}
 .cb-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy)}
 .cb-row label{font-size:14px;color:var(--text);cursor:pointer}
+.more-toggle{display:inline-flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--navy);
+  text-transform:uppercase;letter-spacing:0.5px;padding:6px 0;margin-bottom:8px}
+.more-toggle .plus{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--navy);color:#fff;font-size:16px;line-height:1;font-weight:700}
+.more-panel{display:none}
+.more-panel.open{display:block}
 .submit-btn{
   width:100%;padding:14px;border:none;border-radius:8px;
   background:var(--green);color:var(--white);
@@ -104,7 +111,7 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);mi
       </div>
 
       <div class="section">
-        <div class="section-title">🚚 Route</div>
+        <div class="section-title">🚚 Route &amp; Cargo</div>
         <div class="grid grid-2">
           <div class="field">
             <label>Area From — suburb / town<span class="req">*</span></label>
@@ -114,56 +121,59 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);mi
             <label>Area To — suburb / town<span class="req">*</span></label>
             <input type="text" id="rq-del-area" placeholder="e.g. Kempton Park, JHB">
           </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">📋 Cargo Details</div>
-        <div class="grid grid-2">
           <div class="field">
             <label>Commodity / Cargo Description<span class="req">*</span></label>
             <input type="text" id="rq-commodity" placeholder="e.g. Cleaning chemicals, palletised">
-          </div>
-          <div class="field">
-            <label>Number of Packages / Pallets</label>
-            <input type="text" id="rq-packages" placeholder="e.g. 10 pallets or 25 cartons">
-          </div>
-          <div class="field">
-            <label>Load Type</label>
-            <select id="rq-loadtype">
-              <option value="">Select...</option>
-              <option value="Pallets">Pallets</option>
-              <option value="Cartons">Cartons</option>
-              <option value="Loose cargo">Loose cargo</option>
-              <option value="Containerised">Containerised</option>
-              <option value="Bulk">Bulk</option>
-              <option value="6m Truck">6m Truck</option>
-              <option value="12m Truck">12m Truck</option>
-              <option value="Superlink">Superlink</option>
-              <option value="Abnormal / oversized">Abnormal / oversized</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Total Weight (kg)</label>
-            <input type="text" id="rq-weight" placeholder="e.g. 8000">
           </div>
           <div class="field">
             <label>Preferred Loading Date</label>
             <input type="text" id="rq-date" placeholder="dd/mm/yyyy" maxlength="10" inputmode="numeric" oninput="maskDate(this)">
           </div>
         </div>
-        <div class="cb-row">
-          <input type="checkbox" id="rq-hazardous">
-          <label for="rq-hazardous">Hazardous / dangerous goods (DG)</label>
-        </div>
-        <div class="cb-row">
-          <input type="checkbox" id="rq-xborder">
-          <label for="rq-xborder">This is a cross-border shipment</label>
-        </div>
-        <div class="field" style="margin-top:8px">
-          <label>Additional Notes</label>
-          <textarea id="rq-notes" placeholder="e.g. Requires tail-lift, collection window 08:00-12:00, temperature controlled..."></textarea>
+
+        <button type="button" class="more-toggle" id="more-toggle" onclick="toggleMore()">
+          <span class="plus" id="more-plus">+</span> Add more details (optional)
+        </button>
+
+        <div class="more-panel" id="more-panel">
+          <div class="grid grid-2">
+            <div class="field">
+              <label>Number of Packages / Pallets</label>
+              <input type="text" id="rq-packages" placeholder="e.g. 10 pallets or 25 cartons">
+            </div>
+            <div class="field">
+              <label>Load Type</label>
+              <select id="rq-loadtype">
+                <option value="">Select...</option>
+                <option value="Pallets">Pallets</option>
+                <option value="Cartons">Cartons</option>
+                <option value="Loose cargo">Loose cargo</option>
+                <option value="Containerised">Containerised</option>
+                <option value="Bulk">Bulk</option>
+                <option value="6m Truck">6m Truck</option>
+                <option value="12m Truck">12m Truck</option>
+                <option value="Superlink">Superlink</option>
+                <option value="Abnormal / oversized">Abnormal / oversized</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Total Weight (kg)</label>
+              <input type="text" id="rq-weight" placeholder="e.g. 8000">
+            </div>
+          </div>
+          <div class="cb-row">
+            <input type="checkbox" id="rq-hazardous">
+            <label for="rq-hazardous">Hazardous / dangerous goods (DG)</label>
+          </div>
+          <div class="cb-row">
+            <input type="checkbox" id="rq-xborder">
+            <label for="rq-xborder">This is a cross-border shipment</label>
+          </div>
+          <div class="field" style="margin-top:8px">
+            <label>Additional Notes / Special Requirements</label>
+            <textarea id="rq-notes" placeholder="e.g. Requires tail-lift, forklift on site, collection window 08:00-12:00, temperature controlled..."></textarea>
+          </div>
         </div>
       </div>
 
@@ -205,6 +215,22 @@ function dateToIso(s) {
   var m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
 }
+
+function toggleMore() {
+  var panel = document.getElementById('more-panel');
+  var open = panel.classList.toggle('open');
+  document.getElementById('more-plus').textContent = open ? '−' : '+';
+  postHeight();
+}
+
+// If embedded in an iframe, tell the parent our true content height so the
+// frame can grow to fit (no inner scrollbar). Harmless if the parent ignores it.
+function postHeight() {
+  if (window.parent === window) return;
+  try { window.parent.postMessage({ fbnFrameHeight: document.body.scrollHeight }, '*'); } catch (e) {}
+}
+window.addEventListener('load', postHeight);
+window.addEventListener('resize', postHeight);
 
 function selSvc(el) {
   document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('sel'));
@@ -275,6 +301,7 @@ async function submitQuote() {
     document.getElementById('success-ref').textContent = data.quote_number || '—';
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (window.parent !== window) window.parent.postMessage({ fbnQuoteSubmitted: true, ref: data.quote_number }, '*');
+    postHeight();
   } catch (e) {
     console.error('Submit error:', e);
     showError('Something went wrong. Please try again or call us on 031 205 1705.');

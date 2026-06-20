@@ -1,0 +1,14 @@
+# Cloudflare static-asset headers.
+# HTML + entry assets must always revalidate so updates (title, CSS, new JS
+# bundle) reach the device immediately instead of being served stale.
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/index.css
+  Cache-Control: no-cache, must-revalidate
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+# Content-hashed bundles are safe to cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

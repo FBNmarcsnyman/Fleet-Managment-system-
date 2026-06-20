@@ -117,7 +117,9 @@ const QuoteDetailModal: React.FC<{
                     <Field label="Commodity" value={rd.commodity || quote.commodity} />
                     <Field label="Packages" value={rd.packages || quote.packaging} />
                     <Field label="Load Type" value={rd.load_type || quote.loadSpec} />
+                    <Field label="Total Weight" value={rd.total_weight ? `${rd.total_weight} kg` : undefined} />
                     <Field label="Loading Date" value={rd.loading_date || quote.collectionDate} />
+                    <Field label="Hazardous (DG)" value={rd.hazardous ? 'YES' : undefined} />
                     <Field label="Cross-border" value={rd.cross_border ? 'YES' : undefined} />
                 </div>
                 {rd.notes && <Field label="Notes" value={rd.notes} />}

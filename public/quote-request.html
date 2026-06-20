@@ -132,19 +132,30 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);mi
             <label>Load Type</label>
             <select id="rq-loadtype">
               <option value="">Select...</option>
-              <option value="Palletised">Palletised</option>
+              <option value="Pallets">Pallets</option>
+              <option value="Cartons">Cartons</option>
               <option value="Loose cargo">Loose cargo</option>
               <option value="Containerised">Containerised</option>
               <option value="Bulk">Bulk</option>
-              <option value="Abnormal">Abnormal / oversized</option>
-              <option value="Hazardous">Hazardous (DG)</option>
+              <option value="6m Truck">6m Truck</option>
+              <option value="12m Truck">12m Truck</option>
+              <option value="Superlink">Superlink</option>
+              <option value="Abnormal / oversized">Abnormal / oversized</option>
               <option value="Other">Other</option>
             </select>
+          </div>
+          <div class="field">
+            <label>Total Weight (kg)</label>
+            <input type="text" id="rq-weight" placeholder="e.g. 8000">
           </div>
           <div class="field">
             <label>Preferred Loading Date</label>
             <input type="date" id="rq-date">
           </div>
+        </div>
+        <div class="cb-row">
+          <input type="checkbox" id="rq-hazardous">
+          <label for="rq-hazardous">Hazardous / dangerous goods (DG)</label>
         </div>
         <div class="cb-row">
           <input type="checkbox" id="rq-xborder">
@@ -230,6 +241,8 @@ async function submitQuote() {
     commodity: commodity,
     packages: document.getElementById('rq-packages').value.trim(),
     load_type: document.getElementById('rq-loadtype').value,
+    total_weight: document.getElementById('rq-weight').value.trim(),
+    hazardous: document.getElementById('rq-hazardous').checked,
     loading_date: document.getElementById('rq-date').value,
     cross_border: document.getElementById('rq-xborder').checked,
     notes: document.getElementById('rq-notes').value.trim()
@@ -263,6 +276,7 @@ function resetForm() {
   document.querySelectorAll('input:not([type=checkbox]),textarea').forEach(el => el.value = '');
   document.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
   document.getElementById('rq-xborder').checked = false;
+  document.getElementById('rq-hazardous').checked = false;
   document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('sel'));
   selectedSvc = '';
   document.getElementById('submit-btn').disabled = false;

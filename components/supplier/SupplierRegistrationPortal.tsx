@@ -14,7 +14,7 @@ const SPECIALIZATIONS = [
 
 const BEE_LEVELS = ['Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5+', 'Non-Compliant'];
 
-const SupplierRegistrationPortal: React.FC = () => {
+const SupplierRegistrationPortal: React.FC<{ inviteToken?: string | null }> = ({ inviteToken }) => {
     const { handleAddSupplierApplication } = useOperations();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
@@ -75,7 +75,7 @@ const SupplierRegistrationPortal: React.FC = () => {
             alert("Please upload all required documents.");
             return;
         }
-        handleAddSupplierApplication({ ...formData, ...files });
+        handleAddSupplierApplication({ ...formData, ...files, inviteToken: inviteToken || undefined });
         setIsSubmitted(true);
     };
 
@@ -124,6 +124,11 @@ const SupplierRegistrationPortal: React.FC = () => {
                     </div>
                     <h1 className="text-3xl font-black tracking-tighter text-white">Join Carrier Network</h1>
                     <p className="mt-2 text-gray-500 text-sm">Become a certified FBN Transport subcontractor.</p>
+                    {inviteToken && (
+                        <div className="mt-4 inline-flex items-center bg-emerald-900/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-4 py-2 rounded-full">
+                            <CheckCircleIcon className="h-4 w-4 mr-2" /> You've been personally invited by FBN Transport
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex justify-between mb-8 px-2 relative">

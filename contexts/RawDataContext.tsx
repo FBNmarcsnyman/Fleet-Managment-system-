@@ -5,7 +5,7 @@ import {
   LoadConfirmation, Manifest, TripSheet, Client, Supplier, Quote, JobCard, ChecklistTemplate,
   ChecklistSubmission, Tire, TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase,
   PlannedService, Bowser, BowserRefill, FuelPriceRecord, Budget, Forecast, Notification, Message,
-  JobCardStatus, SupplierApplication, IncidentReport, IncidentQuote, Branch, Route, VehicleComplianceDoc,
+  JobCardStatus, SupplierApplication, SubcontractorInvite, IncidentReport, IncidentQuote, Branch, Route, VehicleComplianceDoc,
   ComplianceDoc, Attachment, Driver,
 } from '../types';
 import { COMMODITIES, PACKAGING_TYPES } from '../constants';
@@ -16,7 +16,7 @@ import {
   mapBudget, mapForecast, mapJobCard, mapChecklistTemplate, mapChecklistSubmission, mapTire,
   mapTireInspection, mapPart, mapPurchaseRequest, mapPurchaseOrder, mapHRCase, mapClient,
   mapSupplier, mapSupplierComplianceDoc, mapSupplierRateCard, mapQuote, mapLoadConfirmation,
-  mapManifest, mapTripSheet, mapIncidentReport, mapSupplierApplication, mapNotification, mapMessage,
+  mapManifest, mapTripSheet, mapIncidentReport, mapSupplierApplication, mapSubcontractorInvite, mapNotification, mapMessage,
   mapRoute, mapVehicleComplianceDoc, mapDriver,
 } from '../lib/mappers';
 
@@ -26,7 +26,7 @@ export interface AppState {
     users: User[];
     vehicles: Vehicle[]; fuelEntries: FuelEntry[]; serviceEntries: ServiceEntry[]; otherCosts: OtherCost[]; recurringCosts: RecurringCost[]; revenueEntries: RevenueEntry[]; serviceIntervals: ServiceInterval[]; plannedServices: PlannedService[]; fuelPriceRecords: FuelPriceRecord[]; bowsers: Bowser[]; bowserRefills: BowserRefill[]; budgets: Budget[]; forecasts: Forecast[];
     jobCards: JobCard[]; checklistTemplates: ChecklistTemplate[]; checklistSubmissions: ChecklistSubmission[]; tires: Tire[]; tireInspections: TireInspection[]; parts: Part[]; purchaseRequests: PurchaseRequest[]; purchaseOrders: PurchaseOrder[]; hrCases: HRCase[];
-    clients: Client[]; suppliers: Supplier[]; quotes: Quote[]; loadConfirmations: LoadConfirmation[]; manifests: Manifest[]; tripSheets: TripSheet[]; incidentReports: IncidentReport[]; supplierApplications: SupplierApplication[];
+    clients: Client[]; suppliers: Supplier[]; quotes: Quote[]; loadConfirmations: LoadConfirmation[]; manifests: Manifest[]; tripSheets: TripSheet[]; incidentReports: IncidentReport[]; supplierApplications: SupplierApplication[]; subcontractorInvites: SubcontractorInvite[];
     drivers: Driver[];
     notifications: Notification[];
     messages: Message[];
@@ -44,7 +44,7 @@ const getEmptyState = (): AppState => ({
     bowserRefills: [], budgets: [], forecasts: [], jobCards: [], checklistTemplates: [],
     checklistSubmissions: [], tires: [], tireInspections: [], parts: [], purchaseRequests: [],
     purchaseOrders: [], hrCases: [], clients: [], suppliers: [], quotes: [], loadConfirmations: [],
-    manifests: [], tripSheets: [], incidentReports: [], supplierApplications: [], drivers: [], notifications: [],
+    manifests: [], tripSheets: [], incidentReports: [], supplierApplications: [], subcontractorInvites: [], drivers: [], notifications: [],
     messages: [], selectedVehicleId: null, commodities: COMMODITIES, packagingTypes: PACKAGING_TYPES,
     routes: [], vehicleComplianceDocs: [], branches: [],
 });
@@ -91,6 +91,9 @@ export type AppAction =
     | { type: 'SET_TRIP_SHEETS', payload: TripSheet[] }
     | { type: 'SET_INCIDENT_REPORTS', payload: IncidentReport[] }
     | { type: 'SET_SUPPLIER_APPLICATIONS', payload: SupplierApplication[] }
+    | { type: 'SET_SUBCONTRACTOR_INVITES', payload: SubcontractorInvite[] }
+    | { type: 'ADD_SUBCONTRACTOR_INVITES', payload: SubcontractorInvite[] }
+    | { type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: SubcontractorInvite }
     | { type: 'SET_NOTIFICATIONS', payload: Notification[] }
     | { type: 'SET_MESSAGES', payload: Message[] }
     | { type: 'SET_ROUTES', payload: Route[] }
@@ -202,6 +205,9 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'SET_TRIP_SHEETS': return { ...state, tripSheets: action.payload };
         case 'SET_INCIDENT_REPORTS': return { ...state, incidentReports: action.payload };
         case 'SET_SUPPLIER_APPLICATIONS': return { ...state, supplierApplications: action.payload };
+        case 'SET_SUBCONTRACTOR_INVITES': return { ...state, subcontractorInvites: action.payload };
+        case 'ADD_SUBCONTRACTOR_INVITES': return { ...state, subcontractorInvites: [...action.payload, ...(state.subcontractorInvites || [])] };
+        case 'UPDATE_SUBCONTRACTOR_INVITE': return { ...state, subcontractorInvites: (state.subcontractorInvites || []).map(i => i.id === action.payload.id ? action.payload : i) };
         case 'SET_NOTIFICATIONS': return { ...state, notifications: action.payload };
         case 'SET_MESSAGES': return { ...state, messages: action.payload };
         case 'SET_ROUTES': return { ...state, routes: action.payload };
@@ -617,7 +623,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             purchaseRequests, purchaseOrders, hrCases, clients, suppliers,
             supplierComplianceDocs, supplierRateCards, quotes, loadConfirmations,
             manifests, tripSheets, incidentReports, supplierApplications, notifications,
-            messages, routes, vehicleComplianceDocs, drivers,
+            messages, routes, vehicleComplianceDocs, drivers, subcontractorInvites,
         ] = await Promise.all([
             // directSelect (plain fetch + stored token) instead of supabase.from():
             // the supabase-js client wedges on its auth lock so the whole hydrate
@@ -661,6 +667,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             directSelect('routes?select=*'),
             directSelect('vehicle_compliance_docs?select=*'),
             directSelect('drivers?select=*'),
+            directSelect('subcontractor_invites?select=*'),
         ]);
         console.log('[hydrate] Promise.all settled (38 tables)');
 
@@ -707,6 +714,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         logIfError('routes', routes.error);
         logIfError('vehicle_compliance_docs', vehicleComplianceDocs.error);
         logIfError('drivers', (drivers as any).error);
+        logIfError('subcontractor_invites', (subcontractorInvites as any).error);
 
         // Build joins for nested data
         const mountHistoryByTire = new Map<string, NonNullable<typeof tireMountHistory.data>>();
@@ -764,6 +772,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         if (tripSheets.data) dispatch({ type: 'SET_TRIP_SHEETS', payload: tripSheets.data.map(r => mapTripSheet(r, ctx)) });
         if (incidentReports.data) dispatch({ type: 'SET_INCIDENT_REPORTS', payload: incidentReports.data.map(mapIncidentReport) });
         if (supplierApplications.data) dispatch({ type: 'SET_SUPPLIER_APPLICATIONS', payload: supplierApplications.data.map(mapSupplierApplication) });
+        if ((subcontractorInvites as any).data) dispatch({ type: 'SET_SUBCONTRACTOR_INVITES', payload: (subcontractorInvites as any).data.map(mapSubcontractorInvite) });
         if (notifications.data) dispatch({ type: 'SET_NOTIFICATIONS', payload: notifications.data.map(mapNotification) });
         if (messages.data) dispatch({ type: 'SET_MESSAGES', payload: messages.data.map(mapMessage) });
         if (routes.data) dispatch({ type: 'SET_ROUTES', payload: routes.data.map(mapRoute) });

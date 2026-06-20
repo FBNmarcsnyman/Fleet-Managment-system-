@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
+import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite } from '../types';
 import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
@@ -10,13 +10,21 @@ import {
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
     toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
-    mapManifest, mapTripSheet, FBN_ORGANIZATION_ID,
+    mapManifest, mapTripSheet, mapSubcontractorInvite, FBN_ORGANIZATION_ID,
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
 import { sendLoadConToSupplier, sendOrderToClient } from '../lib/loadEmails';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
+
+// Default body for the carrier-recruitment invite (editable per campaign in the
+// UI). {name} / {company} are substituted per recipient. HTML — sits inside the
+// branded email wrapper, between the greeting and the call-to-action button.
+export const DEFAULT_INVITE_INTRO = `
+<p>FBN Transport is expanding its national subcontractor network, and we'd like to invite <strong>{company}</strong> to join.</p>
+<p>As an approved FBN carrier you'll get access to a steady stream of vetted loads across breakbulk, full loads, tankers, tipper bulk, abnormals and hazchem — matched to the routes and equipment you run, with prompt POD-based payment.</p>
+<p>Getting started takes a few minutes: confirm your details, the routes you specialise in, upload your fleet list, rate card and Goods-in-Transit cover, and our compliance team will vet and onboard you.</p>`;
 
 // Race any promise against a hard timeout. Unlike abortSignal (which only cancels
 // an in-flight fetch), this also escapes a hang that happens BEFORE the request is
@@ -1076,8 +1084,133 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true };
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
-        // Supplier applications still local-only (low priority).
+        // Public registration submissions still land in local state (the anon
+        // applicant has no authenticated session to write to Postgres — wiring a
+        // service-role intake function is the next phase).
         handleAddSupplierApplication: (data: any) => dispatch({ type: 'ADD_SUPPLIER_APPLICATION', payload: data }),
+
+        // --- Carrier (subcontractor) invitation campaign --------------------
+        // Add a batch of transporter emails to the invite list. De-dupes against
+        // the existing list and within the batch; each gets a unique accept token.
+        handleAddSubcontractorInvites: async (
+            entries: { email: string; companyName?: string; contactPerson?: string }[],
+        ): Promise<Result<{ added: number; skipped: number }>> => {
+            try {
+                const existing = new Set((stateRef.current.subcontractorInvites || []).map((i: SubcontractorInvite) => i.email.toLowerCase()));
+                const seen = new Set<string>();
+                const clean: { email: string; companyName?: string; contactPerson?: string }[] = [];
+                for (const e of entries) {
+                    const email = String(e.email || '').trim().toLowerCase();
+                    if (!email || !email.includes('@')) continue;
+                    if (existing.has(email) || seen.has(email)) continue;
+                    seen.add(email);
+                    clean.push({ email, companyName: e.companyName?.trim() || undefined, contactPerson: e.contactPerson?.trim() || undefined });
+                }
+                if (!clean.length) return { ok: true, value: { added: 0, skipped: entries.length } };
+                const added: SubcontractorInvite[] = [];
+                for (const c of clean) {
+                    const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/-/g, '');
+                    const row = { organization_id: FBN_ORG_ID, email: c.email, company_name: c.companyName || null, contact_person: c.contactPerson || null, token, status: 'Pending' };
+                    const { data, error } = await directInsert('subcontractor_invites', row);
+                    if (error || !data) { console.error('[ops] addSubcontractorInvite failed:', error); continue; }
+                    added.push(mapSubcontractorInvite(data));
+                }
+                if (added.length) dispatch({ type: 'ADD_SUBCONTRACTOR_INVITES', payload: added });
+                return { ok: true, value: { added: added.length, skipped: entries.length - added.length } };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Send (or re-send) the branded marketing invite to the given invites via
+        // the same send-email edge function used by LoadCons/PODs (so it routes
+        // through Gmail and respects TEST MODE). Marks each Invited on success.
+        handleSendSubcontractorInvites: async (
+            inviteIds: string[],
+            opts?: { subject?: string; intro?: string; buttonLabel?: string },
+        ): Promise<Result<{ sent: number; failed: number }>> => {
+            try {
+                const base = (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '';
+                const invites = (stateRef.current.subcontractorInvites || []).filter((i: SubcontractorInvite) => inviteIds.includes(i.id));
+                const subject = opts?.subject?.trim() || 'Partner with FBN Transport — join our carrier network';
+                let sent = 0; const failed: string[] = [];
+                for (const inv of invites) {
+                    const greeting = inv.contactPerson || inv.companyName || 'there';
+                    const intro = (opts?.intro || DEFAULT_INVITE_INTRO)
+                        .replace(/\{name\}/g, greeting)
+                        .replace(/\{company\}/g, inv.companyName || 'your company');
+                    const link = `${base}?portal=become-supplier&invite=${inv.token}`;
+                    const html = brandedEmail(`<p>Good day ${greeting},</p>${intro}
+                      ${emailButton(link, opts?.buttonLabel?.trim() || 'Join the FBN carrier network &rarr;', '#16a34a')}
+                      <p>We look forward to working with you.</p>
+                      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+                    const { data, error } = await invokeFn('send-email', { body: { to: inv.email, subject, html, fromName: 'FBN Transport' } });
+                    if (error || (data as any)?.error) { failed.push(inv.email); continue; }
+                    const now = new Date().toISOString();
+                    const nextStatus = (inv.status === 'Pending' || inv.status === 'Invited') ? 'Invited' : inv.status;
+                    const { data: ud } = await directUpdate('subcontractor_invites', { id: inv.id }, { sent_count: (inv.sentCount || 0) + 1, last_sent_at: now, status: nextStatus, updated_at: now });
+                    dispatch({ type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: ud ? mapSubcontractorInvite(ud) : { ...inv, sentCount: (inv.sentCount || 0) + 1, lastSentAt: now, status: nextStatus as SubcontractorInvite['status'] } });
+                    sent++;
+                }
+                return { ok: failed.length === 0, value: { sent, failed: failed.length }, error: failed.length ? `Could not send to: ${failed.join(', ')}` : undefined };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Update an invite (e.g. mark Declined / edit notes).
+        handleUpdateSubcontractorInvite: async (id: string, updates: Partial<SubcontractorInvite>): Promise<Result<void>> => {
+            try {
+                const row: any = { updated_at: new Date().toISOString() };
+                if (updates.status) row.status = updates.status;
+                if (updates.notes !== undefined) row.notes = updates.notes;
+                if (updates.companyName !== undefined) row.company_name = updates.companyName;
+                if (updates.contactPerson !== undefined) row.contact_person = updates.contactPerson;
+                const { data, error } = await directUpdate('subcontractor_invites', { id }, row);
+                if (error) return { ok: false, error: error.message };
+                const cur = (stateRef.current.subcontractorInvites || []).find((i: SubcontractorInvite) => i.id === id);
+                dispatch({ type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: data ? mapSubcontractorInvite(data) : { ...(cur as SubcontractorInvite), ...updates } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Approve/reject a carrier application. On approval, persist the status and
+        // create the live Supplier record (so it appears in the Active Network and
+        // can be invited to log in), and advance any matching invite to Vetted.
+        handleUpdateSupplierApplicationStatus: async (appId: string, status: 'Approved' | 'Rejected'): Promise<Result<Supplier | undefined>> => {
+            try {
+                const app = (stateRef.current.supplierApplications || []).find((a: SupplierApplication) => a.id === appId);
+                // No-op if the application only exists in local state (no DB row yet).
+                await directUpdate('supplier_applications', { id: appId }, { status, updated_at: new Date().toISOString() });
+                let createdSupplier: Supplier | undefined;
+                if (status === 'Approved' && app) {
+                    const supplierInput = {
+                        name: app.companyName,
+                        type: 'Transport' as const,
+                        contactPerson: app.contactPerson,
+                        contactEmail: app.contactEmail,
+                        contactPhone: app.contactPhone,
+                        address: app.address,
+                        complianceStatus: 'Pending' as const,
+                        specializations: app.specializations,
+                        regions: app.routes,
+                        fleetSize: app.fleetSize,
+                        beeStatus: app.beeStatus,
+                        hazCompliant: app.hazCompliant,
+                        complianceDocs: [],
+                        rateCards: [],
+                        isActive: true,
+                    };
+                    const { data, error } = await directInsert('suppliers', toSupplierInsert(supplierInput));
+                    if (error || !data) { console.error('[ops] approve -> createSupplier failed:', error); }
+                    else {
+                        createdSupplier = mapSupplier(data, new Map(), new Map());
+                        dispatch({ type: 'ADD_SUPPLIER', payload: createdSupplier });
+                        await directUpdate('supplier_applications', { id: appId }, { approved_supplier_id: createdSupplier.id });
+                        const inv = (stateRef.current.subcontractorInvites || []).find((i: SubcontractorInvite) => i.email.toLowerCase() === String(app.contactEmail || '').toLowerCase());
+                        if (inv) {
+                            const { data: ud } = await directUpdate('subcontractor_invites', { id: inv.id }, { status: 'Vetted', supplier_id: createdSupplier.id, updated_at: new Date().toISOString() });
+                            dispatch({ type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: ud ? mapSubcontractorInvite(ud) : { ...inv, status: 'Vetted', supplierId: createdSupplier.id } });
+                        }
+                    }
+                }
+                dispatch({ type: 'SET_SUPPLIER_APPLICATIONS', payload: (stateRef.current.supplierApplications || []).map((a: SupplierApplication) => a.id === appId ? { ...a, status } : a) });
+                return { ok: true, value: createdSupplier };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
     }), [dispatch, branchIdByName, branchById]);
 
     const value = useMemo(() => ({ ...state, ...derived, ...handlers, users }), [state, derived, handlers, users]);

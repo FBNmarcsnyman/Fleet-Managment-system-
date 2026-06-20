@@ -392,6 +392,13 @@ CREATE POLICY supplier_apps_all ON supplier_applications
     USING (organization_id = auth_org_id() AND auth_is_ops())
     WITH CHECK (organization_id = auth_org_id() AND auth_is_ops());
 
+ALTER TABLE subcontractor_invites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY subcontractor_invites_all ON subcontractor_invites
+    FOR ALL TO authenticated
+    USING (organization_id = auth_org_id() AND auth_is_ops())
+    WITH CHECK (organization_id = auth_org_id() AND auth_is_ops());
+
 -- ============================================================================
 -- PART 8: VEHICLES (Workshop edits, Ops reads, Driver sees own)
 -- ============================================================================

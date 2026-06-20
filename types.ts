@@ -396,6 +396,28 @@ export interface SupplierApplication {
     insurance: Attachment;
 }
 
+// Carrier (subcontractor) invitation campaign. FBN uploads transporter emails,
+// emails them a branded invite with a personalised accept link, and tracks each
+// down the funnel.
+export type SubcontractorInviteStatus = 'Pending' | 'Invited' | 'Applied' | 'Vetted' | 'Declined';
+
+export interface SubcontractorInvite {
+    id: string;
+    email: string;
+    companyName?: string;
+    contactPerson?: string;
+    token: string;
+    status: SubcontractorInviteStatus;
+    sentCount: number;
+    lastSentAt?: string;
+    appliedAt?: string;
+    applicationId?: string;
+    supplierId?: string;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 // An internal branch of a client (holding account) — e.g. PERI Scaffolding's
 // DBN / JHB / CPT branches, each with their own delivery address + contact.
 export interface ClientBranch {

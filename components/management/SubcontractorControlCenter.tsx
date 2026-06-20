@@ -7,12 +7,13 @@ import { SparklesIcon } from '../icons/SparklesIcon';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { ExclamationTriangleIcon } from '../icons/ExclamationTriangleIcon';
 import SupplierOnboardingView from '../operations/SupplierOnboardingView';
+import CarrierInviteCampaign from './CarrierInviteCampaign';
 import { format } from 'date-fns';
 
 const SubcontractorControlCenter: React.FC = () => {
     const { suppliers = [], supplierApplications = [] } = useOperations();
     const { showModal, showToast } = useUIState();
-    const [activeTab, setActiveTab] = useState<'network' | 'onboarding'>('network');
+    const [activeTab, setActiveTab] = useState<'network' | 'onboarding' | 'invite'>('network');
 
     const transportSuppliers = useMemo(() => 
         (suppliers || []).filter(s => s.type === 'Transport')
@@ -57,7 +58,7 @@ const SubcontractorControlCenter: React.FC = () => {
                     >
                         Active Network
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('onboarding')}
                         className={`text-lg font-bold pb-4 -mb-4 border-b-2 transition-all flex items-center ${activeTab === 'onboarding' ? 'text-white border-brand-primary' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
                     >
@@ -68,16 +69,24 @@ const SubcontractorControlCenter: React.FC = () => {
                             </span>
                         )}
                     </button>
+                    <button
+                        onClick={() => setActiveTab('invite')}
+                        className={`text-lg font-bold pb-4 -mb-4 border-b-2 transition-all flex items-center ${activeTab === 'invite' ? 'text-white border-brand-primary' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                    >
+                        Invite Carriers
+                    </button>
                 </div>
-                <button 
+                <button
                     onClick={handleCopyOnboardingLink}
                     className="flex items-center bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-black uppercase tracking-wider transition-all border border-blue-500/30"
                 >
-                    <SparklesIcon className="h-4 w-4 mr-2" /> Send Onboarding Invite
+                    <SparklesIcon className="h-4 w-4 mr-2" /> Copy Public Link
                 </button>
             </div>
 
-            {activeTab === 'network' ? (
+            {activeTab === 'invite' ? (
+                <CarrierInviteCampaign />
+            ) : activeTab === 'network' ? (
                 <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-2xl">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gray-900/60 border-b border-gray-700">

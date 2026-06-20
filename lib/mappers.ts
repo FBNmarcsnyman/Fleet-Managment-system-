@@ -8,7 +8,8 @@ import type {
     ComplianceDoc, Attachment, Quote, QuoteStatus, QuoteItem, QuoteLeg, SubcontractorQuote,
     LoadConfirmation, LoadConfirmationStatus, Manifest, TripSheet, IncidentReport,
     IncidentStatus, IncidentQuote, AtFaultParty, SupplierApplication,
-    SupplierApplicationStatus, Notification, NotificationType, Message, Route,
+    SupplierApplicationStatus, SubcontractorInvite, SubcontractorInviteStatus,
+    Notification, NotificationType, Message, Route,
     VehicleComplianceDoc, VehicleComplianceType, DocStatus, ViewType,
 } from '../types';
 
@@ -693,6 +694,24 @@ export const mapSupplierApplication = (row: Tables['supplier_applications']['Row
     fleetList: urlToAttachment(row.fleet_list_url) ?? { name: '', type: '', data: '' },
     rateCard: urlToAttachment(row.rate_card_url) ?? { name: '', type: '', data: '' },
     insurance: urlToAttachment(row.insurance_url) ?? { name: '', type: '', data: '' },
+});
+
+// -- subcontractor_invites → SubcontractorInvite -----------------------------
+export const mapSubcontractorInvite = (row: any): SubcontractorInvite => ({
+    id: row.id,
+    email: row.email,
+    companyName: row.company_name ?? undefined,
+    contactPerson: row.contact_person ?? undefined,
+    token: row.token,
+    status: row.status as SubcontractorInviteStatus,
+    sentCount: row.sent_count ?? 0,
+    lastSentAt: row.last_sent_at ?? undefined,
+    appliedAt: row.applied_at ?? undefined,
+    applicationId: row.application_id ?? undefined,
+    supplierId: row.supplier_id ?? undefined,
+    notes: row.notes ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
 });
 
 // -- notifications → Notification --------------------------------------------

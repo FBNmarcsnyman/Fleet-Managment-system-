@@ -266,6 +266,33 @@ CREATE TABLE supplier_applications (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Carrier (subcontractor) invitation campaign. FBN uploads transporter emails,
+-- sends a branded marketing invite with a personalised accept link, and tracks
+-- each carrier down the funnel: Pending -> Invited -> Applied -> Vetted (or Declined).
+CREATE TABLE subcontractor_invites (
+    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    email               TEXT NOT NULL,
+    company_name        TEXT,
+    contact_person      TEXT,
+    token               TEXT NOT NULL,
+    status              TEXT NOT NULL DEFAULT 'Pending'
+                        CHECK (status IN ('Pending', 'Invited', 'Applied', 'Vetted', 'Declined')),
+    sent_count          INT NOT NULL DEFAULT 0,
+    last_sent_at        TIMESTAMPTZ,
+    applied_at          TIMESTAMPTZ,
+    application_id      UUID REFERENCES supplier_applications(id) ON DELETE SET NULL,
+    supplier_id         UUID REFERENCES suppliers(id) ON DELETE SET NULL,
+    notes               TEXT,
+    created_by_id       UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (organization_id, email),
+    UNIQUE (token)
+);
+CREATE INDEX idx_subcontractor_invites_org ON subcontractor_invites(organization_id);
+CREATE INDEX idx_subcontractor_invites_token ON subcontractor_invites(token);
+
 -- ============================================================================
 -- PART 6: VEHICLES, TIRES & COMPLIANCE
 -- ============================================================================

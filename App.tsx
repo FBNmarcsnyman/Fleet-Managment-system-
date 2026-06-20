@@ -235,6 +235,7 @@ const App: React.FC = () => {
     const updateLoadId = urlParams.get('update');
     const showTerms = urlParams.get('tcs');
     const portal = urlParams.get('portal');
+    const inviteToken = urlParams.get('invite');
 
     // Public Subcontractor Terms & Conditions page (linked from LoadCons/emails).
     if (showTerms) {
@@ -307,7 +308,7 @@ const App: React.FC = () => {
     if (!currentUser) {
         if (portal === 'client') return <ClientLogin />;
         if (portal === 'supplier') return <SupplierLogin />;
-        if (portal === 'become-supplier') return <SupplierRegistrationPortal />;
+        if (portal === 'become-supplier') return <SupplierRegistrationPortal inviteToken={inviteToken} />;
         return <Login />;
     }
     

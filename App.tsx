@@ -237,13 +237,13 @@ const App: React.FC = () => {
     const updateLoadId = urlParams.get('update');
     const showTerms = urlParams.get('tcs');
     const portal = urlParams.get('portal');
-    const quoteDeepLink = urlParams.get('quote');
-
-    // Deep-link from the "Open Quotes to price" email → land a logged-in user on
-    // the Quotes screen; QuotesView opens that quote's detail from ?quote=<id>.
-    useEffect(() => {
-        if (quoteDeepLink && currentUser) handleViewChange('quotes');
-    }, [quoteDeepLink, currentUser]);
+    // Deep-link from the "Open Quotes to price" email. The login redirect strips
+    // URL params, so stash the quote id in sessionStorage (survives login) and
+    // route to Quotes once authenticated; QuotesView opens that quote's detail.
+    const urlQuote = urlParams.get('quote');
+    useEffect(() => { if (urlQuote) { try { sessionStorage.setItem('fbn_pendingQuote', urlQuote); } catch { /* ignore */ } } }, [urlQuote]);
+    const pendingQuote = urlQuote || (() => { try { return sessionStorage.getItem('fbn_pendingQuote') || ''; } catch { return ''; } })();
+    useEffect(() => { if (pendingQuote && currentUser) handleViewChange('quotes'); }, [pendingQuote, currentUser]);
 
     // Public Subcontractor Terms & Conditions page (linked from LoadCons/emails).
     if (showTerms) {
@@ -335,7 +335,9 @@ const App: React.FC = () => {
     // view instead of the company-wide management overview.
     const managementView = hasPermission('access_management') ? <ManagementPortal /> : <FleetPortal />;
     const renderView = () => {
-        switch (currentView) {
+        // A pending quote deep-link forces the Quotes screen even if the saved
+        // view hasn't caught up yet (survives the post-login render).
+        switch (pendingQuote ? 'quotes' : currentView) {
             case 'management': return managementView;
             case 'fleet': return <FleetPortal />;
             case 'fuel': return <FuelPortal />;

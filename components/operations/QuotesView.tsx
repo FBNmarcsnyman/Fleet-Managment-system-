@@ -25,13 +25,20 @@ const QuotesView: React.FC<{
     const [quoteDetail, setQuoteDetail] = useState<Quote | null>(null);
     const [sending, setSending] = useState<string | null>(null);
 
-    // Arrived from the "Open Quotes to price" email (?quote=<id>) — open that
-    // quote's detail once it's loaded, then clear the param so it won't re-open.
+    // Arrived from the "Open Quotes to price" email — open that quote's detail
+    // once it's loaded, then clear the stash so it won't re-open. We read from
+    // sessionStorage (set before login) or the ?quote= URL param.
     useEffect(() => {
-        const qid = new URLSearchParams(window.location.search).get('quote');
+        let qid = '';
+        try { qid = sessionStorage.getItem('fbn_pendingQuote') || ''; } catch { /* ignore */ }
+        if (!qid) qid = new URLSearchParams(window.location.search).get('quote') || '';
         if (!qid || quoteDetail) return;
         const q = quotes.find(x => x.id === qid);
-        if (q) { setQuoteDetail(q); window.history.replaceState({}, '', window.location.pathname); }
+        if (q) {
+            setQuoteDetail(q);
+            try { sessionStorage.removeItem('fbn_pendingQuote'); } catch { /* ignore */ }
+            window.history.replaceState({}, '', window.location.pathname);
+        }
     }, [quotes]);
 
     const handleSendQuote = async (quote: Quote) => {

@@ -50,6 +50,9 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
         requestData: {
             ...(prefill?.requestData || {}),
             ...(prefill?.requestMoreInfo?.total_cube ? { total_cube: prefill.requestMoreInfo.total_cube } : {}),
+            ...(Array.isArray(prefill?.requestMoreInfo?.dimensions) && prefill.requestMoreInfo.dimensions.length
+                ? { dimensions: prefill.requestMoreInfo.dimensions }
+                : (Array.isArray(prefill?.requestData?.dimensions) ? { dimensions: prefill.requestData.dimensions } : {})),
         },
     };
 };
@@ -93,6 +96,29 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     const handleReqChange = (key: string, value: any) => {
         setQuote(prev => ({ ...prev, requestData: { ...(prev.requestData || {}), [key]: value } }));
     };
+
+    // --- Parcel dimensions → cubes ------------------------------------------
+    const dims: any[] = quote.requestData?.dimensions || [];
+    const rowCbm = (d: any) =>
+        ((Number(d.length_cm) || 0) * (Number(d.width_cm) || 0) * (Number(d.height_cm) || 0) * (Number(d.qty) || 1)) / 1000000;
+    const setDims = (newDims: any[]) =>
+        setQuote(prev => ({ ...prev, requestData: { ...(prev.requestData || {}), dimensions: newDims } }));
+    const addDim = () => setDims([...dims, { length_cm: '', width_cm: '', height_cm: '', qty: 1 }]);
+    const handleDimChange = (i: number, field: string, value: any) => {
+        const nd = dims.map((d, x) => (x === i ? { ...d, [field]: value } : d));
+        setDims(nd);
+    };
+    const removeDim = (i: number) => setDims(dims.filter((_, x) => x !== i));
+
+    // When parcel dimensions exist, keep Total Cubes in sync with their sum.
+    useEffect(() => {
+        if (!Array.isArray(dims) || dims.length === 0) return;
+        const total = dims.reduce((s, d) => s + rowCbm(d), 0);
+        const rounded = total ? total.toFixed(3) : '';
+        if (String(quote.requestData?.total_cube ?? '') !== rounded) {
+            setQuote(prev => ({ ...prev, requestData: { ...(prev.requestData || {}), total_cube: rounded } }));
+        }
+    }, [JSON.stringify(dims)]);
 
     const handleSubQuoteChange = (index: number, field: keyof SubcontractorQuote, value: any) => {
         const newSubQuotes = [...quote.subcontractorQuotes];
@@ -246,7 +272,42 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     </div>
                     <div className="bg-gray-800/40 p-4 rounded-xl border border-gray-700">
                         <label className={labelClasses}>Total Cubes (m³)</label>
-                        <input type="number" min="0" step="0.01" value={quote.requestData?.total_cube ?? ''} onChange={e => handleReqChange('total_cube', e.target.value)} className={inputClasses} placeholder="e.g. 12.5" />
+                        <input
+                            type="number" min="0" step="0.001"
+                            value={quote.requestData?.total_cube ?? ''}
+                            onChange={e => handleReqChange('total_cube', e.target.value)}
+                            readOnly={dims.length > 0}
+                            className={inputClasses + (dims.length > 0 ? ' opacity-70 cursor-not-allowed' : '')}
+                            placeholder="e.g. 12.5"
+                        />
+                        {dims.length > 0
+                            ? <p className="text-[10px] text-green-500 mt-1">Auto-calculated from parcel dimensions below.</p>
+                            : <p className="text-[10px] text-gray-500 mt-1">Type a total, or add parcel dimensions below to calculate it.</p>}
+                    </div>
+                </div>
+
+                {/* Section 2c: Parcel dimensions → cubes */}
+                <div>
+                    <h3 className="text-sm font-black text-gray-500 uppercase tracking-tighter mb-3 ml-1">
+                        Parcel Dimensions <span className="normal-case text-[10px] text-gray-600 font-normal">— auto-calculates the cube</span>
+                    </h3>
+                    <div className="space-y-3">
+                        {dims.map((d: any, index: number) => (
+                            <div key={index} className="grid grid-cols-12 gap-x-3 items-end bg-gray-900/40 p-4 rounded-xl border border-gray-800">
+                                <div className="col-span-2"><label className={labelClasses}>Length (cm)</label><input type="number" min="0" value={d.length_cm ?? ''} onChange={e => handleDimChange(index, 'length_cm', e.target.value)} className={inputClasses} /></div>
+                                <div className="col-span-2"><label className={labelClasses}>Width (cm)</label><input type="number" min="0" value={d.width_cm ?? ''} onChange={e => handleDimChange(index, 'width_cm', e.target.value)} className={inputClasses} /></div>
+                                <div className="col-span-2"><label className={labelClasses}>Height (cm)</label><input type="number" min="0" value={d.height_cm ?? ''} onChange={e => handleDimChange(index, 'height_cm', e.target.value)} className={inputClasses} /></div>
+                                <div className="col-span-2"><label className={labelClasses}>Qty</label><input type="number" min="1" value={d.qty ?? 1} onChange={e => handleDimChange(index, 'qty', e.target.value)} className={inputClasses} /></div>
+                                <div className="col-span-3"><label className={labelClasses}>CBM</label><div className="p-2 bg-gray-800 rounded-md border border-gray-700 text-sm font-mono text-green-400">{rowCbm(d).toFixed(3)} m³</div></div>
+                                <div className="col-span-1 flex justify-end"><button type="button" onClick={() => removeDim(index)} className="p-2 text-red-400/50 hover:text-red-400"><TrashIcon className="h-4 w-4" /></button></div>
+                            </div>
+                        ))}
+                        {dims.length > 0 && (
+                            <div className="flex justify-end pr-2">
+                                <span className="text-sm font-bold text-white">Total Cube: <span className="text-green-400 font-mono">{dims.reduce((s: number, d: any) => s + rowCbm(d), 0).toFixed(3)} m³</span></span>
+                            </div>
+                        )}
+                        <button type="button" onClick={addDim} className="text-xs font-bold text-gray-400 hover:text-white uppercase tracking-widest flex items-center px-4 py-2 border border-gray-700 rounded-lg transition-all"><PlusIcon className="h-4 w-4 mr-2" />Add Parcel</button>
                     </div>
                 </div>
 

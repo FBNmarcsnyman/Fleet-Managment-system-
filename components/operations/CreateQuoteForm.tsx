@@ -30,7 +30,9 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
     }
     const rd = prefill?.requestData || {};
     const commodity = prefill?.commodity || rd.commodity || commodities?.[0] || 'General Cargo';
-    const packaging = prefill?.packaging || packagingTypes?.[0] || 'Pallets';
+    // The client states cargo type as "Load Type" on the request (e.g. Cartons),
+    // so honour that before falling back to the default packaging.
+    const packaging = prefill?.packaging || rd.load_type || rd.packaging || packagingTypes?.[0] || 'Pallets';
     return {
         clientId: prefill?.clientId || '',
         date: format(new Date(), 'yyyy-MM-dd'),
@@ -41,7 +43,8 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
         sentToClient: false,
         commodity,
         packaging,
-        loadSpec: (prefill?.loadSpec || LOAD_SPECS[0]) as any,
+        // Default to Consolidated — only switch to Dedicated when the client asks.
+        loadSpec: (prefill?.loadSpec || 'Consolidated') as any,
         subcontractorQuotes: [] as SubcontractorQuote[],
         notes: prefill?.notes || undefined,
         // Carry the cargo request payload (weight / cubes / areas) so it can be

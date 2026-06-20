@@ -362,8 +362,13 @@ const App: React.FC = () => {
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
                 <Topbar />
-                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-8 min-w-0 overflow-x-hidden">
-                    {renderView()}
+                <main className="flex-1 w-full min-w-0 overflow-x-hidden">
+                    {/* Centre content at a sensible max width so it adapts to the
+                        screen instead of stretching edge-to-edge on wide monitors
+                        (and stays full-width with padding on laptops/mobile). */}
+                    <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-4 md:px-6 lg:px-8 py-5 md:py-7">
+                        {renderView()}
+                    </div>
                 </main>
             </div>
             <LiveAssistant isOpen={isLiveAssistantOpen} onClose={() => setIsLiveAssistantOpen(false)} />

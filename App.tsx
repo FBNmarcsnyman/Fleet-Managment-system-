@@ -4,6 +4,7 @@ import { useAuth, useUIState, useOperations, useVehicles, useWorkshop } from './
 
 import Login from './components/Login';
 import ClientLogin from './components/ClientLogin';
+import ClientAccessRequest from './components/ClientAccessRequest';
 import SupplierLogin from './components/SupplierLogin';
 import DriverChecklistAuth from './components/DriverChecklistAuth';
 const RigChecklistFlow = lazy(() => import('./components/RigChecklistFlow'));
@@ -327,6 +328,7 @@ const App: React.FC = () => {
 
     if (!currentUser) {
         if (portal === 'client') return <ClientLogin />;
+        if (portal === 'client-request') return <ClientAccessRequest />;
         if (portal === 'supplier') return <SupplierLogin />;
         if (portal === 'become-supplier') return <SupplierRegistrationPortal inviteToken={inviteToken} />;
         return <Login />;

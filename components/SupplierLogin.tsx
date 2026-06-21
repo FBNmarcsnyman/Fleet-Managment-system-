@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AppContexts';
 import type { LoginResult } from '../contexts/AuthContext';
-import { FuelIcon } from './icons/FuelIcon';
+const FbnLogo: React.FC = () => (
+    <img src="/fbn-logo.jpg" alt="FBN Transport"
+        onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }}
+        className="h-16 w-auto mx-auto object-contain" />
+);
 
 const SupplierLogin: React.FC = () => {
     const { handleLogin, resetPassword } = useAuth();
@@ -42,7 +46,7 @@ const SupplierLogin: React.FC = () => {
         <div className="flex items-center justify-center min-h-screen bg-gray-900">
             <div className="w-full max-w-sm p-8 space-y-8 bg-gray-800 rounded-lg shadow-2xl">
                 <div className="text-center">
-                    <FuelIcon className="w-16 h-16 mx-auto text-brand-secondary" />
+                    <FbnLogo />
                     <h1 className="mt-4 text-3xl font-bold tracking-tight text-white">
                         Supplier Portal
                     </h1>

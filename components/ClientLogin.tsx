@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AppContexts';
 import type { LoginResult } from '../contexts/AuthContext';
-import { FuelIcon } from './icons/FuelIcon';
+const FbnLogo: React.FC = () => (
+    <img src="/fbn-logo.jpg" alt="FBN Transport"
+        onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }}
+        className="h-16 w-auto mx-auto object-contain" />
+);
 
 const ClientLogin: React.FC = () => {
     const { handleLogin, resetPassword } = useAuth();
@@ -42,7 +46,7 @@ const ClientLogin: React.FC = () => {
         <div className="flex items-center justify-center min-h-screen bg-gray-900">
             <div className="w-full max-w-sm p-8 space-y-8 bg-gray-800 rounded-lg shadow-2xl">
                 <div className="text-center">
-                    <FuelIcon className="w-16 h-16 mx-auto text-brand-secondary" />
+                    <FbnLogo />
                     <h1 className="mt-4 text-3xl font-bold tracking-tight text-white">
                         Client Portal
                     </h1>
@@ -92,10 +96,7 @@ const ClientLogin: React.FC = () => {
                 </form>
                 <div className="text-center text-sm border-t border-gray-700 pt-4">
                     <p className="text-gray-400 mb-1">Don't have a login yet?</p>
-                    <a
-                        href="mailto:quotes@fbn-transport.co.za?subject=Client%20portal%20access%20request&body=Hi%20FBN%20Transport%2C%0A%0APlease%20set%20up%20a%20client%20portal%20login%20for%3A%0A%0ACompany%3A%20%0AContact%20name%3A%20%0AEmail%3A%20%0APhone%3A%20%0A%0AThank%20you."
-                        className="font-bold text-brand-secondary hover:text-blue-400"
-                    >
+                    <a href="/?portal=client-request" className="font-bold text-brand-secondary hover:text-blue-400">
                         Request login credentials →
                     </a>
                 </div>

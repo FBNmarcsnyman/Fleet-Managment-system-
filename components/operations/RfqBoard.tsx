@@ -203,12 +203,94 @@ const LogQuote: React.FC<{ rfq: RfqRequest; onDone: () => void }> = ({ rfq, onDo
     );
 };
 
+// ── Award → create the broking load straight onto the board ──────────────────
+const branchFor = (text: string, fallback: string) => {
+    const t = (text || '').toUpperCase();
+    if (/(JHB|JOBURG|JOHANNES|GAUTENG|PTA|PRETORIA|GP)/.test(t)) return 'FBN JHB';
+    if (/(DBN|DURBAN|KZN|PMB|PINETOWN)/.test(t)) return 'FBN DBN';
+    if (/(CPT|CAPE|WC|\bWP\b)/.test(t)) return 'FBN CPT';
+    return fallback;
+};
+
+const AwardLoadModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup: number; onClose: () => void }> = ({ rfq, quote, markup, onClose }) => {
+    const { handleCreateLoadConfirmation, handleAwardRfqQuote, clients = [], suppliers = [] } = useOperations() as any;
+    const { showToast } = useUIState();
+    const buy = quote.price || 0;
+    const [clientId, setClientId] = useState('');
+    const [sell, setSell] = useState(String(Math.round(buy * (1 + markup / 100) * 100) / 100));
+    const [saving, setSaving] = useState(false);
+    const carrier = (suppliers as Supplier[]).find(s => s.id === quote.supplierId);
+    const arr = rfq.arrangingBranch || 'FBN JHB';
+    const collB = branchFor(rfq.origin, arr), destB = branchFor(rfq.destination, arr);
+    const margin = (Number(sell) || 0) - buy;
+
+    const create = async () => {
+        if (saving) return;
+        if (!clientId) { showToast('Pick the client to bill this load to.'); return; }
+        setSaving(true);
+        const data = {
+            clientId,
+            date: new Date().toISOString(),
+            legs: [{ id: `id_${Date.now()}`, collectionPoint: rfq.origin, deliveryPoint: rfq.destination, movementType: 'External' }],
+            items: [],
+            totalAmount: Number(sell) || 0,
+            supplierId: quote.supplierId,
+            subcontractorName: carrier?.name,
+            subcontractorEmail: carrier?.contactEmail,
+            supplierRate: buy,
+            collectionBranch: collB,
+            destinationBranch: destB,
+            arrangingBranch: arr,
+            priority: 'Medium',
+            status: 'Booked',
+            collectionPoint: rfq.origin,
+            deliveryPoint: rfq.destination,
+            commodity: rfq.commodity,
+            loadSpec: rfq.vehicleType,
+            specialRequirements: [rfq.loadType, rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')}kg` : null, rfq.gitRequired ? 'GIT required' : null].filter(Boolean).join(' · ') || undefined,
+        };
+        const res = await handleCreateLoadConfirmation(data);
+        if (res?.ok) {
+            await handleAwardRfqQuote(rfq.id, quote.id);
+            showToast(`Load ${res.value?.loadConNumber || ''} created on the board for ${carrier?.name || 'carrier'}.`);
+            onClose();
+        } else { setSaving(false); showToast(`Could not create load: ${res?.error || 'unknown error'}`); }
+    };
+
+    return (
+        <div className="p-6">
+            <h3 className="text-xl font-bold text-white mb-1">Award &amp; create load</h3>
+            <p className="text-sm text-gray-400 mb-4">{rfq.origin} → {rfq.destination} · awarding to <span className="text-white font-semibold">{quote.companyName || carrier?.name || 'carrier'}</span></p>
+
+            <div className="bg-gray-900/50 rounded-lg p-3 mb-4 text-sm">
+                <div className="flex justify-between"><span className="text-gray-400">Carrier rate (buy)</span><span className="font-mono text-white">{rand(buy)}</span></div>
+                <div className="flex justify-between mt-1"><span className="text-gray-400">Branches</span><span className="text-white">{collB} → {destB}</span></div>
+            </div>
+
+            <label className={label}>Client to bill *</label>
+            <select value={clientId} onChange={e => setClientId(e.target.value)} className={input}>
+                <option value="">Select client…</option>
+                {(clients as any[]).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+
+            <div className="mt-4"><label className={label}>Sell price to client (R)</label><input type="number" value={sell} onChange={e => setSell(e.target.value)} className={input} /></div>
+            <p className={`mt-2 text-sm font-bold ${margin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>Margin: {rand(margin)}{buy ? ` (${Math.round((margin / buy) * 100)}%)` : ''}</p>
+
+            <div className="flex justify-end gap-3 mt-6">
+                <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-300 hover:text-white">Cancel</button>
+                <button onClick={create} disabled={saving} className="px-5 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">{saving ? 'Creating…' : 'Create load on board'}</button>
+            </div>
+        </div>
+    );
+};
+
 // ── One RFQ card with ranked quotes + markup + award ─────────────────────────
 const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
-    const { handleAwardRfqQuote, handleUpdateRfq, handleCreateQuote, clients = [], suppliers = [] } = useOperations() as any;
-    const { showToast, showModal } = useUIState();
+    const { handleUpdateRfq } = useOperations() as any;
+    const { showToast } = useUIState();
     const [markup, setMarkup] = useState(15);
     const [logging, setLogging] = useState(false);
+    const [awarding, setAwarding] = useState<CarrierQuote | null>(null);
 
     const ranked = useMemo(() => [...rfq.quotes].sort((a, b) => {
         if (a.canAssist !== b.canAssist) return a.canAssist ? -1 : 1;
@@ -216,33 +298,6 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
     }), [rfq.quotes]);
 
     const statusColor = { Open: 'bg-blue-900/50 text-blue-300', Awarded: 'bg-green-900/50 text-green-300', Closed: 'bg-gray-700 text-gray-300', Cancelled: 'bg-red-900/50 text-red-300' }[rfq.status];
-
-    const id = () => `id_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-
-    const award = async (q: CarrierQuote) => {
-        const res = await handleAwardRfqQuote(rfq.id, q.id);
-        if (!res?.ok) { showToast(`Failed: ${res?.error}`); return; }
-        showToast(`Awarded to ${q.companyName || 'carrier'}. Build the client quote…`);
-        // Seed a client quote from the load + the winning carrier rate + markup.
-        const carrierRate = q.price || 0;
-        const clientTotal = Math.round(carrierRate * (1 + markup / 100) * 100) / 100;
-        const prefill = {
-            legs: [{ id: id(), collectionPoint: rfq.origin, deliveryPoint: rfq.destination, movementType: 'External' }],
-            items: [{ id: id(), description: `${rfq.origin} → ${rfq.destination}${rfq.vehicleType ? ` (${rfq.vehicleType})` : ''}`, packagingType: 'Load', quantity: 1, rate: clientTotal, total: clientTotal }],
-            totalAmount: clientTotal,
-            commodity: rfq.commodity || undefined,
-            collectionDate: rfq.collectionDate || undefined,
-            specialRequirements: [rfq.loadType, rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')}kg` : null, rfq.gitRequired ? 'GIT required' : null].filter(Boolean).join(' · ') || undefined,
-            subcontractorQuotes: q.supplierId ? [{ id: id(), supplierId: q.supplierId, rate: carrierRate, timestamp: new Date().toISOString() }] : [],
-        };
-        showModal('createQuote', {
-            clients, suppliers, prefill,
-            onSubmit: async (quote: any) => {
-                const r = await handleCreateQuote(quote);
-                showToast(r?.ok ? `Client quote ${r.value?.quoteNumber} created.` : `Failed: ${r?.error}`);
-            },
-        });
-    };
 
     return (
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
@@ -297,7 +352,7 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
                                 {clientPrice != null && <span className="block text-[10px] text-gray-500">client {rand(clientPrice)}</span>}
                             </span>
                             {rfq.status !== 'Awarded' && q.canAssist && q.price != null && (
-                                <button onClick={() => award(q)} className="text-[11px] font-bold bg-green-600 hover:bg-green-700 text-white py-1 px-2.5 rounded-lg inline-flex items-center">
+                                <button onClick={() => setAwarding(q)} className="text-[11px] font-bold bg-green-600 hover:bg-green-700 text-white py-1 px-2.5 rounded-lg inline-flex items-center">
                                     <CheckCircleIcon className="h-3.5 w-3.5 mr-1" />Award
                                 </button>
                             )}
@@ -311,6 +366,10 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
                 logging ? <LogQuote rfq={rfq} onDone={() => setLogging(false)} />
                     : <button onClick={() => setLogging(true)} className="mt-3 text-[12px] font-semibold text-brand-secondary hover:text-blue-400">+ Log a quote (phone / WhatsApp reply)</button>
             )}
+
+            <Modal isOpen={!!awarding} onClose={() => setAwarding(null)} size="lg">
+                {awarding && <AwardLoadModal rfq={rfq} quote={awarding} markup={markup} onClose={() => setAwarding(null)} />}
+            </Modal>
         </div>
     );
 };

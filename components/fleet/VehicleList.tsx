@@ -7,6 +7,7 @@ import VehicleDetail from './VehicleDetail';
 import { PlusIcon } from '../icons/PlusIcon';
 import { UploadIcon } from '../icons/UploadIcon';
 import { LinkIcon } from '../icons/LinkIcon';
+import { QrCodeIcon } from '../icons/QrCodeIcon';
 
 const BRANCH_DISPLAY_NAMES: Record<Branch, string> = {
     'FBN JHB': 'JHB Fleet',
@@ -277,6 +278,9 @@ const VehicleList: React.FC = () => {
                         </button>
                         <button onClick={openBulkImport} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-blue-400 rounded-xl border border-blue-500/20 transition-all">
                             <UploadIcon className="h-4 w-4 mr-2" /> Bulk Import
+                        </button>
+                        <button onClick={() => showModal('qrSheet', { onCancel: hideModal })} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-amber-400 rounded-xl border border-amber-500/20 transition-all" title="Print scannable checklist QR labels for every vehicle & trailer">
+                            <QrCodeIcon className="h-4 w-4 mr-2" /> QR Labels
                         </button>
                         <button onClick={openAddAsset} className="flex items-center px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-900/30 transition-all active:scale-95">
                             <PlusIcon className="h-4 w-4 mr-2" /> Add Asset

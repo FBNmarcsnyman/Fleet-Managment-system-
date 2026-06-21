@@ -88,6 +88,7 @@ const AddDriverForm = lazy(() => import('./components/fleet/AddDriverForm'));
 const LoadDocumentsModal = lazy(() => import('./components/operations/LoadDocumentsModal'));
 const LoadDetailModal = lazy(() => import('./components/operations/LoadDetailModal'));
 const QRCodeModal = lazy(() => import('./components/QRCodeModal'));
+const FleetQrSheetModal = lazy(() => import('./components/fleet/FleetQrSheetModal'));
 const RigTrailersModal = lazy(() => import('./components/RigTrailersModal'));
 const AddSupplierForm = lazy(() => import('./components/operations/AddSupplierForm'));
 const BulkImportSuppliersModal = lazy(() => import('./components/operations/BulkImportSuppliersModal'));
@@ -162,6 +163,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     loadDocuments: LoadDocumentsModal,
     loadDetail: LoadDetailModal,
     qrCode: QRCodeModal,
+    qrSheet: FleetQrSheetModal,
     rigTrailers: RigTrailersModal,
     addSupplier: AddSupplierForm,
     bulkImportSuppliers: BulkImportSuppliersModal,
@@ -193,6 +195,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     editQuote: '5xl',
     createBooking: '3xl',
     transportOrder: '5xl',
+    qrSheet: '4xl',
     quickCollection: 'lg',
     captureLoad: 'lg',
     assignFbn: 'lg',

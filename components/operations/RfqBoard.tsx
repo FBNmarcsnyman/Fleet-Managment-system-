@@ -153,8 +153,8 @@ const LogQuote: React.FC<{ rfq: RfqRequest; onDone: () => void }> = ({ rfq, onDo
 
 // ── One RFQ card with ranked quotes + markup + award ─────────────────────────
 const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
-    const { handleAwardRfqQuote, handleUpdateRfq } = useOperations() as any;
-    const { showToast } = useUIState();
+    const { handleAwardRfqQuote, handleUpdateRfq, handleCreateQuote, clients = [], suppliers = [] } = useOperations() as any;
+    const { showToast, showModal } = useUIState();
     const [markup, setMarkup] = useState(15);
     const [logging, setLogging] = useState(false);
 
@@ -165,9 +165,31 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
 
     const statusColor = { Open: 'bg-blue-900/50 text-blue-300', Awarded: 'bg-green-900/50 text-green-300', Closed: 'bg-gray-700 text-gray-300', Cancelled: 'bg-red-900/50 text-red-300' }[rfq.status];
 
+    const id = () => `id_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
     const award = async (q: CarrierQuote) => {
         const res = await handleAwardRfqQuote(rfq.id, q.id);
-        if (res?.ok) showToast(`Awarded to ${q.companyName || 'carrier'}.`); else showToast(`Failed: ${res?.error}`);
+        if (!res?.ok) { showToast(`Failed: ${res?.error}`); return; }
+        showToast(`Awarded to ${q.companyName || 'carrier'}. Build the client quote…`);
+        // Seed a client quote from the load + the winning carrier rate + markup.
+        const carrierRate = q.price || 0;
+        const clientTotal = Math.round(carrierRate * (1 + markup / 100) * 100) / 100;
+        const prefill = {
+            legs: [{ id: id(), collectionPoint: rfq.origin, deliveryPoint: rfq.destination, movementType: 'External' }],
+            items: [{ id: id(), description: `${rfq.origin} → ${rfq.destination}${rfq.vehicleType ? ` (${rfq.vehicleType})` : ''}`, packagingType: 'Load', quantity: 1, rate: clientTotal, total: clientTotal }],
+            totalAmount: clientTotal,
+            commodity: rfq.commodity || undefined,
+            collectionDate: rfq.collectionDate || undefined,
+            specialRequirements: [rfq.loadType, rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')}kg` : null, rfq.gitRequired ? 'GIT required' : null].filter(Boolean).join(' · ') || undefined,
+            subcontractorQuotes: q.supplierId ? [{ id: id(), supplierId: q.supplierId, rate: carrierRate, timestamp: new Date().toISOString() }] : [],
+        };
+        showModal('createQuote', {
+            clients, suppliers, prefill,
+            onSubmit: async (quote: any) => {
+                const r = await handleCreateQuote(quote);
+                showToast(r?.ok ? `Client quote ${r.value?.quoteNumber} created.` : `Failed: ${r?.error}`);
+            },
+        });
     };
 
     return (

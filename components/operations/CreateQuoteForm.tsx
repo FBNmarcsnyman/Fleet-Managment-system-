@@ -14,11 +14,12 @@ interface CreateQuoteFormProps {
     suppliers: Supplier[];
     onSubmit: (quote: Omit<Quote, 'id' | 'quoteNumber' | 'status'> | Quote) => void;
     quoteData?: Quote;
+    prefill?: Partial<Quote>;
 }
 
 const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
-const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTypes?: string[]) => {
+const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTypes?: string[], prefill?: Partial<Quote>) => {
     if (quoteData) {
         return {
             ...quoteData,
@@ -38,17 +39,18 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
         packaging: packagingTypes?.[0] || 'Pallets',
         loadSpec: LOAD_SPECS[0] as any,
         subcontractorQuotes: [] as SubcontractorQuote[],
+        ...(prefill || {}),
     };
 };
 
-const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, onSubmit, quoteData }) => {
+const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, onSubmit, quoteData, prefill }) => {
     const { hideModal } = useUIState();
     const { commodities, packagingTypes, handleAddCommodity, handleAddPackagingType } = useFleetData();
     // Form state is the union of "new quote literal" and "loaded existing Quote".
     // Typed as `any` here because CreateQuoteForm uses many internal `as any`
     // casts and a fully typed shape requires a rewrite that's out of scope for
     // the typing-cleanup push.
-    const [quote, setQuote] = useState<any>(() => getInitialState(quoteData, commodities, packagingTypes));
+    const [quote, setQuote] = useState<any>(() => getInitialState(quoteData, commodities, packagingTypes, prefill));
     
     const [showNewCommodityInput, setShowNewCommodityInput] = useState(false);
     const [newCommodity, setNewCommodity] = useState('');

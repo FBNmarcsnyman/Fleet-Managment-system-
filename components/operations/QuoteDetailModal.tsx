@@ -77,7 +77,7 @@ const QuoteDetailModal: React.FC<{
                         <div className="text-xs font-bold uppercase tracking-widest" style={{ color: YELLOW }}>
                             Quote Request
                         </div>
-                        <h2 className="text-2xl font-bold text-white mt-1">{quote.quoteNumber}</h2>
+                        <h2 className="text-2xl font-bold text-white btn-on-color mt-1">{quote.quoteNumber}</h2>
                         {client && <p className="text-gray-400 text-sm mt-1">{client.name}</p>}
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${

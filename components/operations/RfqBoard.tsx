@@ -328,8 +328,10 @@ const QuoteClientModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup:
 
 // ── One RFQ card with ranked quotes + markup + award ─────────────────────────
 const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
-    const { handleUpdateRfq } = useOperations() as any;
+    const { handleUpdateRfq, clients = [], quotes = [] } = useOperations() as any;
     const { showToast } = useUIState();
+    const clientName = rfq.clientId ? ((clients as any[]).find(c => c.id === rfq.clientId)?.name || 'Client') : '';
+    const quoteNumber = rfq.quoteId ? ((quotes as any[]).find(q => q.id === rfq.quoteId)?.quoteNumber || '') : '';
     const [markup, setMarkup] = useState(15);
     const [logging, setLogging] = useState(false);
     const [awarding, setAwarding] = useState<CarrierQuote | null>(null);
@@ -351,6 +353,13 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
                         {rfq.arrangingBranch && <span className="text-[10px] text-gray-500">{rfq.arrangingBranch}</span>}
                     </div>
                     <h4 className="text-white font-bold mt-1">{rfq.origin} → {rfq.destination}</h4>
+                    {(clientName || quoteNumber) && (
+                        <p className="text-[11px] text-emerald-300/90 mt-0.5">
+                            {clientName && <span>👤 {clientName}</span>}
+                            {clientName && quoteNumber && <span className="text-gray-600"> · </span>}
+                            {quoteNumber && <span className="font-mono">{quoteNumber}</span>}
+                        </p>
+                    )}
                     <p className="text-[11px] text-gray-400 mt-0.5">
                         {[rfq.vehicleType, rfq.loadType, rfq.commodity, rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')}kg` : null, rfq.gitRequired ? 'GIT' : null]
                             .filter(Boolean).join(' · ')}

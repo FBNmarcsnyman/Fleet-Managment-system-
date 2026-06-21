@@ -12,6 +12,7 @@ import ClientQuoteView from './components/ClientQuoteView';
 import PublicPodUpload from './components/PublicPodUpload';
 import PublicLoad from './components/PublicLoad';
 import PublicTerms from './components/PublicTerms';
+import PublicRfqQuote from './components/PublicRfqQuote';
 import SupplierRegistrationPortal from './components/supplier/SupplierRegistrationPortal';
 
 
@@ -236,10 +237,16 @@ const App: React.FC = () => {
     const showTerms = urlParams.get('tcs');
     const portal = urlParams.get('portal');
     const inviteToken = urlParams.get('invite');
+    const rfqToken = urlParams.get('rfq');
 
     // Public Subcontractor Terms & Conditions page (linked from LoadCons/emails).
     if (showTerms) {
         return <PublicTerms />;
+    }
+
+    // Public, no-login carrier quote reply from the ?rfq=<token> link in the RFQ email.
+    if (rfqToken) {
+        return <PublicRfqQuote token={rfqToken} />;
     }
 
     // Public, no-login POD upload from the link in our POD-request email.

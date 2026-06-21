@@ -90,6 +90,15 @@ const ClientLogin: React.FC = () => {
                         </a>
                     </div>
                 </form>
+                <div className="text-center text-sm border-t border-gray-700 pt-4">
+                    <p className="text-gray-400 mb-1">Don't have a login yet?</p>
+                    <a
+                        href="mailto:quotes@fbn-transport.co.za?subject=Client%20portal%20access%20request&body=Hi%20FBN%20Transport%2C%0A%0APlease%20set%20up%20a%20client%20portal%20login%20for%3A%0A%0ACompany%3A%20%0AContact%20name%3A%20%0AEmail%3A%20%0APhone%3A%20%0A%0AThank%20you."
+                        className="font-bold text-brand-secondary hover:text-blue-400"
+                    >
+                        Request login credentials →
+                    </a>
+                </div>
                 <div className="text-center text-sm">
                     <a href="/" className="font-medium text-brand-secondary hover:text-blue-400">
                         ← Back to portals

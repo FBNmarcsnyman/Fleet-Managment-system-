@@ -101,11 +101,6 @@ const Login: React.FC = () => {
                             Supplier Login
                         </a>
                     </div>
-                    <div className="text-center text-sm">
-                        <a href="/?portal=become-supplier" className="font-medium text-brand-secondary hover:text-blue-400">
-                            Become a Supplier
-                        </a>
-                    </div>
                 </div>
             </div>
         );

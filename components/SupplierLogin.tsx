@@ -90,6 +90,12 @@ const SupplierLogin: React.FC = () => {
                         </a>
                     </div>
                 </form>
+                <div className="text-center text-sm border-t border-gray-700 pt-4">
+                    <p className="text-gray-400 mb-1">New carrier?</p>
+                    <a href="/?portal=become-supplier" className="font-bold text-brand-secondary hover:text-blue-400">
+                        Become a Supplier — register here →
+                    </a>
+                </div>
                 <div className="text-center text-sm">
                     <a href="/" className="font-medium text-brand-secondary hover:text-blue-400">
                         ← Back to portals

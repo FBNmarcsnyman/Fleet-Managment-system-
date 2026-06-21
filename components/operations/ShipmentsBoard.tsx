@@ -47,7 +47,10 @@ const needsSubbieLeg = (lc: LoadConfirmation) => {
 };
 
 const ShipmentsBoard: React.FC = () => {
-    const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation, handleRefreshLoads } = useOperations() as any;
+    const { loadConfirmations = [], clients = [], suppliers = [], quotes = [], handleUpdateLoadConfirmation, handleRefreshLoads } = useOperations() as any;
+    // Map a load back to the quote it came from, so the QU number + quoted price
+    // are visible and trackable through collection and delivery.
+    const quoteById = useMemo(() => new Map((quotes as any[]).map(qq => [qq.id, qq])), [quotes]);
     const { showModal, showToast } = useUIState();
     const { currentUser } = useAuth();
     const [busy, setBusy] = useState<string | null>(null);
@@ -162,6 +165,11 @@ const ShipmentsBoard: React.FC = () => {
                                     <span className="text-[10px] font-black text-blue-600 font-mono">{lc.loadConNumber}</span>
                                     <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
                                 </div>
+                                {lc.quoteId && quoteById.get(lc.quoteId) && (
+                                    <div className="text-[9px] font-bold text-slate-400 font-mono mb-1">
+                                        {quoteById.get(lc.quoteId).quoteNumber}{lc.totalAmount ? ` · R ${Number(lc.totalAmount).toLocaleString()}` : ''}
+                                    </div>
+                                )}
                                 <p className="font-bold text-slate-900 text-sm leading-tight">{clientName(lc)}</p>
                                 <p className="text-[10px] text-slate-500 mb-1 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                                 {lc.collectionDate && (

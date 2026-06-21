@@ -36,10 +36,10 @@ const ManagementPortal: React.FC = () => {
     
     return (
         <div>
-            <div className="flex items-center space-x-2 mb-6">
+            <div className="flex items-center gap-2 mb-6 overflow-x-auto -mx-1 px-1">
                 {navItems.map(item => (
                      <button key={item.view} onClick={() => handleManagementSubViewChange(item.view as any)}
-                        className={`px-4 py-2 text-sm font-semibold rounded-md ${managementSubView === item.view ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+                        className={`px-4 py-2 text-sm font-semibold rounded-md whitespace-nowrap ${managementSubView === item.view ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
                         {item.label}
                     </button>
                 ))}

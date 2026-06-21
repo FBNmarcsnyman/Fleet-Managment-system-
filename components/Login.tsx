@@ -2,10 +2,22 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AppContexts';
 import type { LoginResult } from '../contexts/AuthContext';
-import { FuelIcon } from './icons/FuelIcon';
+
+// Brand logo — falls back from the JPG to the SVG if the JPG ever fails to load.
+const FbnLogo: React.FC = () => (
+    <img
+        src="/fbn-logo.jpg"
+        alt="FBN Transport"
+        onError={(e) => { const t = e.currentTarget as HTMLImageElement; if (!t.src.endsWith('.svg')) t.src = '/fbn-logo.svg'; }}
+        className="h-16 w-auto mx-auto object-contain"
+    />
+);
 
 const Login: React.FC = () => {
     const { handleLogin, signInWithGoogle, resetPassword } = useAuth();
+    // Landing picker: choose a portal first. 'fbn' reveals the staff sign-in form;
+    // Client/Supplier navigate to their own login pages.
+    const [mode, setMode] = useState<'select' | 'fbn'>('select');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -57,15 +69,52 @@ const Login: React.FC = () => {
         setError((result as Extract<LoginResult, { ok: false }>).error);
     };
 
+    if (mode === 'select') {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
+                <div className="w-full max-w-sm p-8 space-y-8 bg-gray-800 rounded-lg shadow-2xl">
+                    <div className="text-center">
+                        <FbnLogo />
+                        <h1 className="mt-4 text-3xl font-bold tracking-tight text-white">
+                            Control Centre
+                        </h1>
+                        <p className="mt-2 text-gray-400">Choose your portal to continue</p>
+                    </div>
+                    <div className="space-y-3">
+                        <button
+                            type="button"
+                            onClick={() => { setError(null); setInfo(null); setMode('fbn'); }}
+                            className="btn-on-color w-full py-3.5 px-4 rounded-lg text-white font-bold text-sm uppercase tracking-wide shadow-sm transition hover:brightness-110 active:scale-[0.98] bg-[#13294b]"
+                        >
+                            FBN Login
+                        </button>
+                        <a
+                            href="/?portal=client"
+                            className="btn-on-color block w-full py-3.5 px-4 rounded-lg text-white font-bold text-sm uppercase tracking-wide text-center shadow-sm transition hover:brightness-110 active:scale-[0.98] bg-blue-600"
+                        >
+                            Client Login
+                        </a>
+                        <a
+                            href="/?portal=supplier"
+                            className="btn-on-color block w-full py-3.5 px-4 rounded-lg text-white font-bold text-sm uppercase tracking-wide text-center shadow-sm transition hover:brightness-110 active:scale-[0.98] bg-emerald-600"
+                        >
+                            Supplier Login
+                        </a>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
             <div className="w-full max-w-sm p-8 space-y-8 bg-gray-800 rounded-lg shadow-2xl">
                 <div className="text-center">
-                    <FuelIcon className="w-16 h-16 mx-auto text-brand-secondary" />
+                    <FbnLogo />
                     <h1 className="mt-4 text-3xl font-bold tracking-tight text-white">
-                        Fleet Management
+                        Control Centre
                     </h1>
-                    <p className="mt-2 text-gray-400">Please sign in to continue</p>
+                    <p className="mt-2 text-gray-400">FBN staff sign-in</p>
                 </div>
                 <div className="mt-8">
                     <button
@@ -136,9 +185,9 @@ const Login: React.FC = () => {
                     </div>
                 </form>
                 <div className="text-center text-sm">
-                    <a href="/?portal=become-supplier" className="font-medium text-brand-secondary hover:text-blue-400">
-                        Become a Supplier
-                    </a>
+                    <button type="button" onClick={() => { setError(null); setInfo(null); setMode('select'); }} className="font-medium text-brand-secondary hover:text-blue-400">
+                        ← Back to portals
+                    </button>
                 </div>
             </div>
         </div>

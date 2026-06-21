@@ -142,15 +142,15 @@ const LoadDetailModal: React.FC = () => {
     return (
         <FieldCtx.Provider value={{ editing, d, set }}>
         <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-            <div className="flex items-start justify-between">
-                <div>
-                    <h2 className="text-2xl font-black text-white">{lc.loadConNumber}</h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                    <h2 className="text-2xl font-black text-white break-words">{lc.loadConNumber}</h2>
                     {sourceQuote && (
-                        <p className="text-xs font-bold text-amber-400 font-mono">From quote {sourceQuote.quoteNumber}{lc.totalAmount ? ` · R ${Number(lc.totalAmount).toLocaleString()}` : ''}</p>
+                        <p className="text-xs font-bold text-amber-400 font-mono break-words">From quote {sourceQuote.quoteNumber}{lc.totalAmount ? ` · R ${Number(lc.totalAmount).toLocaleString()}` : ''}</p>
                     )}
-                    <p className="text-sm text-gray-400">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                    <p className="text-sm text-gray-400 break-words">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
                     {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-900/40 text-blue-300">{lc.status}</span>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">📷 Capture</button>}
                     {!editing && !lc.supplierId && (

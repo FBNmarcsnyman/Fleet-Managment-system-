@@ -87,7 +87,7 @@ const OperationsPortal: React.FC = () => {
     
     return (
         <div className="bg-slate-50 text-slate-800 rounded-2xl p-5 -m-2 min-h-[calc(100vh-7rem)] border border-slate-200">
-            <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex flex-col gap-3 mb-6 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                     <span className={`shrink-0 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${isOps ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800'}`}>
                         {isOps ? 'Operations' : 'Broking'}
@@ -101,7 +101,7 @@ const OperationsPortal: React.FC = () => {
                     ))}
                 </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
                     {isOps ? (
                         <>
                             <button onClick={() => showModal('cartageScan', {})}

@@ -7,6 +7,7 @@ import GlobalSearch from './GlobalSearch';
 import TestModeToggle from './TestModeToggle';
 import { VIEW_TITLES } from './navConfig';
 import { useLiveAlerts } from '../../hooks/useLiveAlerts';
+import { useMutedLiveAlerts } from '../../lib/liveAlertMutes';
 import { enablePush, isPushSupported, pushAlreadyEnabled } from '../../lib/push';
 
 const OnlineStatus: React.FC<{ isOnline: boolean }> = React.memo(({ isOnline }) => (
@@ -26,7 +27,9 @@ const Topbar: React.FC = () => {
     };
     const { currentView, isOnline, setSidebarOpen } = useUIState();
     const { notifications = [] } = useNotifications();
-    const liveAlerts = useLiveAlerts();
+    const liveAlertsRaw = useLiveAlerts();
+    const muted = useMutedLiveAlerts();
+    const liveAlerts = liveAlertsRaw.filter(a => !muted.has(a.id));
     const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 
     if (!currentUser) return null;

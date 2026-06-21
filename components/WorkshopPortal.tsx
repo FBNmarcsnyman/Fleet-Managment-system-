@@ -156,8 +156,8 @@ const WorkshopPortal: React.FC = () => {
     
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-2 overflow-x-auto">
+            <div className="flex flex-col gap-3 mb-6 lg:flex-row lg:justify-between lg:items-center">
+                <div className="flex items-center space-x-2 overflow-x-auto -mx-1 px-1">
                     {navItems.map(item => (
                         <button 
                             key={item.view} 
@@ -168,7 +168,7 @@ const WorkshopPortal: React.FC = () => {
                         </button>
                     ))}
                 </div>
-                <button onClick={openCreateJobCardModal} className="flex items-center font-bold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white whitespace-nowrap">
+                <button onClick={openCreateJobCardModal} className="flex items-center self-start font-bold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white whitespace-nowrap lg:shrink-0">
                     <PlusIcon className="h-5 w-5 mr-2" /> Create Job Card
                 </button>
             </div>

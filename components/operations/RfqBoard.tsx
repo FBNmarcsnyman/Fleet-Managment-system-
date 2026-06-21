@@ -16,7 +16,7 @@ const rand = (n?: number | null) => n || n === 0 ? `R ${Number(n).toLocaleString
 
 // ── Raise-RFQ form ───────────────────────────────────────────────────────────
 const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ suppliers, onClose }) => {
-    const { handleCreateRfq } = useOperations() as any;
+    const { handleCreateRfq, routes = [] } = useOperations() as any;
     const { showToast } = useUIState();
     const [saving, setSaving] = useState(false);
     const [f, setF] = useState({
@@ -29,7 +29,38 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
     const carriers = useMemo(() => (suppliers || []).filter(s => s.type === 'Transport' && s.isActive !== false), [suppliers]);
     const [picked, setPicked] = useState<Set<string>>(new Set());
     const [extraEmails, setExtraEmails] = useState('');
+    const [routeId, setRouteId] = useState('');
+    const [onRouteOnly, setOnRouteOnly] = useState(false);
     const toggle = (id: string) => setPicked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+    // Best-effort lane match: does the carrier's regions / specialisations mention
+    // either end of the route? (Carriers capture the lanes they run at sign-up.)
+    const laneTokens = (origin: string, destination: string) =>
+        [origin, destination].flatMap(x => (x || '').toLowerCase().split(/[^a-z0-9]+/))
+            .filter(t => t.length >= 3 && !['fbn', 'transport', 'depot', 'the', 'and'].includes(t));
+    const runsLane = (c: Supplier, origin: string, destination: string) => {
+        const toks = laneTokens(origin, destination);
+        if (!toks.length) return true;
+        const hay = [c.regions, (c.specializations || []).join(' ')].join(' ').toLowerCase();
+        return toks.some(t => hay.includes(t));
+    };
+
+    const onRoute = (id: string) => {
+        setRouteId(id);
+        const r = (routes as any[]).find(x => x.id === id);
+        if (!r) return;
+        set('origin', r.origin); set('destination', r.destination);
+        setOnRouteOnly(true);
+        setPicked(new Set(carriers.filter(c => runsLane(c, r.origin, r.destination)).map(c => c.id)));
+    };
+
+    const shown = useMemo(() => onRouteOnly ? carriers.filter(c => runsLane(c, f.origin, f.destination)) : carriers, [carriers, onRouteOnly, f.origin, f.destination]);
+    const allShownSelected = shown.length > 0 && shown.every(c => picked.has(c.id));
+    const toggleAll = () => setPicked(prev => {
+        const n = new Set(prev);
+        if (allShownSelected) shown.forEach(c => n.delete(c.id)); else shown.forEach(c => n.add(c.id));
+        return n;
+    });
 
     const submit = async () => {
         if (saving) return;
@@ -52,6 +83,17 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
         <div className="p-6 max-h-[85vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-white mb-1">Raise a quote request</h3>
             <p className="text-sm text-gray-400 mb-5">Broadcast a load to carriers who run the lane. Replies route to the branch ops inbox.</p>
+
+            {(routes as any[]).length > 0 && (
+                <div className="mb-4">
+                    <label className={label}>Route (auto-selects carriers on this lane)</label>
+                    <select value={routeId} onChange={e => onRoute(e.target.value)} className={input}>
+                        <option value="">Custom route (enter below)</option>
+                        {(routes as any[]).map(r => <option key={r.id} value={r.id}>{r.origin} → {r.destination}</option>)}
+                    </select>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label className={label}>Arranging branch</label>
@@ -88,10 +130,20 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
             <div className="mt-4"><label className={label}>Notes</label><textarea value={f.notes} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Any special requirements…" className={input} /></div>
 
             <div className="mt-6">
-                <label className={label}>Send to carriers ({picked.size} selected)</label>
+                <div className="flex items-center justify-between mb-1">
+                    <label className={label}>Send to carriers ({picked.size} selected)</label>
+                    <div className="flex items-center gap-3 text-[11px]">
+                        {(f.origin || f.destination) && (
+                            <label className="flex items-center gap-1.5 text-gray-400 cursor-pointer">
+                                <input type="checkbox" checked={onRouteOnly} onChange={e => setOnRouteOnly(e.target.checked)} className="h-3.5 w-3.5 rounded" /> On this route only
+                            </label>
+                        )}
+                        <button type="button" onClick={toggleAll} className="font-bold text-brand-secondary hover:text-blue-400">{allShownSelected ? 'Clear all' : 'Select all'}</button>
+                    </div>
+                </div>
                 <div className="max-h-44 overflow-y-auto border border-gray-700 rounded-lg divide-y divide-gray-700/60">
-                    {carriers.length === 0 && <p className="text-sm text-gray-500 p-3">No active transport carriers yet.</p>}
-                    {carriers.map(c => (
+                    {shown.length === 0 && <p className="text-sm text-gray-500 p-3">{onRouteOnly ? 'No carriers match this lane — untick "On this route only" to see all.' : 'No active transport carriers yet.'}</p>}
+                    {shown.map(c => (
                         <label key={c.id} className="flex items-center gap-3 p-2.5 hover:bg-gray-700/40 cursor-pointer">
                             <input type="checkbox" checked={picked.has(c.id)} onChange={() => toggle(c.id)} className="h-4 w-4 rounded" />
                             <span className="flex-grow min-w-0">

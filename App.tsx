@@ -37,6 +37,7 @@ import Sidebar from './components/shared/Sidebar';
 import Topbar from './components/shared/Topbar';
 import CollectFab from './components/shared/CollectFab';
 import LiveAssistant from './components/LiveAssistant';
+import HelpChat from './components/HelpChat';
 import Modal from './components/Modal';
 import Toast from './components/Toast';
 import { User, Vehicle } from './types';
@@ -391,6 +392,7 @@ const App: React.FC = () => {
                 </main>
             </div>
             <LiveAssistant isOpen={isLiveAssistantOpen} onClose={() => setIsLiveAssistantOpen(false)} />
+            <HelpChat />
             <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 text-white">Loading Modal...</div>}>
                 <Modal 
                     isOpen={modal.isOpen} 

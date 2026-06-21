@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Help — FBN Transport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#13294b;--yellow:#f5b700;--green:#16a34a;--bg:#f1f5f9;--border:#e2e8f0;--text:#1e293b;--muted:#64748b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:680px;margin:0 auto;padding:0 14px 28px;min-height:100vh;display:flex;flex-direction:column}
+.hdr{background:var(--navy);padding:18px 24px;border-radius:0 0 0 0;margin-top:0;display:flex;align-items:center;justify-content:space-between}
+.hdr img{height:38px;background:#fff;border-radius:4px;padding:3px}
+.hdr-label{color:var(--yellow);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.yellow-bar{height:4px;background:var(--yellow)}
+.intro{padding:18px 6px 6px}
+.intro h1{font-family:'Barlow Condensed',sans-serif;font-size:24px;color:var(--navy)}
+.intro p{color:var(--muted);font-size:14px;margin-top:2px}
+.chat{flex:1;overflow-y:auto;padding:12px 2px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.55;white-space:pre-wrap}
+.me{align-self:flex-end;background:#2563eb;color:#fff;border-bottom-right-radius:4px}
+.bot{align-self:flex-start;background:#fff;border:1px solid var(--border);color:var(--text);border-bottom-left-radius:4px}
+.sugg{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.sugg button{text-align:left;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:#334155;cursor:pointer;font-family:inherit}
+.sugg button:hover{border-color:#93c5fd;background:#eff6ff}
+.bar{display:flex;gap:8px;padding:10px 0 0;align-items:flex-end}
+.bar textarea{flex:1;resize:none;border:1px solid #cbd5e1;border-radius:12px;padding:11px 13px;font-size:14px;font-family:inherit;max-height:120px}
+.bar textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(19,41,75,.1)}
+.bar button{background:var(--navy);color:#fff;font-weight:700;border:none;border-radius:12px;padding:11px 18px;font-size:14px;cursor:pointer;font-family:inherit}
+.bar button:disabled{opacity:.45;cursor:not-allowed}
+.foot{text-align:center;padding:14px 0 0;font-size:11px;color:#9ca3af}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <img src="/fbn-logo.jpg" alt="FBN Transport" onerror="this.style.display='none'">
+    <span class="hdr-label">Help</span>
+  </div>
+  <div class="yellow-bar"></div>
+
+  <div class="intro">
+    <h1>How can we help?</h1>
+    <p>Ask about quotes, bookings, tracking or payments. For anything else, email quotes@fbn-transport.co.za or call 031 205 1705.</p>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="bot msg">Hi 👋 I can help with getting a quote, accepting it, tracking your shipment and payments. What would you like to know?</div>
+    <div class="sugg" id="sugg">
+      <button onclick="ask('How do I request a quote?')">How do I request a quote?</button>
+      <button onclick="ask('How do I accept my quote?')">How do I accept my quote?</button>
+      <button onclick="ask('How do I pay / what are your banking details?')">How do I pay? (banking details)</button>
+      <button onclick="ask('How do I track my shipment?')">How do I track my shipment?</button>
+    </div>
+  </div>
+
+  <div class="bar">
+    <textarea id="q" rows="1" placeholder="Type your question…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ask()}"></textarea>
+    <button id="send" onclick="ask()">Send</button>
+  </div>
+  <div class="foot">FBN Transport (Pty) Ltd · quotes@fbn-transport.co.za · 031 205 1705</div>
+</div>
+
+<script>
+const API = 'https://kyosepbdxjwugunylvyo.supabase.co/functions/v1/help-public';
+const chat = document.getElementById('chat');
+const qEl = document.getElementById('q');
+const sendBtn = document.getElementById('send');
+const history = [];
+
+function bubble(text, who) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + (who === 'user' ? 'me' : 'bot');
+  d.textContent = text;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  return d;
+}
+
+async function ask(preset) {
+  const question = (preset || qEl.value).trim();
+  if (!question) return;
+  const sugg = document.getElementById('sugg'); if (sugg) sugg.remove();
+  qEl.value = '';
+  bubble(question, 'user');
+  sendBtn.disabled = true;
+  const thinking = bubble('…', 'bot');
+  try {
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question, history }) });
+    const data = await r.json();
+    const answer = data.answer || data.error || "Sorry, I couldn't answer that. Please email quotes@fbn-transport.co.za.";
+    thinking.textContent = answer;
+    history.push({ role: 'user', text: question }, { role: 'assistant', text: answer });
+    if (history.length > 16) history.splice(0, history.length - 16);
+  } catch (e) {
+    thinking.textContent = "Sorry, something went wrong. Please email quotes@fbn-transport.co.za or call 031 205 1705.";
+  } finally {
+    sendBtn.disabled = false;
+    chat.scrollTop = chat.scrollHeight;
+  }
+}
+</script>
+</body>
+</html>

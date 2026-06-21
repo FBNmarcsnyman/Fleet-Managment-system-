@@ -90,6 +90,11 @@ const SupplierLogin: React.FC = () => {
                         </a>
                     </div>
                 </form>
+                <div className="text-center text-sm">
+                    <a href="/" className="font-medium text-brand-secondary hover:text-blue-400">
+                        ← Back to portals
+                    </a>
+                </div>
             </div>
         </div>
     );

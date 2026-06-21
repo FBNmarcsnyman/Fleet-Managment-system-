@@ -20,6 +20,18 @@ interface CreateQuoteFormProps {
 
 const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
+// Suggest the load specification from the cargo specs: a full-vehicle load type
+// or a heavy/high-cube shipment is Dedicated; everything else starts Consolidated
+// (Marc's rule: default Consolidated until the cargo says otherwise).
+const suggestSpec = (rd: any, packaging?: string): string => {
+    const lt = `${rd?.load_type || ''} ${packaging || ''}`.toLowerCase();
+    if (/superlink|12m|6m|abnormal|full load|\bftl\b|\btruck\b/.test(lt)) return 'Dedicated';
+    const w = Number(rd?.total_weight) || 0;
+    const cube = Number(rd?.total_cube) || 0;
+    if (w >= 8000 || cube >= 25) return 'Dedicated';
+    return 'Consolidated';
+};
+
 const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTypes?: string[], prefill?: any) => {
     if (quoteData) {
         // Editing an existing quote (incl. "Quote It" on an inbound request, which
@@ -40,7 +52,7 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
             expiryDate: quoteData.expiryDate ? format(new Date(quoteData.expiryDate), 'yyyy-MM-dd') : format(addDays(new Date(), 7), 'yyyy-MM-dd'),
             commodity: commodityE,
             packaging: packagingE,
-            loadSpec: quoteData.loadSpec || 'Consolidated',
+            loadSpec: quoteData.loadSpec || suggestSpec(rdq, packagingE),
             items: needItems ? [{ id: generateId(), description: commodityE, packagingType: packagingE, quantity: qtyE, rate: 0, total: 0 }] : quoteData.items,
             legs: needLegs ? [{ id: generateId(), collectionPoint: rdq.collect_from || rdq.collection_area || '', deliveryPoint: rdq.deliver_to || rdq.delivery_area || '', movementType: 'Internal' }] : quoteData.legs,
             subcontractorQuotes: quoteData.subcontractorQuotes || [],
@@ -68,8 +80,8 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
         sentToClient: false,
         commodity,
         packaging,
-        // Default to Consolidated — only switch to Dedicated when the client asks.
-        loadSpec: (prefill?.loadSpec || 'Consolidated') as any,
+        // Auto-stipulate from the cargo specs (full/heavy → Dedicated, else Consolidated).
+        loadSpec: (prefill?.loadSpec || suggestSpec(rd, packaging)) as any,
         subcontractorQuotes: [] as SubcontractorQuote[],
         notes: prefill?.notes || undefined,
         // Carry the cargo request payload (weight / cubes / areas) so it can be
@@ -93,6 +105,9 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     // casts and a fully typed shape requires a rewrite that's out of scope for
     // the typing-cleanup push.
     const [quote, setQuote] = useState<any>(() => getInitialState(quoteData, commodities, packagingTypes, prefill));
+    // Once the user picks a load spec manually we stop auto-suggesting. Existing
+    // quotes that already carry a spec start "touched" so we never override them.
+    const [specTouched, setSpecTouched] = useState(!!quoteData?.loadSpec);
 
     const transportSuppliers = suppliers.filter(s => s.type === 'Transport');
 
@@ -117,6 +132,14 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
             setQuote((prev: any) => ({ ...prev, totalAmount: total }));
         }
     }, [quote.items, quote.totalAmount]);
+
+    // Auto-stipulate Consolidated/Dedicated as the cargo specs change, until the
+    // user overrides the dropdown.
+    useEffect(() => {
+        if (specTouched) return;
+        const s = suggestSpec(quote.requestData, quote.packaging);
+        if (s !== quote.loadSpec) setQuote((prev: any) => ({ ...prev, loadSpec: s }));
+    }, [quote.requestData?.total_weight, quote.requestData?.total_cube, quote.requestData?.load_type, quote.packaging, specTouched]);
 
     const handleFieldChange = (field: keyof Quote, value: any) => {
         setQuote(prev => ({ ...prev, [field]: value }));
@@ -256,7 +279,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     <div><label className={labelClasses}>Expiry Date</label><input type="date" value={quote.expiryDate} onChange={e => handleFieldChange('expiryDate', e.target.value)} className={inputClasses} /></div>
                     <div>
                         <label className={labelClasses}>Load Specification</label>
-                        <select value={quote.loadSpec} onChange={e => handleFieldChange('loadSpec', e.target.value)} className={inputClasses}>
+                        <select value={quote.loadSpec} onChange={e => { setSpecTouched(true); handleFieldChange('loadSpec', e.target.value); }} className={inputClasses}>
                             {LOAD_SPECS.map(spec => <option key={spec} value={spec}>{spec}</option>)}
                         </select>
                     </div>

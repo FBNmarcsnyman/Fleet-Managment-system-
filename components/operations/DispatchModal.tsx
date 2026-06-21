@@ -2,6 +2,17 @@ import React, { useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useUIState, useOperations } from '../../contexts/AppContexts';
 import DateField from './DateField';
+import { invokeFn } from '../../lib/supabase';
+import { brandedEmail } from '../../lib/emailTemplate';
+
+// Depot ops inbox for a branch (handles both code "FBN DBN" and name "FBN Durban").
+const opsEmailFor = (b?: string): string => {
+    const t = (b || '').toLowerCase();
+    if (t.includes('dbn') || t.includes('durban')) return 'opsdbn@fbn-transport.co.za';
+    if (t.includes('jhb') || t.includes('johannesburg')) return 'opsjhb@fbn-transport.co.za';
+    return 'ops@fbn-transport.co.za';
+};
+const fmtDate = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? (d || '') : dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }); };
 
 // "Dispatch to area" — the onward leg leaves our depot. In one click it sets the
 // load In Transit, records the PLANNED DELIVERY date/time, and the client is
@@ -36,8 +47,31 @@ const DispatchModal: React.FC = () => {
         } as any);
         setBusy(false);
         if (res && res.ok === false) { showToast(`Could not dispatch: ${res.error}`); return; }
+
+        // Inter-depot line haul: hand the load over to the RECEIVING depot and cc
+        // the collecting (origin) depot, so the destination branch expects it.
+        const interDepot = lc.collectionBranch && lc.destinationBranch && lc.collectionBranch !== lc.destinationBranch;
+        if (interDepot) {
+            const to = opsEmailFor(lc.destinationBranch);
+            const cc = [opsEmailFor(lc.collectionBranch)].filter(e => e && e !== to);
+            const row = (k: string, v?: string) => v ? `<tr><td style="padding:4px 14px 4px 0;color:#13294b;font-weight:700;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:4px 0;color:#13294b;font-weight:700">${v}</td></tr>` : '';
+            const html = brandedEmail(`<p><strong>Line-haul inbound — please receive on arrival.</strong></p>
+              <p>Load <strong>${lc.loadConNumber}</strong> has been dispatched from <strong>${lc.collectionBranch}</strong> to <strong>${lc.destinationBranch}</strong>.</p>
+              <table style="border-collapse:collapse;margin:6px 0 12px">
+                ${row('Client', lc.clientName)}
+                ${row('Collection', lc.collectionPoint)}
+                ${row('Delivery', lc.deliveryPoint)}
+                ${row('Commodity', lc.commodity)}
+                ${row('Packaging', lc.packaging)}
+                ${row('Weight (kg)', (lc as any).weightKg)}
+                ${row('Planned delivery', fmtDate(date))}
+              </table>
+              <p>Regards,<br>FBN Transport</p>`);
+            void invokeFn('send-email', { body: { to, cc, subject: `LINE-HAUL INBOUND ${lc.loadConNumber} — ${lc.collectionBranch} → ${lc.destinationBranch}`, html, fromName: 'FBN Transport' } });
+        }
+
         hideModal();
-        showToast(`${lc.loadConNumber} dispatched to ${area} — client notified of planned delivery.`);
+        showToast(`${lc.loadConNumber} dispatched to ${area}${interDepot ? ` — ${lc.destinationBranch} depot notified` : ''}, client updated.`);
     };
 
     const inp = 'w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 text-base focus:outline-none focus:ring-2 focus:ring-brand-secondary';

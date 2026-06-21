@@ -51,11 +51,11 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
 const LoadDetailModal: React.FC = () => {
     const { modal, showModal, showToast, hideModal } = useUIState();
     const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, quotes = [] } = useOperations() as any;
-    // The quote this load was won from — shown so pricing is traceable end-to-end.
-    const sourceQuote = (quotes as any[]).find(qq => qq.id === lc.quoteId);
     const { currentUser } = useAuth();
     const isSuperAdmin = (currentUser as any)?.role === 'Super Admin' || (currentUser as any)?.role === 'Admin';
     const lc: LoadConfirmation | undefined = modal.payload?.loadCon;
+    // The quote this load was won from — shown so pricing is traceable end-to-end.
+    const sourceQuote = (quotes as any[]).find(qq => qq.id === lc?.quoteId);
     const [editing, setEditing] = useState(false);
     const [d, setD] = useState<any>({});
 

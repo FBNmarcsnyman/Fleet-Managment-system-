@@ -47,8 +47,13 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Remember the last screen the user was on, so a refresh / re-login returns
   // them to the same tab instead of the default landing page.
   const [currentView, setCurrentView] = useState<ViewType>(() => {
+    // Phones ALWAYS open on the Collections + Quotes home (the one-tap hub) — the
+    // remembered tab must not hijack the mobile landing. Desktop remembers the
+    // last screen across refresh / re-login.
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile) return 'collectHome';
     try { const saved = localStorage.getItem('fbn_view'); if (saved) return saved as ViewType; } catch { /* ignore */ }
-    return (typeof window !== 'undefined' && window.innerWidth < 768) ? 'collectHome' : 'management';
+    return 'management';
   });
   // Drawer state for the mobile sidebar only (desktop sidebar is always docked).
   // Starts closed so a phone doesn't open it over the content.

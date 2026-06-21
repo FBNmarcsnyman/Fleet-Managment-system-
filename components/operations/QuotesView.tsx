@@ -10,6 +10,7 @@ import { ShareIcon } from '../icons/ShareIcon';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import Modal from '../Modal';
 import AcceptQuoteModal from './AcceptQuoteModal';
+import RfqBoard from './RfqBoard';
 import QuoteDetailModal from './QuoteDetailModal';
 
 const QuotesView: React.FC<{
@@ -22,6 +23,7 @@ const QuotesView: React.FC<{
     const { loadConfirmations = [], handleCreateQuote, handleUpdateQuote } = useOperations();
     const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'All'>('All');
     const [quoteToAccept, setQuoteToAccept] = useState<Quote | null>(null);
+    const [tab, setTab] = useState<'quotes' | 'rfq'>('quotes');
     const [quoteDetail, setQuoteDetail] = useState<Quote | null>(null);
     const [sending, setSending] = useState<string | null>(null);
     // Test-quote tidy-up: Marc ticks the ones he wants gone, then archives them
@@ -120,7 +122,7 @@ const QuotesView: React.FC<{
             setSending(null);
         }
     };
-    
+
     const handleSendProforma = async (quote: Quote) => {
         if (!confirm(`Email a COD proforma invoice for ${quote.quoteNumber} to the client (cc debtors)?`)) return;
         setSending(quote.id);
@@ -196,6 +198,13 @@ const QuotesView: React.FC<{
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <div className="flex items-center gap-2 mb-5 border-b border-gray-700">
+                <button onClick={() => setTab('quotes')} className={`px-4 py-2 text-sm font-bold -mb-px border-b-2 ${tab === 'quotes' ? 'border-brand-secondary text-white' : 'border-transparent text-gray-400 hover:text-white'}`}>Client Quotes</button>
+                <button onClick={() => setTab('rfq')} className={`px-4 py-2 text-sm font-bold -mb-px border-b-2 ${tab === 'rfq' ? 'border-brand-secondary text-white' : 'border-transparent text-gray-400 hover:text-white'}`}>Carrier RFQs</button>
+            </div>
+
+            {tab === 'rfq' ? <RfqBoard suppliers={suppliers} /> : (
+            <>
             {/* Win / loss dashboard */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
                 <div className="rounded-xl p-4 bg-green-900/20 border border-green-700/40">
@@ -350,6 +359,8 @@ const QuotesView: React.FC<{
                         }}
                     />
                 </Modal>
+            )}
+            </>
             )}
         </div>
     );

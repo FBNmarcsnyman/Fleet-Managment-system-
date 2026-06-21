@@ -7,6 +7,7 @@ import { WrenchIcon } from './icons/WrenchIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
 import { ArchiveBoxIcon } from './icons/ArchiveBoxIcon';
 import { CurrencyDollarIcon } from './icons/CurrencyDollarIcon';
+import { UsersIcon } from './icons/UsersIcon';
 import { XIcon } from './icons/XIcon';
 
 interface NotificationCenterProps { onClose: () => void; }
@@ -58,6 +59,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
             case 'SERVICE': return <WrenchIcon className="h-5 w-5 text-red-400" />;
             case 'INVENTORY': return <ArchiveBoxIcon className="h-5 w-5 text-orange-400" />;
             case 'PURCHASE': return <CurrencyDollarIcon className="h-5 w-5 text-purple-400" />;
+            case 'ONBOARDING': return <UsersIcon className="h-5 w-5 text-green-400" />;
+            case 'RFQ': return <CurrencyDollarIcon className="h-5 w-5 text-blue-400" />;
             default: return <ClipboardIcon className="h-5 w-5 text-blue-400" />;
         }
     };

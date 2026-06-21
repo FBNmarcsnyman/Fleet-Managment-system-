@@ -8,7 +8,9 @@ import type {
     ComplianceDoc, Attachment, Quote, QuoteStatus, QuoteItem, QuoteLeg, SubcontractorQuote,
     LoadConfirmation, LoadConfirmationStatus, Manifest, TripSheet, IncidentReport,
     IncidentStatus, IncidentQuote, AtFaultParty, SupplierApplication,
-    SupplierApplicationStatus, Notification, NotificationType, Message, Route,
+    SupplierApplicationStatus, SubcontractorInvite, SubcontractorInviteStatus,
+    RfqRequest, RfqRecipient, CarrierQuote, RfqStatus,
+    Notification, NotificationType, Message, Route,
     VehicleComplianceDoc, VehicleComplianceType, DocStatus, ViewType,
 } from '../types';
 
@@ -507,6 +509,10 @@ export const mapSupplier = (
     complianceDocs: complianceDocsBySupplier.get(row.id) || [],
     rateCards: rateCardsBySupplier.get(row.id) || [],
     isActive: (row as any).is_active ?? true,
+    isVetted: (row as any).is_vetted ?? false,
+    vettedAt: (row as any).vetted_at ?? undefined,
+    vehicleTypes: (row as any).vehicle_types ?? undefined,
+    trailerTypes: (row as any).trailer_types ?? undefined,
 });
 
 // -- quotes → Quote ----------------------------------------------------------
@@ -692,9 +698,30 @@ export const mapSupplierApplication = (row: Tables['supplier_applications']['Row
     fleetSize: row.fleet_size ?? undefined,
     beeStatus: row.bee_status ?? undefined,
     hazCompliant: row.haz_compliant ?? undefined,
+    vehicleTypes: (row as any).vehicle_types ?? undefined,
+    trailerTypes: (row as any).trailer_types ?? undefined,
+    inviteToken: (row as any).invite_token ?? undefined,
     fleetList: urlToAttachment(row.fleet_list_url) ?? { name: '', type: '', data: '' },
     rateCard: urlToAttachment(row.rate_card_url) ?? { name: '', type: '', data: '' },
     insurance: urlToAttachment(row.insurance_url) ?? { name: '', type: '', data: '' },
+});
+
+// -- subcontractor_invites → SubcontractorInvite -----------------------------
+export const mapSubcontractorInvite = (row: any): SubcontractorInvite => ({
+    id: row.id,
+    email: row.email,
+    companyName: row.company_name ?? undefined,
+    contactPerson: row.contact_person ?? undefined,
+    token: row.token,
+    status: row.status as SubcontractorInviteStatus,
+    sentCount: row.sent_count ?? 0,
+    lastSentAt: row.last_sent_at ?? undefined,
+    appliedAt: row.applied_at ?? undefined,
+    applicationId: row.application_id ?? undefined,
+    supplierId: row.supplier_id ?? undefined,
+    notes: row.notes ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
 });
 
 // -- notifications → Notification --------------------------------------------
@@ -896,7 +923,11 @@ export const toSupplierInsert = (supplier: Omit<Supplier, 'id'>): Tables['suppli
     fleet_size: supplier.fleetSize ?? null,
     controller_contact: supplier.controllerContact ?? null,
     accounts_contact: supplier.accountsContact ?? null,
-});
+    is_vetted: supplier.isVetted ?? false,
+    vetted_at: supplier.vettedAt ?? null,
+    vehicle_types: supplier.vehicleTypes ?? [],
+    trailer_types: supplier.trailerTypes ?? [],
+} as Tables['suppliers']['Insert']);
 
 export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Update'] => {
     const row: Tables['suppliers']['Update'] = {};
@@ -913,6 +944,10 @@ export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Upd
     if (u.regions !== undefined) row.regions = u.regions || null;
     if (u.fleetSize !== undefined) row.fleet_size = u.fleetSize || null;
     if (u.complianceStatus !== undefined) row.compliance_status = u.complianceStatus;
+    if (u.isVetted !== undefined) (row as any).is_vetted = u.isVetted;
+    if (u.vettedAt !== undefined) (row as any).vetted_at = u.vettedAt;
+    if (u.vehicleTypes !== undefined) (row as any).vehicle_types = u.vehicleTypes;
+    if (u.trailerTypes !== undefined) (row as any).trailer_types = u.trailerTypes;
     return row;
 };
 
@@ -1367,3 +1402,99 @@ export const toLoadConfirmationUpdate = (
     if (updates.podSignature !== undefined) row.pod_signature_url = updates.podSignature ?? null;
     return row;
 };
+
+// ── Carrier RFQ board ────────────────────────────────────────────────────────
+export const mapRfqRecipient = (row: any): RfqRecipient => ({
+    id: row.id,
+    rfqRequestId: row.rfq_request_id,
+    supplierId: row.supplier_id ?? undefined,
+    email: row.email ?? undefined,
+    companyName: row.company_name ?? undefined,
+    channel: (row.channel ?? 'email') as RfqRecipient['channel'],
+    token: row.token,
+    status: row.status ?? 'Sent',
+    sentAt: row.sent_at ?? undefined,
+});
+
+export const mapCarrierQuote = (row: any): CarrierQuote => ({
+    id: row.id,
+    rfqRequestId: row.rfq_request_id,
+    recipientId: row.recipient_id ?? undefined,
+    supplierId: row.supplier_id ?? undefined,
+    companyName: row.company_name ?? undefined,
+    canAssist: row.can_assist ?? true,
+    price: row.price ?? undefined,
+    vehicleOffered: row.vehicle_offered ?? undefined,
+    availableDate: row.available_date ?? undefined,
+    eta: row.eta ?? undefined,
+    notes: row.notes ?? undefined,
+    status: row.status ?? 'Submitted',
+    submittedAt: row.submitted_at ?? row.created_at,
+});
+
+export const mapRfqRequest = (
+    row: any,
+    recipientsByRfq?: Record<string, RfqRecipient[]>,
+    quotesByRfq?: Record<string, CarrierQuote[]>,
+): RfqRequest => ({
+    id: row.id,
+    requestNumber: row.request_number,
+    arrangingBranch: row.arranging_branch ?? undefined,
+    clientId: row.client_id ?? undefined,
+    quoteId: row.quote_id ?? undefined,
+    origin: row.origin,
+    destination: row.destination,
+    vehicleType: row.vehicle_type ?? undefined,
+    loadType: row.load_type ?? undefined,
+    commodity: row.commodity ?? undefined,
+    weightKg: row.weight_kg ?? undefined,
+    gitRequired: row.git_required ?? false,
+    collectionDate: row.collection_date ?? undefined,
+    collectionTime: row.collection_time ?? undefined,
+    deliveryDate: row.delivery_date ?? undefined,
+    deliveryTime: row.delivery_time ?? undefined,
+    notes: row.notes ?? undefined,
+    status: (row.status ?? 'Open') as RfqStatus,
+    awardedQuoteId: row.awarded_quote_id ?? undefined,
+    closesAt: row.closes_at ?? undefined,
+    createdAt: row.created_at,
+    recipients: recipientsByRfq?.[row.id] ?? [],
+    quotes: quotesByRfq?.[row.id] ?? [],
+});
+
+export const toRfqRequestInsert = (rfq: Partial<RfqRequest>, requestNumber: string, createdBy?: string) => ({
+    organization_id: FBN_ORGANIZATION_ID,
+    request_number: requestNumber,
+    arranging_branch: rfq.arrangingBranch ?? null,
+    client_id: rfq.clientId ?? null,
+    quote_id: rfq.quoteId ?? null,
+    origin: rfq.origin ?? '',
+    destination: rfq.destination ?? '',
+    vehicle_type: rfq.vehicleType ?? null,
+    load_type: rfq.loadType ?? null,
+    commodity: rfq.commodity ?? null,
+    weight_kg: rfq.weightKg ?? null,
+    git_required: rfq.gitRequired ?? false,
+    collection_date: rfq.collectionDate || null,
+    collection_time: rfq.collectionTime ?? null,
+    delivery_date: rfq.deliveryDate || null,
+    delivery_time: rfq.deliveryTime ?? null,
+    notes: rfq.notes ?? null,
+    status: rfq.status ?? 'Open',
+    closes_at: rfq.closesAt ?? null,
+    created_by: createdBy ?? null,
+});
+
+export const toCarrierQuoteInsert = (rfqRequestId: string, q: Partial<CarrierQuote>) => ({
+    rfq_request_id: rfqRequestId,
+    recipient_id: q.recipientId ?? null,
+    supplier_id: q.supplierId ?? null,
+    company_name: q.companyName ?? null,
+    can_assist: q.canAssist ?? true,
+    price: q.price ?? null,
+    vehicle_offered: q.vehicleOffered ?? null,
+    available_date: q.availableDate || null,
+    eta: q.eta ?? null,
+    notes: q.notes ?? null,
+    status: q.status ?? 'Submitted',
+});

@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc } from '../types';
+import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
 import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
@@ -10,13 +10,22 @@ import {
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
     toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
-    mapManifest, mapTripSheet, FBN_ORGANIZATION_ID,
+    mapManifest, mapTripSheet, mapSubcontractorInvite, FBN_ORGANIZATION_ID,
+    mapRfqRequest, mapRfqRecipient, mapCarrierQuote, toRfqRequestInsert, toCarrierQuoteInsert,
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
 import { sendLoadConToSupplier, sendOrderToClient } from '../lib/loadEmails';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
+
+// Default body for the carrier-recruitment invite (editable per campaign in the
+// UI). {name} / {company} are substituted per recipient. HTML — sits inside the
+// branded email wrapper, between the greeting and the call-to-action button.
+export const DEFAULT_INVITE_INTRO = `
+<p>FBN Transport is expanding its national subcontractor network, and we'd like to invite <strong>{company}</strong> to join.</p>
+<p>As an approved FBN carrier you'll get access to a steady stream of vetted loads across breakbulk, full loads, tankers, tipper bulk, abnormals and hazchem — matched to the routes and equipment you run, with prompt POD-based payment.</p>
+<p>Getting started takes a few minutes: confirm your details, the routes you specialise in, upload your fleet list, rate card and Goods-in-Transit cover, and our compliance team will vet and onboard you.</p>`;
 
 // Race any promise against a hard timeout. Unlike abortSignal (which only cancels
 // an in-flight fetch), this also escapes a hang that happens BEFORE the request is
@@ -1077,8 +1086,363 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true };
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
-        // Supplier applications still local-only (low priority).
-        handleAddSupplierApplication: (data: any) => dispatch({ type: 'ADD_SUPPLIER_APPLICATION', payload: data }),
+        // Public "Join Carrier Network" submission. Persists to supplier_applications
+        // via the anon client (a tightly-scoped anon INSERT policy permits Pending
+        // FBN applications); document uploads are stored inline as data URLs. Lands
+        // in the ops Onboarding Queue for vetting.
+        handleAddSupplierApplication: async (data: any): Promise<Result<void>> => {
+            try {
+                const row = {
+                    organization_id: FBN_ORG_ID,
+                    status: 'Pending',
+                    submitted_date: new Date().toISOString().slice(0, 10),
+                    company_name: data.companyName,
+                    contact_person: data.contactPerson || null,
+                    contact_email: data.contactEmail || null,
+                    contact_phone: data.contactPhone || null,
+                    address: data.address || null,
+                    specializations: data.specializations || [],
+                    routes: data.routes || null,
+                    fleet_size: data.fleetSize || null,
+                    bee_status: data.beeStatus || null,
+                    haz_compliant: !!data.hazCompliant,
+                    vehicle_types: data.vehicleTypes || [],
+                    trailer_types: data.trailerTypes || [],
+                    invite_token: data.inviteToken || null,
+                    fleet_list_url: data.fleetList?.data || null,
+                    rate_card_url: data.rateCard?.data || null,
+                    insurance_url: data.insurance?.data || null,
+                };
+                const { data: inserted, error } = await supabase.from('supplier_applications').insert(row as any).select().single();
+                if (error || !inserted) { console.error('[ops] addSupplierApplication failed:', error); return { ok: false, error: error?.message || 'Could not submit application.' }; }
+                dispatch({ type: 'ADD_SUPPLIER_APPLICATION', payload: data });
+                return { ok: true };
+            } catch (err) {
+                console.error('[ops] addSupplierApplication threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Could not submit application.' };
+            }
+        },
+
+        // --- Carrier (subcontractor) invitation campaign --------------------
+        // Add a batch of transporter emails to the invite list. De-dupes against
+        // the existing list and within the batch; each gets a unique accept token.
+        handleAddSubcontractorInvites: async (
+            entries: { email: string; companyName?: string; contactPerson?: string }[],
+        ): Promise<Result<{ added: number; skipped: number }>> => {
+            try {
+                const existing = new Set((stateRef.current.subcontractorInvites || []).map((i: SubcontractorInvite) => i.email.toLowerCase()));
+                const seen = new Set<string>();
+                const clean: { email: string; companyName?: string; contactPerson?: string }[] = [];
+                for (const e of entries) {
+                    const email = String(e.email || '').trim().toLowerCase();
+                    if (!email || !email.includes('@')) continue;
+                    if (existing.has(email) || seen.has(email)) continue;
+                    seen.add(email);
+                    clean.push({ email, companyName: e.companyName?.trim() || undefined, contactPerson: e.contactPerson?.trim() || undefined });
+                }
+                if (!clean.length) return { ok: true, value: { added: 0, skipped: entries.length } };
+                const added: SubcontractorInvite[] = [];
+                for (const c of clean) {
+                    const token = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/-/g, '');
+                    const row = { organization_id: FBN_ORG_ID, email: c.email, company_name: c.companyName || null, contact_person: c.contactPerson || null, token, status: 'Pending' };
+                    const { data, error } = await directInsert('subcontractor_invites', row);
+                    if (error || !data) { console.error('[ops] addSubcontractorInvite failed:', error); continue; }
+                    added.push(mapSubcontractorInvite(data));
+                }
+                if (added.length) dispatch({ type: 'ADD_SUBCONTRACTOR_INVITES', payload: added });
+                return { ok: true, value: { added: added.length, skipped: entries.length - added.length } };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Send (or re-send) the branded marketing invite to the given invites via
+        // the same send-email edge function used by LoadCons/PODs (so it routes
+        // through Gmail and respects TEST MODE). Marks each Invited on success.
+        handleSendSubcontractorInvites: async (
+            inviteIds: string[],
+            opts?: { subject?: string; intro?: string; buttonLabel?: string },
+        ): Promise<Result<{ sent: number; failed: number }>> => {
+            try {
+                const base = (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '';
+                const invites = (stateRef.current.subcontractorInvites || []).filter((i: SubcontractorInvite) => inviteIds.includes(i.id));
+                const subject = opts?.subject?.trim() || 'Partner with FBN Transport — join our carrier network';
+                let sent = 0; const failed: string[] = [];
+                for (const inv of invites) {
+                    const greeting = inv.contactPerson || inv.companyName || 'there';
+                    const intro = (opts?.intro || DEFAULT_INVITE_INTRO)
+                        .replace(/\{name\}/g, greeting)
+                        .replace(/\{company\}/g, inv.companyName || 'your company');
+                    const link = `${base}?portal=become-supplier&invite=${inv.token}`;
+                    const html = brandedEmail(`<p>Good day ${greeting},</p>${intro}
+                      ${emailButton(link, opts?.buttonLabel?.trim() || 'Join the FBN carrier network &rarr;', '#16a34a')}
+                      <p>We look forward to working with you.</p>
+                      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+                    const { data, error } = await invokeFn('send-email', { body: { to: inv.email, subject, html, fromName: 'FBN Transport' } });
+                    if (error || (data as any)?.error) { failed.push(inv.email); continue; }
+                    const now = new Date().toISOString();
+                    const nextStatus = (inv.status === 'Pending' || inv.status === 'Invited') ? 'Invited' : inv.status;
+                    const { data: ud } = await directUpdate('subcontractor_invites', { id: inv.id }, { sent_count: (inv.sentCount || 0) + 1, last_sent_at: now, status: nextStatus, updated_at: now });
+                    dispatch({ type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: ud ? mapSubcontractorInvite(ud) : { ...inv, sentCount: (inv.sentCount || 0) + 1, lastSentAt: now, status: nextStatus as SubcontractorInvite['status'] } });
+                    sent++;
+                }
+                return { ok: failed.length === 0, value: { sent, failed: failed.length }, error: failed.length ? `Could not send to: ${failed.join(', ')}` : undefined };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Update an invite (e.g. mark Declined / edit notes).
+        handleUpdateSubcontractorInvite: async (id: string, updates: Partial<SubcontractorInvite>): Promise<Result<void>> => {
+            try {
+                const row: any = { updated_at: new Date().toISOString() };
+                if (updates.status) row.status = updates.status;
+                if (updates.notes !== undefined) row.notes = updates.notes;
+                if (updates.companyName !== undefined) row.company_name = updates.companyName;
+                if (updates.contactPerson !== undefined) row.contact_person = updates.contactPerson;
+                const { data, error } = await directUpdate('subcontractor_invites', { id }, row);
+                if (error) return { ok: false, error: error.message };
+                const cur = (stateRef.current.subcontractorInvites || []).find((i: SubcontractorInvite) => i.id === id);
+                dispatch({ type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: data ? mapSubcontractorInvite(data) : { ...(cur as SubcontractorInvite), ...updates } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Email an existing carrier the link to complete their online profile
+        // (rates, routes, vehicle/trailer types, documents) via the public form.
+        handleSendCarrierRegistrationLink: async (supplier: Supplier): Promise<Result<void>> => {
+            try {
+                const to = (supplier.contactEmail || '').trim();
+                if (!to) return { ok: false, error: 'No email address on file for this carrier.' };
+                const base = (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '';
+                const link = `${base}?portal=become-supplier`;
+                const html = brandedEmail(`<p>Good day ${supplier.contactPerson || supplier.name},</p>
+                  <p>As an approved FBN carrier, please complete your profile on our platform so we can match you to the right loads. Confirm the routes you specialise in, your vehicle &amp; trailer types, and upload your latest fleet list, rate card and Goods-in-Transit cover using the link below.</p>
+                  ${emailButton(link, 'Complete your carrier profile &rarr;', '#16a34a')}
+                  <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+                const { data, error } = await invokeFn('send-email', { body: { to, subject: 'Complete your FBN carrier profile', html, fromName: 'FBN Transport' } });
+                if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message || 'Send failed.' };
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Create a Subcontractor Portal login for an accepted carrier (via the
+        // admin-create-user edge function) and email them their username +
+        // temporary password and the portal link.
+        handleCreateCarrierLogin: async (supplier: Supplier): Promise<Result<{ tempPassword?: string }>> => {
+            try {
+                const email = (supplier.contactEmail || '').trim();
+                if (!email) return { ok: false, error: 'No email address on file for this carrier.' };
+                const name = supplier.contactPerson || supplier.name;
+                const { data, error } = await directInvoke('admin-create-user', { name, email, role: 'Supplier', supplierId: supplier.id, assignedBranches: [] });
+                if (error) return { ok: false, error: error.message };
+                if ((data as any)?.error) return { ok: false, error: (data as any).error };
+                const tempPassword = (data as any)?.tempPassword;
+                dispatch({ type: 'ADD_USER', payload: { name, email, role: 'Supplier', assignedBranches: [], assignedVehicleIds: [], isActive: true } });
+                if (tempPassword) {
+                    const base = (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '';
+                    const link = `${base}?portal=supplier`;
+                    const cred = (label: string, val: string) => `<tr><td style="padding:4px 14px 4px 0;color:#13294b;font-size:13px;font-weight:700">${label}</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:700">${val}</td></tr>`;
+                    const html = brandedEmail(`<p>Good day ${name},</p>
+                      <p><strong>Welcome to the FBN carrier network — your account has been approved.</strong> You can now log in to the FBN Subcontractor Portal to view loads, manage your rates and documents, and receive quote requests.</p>
+                      <table style="border-collapse:collapse;margin:10px 0 4px;background:#f8fafc;border:1px solid #e6ebf1;border-radius:8px;padding:6px">${cred('Username', email)}${cred('Temporary password', tempPassword)}</table>
+                      ${emailButton(link, 'Log in to the carrier portal &rarr;', '#16a34a')}
+                      <p>For your security, please change your password after your first login.</p>
+                      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+                    await invokeFn('send-email', { body: { to: email, subject: 'Your FBN Carrier Portal login', html, fromName: 'FBN Transport' } });
+                }
+                return { ok: true, value: { tempPassword } };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Approve/reject a carrier application. On approval, persist the status and
+        // create the live Supplier record (so it appears in the Active Network and
+        // can be invited to log in), and advance any matching invite to Vetted.
+        handleUpdateSupplierApplicationStatus: async (appId: string, status: 'Approved' | 'Rejected'): Promise<Result<Supplier | undefined>> => {
+            try {
+                const app = (stateRef.current.supplierApplications || []).find((a: SupplierApplication) => a.id === appId);
+                // No-op if the application only exists in local state (no DB row yet).
+                await directUpdate('supplier_applications', { id: appId }, { status, updated_at: new Date().toISOString() });
+                let createdSupplier: Supplier | undefined;
+                if (status === 'Approved' && app) {
+                    // Don't duplicate a carrier we already have — if a Transport
+                    // supplier with this email exists, update it in place instead.
+                    const existing = (stateRef.current.suppliers || []).find((s: Supplier) => s.type === 'Transport' && s.contactEmail && app.contactEmail && s.contactEmail.toLowerCase() === app.contactEmail.toLowerCase());
+                    const profileUpdates = {
+                        contactPerson: app.contactPerson,
+                        contactPhone: app.contactPhone,
+                        address: app.address,
+                        specializations: app.specializations,
+                        regions: app.routes,
+                        fleetSize: app.fleetSize,
+                        beeStatus: app.beeStatus,
+                        hazCompliant: app.hazCompliant,
+                        vehicleTypes: app.vehicleTypes,
+                        trailerTypes: app.trailerTypes,
+                        isVetted: true,
+                        vettedAt: new Date().toISOString(),
+                    };
+                    if (existing) {
+                        await directUpdate('suppliers', { id: existing.id }, toSupplierUpdate(profileUpdates) as any);
+                        dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: existing.id, updates: profileUpdates } });
+                        createdSupplier = { ...existing, ...profileUpdates } as Supplier;
+                        await directUpdate('supplier_applications', { id: appId }, { approved_supplier_id: existing.id });
+                    } else {
+                    const supplierInput = {
+                        name: app.companyName,
+                        type: 'Transport' as const,
+                        contactEmail: app.contactEmail,
+                        complianceStatus: 'Pending' as const,
+                        complianceDocs: [],
+                        rateCards: [],
+                        isActive: true,
+                        ...profileUpdates,
+                    };
+                    const { data, error } = await directInsert('suppliers', toSupplierInsert(supplierInput));
+                    if (error || !data) { console.error('[ops] approve -> createSupplier failed:', error); }
+                    else {
+                        createdSupplier = mapSupplier(data, new Map(), new Map());
+                        dispatch({ type: 'ADD_SUPPLIER', payload: createdSupplier });
+                        await directUpdate('supplier_applications', { id: appId }, { approved_supplier_id: createdSupplier.id });
+                    }
+                    }
+                    if (createdSupplier) {
+                        const inv = (stateRef.current.subcontractorInvites || []).find((i: SubcontractorInvite) => i.email.toLowerCase() === String(app.contactEmail || '').toLowerCase());
+                        if (inv) {
+                            const { data: ud } = await directUpdate('subcontractor_invites', { id: inv.id }, { status: 'Vetted', supplier_id: createdSupplier.id, updated_at: new Date().toISOString() });
+                            dispatch({ type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: ud ? mapSubcontractorInvite(ud) : { ...inv, status: 'Vetted', supplierId: createdSupplier.id } });
+                        }
+                    }
+                }
+                dispatch({ type: 'SET_SUPPLIER_APPLICATIONS', payload: (stateRef.current.supplierApplications || []).map((a: SupplierApplication) => a.id === appId ? { ...a, status } : a) });
+                return { ok: true, value: createdSupplier };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+
+        // --- Carrier RFQ board ----------------------------------------------
+        // Raise a load request and broadcast it to the chosen carriers. The
+        // request "comes from" the arranging branch: replies route to that ops
+        // mailbox (opsdbn@ / opsjhb@), which is also CC'd. Carriers without a
+        // portal login can quote via the public ?rfq=<token> link in the email.
+        handleCreateRfq: async (
+            rfq: Partial<RfqRequest>,
+            recipients: { supplierId?: string; email?: string; companyName?: string; channel?: RfqRecipient['channel'] }[],
+        ): Promise<Result<RfqRequest>> => {
+            try {
+                const year = new Date().getFullYear();
+                const seq = (stateRef.current.rfqRequests || []).length + 1;
+                const requestNumber = `RFQ-${year}-${String(seq).padStart(4, '0')}`;
+                const { data, error } = await directInsert('rfq_requests', toRfqRequestInsert(rfq, requestNumber) as any);
+                if (error || !data) { console.error('[ops] createRfq failed:', error); return { ok: false, error: error?.message || 'Could not create the request.' }; }
+                const rfqId = (data as any).id;
+
+                const savedRecipients: RfqRecipient[] = [];
+                for (const r of recipients) {
+                    const { data: rd, error: re } = await directInsert('rfq_recipients', {
+                        rfq_request_id: rfqId,
+                        supplier_id: r.supplierId || null,
+                        email: r.email || null,
+                        company_name: r.companyName || null,
+                        channel: r.channel || 'email',
+                        sent_at: new Date().toISOString(),
+                    } as any);
+                    if (re || !rd) { console.error('[ops] createRfq recipient failed:', re); continue; }
+                    savedRecipients.push(mapRfqRecipient(rd));
+                }
+
+                const domain = mapRfqRequest(data, { [rfqId]: savedRecipients }, {});
+                dispatch({ type: 'ADD_RFQ_REQUEST', payload: domain });
+
+                // Broadcast to recipients on the email channel.
+                const base = baseUrl();
+                const branchLabel = rfq.arrangingBranch === 'FBN DBN' ? 'FBN DBN Ops' : rfq.arrangingBranch === 'FBN JHB' ? 'FBN JHB Ops' : 'FBN Transport';
+                const replyTo = opsEmail(rfq.arrangingBranch);
+                const fmt = (v?: string | number | null) => (v === undefined || v === null || v === '') ? '&mdash;' : String(v);
+                const specRows = [
+                    ['Route', `${fmt(rfq.origin)} &rarr; ${fmt(rfq.destination)}`],
+                    ['Vehicle required', fmt(rfq.vehicleType)],
+                    ['Load', [rfq.loadType, rfq.commodity].filter(Boolean).join(' &middot; ') || '&mdash;'],
+                    ['Weight', rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')} kg` : '&mdash;'],
+                    ['GIT cover', rfq.gitRequired ? 'Required' : 'Not required'],
+                    ['Collection', [rfq.collectionDate, rfq.collectionTime].filter(Boolean).join(' &middot; ') || '&mdash;'],
+                    ['Delivery', [rfq.deliveryDate, rfq.deliveryTime].filter(Boolean).join(' &middot; ') || '&mdash;'],
+                ].map(([k, v]) => `<tr><td style="padding:6px 16px 6px 0;color:#64748b;font-size:13px;white-space:nowrap">${k}</td><td style="padding:6px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
+
+                for (const rec of savedRecipients) {
+                    if (rec.channel !== 'email' || !rec.email) continue;
+                    const link = `${base}?rfq=${rec.token}`;
+                    const html = brandedEmail(`<p>Good day ${rec.companyName || 'there'},</p>
+                      <p>We have a load available and would like your best rate if you can assist. Please review the details and submit your quote &mdash; or let us know you can't help on this one.</p>
+                      <table style="border-collapse:collapse;margin:8px 0 4px;background:#f8fafc;border:1px solid #e6ebf1;border-radius:10px;padding:8px">${specRows}</table>
+                      ${rfq.notes ? `<p style="color:#475569;font-size:13px"><strong>Notes:</strong> ${rfq.notes}</p>` : ''}
+                      ${emailButton(link, 'Submit your quote &rarr;', '#16a34a')}
+                      <p style="color:#94a3b8;font-size:12px">Reference ${requestNumber}. Reply to this email to reach ${branchLabel} directly.</p>`);
+                    void invokeFn('send-email', { body: { to: rec.email, cc: [replyTo], replyTo, subject: `Load available: ${rfq.origin} → ${rfq.destination} (${requestNumber})`, html, fromName: branchLabel } });
+                }
+                return { ok: true, value: domain };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Update an RFQ (status changes: close / cancel / re-open).
+        handleUpdateRfq: async (id: string, updates: Partial<RfqRequest>): Promise<Result<void>> => {
+            try {
+                const row: any = { updated_at: new Date().toISOString() };
+                if (updates.status) row.status = updates.status;
+                if (updates.awardedQuoteId !== undefined) row.awarded_quote_id = updates.awardedQuoteId ?? null;
+                if (updates.quoteId !== undefined) row.quote_id = updates.quoteId ?? null;
+                if (updates.clientId !== undefined) row.client_id = updates.clientId ?? null;
+                if (updates.notes !== undefined) row.notes = updates.notes ?? null;
+                const { error } = await directUpdate('rfq_requests', { id }, row);
+                if (error) return { ok: false, error: error.message };
+                const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === id);
+                if (cur) dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: { ...cur, ...updates } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Manually capture a quote that came back by phone / WhatsApp / email, or
+        // record one on a carrier's behalf.
+        handleAddCarrierQuote: async (rfqId: string, q: Partial<CarrierQuote>): Promise<Result<void>> => {
+            try {
+                const { data, error } = await directInsert('rfq_carrier_quotes', toCarrierQuoteInsert(rfqId, q) as any);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not save the quote.' };
+                const cq = mapCarrierQuote(data);
+                const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === rfqId);
+                if (cur) dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: { ...cur, quotes: [...cur.quotes, cq] } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // A logged-in carrier submits their quote from the Subcontractor Portal.
+        // Inserts under their own RLS, updates the board, and notifies the
+        // arranging-branch ops inbox (the carrier is authenticated, so send-email
+        // is allowed).
+        handleSubmitCarrierQuote: async (rfqId: string, payload: Partial<CarrierQuote>): Promise<Result<void>> => {
+            try {
+                const { data, error } = await directInsert('rfq_carrier_quotes', toCarrierQuoteInsert(rfqId, payload) as any);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not submit your quote.' };
+                const cq = mapCarrierQuote(data);
+                const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === rfqId);
+                if (cur) dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: { ...cur, quotes: [...cur.quotes.filter(q => q.id !== cq.id), cq] } });
+                if (cur) {
+                    const to = opsEmail(cur.arrangingBranch);
+                    const priceLine = payload.canAssist === false ? "Cannot assist on this load." : `Rate: R ${Number(payload.price || 0).toLocaleString('en-ZA')}`;
+                    const html = brandedEmail(`<p>A carrier responded to <strong>${cur.requestNumber}</strong> (${cur.origin} &rarr; ${cur.destination}).</p>
+                      <p><strong>${payload.companyName || 'Carrier'}</strong><br>${priceLine}${payload.vehicleOffered ? `<br>Vehicle: ${payload.vehicleOffered}` : ''}${payload.notes ? `<br>Notes: ${payload.notes}` : ''}</p>
+                      <p>Open the Carrier RFQs board to compare and award.</p>`);
+                    void invokeFn('send-email', { body: { to, cc: [OPS_GENERAL], subject: `RFQ reply: ${payload.companyName || 'Carrier'} — ${cur.requestNumber}`, html, fromName: 'FBN RFQ Board' } });
+                }
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Award the RFQ to a carrier's quote: mark that quote Awarded, the others
+        // Rejected, and close the request.
+        handleAwardRfqQuote: async (rfqId: string, quoteId: string): Promise<Result<void>> => {
+            try {
+                const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === rfqId);
+                if (!cur) return { ok: false, error: 'Request not found.' };
+                for (const q of cur.quotes) {
+                    const status = q.id === quoteId ? 'Awarded' : (q.status === 'Awarded' ? 'Submitted' : q.status);
+                    if (status !== q.status) await directUpdate('rfq_carrier_quotes', { id: q.id }, { status });
+                }
+                await directUpdate('rfq_requests', { id: rfqId }, { status: 'Awarded', awarded_quote_id: quoteId, updated_at: new Date().toISOString() });
+                dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: {
+                    ...cur,
+                    status: 'Awarded',
+                    awardedQuoteId: quoteId,
+                    quotes: cur.quotes.map(q => ({ ...q, status: q.id === quoteId ? 'Awarded' : (q.status === 'Awarded' ? 'Submitted' : q.status) })),
+                } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
     }), [dispatch, branchIdByName, branchById]);
 
     const value = useMemo(() => ({ ...state, ...derived, ...handlers, users }), [state, derived, handlers, users]);

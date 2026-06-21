@@ -368,11 +368,15 @@ export interface Supplier {
     specializations?: string[];
     regions?: string;
     fleetSize?: string;
+    vehicleTypes?: string[];
+    trailerTypes?: string[];
     controllerContact?: string;
     accountsContact?: string;
     complianceDocs: ComplianceDoc[];
     rateCards: Attachment[];
     isActive?: boolean;
+    isVetted?: boolean;
+    vettedAt?: string;
 }
 
 export type SupplierApplicationStatus = 'Pending' | 'Approved' | 'Rejected';
@@ -391,9 +395,34 @@ export interface SupplierApplication {
     fleetSize?: string;
     beeStatus?: string;
     hazCompliant?: boolean;
+    vehicleTypes?: string[];
+    trailerTypes?: string[];
+    inviteToken?: string;
     fleetList: Attachment;
     rateCard: Attachment;
     insurance: Attachment;
+}
+
+// Carrier (subcontractor) invitation campaign. FBN uploads transporter emails,
+// emails them a branded invite with a personalised accept link, and tracks each
+// down the funnel.
+export type SubcontractorInviteStatus = 'Pending' | 'Invited' | 'Applied' | 'Vetted' | 'Declined';
+
+export interface SubcontractorInvite {
+    id: string;
+    email: string;
+    companyName?: string;
+    contactPerson?: string;
+    token: string;
+    status: SubcontractorInviteStatus;
+    sentCount: number;
+    lastSentAt?: string;
+    appliedAt?: string;
+    applicationId?: string;
+    supplierId?: string;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 // An internal branch of a client (holding account) — e.g. PERI Scaffolding's
@@ -671,6 +700,66 @@ export interface Quote {
     requestMoreInfo?: Record<string, any>;
 }
 
+// ── Carrier RFQ board ────────────────────────────────────────────────────────
+// Ops raise a load request and broadcast it to multiple carriers who run the
+// lane; carriers reply with a price if they can assist.
+export type RfqStatus = 'Open' | 'Awarded' | 'Closed' | 'Cancelled';
+export type RfqChannel = 'email' | 'whatsapp' | 'portal';
+
+export interface RfqRecipient {
+    id: string;
+    rfqRequestId: string;
+    supplierId?: string;
+    email?: string;
+    companyName?: string;
+    channel: RfqChannel;
+    token: string;
+    status: string;            // Sent / Viewed / Quoted / Declined
+    sentAt?: string;
+}
+
+export interface CarrierQuote {
+    id: string;
+    rfqRequestId: string;
+    recipientId?: string;
+    supplierId?: string;
+    companyName?: string;
+    canAssist: boolean;
+    price?: number;
+    vehicleOffered?: string;
+    availableDate?: string;
+    eta?: string;
+    notes?: string;
+    status: string;            // Submitted / Shortlisted / Awarded / Rejected
+    submittedAt: string;
+}
+
+export interface RfqRequest {
+    id: string;
+    requestNumber: string;
+    arrangingBranch?: string;  // sets the from-address (DBN/JHB)
+    clientId?: string;         // optional client this load is for
+    quoteId?: string;          // optional client quote it was raised from / feeds
+    origin: string;
+    destination: string;
+    vehicleType?: string;
+    loadType?: string;         // Full Load / Mixed Load
+    commodity?: string;
+    weightKg?: number;
+    gitRequired: boolean;
+    collectionDate?: string;
+    collectionTime?: string;
+    deliveryDate?: string;
+    deliveryTime?: string;
+    notes?: string;
+    status: RfqStatus;
+    awardedQuoteId?: string;
+    closesAt?: string;
+    createdAt: string;
+    recipients: RfqRecipient[];
+    quotes: CarrierQuote[];
+}
+
 export interface Manifest {
     id: string;
     manifestNumber: string;
@@ -696,7 +785,7 @@ export interface TripSheet {
     status: 'Out for Delivery' | 'Completed';
 }
 
-export type NotificationType = 'JOB_CARD' | 'SERVICE' | 'INVENTORY' | 'PURCHASE';
+export type NotificationType = 'JOB_CARD' | 'SERVICE' | 'INVENTORY' | 'PURCHASE' | 'COMPLIANCE' | 'ONBOARDING' | 'RFQ';
 
 export interface Notification {
     id: string;

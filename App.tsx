@@ -1,5 +1,5 @@
 
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useAuth, useUIState, useOperations, useVehicles, useWorkshop } from './contexts/AppContexts';
 
 import Login from './components/Login';
@@ -65,6 +65,7 @@ const QuickCollectionForm = lazy(() => import('./components/operations/QuickColl
 const CaptureLoadModal = lazy(() => import('./components/operations/CaptureLoadModal'));
 const AssignFbnModal = lazy(() => import('./components/operations/AssignFbnModal'));
 const DispatchModal = lazy(() => import('./components/operations/DispatchModal'));
+const DriverDocuments = lazy(() => import('./components/fleet/DriverDocuments'));
 const BulkCollectionForm = lazy(() => import('./components/operations/BulkCollectionForm'));
 const PickListManager = lazy(() => import('./components/operations/PickListManager'));
 const LogContainerModal = lazy(() => import('./components/operations/LogContainerModal'));
@@ -138,6 +139,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     captureLoad: CaptureLoadModal,
     assignFbn: AssignFbnModal,
     dispatchLoad: DispatchModal,
+    driverDocs: DriverDocuments,
     bulkCollection: BulkCollectionForm,
     pickLists: PickListManager,
     logContainer: LogContainerModal,
@@ -222,7 +224,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
 
 const App: React.FC = () => {
     const { currentUser, currentViewOverride, hasPermission, viewingClientAsAdmin, viewingSupplierAsAdmin } = useAuth();
-    const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast } = useUIState();
+    const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast, handleViewChange } = useUIState();
     const { quotes, clients, handleAcceptQuote, handleRejectQuote, handleAddChecklistSubmission } = useOperations();
     const { vehicles, users, checklistTemplates, drivers } = useVehicles();
     const [checklistFlow, setChecklistFlow] = useState<{ step: 'vehicleScan' | 'form', user: User, vehicle: Vehicle } | null>(null);
@@ -238,6 +240,13 @@ const App: React.FC = () => {
     const portal = urlParams.get('portal');
     const inviteToken = urlParams.get('invite');
     const rfqToken = urlParams.get('rfq');
+    // Deep-link from the "Open Quotes to price" email. The login redirect strips
+    // URL params, so stash the quote id in sessionStorage (survives login) and
+    // route to Quotes once authenticated; QuotesView opens that quote's detail.
+    const urlQuote = urlParams.get('quote');
+    useEffect(() => { if (urlQuote) { try { sessionStorage.setItem('fbn_pendingQuote', urlQuote); } catch { /* ignore */ } } }, [urlQuote]);
+    const pendingQuote = urlQuote || (() => { try { return sessionStorage.getItem('fbn_pendingQuote') || ''; } catch { return ''; } })();
+    useEffect(() => { if (pendingQuote && currentUser) handleViewChange('quotes'); }, [pendingQuote, currentUser]);
 
     // Public Subcontractor Terms & Conditions page (linked from LoadCons/emails).
     if (showTerms) {
@@ -334,7 +343,9 @@ const App: React.FC = () => {
     // view instead of the company-wide management overview.
     const managementView = hasPermission('access_management') ? <ManagementPortal /> : <FleetPortal />;
     const renderView = () => {
-        switch (currentView) {
+        // A pending quote deep-link forces the Quotes screen even if the saved
+        // view hasn't caught up yet (survives the post-login render).
+        switch (pendingQuote ? 'quotes' : currentView) {
             case 'management': return managementView;
             case 'fleet': return <FleetPortal />;
             case 'fuel': return <FuelPortal />;
@@ -370,8 +381,13 @@ const App: React.FC = () => {
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
                 <Topbar />
-                <main className="flex-1 w-full px-4 md:px-6 lg:px-8 py-8 min-w-0 overflow-x-hidden">
-                    {renderView()}
+                <main className="flex-1 w-full min-w-0 overflow-x-hidden">
+                    {/* Centre content at a sensible max width so it adapts to the
+                        screen instead of stretching edge-to-edge on wide monitors
+                        (and stays full-width with padding on laptops/mobile). */}
+                    <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-4 md:px-6 lg:px-8 py-5 md:py-7">
+                        {renderView()}
+                    </div>
                 </main>
             </div>
             <LiveAssistant isOpen={isLiveAssistantOpen} onClose={() => setIsLiveAssistantOpen(false)} />

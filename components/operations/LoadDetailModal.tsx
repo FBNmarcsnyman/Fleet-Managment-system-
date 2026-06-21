@@ -50,7 +50,9 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
 
 const LoadDetailModal: React.FC = () => {
     const { modal, showModal, showToast, hideModal } = useUIState();
-    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation } = useOperations();
+    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, quotes = [] } = useOperations() as any;
+    // The quote this load was won from — shown so pricing is traceable end-to-end.
+    const sourceQuote = (quotes as any[]).find(qq => qq.id === lc.quoteId);
     const { currentUser } = useAuth();
     const isSuperAdmin = (currentUser as any)?.role === 'Super Admin' || (currentUser as any)?.role === 'Admin';
     const lc: LoadConfirmation | undefined = modal.payload?.loadCon;
@@ -143,6 +145,9 @@ const LoadDetailModal: React.FC = () => {
             <div className="flex items-start justify-between">
                 <div>
                     <h2 className="text-2xl font-black text-white">{lc.loadConNumber}</h2>
+                    {sourceQuote && (
+                        <p className="text-xs font-bold text-amber-400 font-mono">From quote {sourceQuote.quoteNumber}{lc.totalAmount ? ` · R ${Number(lc.totalAmount).toLocaleString()}` : ''}</p>
+                    )}
                     <p className="text-sm text-gray-400">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                 </div>
                 <div className="flex items-center gap-2">

@@ -70,6 +70,7 @@ const DriversManagementView: React.FC = () => {
                                 <td className="p-2 text-gray-300">{d.branch || '—'}</td>
                                 <td className="p-2 space-x-1"><ExpiryPill label="Lic" date={d.licenceExpiry} /> <ExpiryPill label="PDP" date={d.pdpExpiry} /></td>
                                 <td className="p-2 text-right space-x-2">
+                                    <button onClick={() => showModal('driverDocs', { driver: d })} className="px-3 py-1 rounded bg-gray-700 hover:bg-emerald-600 text-white text-xs font-bold">Docs</button>
                                     <button onClick={() => showModal('addDriver', { driver: d })} className="px-3 py-1 rounded bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold">Edit</button>
                                     <button onClick={() => handleDelete(d)} className="px-3 py-1 rounded bg-gray-700 hover:bg-red-600 text-white text-xs font-bold">Delete</button>
                                 </td>

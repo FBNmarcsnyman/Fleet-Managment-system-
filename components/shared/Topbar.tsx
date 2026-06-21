@@ -36,7 +36,7 @@ const Topbar: React.FC = () => {
 
     return (
         <header className="bg-gray-900/95 backdrop-blur-2xl border-b border-gray-800/60 sticky top-0 z-30 ring-1 ring-white/5">
-            <div className="flex items-center justify-between h-20 px-4 sm:px-6 lg:px-8 gap-4">
+            <div className="flex items-center justify-between h-20 px-4 sm:px-6 lg:px-8 gap-4 max-w-[1600px] mx-auto w-full">
                 {/* Mobile menu (hamburger) — opens the sidebar drawer */}
                 <button onClick={() => setSidebarOpen(true)} title="Menu"
                     className="md:hidden shrink-0 p-2 -ml-1 text-gray-300 hover:text-white rounded-lg hover:bg-gray-800/60">

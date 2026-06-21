@@ -566,8 +566,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             try {
                 const quoteNumber = `QU-${Date.now()}`;
                 const row = toQuoteInsert(quote, quoteNumber);
-                const { data, error } = await supabase
-                    .from('quotes').insert(row).select().single();
+                // directInsert (freeze-proof REST) — supabase.from().insert() can wedge
+                // on a stale auth session, so "Generate Quote" appears to do nothing.
+                const { data, error } = await directInsert('quotes', row as any);
                 if (error) { console.error('[ops] createQuote failed:', error); return { ok: false, error: error.message }; }
                 const mapped = mapQuote(data);
                 dispatch({ type: 'CREATE_QUOTE', payload: mapped });
@@ -580,8 +581,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         handleUpdateQuote: async (quote: Quote): Promise<Result<Quote>> => {
             try {
                 const row = toQuoteUpdate(quote);
-                const { error } = await supabase
-                    .from('quotes').update(row).eq('id', quote.id);
+                // directUpdate (freeze-proof REST) — see createQuote note above.
+                const { error } = await directUpdate('quotes', { id: quote.id }, row as any);
                 if (error) { console.error('[ops] updateQuote failed:', error); return { ok: false, error: error.message }; }
                 dispatch({ type: 'UPDATE_QUOTE', payload: quote });
                 return { ok: true, value: quote };

@@ -303,7 +303,7 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
                         </div>
                     </div>
                 );
-            case 'documents': return <VehicleDocuments vehicleId={vehicle.id} vehicleName={vehicle.name} />;
+            case 'documents': return <VehicleDocuments vehicleId={vehicle.id} vehicleName={vehicle.name} registration={vehicle.registration} />;
             case 'ai':
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

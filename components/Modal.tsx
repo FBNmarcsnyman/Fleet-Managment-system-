@@ -48,7 +48,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, size = 'md', d
             onClick={dismissOnBackdrop ? onClose : undefined}
         >
             <div
-                className={`bg-gray-800 rounded-lg shadow-2xl p-6 sm:p-8 w-full max-w-[95vw] ${sizeClasses[size]} m-4 relative transform transition-all duration-300 scale-95 max-h-[95vh] overflow-y-auto`}
+                className={`bg-gray-800 rounded-lg shadow-2xl p-4 sm:p-8 w-full max-w-[95vw] ${sizeClasses[size]} mx-3 my-4 sm:m-4 relative transform transition-all duration-300 scale-95 max-h-[95vh] overflow-y-auto`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <button

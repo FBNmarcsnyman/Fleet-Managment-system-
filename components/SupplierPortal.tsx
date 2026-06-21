@@ -10,31 +10,39 @@ import SupplierLoadList from './supplier/SupplierLoadList';
 import SupplierDocuments from './supplier/SupplierDocuments';
 import SupplierProfile from './supplier/SupplierProfile';
 import SupplierFleetRates from './supplier/SupplierFleetRates';
+import SupplierRfqList from './supplier/SupplierRfqList';
+import { MailIcon } from './icons/MailIcon';
+import { RfqRequest } from '../types';
 
-type SupplierView = 'loads' | 'compliance' | 'profile' | 'fleet_rates';
+type SupplierView = 'loads' | 'rfqs' | 'compliance' | 'profile' | 'fleet_rates';
 
 const SupplierPortal: React.FC = () => {
     const { currentUser, handleLogout, viewingSupplierAsAdmin, setViewSupplierAsAdmin } = useAuth();
-    const { loadConfirmations, suppliers } = useOperations();
+    const { loadConfirmations, suppliers, rfqRequests = [] } = useOperations() as any;
     const [activeView, setActiveView] = useState<SupplierView>('loads');
 
     const user = viewingSupplierAsAdmin || currentUser;
     if (!user || !user.supplierId) return null;
 
-    const supplier = suppliers.find(s => s.id === user.supplierId);
+    const supplier = suppliers.find((s: any) => s.id === user.supplierId);
     if (!supplier) return <p className="text-white p-20 text-center">Supplier data not found. Please contact support.</p>;
 
-    const supplierLoads = loadConfirmations.filter(lc => lc.supplierId === user.supplierId);
+    const supplierLoads = loadConfirmations.filter((lc: any) => lc.supplierId === user.supplierId);
+    const openRfqs = (rfqRequests as RfqRequest[]).filter(r => r.status === 'Open'
+        && r.recipients.some(rec => rec.supplierId === user.supplierId)
+        && !r.quotes.some(q => q.supplierId === user.supplierId)).length;
 
     const navItems = [
-        { id: 'loads', label: 'My Loads', icon: DocumentTextIcon },
-        { id: 'compliance', label: 'Compliance Vault', icon: UsersIcon },
-        { id: 'fleet_rates', label: 'Fleet & Rates', icon: TruckIcon },
-        { id: 'profile', label: 'Company Profile', icon: HomeIcon },
+        { id: 'loads', label: 'My Loads', icon: DocumentTextIcon, badge: 0 },
+        { id: 'rfqs', label: 'Quote Requests', icon: MailIcon, badge: openRfqs },
+        { id: 'compliance', label: 'Compliance Vault', icon: UsersIcon, badge: 0 },
+        { id: 'fleet_rates', label: 'Fleet & Rates', icon: TruckIcon, badge: 0 },
+        { id: 'profile', label: 'Company Profile', icon: HomeIcon, badge: 0 },
     ];
 
     const renderContent = () => {
         switch (activeView) {
+            case 'rfqs': return <SupplierRfqList supplier={supplier} />;
             case 'compliance': return <SupplierDocuments supplier={supplier} />;
             case 'fleet_rates': return <SupplierFleetRates supplier={supplier} />;
             case 'profile': return <SupplierProfile supplier={supplier} />;
@@ -68,7 +76,8 @@ const SupplierPortal: React.FC = () => {
                             className={`flex items-center w-full p-3.5 rounded-xl text-sm font-bold transition-all ${activeView === item.id ? 'bg-brand-primary text-white shadow-lg shadow-blue-900/30' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
                         >
                             <item.icon className="h-5 w-5 mr-3" />
-                            {item.label}
+                            <span className="flex-grow text-left">{item.label}</span>
+                            {item.badge > 0 && <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">{item.badge}</span>}
                         </button>
                     ))}
                 </nav>

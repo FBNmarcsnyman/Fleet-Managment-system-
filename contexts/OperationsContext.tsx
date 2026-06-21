@@ -1398,6 +1398,28 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
+        // A logged-in carrier submits their quote from the Subcontractor Portal.
+        // Inserts under their own RLS, updates the board, and notifies the
+        // arranging-branch ops inbox (the carrier is authenticated, so send-email
+        // is allowed).
+        handleSubmitCarrierQuote: async (rfqId: string, payload: Partial<CarrierQuote>): Promise<Result<void>> => {
+            try {
+                const { data, error } = await directInsert('rfq_carrier_quotes', toCarrierQuoteInsert(rfqId, payload) as any);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not submit your quote.' };
+                const cq = mapCarrierQuote(data);
+                const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === rfqId);
+                if (cur) dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: { ...cur, quotes: [...cur.quotes.filter(q => q.id !== cq.id), cq] } });
+                if (cur) {
+                    const to = opsEmail(cur.arrangingBranch);
+                    const priceLine = payload.canAssist === false ? "Cannot assist on this load." : `Rate: R ${Number(payload.price || 0).toLocaleString('en-ZA')}`;
+                    const html = brandedEmail(`<p>A carrier responded to <strong>${cur.requestNumber}</strong> (${cur.origin} &rarr; ${cur.destination}).</p>
+                      <p><strong>${payload.companyName || 'Carrier'}</strong><br>${priceLine}${payload.vehicleOffered ? `<br>Vehicle: ${payload.vehicleOffered}` : ''}${payload.notes ? `<br>Notes: ${payload.notes}` : ''}</p>
+                      <p>Open the Carrier RFQs board to compare and award.</p>`);
+                    void invokeFn('send-email', { body: { to, cc: [OPS_GENERAL], subject: `RFQ reply: ${payload.companyName || 'Carrier'} — ${cur.requestNumber}`, html, fromName: 'FBN RFQ Board' } });
+                }
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
         // Award the RFQ to a carrier's quote: mark that quote Awarded, the others
         // Rejected, and close the request.
         handleAwardRfqQuote: async (rfqId: string, quoteId: string): Promise<Result<void>> => {

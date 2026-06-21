@@ -89,6 +89,8 @@ export const mapVehicle = (row: Tables['vehicles']['Row'], ctx: MapperCtx): Vehi
     deckMeters: row.deck_meters ?? undefined,
     costPerKmTarget: row.cost_per_km_target ?? undefined,
     monthlyFixedCost: row.monthly_fixed_cost ?? undefined,
+    onMaintenancePlan: (row as any).on_maintenance_plan ?? false,
+    maintenancePlanProvider: (row as any).maintenance_plan_provider ?? undefined,
 });
 
 // -- fuel_entries → FuelEntry ------------------------------------------------
@@ -828,7 +830,9 @@ export const toVehicleInsert = (
     deck_meters: vehicle.deckMeters ?? null,
     cost_per_km_target: vehicle.costPerKmTarget ?? null,
     monthly_fixed_cost: vehicle.monthlyFixedCost ?? null,
-});
+    on_maintenance_plan: (vehicle as any).onMaintenancePlan ?? false,
+    maintenance_plan_provider: (vehicle as any).maintenancePlanProvider ?? null,
+} as any);
 
 export const toVehicleUpdate = (
     updates: Partial<Vehicle>,
@@ -857,6 +861,8 @@ export const toVehicleUpdate = (
     if (updates.deckMeters !== undefined) row.deck_meters = updates.deckMeters;
     if (updates.costPerKmTarget !== undefined) row.cost_per_km_target = updates.costPerKmTarget;
     if (updates.monthlyFixedCost !== undefined) row.monthly_fixed_cost = updates.monthlyFixedCost;
+    if ((updates as any).onMaintenancePlan !== undefined) (row as any).on_maintenance_plan = (updates as any).onMaintenancePlan;
+    if ((updates as any).maintenancePlanProvider !== undefined) (row as any).maintenance_plan_provider = (updates as any).maintenancePlanProvider ?? null;
     return row;
 };
 

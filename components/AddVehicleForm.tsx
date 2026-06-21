@@ -70,6 +70,8 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
     const [status, setStatus] = useState<VehicleStatus>(vehicleData?.status || 'On the road');
     const [assignedDriverId, setAssignedDriverId] = useState<string>(vehicleData?.assignedDriverId || '');
     const [linkedVehicleId, setLinkedVehicleId] = useState<string>(vehicleData?.linkedVehicleId || '');
+    const [onMaintenancePlan, setOnMaintenancePlan] = useState<boolean>(vehicleData?.onMaintenancePlan || false);
+    const [maintenancePlanProvider, setMaintenancePlanProvider] = useState<string>(vehicleData?.maintenancePlanProvider || '');
     const [submitting, setSubmitting] = useState(false);
 
     // Eligible link candidates: only vehicles in the same category as the
@@ -124,7 +126,9 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
                 currentHours: vehicleData?.currentHours,
                 assignedDriverId: vehicleData?.assignedDriverId,
                 linkedVehicleId: linkedVehicleId || undefined,
-            });
+                onMaintenancePlan,
+                maintenancePlanProvider: onMaintenancePlan ? (maintenancePlanProvider || undefined) : undefined,
+            } as any);
         } finally {
             setSubmitting(false);
         }
@@ -208,6 +212,17 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
                             Use suggested pair: {suggestedPartner.name} ({suggestedPartner.registration})
                         </button>
                     )}
+                </div>
+                {/* Dealer maintenance plan — flags services to book in ~1000km early. */}
+                <div className="col-span-2 bg-gray-900/40 rounded-lg p-3 border border-gray-700">
+                    <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                        <input type="checkbox" checked={onMaintenancePlan} onChange={e => setOnMaintenancePlan(e.target.checked)} className="h-4 w-4 rounded accent-amber-500" />
+                        On a dealer maintenance / service plan
+                    </label>
+                    {onMaintenancePlan && (
+                        <input type="text" placeholder="Dealer / plan provider (e.g. Scania Maintenance)" value={maintenancePlanProvider} onChange={e => setMaintenancePlanProvider(e.target.value)} className={`${inputClasses} mt-2`} />
+                    )}
+                    <p className="text-[11px] text-gray-500 mt-1">When on a plan, a service due within ~1000km / 14 days is flagged to book in with the dealer.</p>
                 </div>
             </div>
             <div className="flex justify-end space-x-4 mt-8 pt-4 border-t border-gray-700">

@@ -44,6 +44,10 @@ export interface Vehicle {
   deckMeters?: number;
   costPerKmTarget?: number;
   monthlyFixedCost?: number;
+  // Dealer maintenance plan: when on a plan, services due soon are flagged to
+  // "book into the dealer plan" ahead of time (see hooks/useServiceStatus).
+  onMaintenancePlan?: boolean;
+  maintenancePlanProvider?: string;
 }
 
 export type VehicleStatus = 'On the road' | 'In for service' | 'Off the road' | 'Sold';

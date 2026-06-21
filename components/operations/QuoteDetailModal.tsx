@@ -10,9 +10,9 @@ const GREEN = '#16a34a';
 const Field: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => {
     if (!value) return null;
     return (
-        <div className="py-2 border-b border-gray-700/30">
+        <div className="py-2 border-b border-gray-700/30 min-w-0">
             <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">{label}</div>
-            <div className="text-sm text-white">{value}</div>
+            <div className="text-sm text-white break-words">{value}</div>
         </div>
     );
 };
@@ -107,8 +107,10 @@ const QuoteDetailModal: React.FC<{
                 <div className="grid grid-cols-2 gap-x-6">
                     <Field label="Collect From" value={rd.collect_from} />
                     <Field label="Deliver To" value={rd.deliver_to} />
-                    <Field label="Collection Area" value={rd.collection_area} />
-                    <Field label="Delivery Area" value={rd.delivery_area} />
+                    {/* The intake form copies collect_from→collection_area and deliver_to→delivery_area,
+                        so only show the "Area" rows when they actually add new information. */}
+                    <Field label="Collection Area" value={rd.collection_area !== rd.collect_from ? rd.collection_area : undefined} />
+                    <Field label="Delivery Area" value={rd.delivery_area !== rd.deliver_to ? rd.delivery_area : undefined} />
                 </div>
             </div>
 

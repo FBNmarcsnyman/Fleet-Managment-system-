@@ -23,10 +23,12 @@ const QuoteDetailModal: React.FC<{
     onClose: () => void;
     onQuoteIt: (quote: Quote) => void;
     onSendQuote?: (quote: Quote) => Promise<void>;
-}> = ({ quote, client, onClose, onQuoteIt, onSendQuote }) => {
+    onSendProforma?: (quote: Quote) => Promise<void>;
+}> = ({ quote, client, onClose, onQuoteIt, onSendQuote, onSendProforma }) => {
     const { showToast } = useUIState();
     const [requesting, setRequesting] = useState(false);
     const [sending, setSending] = useState(false);
+    const [proforma, setProforma] = useState(false);
     const rd = quote.requestData || {};
     const mi = quote.requestMoreInfo || {};
 
@@ -218,6 +220,17 @@ const QuoteDetailModal: React.FC<{
                 <div className="mt-6 text-center py-3 rounded-lg bg-red-900/30 text-red-300 text-sm font-bold uppercase tracking-wide">
                     Client declined this quote
                 </div>
+            )}
+
+            {onSendProforma && (quote.status === 'Draft' || quote.status === 'Sent' || quote.status === 'Accepted') && (
+                <button
+                    onClick={async () => { setProforma(true); try { await onSendProforma(quote); } catch {} finally { setProforma(false); } }}
+                    disabled={proforma}
+                    className="btn-on-color w-full mt-4 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
+                    style={{ background: '#475569' }}
+                >
+                    {proforma ? 'Sending…' : '🧾 Email COD Proforma (cc debtors)'}
+                </button>
             )}
 
             <button onClick={onClose} className="w-full mt-3 py-2 text-gray-400 hover:text-white text-sm font-bold uppercase tracking-wide">

@@ -123,6 +123,33 @@ const QuotesView: React.FC<{
         }
     };
 
+    const handleSendProforma = async (quote: Quote) => {
+        if (!confirm(`Email a COD proforma invoice for ${quote.quoteNumber} to the client (cc debtors)?`)) return;
+        setSending(quote.id);
+        try {
+            const { data: { session } } = await (await import('../../lib/supabase')).supabase.auth.getSession();
+            const resp = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quote-proforma`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+                        Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                    },
+                    body: JSON.stringify({ quote_id: quote.id }),
+                }
+            );
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            showToast(`Proforma ${quote.quoteNumber} sent to ${data.sent_to} (cc debtors)`);
+        } catch (e: any) {
+            showToast(`Failed to send proforma: ${e.message}`);
+        } finally {
+            setSending(null);
+        }
+    };
+
     const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c.name])), [clients]);
 
     const filteredQuotes = useMemo(() => {
@@ -275,6 +302,9 @@ const QuotesView: React.FC<{
                                             <CheckCircleIcon className="h-4 w-4 mr-1"/> Accept
                                         </button>
                                     )}
+                                    {(quote.status === 'Draft' || quote.status === 'Sent' || quote.status === 'Accepted') && (
+                                        <button onClick={() => handleSendProforma(quote)} disabled={sending === quote.id} className="text-[10px] font-black bg-slate-600 hover:bg-slate-500 text-white py-1 px-2 rounded-lg uppercase" title="Email COD proforma invoice (cc debtors)">Proforma</button>
+                                    )}
                                     <button onClick={() => client && onShowPdf(quote, client)} className="p-1 text-gray-400 hover:text-white" title="View PDF"><ShareIcon className="h-4 w-4"/></button>
                                     <button onClick={() => handleSendQuote(quote)} disabled={sending === quote.id} className="p-1 text-gray-400 hover:text-white" title="Send to Client">{sending === quote.id ? <span className="text-xs">...</span> : <MailIcon className="h-4 w-4"/>}</button>
                                     <button onClick={() => handleEditQuote(quote)} className="p-1 text-gray-400 hover:text-white" title="Edit"><EditIcon className="h-4 w-4"/></button>
@@ -307,6 +337,7 @@ const QuotesView: React.FC<{
                         client={clients.find(c => c.id === quoteDetail.clientId)}
                         onClose={() => setQuoteDetail(null)}
                         onSendQuote={async (q) => { await handleSendQuote(q); }}
+                        onSendProforma={async (q) => { await handleSendProforma(q); }}
                         onQuoteIt={(q) => {
                             setQuoteDetail(null);
                             // Price the SAME quote in place — keep its number, just move

@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Supplier, RfqRequest, RfqRecipient, CarrierQuote } from '../../types';
-import { useOperations, useUIState } from '../../contexts/AppContexts';
+import { useOperations, useUIState, useFleetData } from '../../contexts/AppContexts';
 import { PlusIcon } from '../icons/PlusIcon';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import Modal from '../Modal';
 import { format } from 'date-fns';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
+import DateField from './DateField';
 
 const BRANCHES = ['FBN DBN', 'FBN JHB', 'FBN CPT', 'LOADMASTER'];
 const VEHICLE_OPTIONS = ['Superlink', 'Tri-axle', 'Tautliner (6m)', 'Tautliner (12m)', 'Flat deck (6m)', 'Flat deck (12m)', 'Tanker', 'Tipper / Bulk', 'Lowbed / Abnormal', 'Container', '8 Ton', '4 Ton', '1 Ton'];
@@ -17,11 +19,12 @@ const rand = (n?: number | null) => n || n === 0 ? `R ${Number(n).toLocaleString
 // ── Raise-RFQ form ───────────────────────────────────────────────────────────
 const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ suppliers, onClose }) => {
     const { handleCreateRfq, routes = [], clients = [], quotes = [] } = useOperations() as any;
+    const { commodities = [], handleAddCommodity } = useFleetData() as any;
     const { showToast } = useUIState();
     const [saving, setSaving] = useState(false);
     const [f, setF] = useState({
         arrangingBranch: 'FBN DBN', clientId: '', quoteId: '', origin: '', destination: '', vehicleType: VEHICLE_OPTIONS[0],
-        loadType: 'Full Load', commodity: '', weightKg: '', gitRequired: true,
+        loadType: 'Full Load', commodity: '', weightKg: '', gitRequired: true, hazardous: false,
         collectionDate: '', collectionTime: '', deliveryDate: '', deliveryTime: '', notes: '',
     });
     const set = (k: string, v: any) => setF(prev => ({ ...prev, [k]: v }));
@@ -83,6 +86,11 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
         carriers.filter(c => picked.has(c.id)).forEach(c => recipients.push({ supplierId: c.id, email: c.contactEmail || undefined, companyName: c.name, channel: 'email' }));
         extraEmails.split(/[,;\n]/).map(e => e.trim()).filter(e => e.includes('@')).forEach(e => recipients.push({ email: e, companyName: e.split('@')[0], channel: 'email' }));
         if (!recipients.length) { showToast('Pick at least one carrier (or add an email).'); return; }
+        // Save a newly-typed commodity to the shared pick-list (consistent spelling).
+        try {
+            const cv = (f.commodity || '').trim();
+            if (cv && !commodities.includes(cv) && typeof handleAddCommodity === 'function') handleAddCommodity(cv);
+        } catch { /* never block the send */ }
         setSaving(true);
         const res = await handleCreateRfq(
             { ...f, weightKg: f.weightKg ? Number(f.weightKg) : undefined },
@@ -138,25 +146,34 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
                         {VEHICLE_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                 </div>
-                <div><label className={label}>Collection point *</label><input value={f.origin} onChange={e => set('origin', e.target.value)} placeholder="e.g. FBN DBN" className={input} /></div>
-                <div><label className={label}>Delivery point *</label><input value={f.destination} onChange={e => set('destination', e.target.value)} placeholder="e.g. FBN JHB" className={input} /></div>
+                <div><label className={label}>Collection point *</label>
+                    <AddressAutocompleteInput value={f.origin} onChange={(v: string) => set('origin', v)} placeholder="Search Google Maps address…" className={input} /></div>
+                <div><label className={label}>Delivery point *</label>
+                    <AddressAutocompleteInput value={f.destination} onChange={(v: string) => set('destination', v)} placeholder="Search Google Maps address…" className={input} /></div>
                 <div>
                     <label className={label}>Load type</label>
                     <select value={f.loadType} onChange={e => set('loadType', e.target.value)} className={input}>
                         {LOAD_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                 </div>
-                <div><label className={label}>Commodity</label><input value={f.commodity} onChange={e => set('commodity', e.target.value)} placeholder="e.g. palletised general" className={input} /></div>
+                <div>
+                    <label className={label}>Commodity</label>
+                    <input list="rfq-commodity-list" value={f.commodity} onChange={e => set('commodity', e.target.value)} placeholder="Type to search or add…" autoComplete="off" className={input} />
+                    <datalist id="rfq-commodity-list">{(commodities as string[]).map(c => <option key={c} value={c} />)}</datalist>
+                </div>
                 <div><label className={label}>Weight (kg)</label><input type="number" value={f.weightKg} onChange={e => set('weightKg', e.target.value)} placeholder="34000" className={input} /></div>
-                <div className="flex items-end pb-1">
+                <div className="flex items-end pb-1 gap-4">
                     <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
                         <input type="checkbox" checked={f.gitRequired} onChange={e => set('gitRequired', e.target.checked)} className="h-4 w-4 rounded" /> GIT cover required
                     </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
+                        <input type="checkbox" checked={f.hazardous} onChange={e => set('hazardous', e.target.checked)} className="h-4 w-4 rounded accent-red-500" /> <span className={f.hazardous ? 'text-red-300 font-bold' : ''}>Hazardous (DG)</span>
+                    </label>
                 </div>
-                <div><label className={label}>Collection date</label><input type="date" value={f.collectionDate} onChange={e => set('collectionDate', e.target.value)} className={input} /></div>
-                <div><label className={label}>Onsite by (time)</label><input value={f.collectionTime} onChange={e => set('collectionTime', e.target.value)} placeholder="15:00" className={input} /></div>
-                <div><label className={label}>Delivery date</label><input type="date" value={f.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} className={input} /></div>
-                <div><label className={label}>Delivery time</label><input value={f.deliveryTime} onChange={e => set('deliveryTime', e.target.value)} placeholder="by 12:00" className={input} /></div>
+                <div><label className={label}>Collection date</label><DateField value={f.collectionDate} onChange={(v: string) => set('collectionDate', v)} className={input} /></div>
+                <div><label className={label}>Onsite by (time)</label><input type="time" value={f.collectionTime} onChange={e => set('collectionTime', e.target.value)} className={input} /></div>
+                <div><label className={label}>Delivery date</label><DateField value={f.deliveryDate} onChange={(v: string) => set('deliveryDate', v)} className={input} /></div>
+                <div><label className={label}>Delivery time</label><input type="time" value={f.deliveryTime} onChange={e => set('deliveryTime', e.target.value)} className={input} /></div>
             </div>
             <div className="mt-4"><label className={label}>Notes</label><textarea value={f.notes} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Any special requirements…" className={input} /></div>
 
@@ -363,6 +380,7 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
                     <p className="text-[11px] text-gray-400 mt-0.5">
                         {[rfq.vehicleType, rfq.loadType, rfq.commodity, rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')}kg` : null, rfq.gitRequired ? 'GIT' : null]
                             .filter(Boolean).join(' · ')}
+                        {rfq.hazardous && <span className="ml-1.5 text-red-400 font-bold">· HAZ (DG)</span>}
                     </p>
                     <p className="text-[11px] text-gray-500 mt-0.5">
                         {rfq.collectionDate ? `Collect ${rfq.collectionDate}${rfq.collectionTime ? ' ' + rfq.collectionTime : ''}` : ''}

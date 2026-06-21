@@ -747,6 +747,7 @@ export interface RfqRequest {
     commodity?: string;
     weightKg?: number;
     gitRequired: boolean;
+    hazardous?: boolean;
     collectionDate?: string;
     collectionTime?: string;
     deliveryDate?: string;

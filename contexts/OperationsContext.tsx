@@ -1354,6 +1354,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     ['Vehicle required', fmt(rfq.vehicleType)],
                     ['Load', [rfq.loadType, rfq.commodity].filter(Boolean).join(' &middot; ') || '&mdash;'],
                     ['Weight', rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')} kg` : '&mdash;'],
+                    ['Hazardous (DG)', rfq.hazardous ? 'YES — DG load' : 'No'],
                     ['GIT cover', rfq.gitRequired ? 'Required' : 'Not required'],
                     ['Collection', [rfq.collectionDate, rfq.collectionTime].filter(Boolean).join(' &middot; ') || '&mdash;'],
                     ['Delivery', [rfq.deliveryDate, rfq.deliveryTime].filter(Boolean).join(' &middot; ') || '&mdash;'],

@@ -87,6 +87,10 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
 
     <div id="form-view">
       <div class="error-msg" id="error-msg"></div>
+      <!-- Honeypot: hidden from people, bots fill it and get silently dropped. -->
+      <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true">
+        <label>Website<input type="text" id="rq-website" tabindex="-1" autocomplete="off"></label>
+      </div>
 
       <div class="section">
         <div class="section-title">👤 Your Details</div>
@@ -201,6 +205,7 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
 
 <script>
 const INTAKE_URL = 'https://kyosepbdxjwugunylvyo.supabase.co/functions/v1/quote-intake';
+window.__rqStart = Date.now(); // when the form opened — used to catch instant bot submits
 let selectedSvc = '';
 
 // Auto-format the date field as dd/mm/yyyy while typing, and convert to ISO
@@ -284,7 +289,10 @@ async function submitQuote() {
     hazardous: document.getElementById('rq-hazardous').checked,
     loading_date: dateToIso(document.getElementById('rq-date').value),
     cross_border: document.getElementById('rq-xborder').checked,
-    notes: document.getElementById('rq-notes').value.trim()
+    notes: document.getElementById('rq-notes').value.trim(),
+    // Anti-bot signals (honeypot value + how long the form was open).
+    website: document.getElementById('rq-website').value,
+    elapsed_ms: Date.now() - (window.__rqStart || Date.now())
   };
 
   try {

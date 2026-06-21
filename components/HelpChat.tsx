@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { askHelp, HelpMessage } from '../lib/helpFaq';
+import { BRAND, FONTS } from '../lib/brand';
 import { XIcon } from './icons/XIcon';
 
-const SUGGESTIONS = [
-    'How do I price an inbound quote?',
-    'How does a quote become a collection?',
-    'How do I send a COD client a proforma?',
-    'Why didn’t my email arrive?',
-    'How do I raise an RFQ to carriers?',
+// Suggested questions grouped by topic, shown until the first message.
+const TOPICS: { label: string; questions: string[] }[] = [
+    { label: 'Quotes', questions: ['How do I price an inbound quote?', 'How do I send a COD client a proforma?'] },
+    { label: 'Loads', questions: ['How does a quote become a collection?', 'How do I raise an RFQ to carriers?'] },
+    { label: 'Email & setup', questions: ['Why didn’t my email arrive?', 'How do I onboard a new subcontractor?'] },
 ];
 
 // Floating "Help" assistant — a text chatbot grounded on the FBN FAQ. Available
@@ -44,7 +44,7 @@ const HelpChat: React.FC = () => {
             {!open && (
                 <button
                     onClick={() => setOpen(true)}
-                    className="fixed bottom-5 right-5 z-[90] flex items-center gap-2 bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-3 px-4 rounded-full shadow-xl transition active:scale-95"
+                    className="fixed right-4 bottom-36 md:bottom-24 z-30 flex items-center gap-2 bg-white border border-slate-300 text-[#13294b] hover:bg-slate-50 font-bold py-2.5 px-4 rounded-full shadow-lg transition active:scale-95"
                     title="Ask the help assistant"
                 >
                     <span className="text-lg leading-none">💬</span>
@@ -55,23 +55,33 @@ const HelpChat: React.FC = () => {
             {/* Panel */}
             {open && (
                 <div className="fixed bottom-5 right-5 z-[90] w-[min(94vw,400px)] h-[min(80vh,580px)] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3" style={{ background: '#13294b' }}>
+                    <div className="px-4 py-3 flex items-start justify-between" style={{ background: BRAND.navy }}>
                         <div>
-                            <div className="text-white font-black text-sm">FBN Help Assistant</div>
-                            <div className="text-[11px]" style={{ color: '#f5b700' }}>Ask how anything works</div>
+                            <div className="text-lg font-black tracking-wide" style={{ fontFamily: FONTS.heading }}>
+                                <span className="text-white">FAQ</span> <span style={{ color: BRAND.gold }}>CENTRE</span>
+                            </div>
+                            <div className="text-[11px] text-slate-300 -mt-0.5">FBN Control Centre · ask how anything works</div>
                         </div>
-                        <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white"><XIcon className="h-5 w-5" /></button>
+                        <button onClick={() => setOpen(false)} className="text-white/70 hover:text-white mt-0.5"><XIcon className="h-5 w-5" /></button>
                     </div>
+                    <div style={{ height: 3, background: BRAND.gold }} />
 
                     <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50">
                         {messages.length === 0 && (
                             <div className="text-sm text-slate-500">
-                                <p className="mb-3">Hi 👋 Ask me how to do anything in the Control Centre. For example:</p>
-                                <div className="flex flex-col gap-2">
-                                    {SUGGESTIONS.map(s => (
-                                        <button key={s} onClick={() => send(s)} className="text-left text-[13px] bg-white border border-slate-200 rounded-lg px-3 py-2 hover:border-blue-300 hover:bg-blue-50 text-slate-700">
-                                            {s}
-                                        </button>
+                                <p className="mb-3">Hi 👋 Pick a topic below, or type your own question about anything in the Control Centre.</p>
+                                <div className="space-y-3">
+                                    {TOPICS.map(t => (
+                                        <div key={t.label}>
+                                            <div className="text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: BRAND.navy }}>{t.label}</div>
+                                            <div className="flex flex-col gap-1.5">
+                                                {t.questions.map(s => (
+                                                    <button key={s} onClick={() => send(s)} className="text-left text-[13px] bg-white border border-slate-200 rounded-lg px-3 py-2 hover:border-blue-300 hover:bg-blue-50 text-slate-700 transition">
+                                                        {s}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>

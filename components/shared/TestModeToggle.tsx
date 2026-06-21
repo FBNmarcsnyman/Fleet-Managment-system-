@@ -13,8 +13,10 @@ const TestModeToggle: React.FC = () => {
     // admins immediately — then refine from the freeze-proof read.
     const [on, setOn] = useState<boolean>(true);
     const [busy, setBusy] = useState(false);
-    const role = (currentUser as any)?.role || '';
-    const isAdmin = role === 'Super Admin' || role === 'Admin';
+    // Only Marc (super admin) controls TEST/LIVE — so he can switch to TEST while
+    // developing or chasing an issue without anyone else flipping it.
+    const email = ((currentUser as any)?.email || '').toLowerCase();
+    const isController = email === 'marcsnyman@fbn-transport.co.za';
 
     useEffect(() => {
         let active = true;
@@ -26,7 +28,7 @@ const TestModeToggle: React.FC = () => {
         return () => { active = false; };
     }, []);
 
-    if (!isAdmin) return null;
+    if (!isController) return null;
 
     const toggle = async () => {
         const next = !on;

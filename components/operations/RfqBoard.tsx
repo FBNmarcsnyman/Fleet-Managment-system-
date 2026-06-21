@@ -16,15 +16,29 @@ const rand = (n?: number | null) => n || n === 0 ? `R ${Number(n).toLocaleString
 
 // ── Raise-RFQ form ───────────────────────────────────────────────────────────
 const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ suppliers, onClose }) => {
-    const { handleCreateRfq, routes = [] } = useOperations() as any;
+    const { handleCreateRfq, routes = [], clients = [], quotes = [] } = useOperations() as any;
     const { showToast } = useUIState();
     const [saving, setSaving] = useState(false);
     const [f, setF] = useState({
-        arrangingBranch: 'FBN DBN', origin: '', destination: '', vehicleType: VEHICLE_OPTIONS[0],
+        arrangingBranch: 'FBN DBN', clientId: '', quoteId: '', origin: '', destination: '', vehicleType: VEHICLE_OPTIONS[0],
         loadType: 'Full Load', commodity: '', weightKg: '', gitRequired: true,
         collectionDate: '', collectionTime: '', deliveryDate: '', deliveryTime: '', notes: '',
     });
     const set = (k: string, v: any) => setF(prev => ({ ...prev, [k]: v }));
+
+    // Quotes the client has requested (or drafts) we can raise this RFQ against.
+    const linkableQuotes = useMemo(() => (quotes as any[]).filter(q => q.status === 'Requested' || q.status === 'Draft'), [quotes]);
+    const onQuote = (id: string) => {
+        const q = (quotes as any[]).find(x => x.id === id);
+        setF(prev => ({
+            ...prev, quoteId: id,
+            clientId: q?.clientId || prev.clientId,
+            origin: q?.legs?.[0]?.collectionPoint || prev.origin,
+            destination: q?.legs?.[q.legs.length - 1]?.deliveryPoint || prev.destination,
+            commodity: q?.commodity || prev.commodity,
+        }));
+    };
+    const clientName = (id: string) => (clients as any[]).find(c => c.id === id)?.name || '';
 
     const carriers = useMemo(() => (suppliers || []).filter(s => s.type === 'Transport' && s.isActive !== false), [suppliers]);
     const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -83,6 +97,23 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
         <div className="p-6 max-h-[85vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-white mb-1">Raise a quote request</h3>
             <p className="text-sm text-gray-400 mb-5">Broadcast a load to carriers who run the lane. Replies route to the branch ops inbox.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label className={label}>Client (optional)</label>
+                    <select value={f.clientId} onChange={e => set('clientId', e.target.value)} className={input}>
+                        <option value="">No client / sourcing only</option>
+                        {(clients as any[]).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className={label}>Link to client quote (optional)</label>
+                    <select value={f.quoteId} onChange={e => onQuote(e.target.value)} className={input}>
+                        <option value="">Not from a quote</option>
+                        {linkableQuotes.map(q => <option key={q.id} value={q.id}>{q.quoteNumber} · {clientName(q.clientId)}</option>)}
+                    </select>
+                </div>
+            </div>
 
             {(routes as any[]).length > 0 && (
                 <div className="mb-4">
@@ -203,82 +234,93 @@ const LogQuote: React.FC<{ rfq: RfqRequest; onDone: () => void }> = ({ rfq, onDo
     );
 };
 
-// ── Award → create the broking load straight onto the board ──────────────────
-const branchFor = (text: string, fallback: string) => {
-    const t = (text || '').toUpperCase();
-    if (/(JHB|JOBURG|JOHANNES|GAUTENG|PTA|PRETORIA|GP)/.test(t)) return 'FBN JHB';
-    if (/(DBN|DURBAN|KZN|PMB|PINETOWN)/.test(t)) return 'FBN DBN';
-    if (/(CPT|CAPE|WC|\bWP\b)/.test(t)) return 'FBN CPT';
-    return fallback;
-};
-
-const AwardLoadModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup: number; onClose: () => void }> = ({ rfq, quote, markup, onClose }) => {
-    const { handleCreateLoadConfirmation, handleAwardRfqQuote, clients = [], suppliers = [] } = useOperations() as any;
+// ── Award → quote the client (markup slider) → send for approval ─────────────
+// The winning carrier rate + markup becomes the client's sell price on a quote.
+// After the client approves it, ops convert it to a load and pick the transporter
+// via the existing Accept-quote flow. No LoadCon is created here.
+const QuoteClientModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup: number; onClose: () => void }> = ({ rfq, quote, markup, onClose }) => {
+    const { handleCreateQuote, handleUpdateQuote, handleAwardRfqQuote, handleUpdateRfq, clients = [], suppliers = [], quotes = [] } = useOperations() as any;
     const { showToast } = useUIState();
     const buy = quote.price || 0;
-    const [clientId, setClientId] = useState('');
-    const [sell, setSell] = useState(String(Math.round(buy * (1 + markup / 100) * 100) / 100));
+    const [clientId, setClientId] = useState(rfq.clientId || '');
+    const [markupPct, setMarkupPct] = useState(markup);
     const [saving, setSaving] = useState(false);
     const carrier = (suppliers as Supplier[]).find(s => s.id === quote.supplierId);
-    const arr = rfq.arrangingBranch || 'FBN JHB';
-    const collB = branchFor(rfq.origin, arr), destB = branchFor(rfq.destination, arr);
-    const margin = (Number(sell) || 0) - buy;
+    const sell = Math.round(buy * (1 + markupPct / 100) * 100) / 100;
+    const margin = sell - buy;
+    const id = () => `id_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const subQuote = { id: id(), supplierId: quote.supplierId || '', rate: buy, timestamp: new Date().toISOString() };
 
-    const create = async () => {
+    const send = async () => {
         if (saving) return;
-        if (!clientId) { showToast('Pick the client to bill this load to.'); return; }
+        if (!clientId) { showToast('Pick the client to quote.'); return; }
         setSaving(true);
-        const data = {
-            clientId,
-            date: new Date().toISOString(),
-            legs: [{ id: `id_${Date.now()}`, collectionPoint: rfq.origin, deliveryPoint: rfq.destination, movementType: 'External' }],
-            items: [],
-            totalAmount: Number(sell) || 0,
-            supplierId: quote.supplierId,
-            subcontractorName: carrier?.name,
-            subcontractorEmail: carrier?.contactEmail,
-            supplierRate: buy,
-            collectionBranch: collB,
-            destinationBranch: destB,
-            arrangingBranch: arr,
-            priority: 'Medium',
-            status: 'Booked',
-            collectionPoint: rfq.origin,
-            deliveryPoint: rfq.destination,
-            commodity: rfq.commodity,
-            loadSpec: rfq.vehicleType,
-            specialRequirements: [rfq.loadType, rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')}kg` : null, rfq.gitRequired ? 'GIT required' : null].filter(Boolean).join(' · ') || undefined,
-        };
-        const res = await handleCreateLoadConfirmation(data);
+        let quoteNumber = '';
+        let res: any;
+        const linked = rfq.quoteId ? (quotes as any[]).find(q => q.id === rfq.quoteId) : null;
+        if (linked) {
+            res = await handleUpdateQuote({
+                ...linked,
+                clientId,
+                totalAmount: sell,
+                subcontractorQuotes: [...(linked.subcontractorQuotes || []), subQuote],
+                commodity: linked.commodity || rfq.commodity,
+            });
+            quoteNumber = linked.quoteNumber;
+        } else {
+            res = await handleCreateQuote({
+                clientId,
+                date: new Date().toISOString(),
+                expiryDate: new Date(Date.now() + 7 * 864e5).toISOString(),
+                legs: [{ id: id(), collectionPoint: rfq.origin, deliveryPoint: rfq.destination, movementType: 'External' }],
+                items: [{ id: id(), description: `${rfq.origin} → ${rfq.destination}${rfq.vehicleType ? ` (${rfq.vehicleType})` : ''}`, packagingType: 'Load', quantity: 1, rate: sell, total: sell }],
+                totalAmount: sell,
+                sentToClient: false,
+                commodity: rfq.commodity || 'General Cargo',
+                packaging: 'Load',
+                loadSpec: rfq.vehicleType,
+                specialRequirements: [rfq.loadType, rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')}kg` : null, rfq.gitRequired ? 'GIT required' : null].filter(Boolean).join(' · ') || undefined,
+                subcontractorQuotes: [subQuote],
+            });
+            quoteNumber = res?.value?.quoteNumber || '';
+            if (res?.ok && res.value?.id) await handleUpdateRfq(rfq.id, { quoteId: res.value.id });
+        }
         if (res?.ok) {
             await handleAwardRfqQuote(rfq.id, quote.id);
-            showToast(`Load ${res.value?.loadConNumber || ''} created on the board for ${carrier?.name || 'carrier'}.`);
+            showToast(`Quote ${quoteNumber} ready for ${ (clients as any[]).find(c => c.id === clientId)?.name || 'client' } — review & send for approval.`);
             onClose();
-        } else { setSaving(false); showToast(`Could not create load: ${res?.error || 'unknown error'}`); }
+        } else { setSaving(false); showToast(`Could not build quote: ${res?.error || 'unknown error'}`); }
     };
 
     return (
         <div className="p-6">
-            <h3 className="text-xl font-bold text-white mb-1">Award &amp; create load</h3>
-            <p className="text-sm text-gray-400 mb-4">{rfq.origin} → {rfq.destination} · awarding to <span className="text-white font-semibold">{quote.companyName || carrier?.name || 'carrier'}</span></p>
+            <h3 className="text-xl font-bold text-white mb-1">Quote the client</h3>
+            <p className="text-sm text-gray-400 mb-4">{rfq.origin} → {rfq.destination} · winning carrier <span className="text-white font-semibold">{quote.companyName || carrier?.name || 'carrier'}</span></p>
 
-            <div className="bg-gray-900/50 rounded-lg p-3 mb-4 text-sm">
-                <div className="flex justify-between"><span className="text-gray-400">Carrier rate (buy)</span><span className="font-mono text-white">{rand(buy)}</span></div>
-                <div className="flex justify-between mt-1"><span className="text-gray-400">Branches</span><span className="text-white">{collB} → {destB}</span></div>
-            </div>
-
-            <label className={label}>Client to bill *</label>
+            <label className={label}>Client *</label>
             <select value={clientId} onChange={e => setClientId(e.target.value)} className={input}>
                 <option value="">Select client…</option>
                 {(clients as any[]).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            {rfq.quoteId && <p className="text-[11px] text-emerald-400 mt-1">Updating the linked client quote.</p>}
 
-            <div className="mt-4"><label className={label}>Sell price to client (R)</label><input type="number" value={sell} onChange={e => setSell(e.target.value)} className={input} /></div>
-            <p className={`mt-2 text-sm font-bold ${margin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>Margin: {rand(margin)}{buy ? ` (${Math.round((margin / buy) * 100)}%)` : ''}</p>
+            <div className="mt-5">
+                <div className="flex justify-between items-baseline">
+                    <label className={label}>Markup</label>
+                    <span className="text-sm font-bold text-white">{markupPct}%</span>
+                </div>
+                <input type="range" min={0} max={50} step={1} value={markupPct} onChange={e => setMarkupPct(Number(e.target.value))} className="w-full accent-emerald-500" />
+            </div>
+
+            <div className="mt-4 bg-gray-900/50 rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-gray-400">Carrier rate (buy)</span><span className="font-mono text-white">{rand(buy)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Client price (sell)</span><span className="font-mono text-white font-bold">{rand(sell)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Margin</span><span className={`font-mono font-bold ${margin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{rand(margin)}</span></div>
+            </div>
 
             <div className="flex justify-end gap-3 mt-6">
                 <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-300 hover:text-white">Cancel</button>
-                <button onClick={create} disabled={saving} className="px-5 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">{saving ? 'Creating…' : 'Create load on board'}</button>
+                <button onClick={send} disabled={saving} className="px-5 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">{saving ? 'Building…' : 'Build quote for approval'}</button>
             </div>
         </div>
     );
@@ -353,7 +395,7 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
                             </span>
                             {rfq.status !== 'Awarded' && q.canAssist && q.price != null && (
                                 <button onClick={() => setAwarding(q)} className="text-[11px] font-bold bg-green-600 hover:bg-green-700 text-white py-1 px-2.5 rounded-lg inline-flex items-center">
-                                    <CheckCircleIcon className="h-3.5 w-3.5 mr-1" />Award
+                                    <CheckCircleIcon className="h-3.5 w-3.5 mr-1" />Pick &amp; quote
                                 </button>
                             )}
                             {isAwarded && <span className="text-[11px] font-bold text-green-400 inline-flex items-center"><CheckCircleIcon className="h-3.5 w-3.5 mr-1" />Awarded</span>}
@@ -368,7 +410,7 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
             )}
 
             <Modal isOpen={!!awarding} onClose={() => setAwarding(null)} size="lg">
-                {awarding && <AwardLoadModal rfq={rfq} quote={awarding} markup={markup} onClose={() => setAwarding(null)} />}
+                {awarding && <QuoteClientModal rfq={rfq} quote={awarding} markup={markup} onClose={() => setAwarding(null)} />}
             </Modal>
         </div>
     );

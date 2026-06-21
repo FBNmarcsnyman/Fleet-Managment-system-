@@ -1378,6 +1378,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const row: any = { updated_at: new Date().toISOString() };
                 if (updates.status) row.status = updates.status;
                 if (updates.awardedQuoteId !== undefined) row.awarded_quote_id = updates.awardedQuoteId ?? null;
+                if (updates.quoteId !== undefined) row.quote_id = updates.quoteId ?? null;
+                if (updates.clientId !== undefined) row.client_id = updates.clientId ?? null;
                 if (updates.notes !== undefined) row.notes = updates.notes ?? null;
                 const { error } = await directUpdate('rfq_requests', { id }, row);
                 if (error) return { ok: false, error: error.message };

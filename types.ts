@@ -736,6 +736,8 @@ export interface RfqRequest {
     id: string;
     requestNumber: string;
     arrangingBranch?: string;  // sets the from-address (DBN/JHB)
+    clientId?: string;         // optional client this load is for
+    quoteId?: string;          // optional client quote it was raised from / feeds
     origin: string;
     destination: string;
     vehicleType?: string;

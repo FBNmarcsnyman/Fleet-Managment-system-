@@ -58,7 +58,7 @@ const HelpChat: React.FC = () => {
                     <div className="px-4 py-3 flex items-start justify-between" style={{ background: BRAND.navy }}>
                         <div>
                             <div className="text-lg font-black tracking-wide" style={{ fontFamily: FONTS.heading }}>
-                                <span className="text-white">FAQ</span> <span style={{ color: BRAND.gold }}>CENTRE</span>
+                                <span className="text-white btn-on-color">FAQ</span> <span style={{ color: BRAND.gold }}>CENTRE</span>
                             </div>
                             <div className="text-[11px] text-slate-300 -mt-0.5">FBN Control Centre · ask how anything works</div>
                         </div>

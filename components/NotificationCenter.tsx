@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNotifications, useUIState, useOperations } from '../contexts/AppContexts';
 import { Notification, NotificationType } from '../types';
 import { useLiveAlerts } from '../hooks/useLiveAlerts';
+import { useMutedLiveAlerts, muteAlert, muteAlerts } from '../lib/liveAlertMutes';
 import { formatDistanceToNow } from 'date-fns';
 import { WrenchIcon } from './icons/WrenchIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
@@ -12,17 +13,15 @@ import { XIcon } from './icons/XIcon';
 
 interface NotificationCenterProps { onClose: () => void; }
 
-// Live alerts are derived from current state (off-road vehicle, expiring docs…),
-// so they can't be "deleted" — instead the user can mute them for this browser
-// session. Kept module-level so it survives the panel closing/reopening.
-const mutedLive = new Set<string>();
-
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
     const { notifications, handleDismissNotification, handleDismissAllNotifications } = useNotifications();
     const { handleViewChange, showModal } = useUIState();
     const { loadConfirmations = [] } = useOperations() as any;
     const liveAlertsRaw = useLiveAlerts();
-    const [, force] = useState(0);
+    // Live alerts can't be deleted (they're derived), so dismissing one mutes it
+    // in a shared, localStorage-backed store — it stays cleared across reloads and
+    // the bell badge updates instantly.
+    const mutedLive = useMutedLiveAlerts();
 
     const liveAlerts = liveAlertsRaw.filter(a => !mutedLive.has(a.id));
     const liveIds = new Set(liveAlerts.map(a => a.id));
@@ -37,20 +36,19 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
         const load = loadId && (loadConfirmations as any[]).find((l: any) => l.id === loadId);
         if (load) { showModal('loadDetail', { loadCon: load }); }
         else if (n.link?.view) { handleViewChange(n.link.view); }
-        if (!liveIds.has(n.id)) handleDismissNotification(n.id); else mutedLive.add(n.id);
+        if (!liveIds.has(n.id)) handleDismissNotification(n.id); else muteAlert(n.id);
         onClose();
     };
 
     const dismissOne = (n: Notification, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (liveIds.has(n.id)) { mutedLive.add(n.id); force(x => x + 1); }
+        if (liveIds.has(n.id)) muteAlert(n.id);
         else handleDismissNotification(n.id);
     };
 
     const clearAll = () => {
-        liveAlerts.forEach(a => mutedLive.add(a.id));
+        muteAlerts(liveAlerts.map(a => a.id));
         handleDismissAllNotifications();
-        force(x => x + 1);
     };
 
     const getIcon = (type: NotificationType) => {

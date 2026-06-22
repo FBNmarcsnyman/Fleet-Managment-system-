@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useUIState } from '../../contexts/AppContexts';
+import React, { useState, useMemo } from 'react';
+import { useUIState, useOperations } from '../../contexts/AppContexts';
 import { directUpdate, directInsert } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import DocScanButton from '../shared/DocScanButton';
@@ -14,6 +14,8 @@ const DEPOTS = ['ZACPAK', 'CHC', 'ICS', 'MONT', 'SACD', 'IWS'];
 
 const LclShipmentModal: React.FC = () => {
     const { hideModal, modal, showToast } = useUIState();
+    const { clients = [] } = useOperations() as any;
+    const clientNames = useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
     const existing = modal.payload?.shipment;
     const onSaved = modal.payload?.onSaved as (() => void) | undefined;
     const [f, setF] = useState<any>(existing ? { ...existing } : { status: 'CONTAINER NOT IN', hazardous: false });
@@ -43,6 +45,7 @@ const LclShipmentModal: React.FC = () => {
             fbn_di: f.fbn_di || null, file_ref: f.file_ref || null, house_bill: f.house_bill || f.file_ref || null,
             container_no: f.container_no ? String(f.container_no).toUpperCase() : null, vessel: f.vessel || null, eta: f.eta || null,
             depot: f.depot || null, unpack_region: f.unpack_region || 'DBN', consignee: f.consignee || null,
+            agent: f.agent || null, client_id: (clients as any[]).find(c => (c.name || '').toLowerCase() === (f.agent || '').toLowerCase())?.id || null,
             commodity: f.commodity || null, hazardous: !!f.hazardous, un_number: f.un_number || null,
             qty: f.qty ? Number(f.qty) : null, weight_kg: f.weight_kg ? Number(f.weight_kg) : null, volume_cbm: f.volume_cbm ? Number(f.volume_cbm) : null,
             status: f.status || 'CONTAINER NOT IN', unpack_date: f.unpack_date || null, uplift_date: f.uplift_date || null,
@@ -78,7 +81,8 @@ const LclShipmentModal: React.FC = () => {
                 <div><label className={lbl}>Vessel</label><input value={f.vessel || ''} onChange={e => set('vessel', e.target.value)} className={inp} /></div>
                 <div><label className={lbl}>ETA</label><DateField value={(f.eta || '').slice(0, 10)} onChange={v => set('eta', v)} className={inp} /></div>
                 <div><label className={lbl}>Depot</label><input list="lclDepots" value={f.depot || ''} onChange={e => set('depot', e.target.value.toUpperCase())} className={inp} /><datalist id="lclDepots">{DEPOTS.map(d => <option key={d} value={d} />)}</datalist></div>
-                <div><label className={lbl}>Consignee</label><input value={f.consignee || ''} onChange={e => set('consignee', e.target.value)} className={inp} /></div>
+                <div><label className={lbl}>Agent / bill to</label><input list="lclAgents" value={f.agent || ''} onChange={e => set('agent', e.target.value.toUpperCase())} className={inp} placeholder="e.g. DHL" /><datalist id="lclAgents">{clientNames.map(n => <option key={n} value={n} />)}</datalist></div>
+                <div><label className={lbl}>Consignee (end client)</label><input value={f.consignee || ''} onChange={e => set('consignee', e.target.value)} className={inp} placeholder="e.g. IFF" /></div>
                 <div><label className={lbl}>Commodity</label><input value={f.commodity || ''} onChange={e => set('commodity', e.target.value)} className={inp} /></div>
                 <div className="flex items-end gap-2">
                     <label className="flex items-center gap-2 text-sm font-bold text-gray-200 pb-2"><input type="checkbox" checked={!!f.hazardous} onChange={e => set('hazardous', e.target.checked)} /> Hazardous</label>

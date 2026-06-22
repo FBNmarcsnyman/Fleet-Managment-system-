@@ -9,7 +9,7 @@ import { directSelect, directUpdate } from '../../lib/supabase';
 interface Lcl {
     id: string; fbn_di: string; date_ins_rec: string; controller: string; file_ref: string;
     container_no: string; vessel: string; eta: string; unpack_region: string; depot: string;
-    consignee: string; hazardous: boolean; un_number: string; commodity: string;
+    consignee: string; agent: string; hazardous: boolean; un_number: string; commodity: string;
     qty: number; weight_kg: number; volume_cbm: number; status: string;
     unpack_date: string; uplift_date: string; delivered_jhb_date: string; delivered_client_date: string;
     remarks: string; client_sheet: string; is_history: boolean;
@@ -48,6 +48,7 @@ const LclStatusReport: React.FC = () => {
     const [view, setView] = useState<'current' | 'history'>('current');
     const [report, setReport] = useState('All');
     const [depot, setDepot] = useState('All');
+    const [agent, setAgent] = useState('All');
     const [status, setStatus] = useState('All');
     const [q, setQ] = useState('');
     const [selIds, setSelIds] = useState<Set<string>>(new Set());
@@ -73,20 +74,22 @@ const LclStatusReport: React.FC = () => {
 
     const reports = useMemo(() => ['All', ...new Set(rows.map(r => r.client_sheet).filter(Boolean))], [rows]);
     const depots = useMemo(() => ['All', ...new Set(rows.map(r => r.depot).filter(Boolean))].sort(), [rows]);
+    const agents = useMemo(() => ['All', ...new Set(rows.map(r => r.agent).filter(Boolean))].sort(), [rows]);
     const statuses = useMemo(() => ['All', ...new Set(rows.map(r => r.status).filter(Boolean))].sort(), [rows]);
 
     const filtered = useMemo(() => {
         const term = q.trim().toLowerCase();
         return rows.filter(r => {
             if (depot !== 'All' && r.depot !== depot) return false;
+            if (agent !== 'All' && r.agent !== agent) return false;
             if (status !== 'All' && r.status !== status) return false;
             if (term) {
-                const hay = `${r.fbn_di || ''} ${r.container_no || ''} ${r.vessel || ''} ${r.file_ref || ''} ${r.commodity || ''} ${r.consignee || ''} ${r.depot || ''}`.toLowerCase();
+                const hay = `${r.fbn_di || ''} ${r.container_no || ''} ${r.vessel || ''} ${r.file_ref || ''} ${r.commodity || ''} ${r.consignee || ''} ${r.agent || ''} ${r.depot || ''}`.toLowerCase();
                 if (!hay.includes(term)) return false;
             }
             return true;
         });
-    }, [rows, depot, status, q]);
+    }, [rows, depot, agent, status, q]);
 
     const counts = useMemo(() => {
         let over = 0, due = 0, awaiting = 0, unpacked = 0;
@@ -127,6 +130,7 @@ const LclStatusReport: React.FC = () => {
             <div className="flex gap-2 flex-wrap items-center bg-white border border-slate-200 rounded-xl p-3">
                 <select value={report} onChange={e => setReport(e.target.value)} className={sel}>{reports.map(r => <option key={r} value={r}>{r === 'All' ? 'All reports' : r}</option>)}</select>
                 <select value={depot} onChange={e => setDepot(e.target.value)} className={sel}>{depots.map(d => <option key={d} value={d}>{d === 'All' ? 'All depots' : d}</option>)}</select>
+                <select value={agent} onChange={e => setAgent(e.target.value)} className={sel}>{agents.map(a => <option key={a} value={a}>{a === 'All' ? 'All agents' : a}</option>)}</select>
                 <select value={status} onChange={e => setStatus(e.target.value)} className={sel}>{statuses.map(s => <option key={s} value={s}>{s === 'All' ? 'All statuses' : s}</option>)}</select>
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="DI, container, vessel, HBL, commodity…" className={`${sel} flex-1 min-w-[200px]`} />
             </div>
@@ -148,7 +152,7 @@ const LclStatusReport: React.FC = () => {
                         <thead className="sticky top-0 bg-slate-100 text-slate-500 uppercase tracking-wider">
                             <tr>
                                 <th className="p-2 w-8"><input type="checkbox" checked={filtered.length > 0 && filtered.every(r => selIds.has(r.id))} onChange={e => setSelIds(e.target.checked ? new Set(filtered.map(r => r.id)) : new Set())} /></th>
-                                <th className="p-2">FBN DI</th><th className="p-2">Container / vessel</th><th className="p-2">ETA</th><th className="p-2">Depot</th><th className="p-2">Consignee</th><th className="p-2">Commodity</th><th className="p-2 text-right">Pkgs</th><th className="p-2 text-right">Kg</th><th className="p-2 text-right">CBM</th><th className="p-2">Status</th><th className="p-2">Unpack</th><th className="p-2">Free-time</th><th className="p-2">Delivered</th>
+                                <th className="p-2">FBN DI</th><th className="p-2">Container / vessel</th><th className="p-2">ETA</th><th className="p-2">Depot</th><th className="p-2">Agent</th><th className="p-2">Consignee</th><th className="p-2">Commodity</th><th className="p-2 text-right">Pkgs</th><th className="p-2 text-right">Kg</th><th className="p-2 text-right">CBM</th><th className="p-2">Status</th><th className="p-2">Unpack</th><th className="p-2">Free-time</th><th className="p-2">Delivered</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -161,6 +165,7 @@ const LclStatusReport: React.FC = () => {
                                         <td className="p-2"><span className="font-mono">{r.container_no || '—'}</span><div className="text-[10px] text-slate-400">{r.vessel}</div></td>
                                         <td className="p-2">{fmtD(r.eta)}</td>
                                         <td className="p-2 font-bold text-[#13294b]">{r.depot || '—'}</td>
+                                        <td className="p-2 font-semibold text-slate-700">{r.agent || '—'}</td>
                                         <td className="p-2">{r.consignee || '—'}</td>
                                         <td className="p-2 truncate max-w-[140px]">{r.commodity || '—'}</td>
                                         <td className="p-2 text-right">{r.qty ?? '—'}</td>
@@ -173,7 +178,7 @@ const LclStatusReport: React.FC = () => {
                                     </tr>
                                 );
                             })}
-                            {filtered.length === 0 && <tr><td colSpan={14} className="p-6 text-center text-slate-400">No shipments for this filter.</td></tr>}
+                            {filtered.length === 0 && <tr><td colSpan={15} className="p-6 text-center text-slate-400">No shipments for this filter.</td></tr>}
                         </tbody>
                     </table>
                 </div>

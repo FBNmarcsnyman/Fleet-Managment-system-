@@ -7,7 +7,13 @@ import { CONTAINER_DOC_PROMPT, CONTAINER_DOC_SCHEMA } from '../../lib/docScan';
 
 const SIZES = ['20FT', '40FT', '45FT', 'REEFER 20FT', 'REEFER 40FT', 'FLAT RACK', 'OPEN TOP'];
 const BRANCHES = ['FBN DBN', 'FBN JHB', 'FBN CPT'];
-export const CONTAINER_STATUSES = ['At Sea', 'Arrived Port', 'Available', 'Collected', 'At Depot', 'Unpacked', 'Delivered', 'Empty', 'Turned In'];
+export const CONTAINER_STATUSES = ['At Sea', 'Arrived Port', 'Available', 'Collected', 'At Storage Depot', 'At Supplier (unpack)', 'At Depot', 'Unpacked', 'On Floor', 'Loaded Out', 'Delivered', 'Empty', 'Turned In'];
+const ROUTE_PLANS: { v: string; label: string }[] = [
+    { v: 'yard_unpack', label: 'Bring to our yard → unpack' },
+    { v: 'supplier_unpack', label: 'To a supplier → they unpack & load out' },
+    { v: 'storage', label: 'To an FCL storage depot (hold)' },
+    { v: 'direct_delivery', label: 'Deliver full container to client' },
+];
 
 const up = (s: string) => s.toUpperCase();
 
@@ -49,6 +55,11 @@ const LogContainerModal: React.FC = () => {
             vessel_name: f.vessel_name ? up(f.vessel_name) : null, shipping_line: f.shipping_line ? up(f.shipping_line) : null,
             eta_port: f.eta_port || null, plan: f.plan || null, status: f.status || 'At Sea', branch: f.branch || null,
             turn_in_area: f.turn_in_area || null, turn_in_date: f.turn_in_date || null, notes: f.notes ? up(f.notes) : null,
+            // FCL flow: how it routes, who/where unpacks, storage hold, empty turn-in.
+            collected_date: f.collected_date || null, haulier: f.haulier ? up(f.haulier) : null, route_plan: f.route_plan || null,
+            unpack_location: f.unpack_location ? up(f.unpack_location) : null, unpack_by: f.unpack_by ? up(f.unpack_by) : null, unpack_date: f.unpack_date || null,
+            storage_depot: f.storage_depot ? up(f.storage_depot) : null, storage_in_date: f.storage_in_date || null, storage_out_date: f.storage_out_date || null,
+            turn_in_date_actual: f.turn_in_date_actual || null, consol_ref: f.consol_ref ? up(f.consol_ref) : null,
         };
         const res = editing ? await directUpdate('containers', { id: editing.id }, row) : await directInsert('containers', row);
         setBusy(false);
@@ -85,6 +96,34 @@ const LogContainerModal: React.FC = () => {
                 <div><label className={lbl}>Empty turn-in area</label><select value={f.turn_in_area || ''} onChange={e => set('turn_in_area', e.target.value)} className={inp}><option value="">—</option>{BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}</select></div>
                 <div><label className={lbl}>Turn-in by date</label><input type="date" value={f.turn_in_date || ''} onChange={e => set('turn_in_date', e.target.value)} className={inp} /></div>
                 <div className="col-span-2 md:col-span-3"><label className={lbl}>Notes</label><textarea value={f.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} className={inp} /></div>
+            </div>
+
+            {/* FCL flow — how this container moves from port to empty turn-in. */}
+            <div className="mt-4 pt-4 border-t border-gray-700">
+                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">FCL flow / handling</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="col-span-2 md:col-span-3"><label className={lbl}>Plan for this container</label>
+                        <select value={f.route_plan || ''} onChange={e => set('route_plan', e.target.value)} className={inp}>
+                            <option value="">—</option>{ROUTE_PLANS.map(r => <option key={r.v} value={r.v}>{r.label}</option>)}
+                        </select></div>
+                    <div><label className={lbl}>Collected from port</label><input type="date" value={f.collected_date || ''} onChange={e => set('collected_date', e.target.value)} className={inp} /></div>
+                    <div><label className={lbl}>Haulier (FBN / subbie)</label><input value={f.haulier || ''} onChange={e => set('haulier', e.target.value)} className={inp} placeholder="FBN or transporter" /></div>
+                    <div><label className={lbl}>Consol ref (re-load group)</label><input value={f.consol_ref || ''} onChange={e => set('consol_ref', e.target.value)} className={inp} placeholder="groups boxes unpacked together" /></div>
+
+                    {f.route_plan === 'storage' && <>
+                        <div><label className={lbl}>Storage depot</label><input value={f.storage_depot || ''} onChange={e => set('storage_depot', e.target.value)} className={inp} placeholder="who's holding it" /></div>
+                        <div><label className={lbl}>Stored in (date)</label><input type="date" value={f.storage_in_date || ''} onChange={e => set('storage_in_date', e.target.value)} className={inp} /></div>
+                        <div><label className={lbl}>Uplifted out (date)</label><input type="date" value={f.storage_out_date || ''} onChange={e => set('storage_out_date', e.target.value)} className={inp} /></div>
+                    </>}
+
+                    {(f.route_plan === 'yard_unpack' || f.route_plan === 'supplier_unpack' || !f.route_plan) && <>
+                        <div><label className={lbl}>Unpack location</label><input value={f.unpack_location || ''} onChange={e => set('unpack_location', e.target.value)} className={inp} placeholder="FBN yard / supplier site" /></div>
+                        <div><label className={lbl}>Unpacked by</label><input value={f.unpack_by || ''} onChange={e => set('unpack_by', e.target.value)} className={inp} placeholder="e.g. APEX WAREHOUSE" /></div>
+                        <div><label className={lbl}>Unpack date</label><input type="date" value={f.unpack_date || ''} onChange={e => set('unpack_date', e.target.value)} className={inp} /></div>
+                    </>}
+
+                    <div><label className={lbl}>Empty turn-in actual</label><input type="date" value={f.turn_in_date_actual || ''} onChange={e => set('turn_in_date_actual', e.target.value)} className={inp} /></div>
+                </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
                 <button type="button" onClick={hideModal} disabled={busy} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2.5 px-5 rounded-lg disabled:opacity-50">Cancel</button>

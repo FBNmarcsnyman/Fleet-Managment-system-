@@ -8,7 +8,12 @@ interface Container {
     commodity: string; client_name: string; client_ref: string; vessel_name: string;
     shipping_line: string; eta_port: string; plan: string; status: string; branch: string;
     turn_in_area: string; turn_in_date: string; notes: string;
+    route_plan?: string; unpack_location?: string; unpack_by?: string; storage_depot?: string; consol_ref?: string;
 }
+
+const ROUTE_LABEL: Record<string, string> = {
+    yard_unpack: 'Yard unpack', supplier_unpack: 'Supplier unpack', storage: 'Storage depot', direct_delivery: 'Direct delivery',
+};
 
 // Container monitoring — from vessel/port through depot to empty turn-in.
 const ContainersView: React.FC = () => {
@@ -100,7 +105,7 @@ const ContainersView: React.FC = () => {
             <td className="p-2"><button onClick={() => showModal('logContainer', { container: c })} className="font-mono font-bold text-blue-600 hover:underline">{c.container_no}</button><div className="text-[11px] text-slate-400">{[c.size, c.weight ? `${c.weight} kg` : ''].filter(Boolean).join(' · ')}</div></td>
             <td className="p-2">{c.client_name || '—'}{c.client_ref ? <div className="text-[11px] text-slate-400">{c.client_ref}</div> : null}</td>
             <td className="p-2">{c.vessel_name || '—'}<div className="text-[11px] text-slate-400">ETA {fmt(c.eta_port)}</div></td>
-            <td className="p-2 text-xs">{c.plan === 'full_delivery' ? 'Full delivery' : 'Unpack'}</td>
+            <td className="p-2 text-xs">{c.route_plan ? ROUTE_LABEL[c.route_plan] || c.route_plan : (c.plan === 'full_delivery' ? 'Full delivery' : 'Unpack')}{(c.unpack_by || c.storage_depot) ? <div className="text-[10px] text-slate-400">{c.unpack_by || c.storage_depot}</div> : null}</td>
             <td className="p-2 text-xs">{c.branch || '—'}</td>
             <td className="p-2"><select value={c.status} onChange={e => setStatus(c, e.target.value)} className="bg-white border border-slate-300 rounded-md p-1 text-xs">{CONTAINER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
             <td className="p-2 text-xs">{c.turn_in_area || '—'}{c.turn_in_date ? <div className="text-[11px] text-slate-400">by {fmt(c.turn_in_date)}</div> : null}</td>

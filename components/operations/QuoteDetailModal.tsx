@@ -72,6 +72,9 @@ const QuoteDetailModal: React.FC<{
         <div className="p-6">
             {/* Header */}
             <div className="rounded-t-lg -m-6 mb-6 p-6 pb-4" style={{ background: NAVY }}>
+                <div className="bg-white rounded-lg inline-block px-2.5 py-1.5 mb-3">
+                    <img src="/fbn-logo.jpg" alt="FBN Transport" className="h-7 block" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                </div>
                 <div className="flex items-center justify-between">
                     <div>
                         <div className="text-xs font-bold uppercase tracking-widest" style={{ color: YELLOW }}>

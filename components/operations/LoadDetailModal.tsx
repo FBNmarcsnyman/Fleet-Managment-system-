@@ -184,17 +184,17 @@ const LoadDetailModal: React.FC = () => {
                     <p className="text-sm text-gray-400">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-900/40 text-blue-300">{lc.status}</span>}
-                    {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">📷 Capture</button>}
+                    {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">{lc.status}</span>}
+                    {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">📷 Capture</button>}
                     {!editing && <button onClick={whatsappDriver} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg">💬 WhatsApp Driver</button>}
-                    {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">📁 Documents</button>}
+                    {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">📁 Documents</button>}
                     {!editing && !lc.supplierId && (
-                        <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} title="Shipment going onward (e.g. to CPT) after collection — raise a subcontractor LoadCon; it then shows on the Broking board to keep updating." className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg">+ Onward transport → Broking</button>
+                        <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} title="Shipment going onward (e.g. to CPT) after collection — raise a subcontractor LoadCon; it then shows on the Broking board to keep updating." className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">+ Onward → Broking</button>
                     )}
                     {!editing
-                        ? <button onClick={startEdit} className="bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold py-1.5 px-3 rounded-lg">Edit</button>
-                        : <><button onClick={() => setEditing(false)} className="bg-gray-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg">Cancel</button>
-                           <button onClick={save} className="bg-brand-primary hover:bg-brand-secondary text-white text-xs font-bold py-1.5 px-3 rounded-lg">Save</button></>}
+                        ? <button onClick={startEdit} className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg">Edit</button>
+                        : <><button onClick={() => setEditing(false)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg">Cancel</button>
+                           <button onClick={save} className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">Save</button></>}
                 </div>
             </div>
 
@@ -363,11 +363,11 @@ const LoadDetailModal: React.FC = () => {
                         )}
                     </div>
                     {/* Electronic POD / waybill: choose how the signed POD comes back. */}
-                    <div className="mt-3 pt-3 border-t border-gray-700/50">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Get the signed POD / waybill back</p>
+                    <div className="mt-3 pt-3 border-t border-slate-200">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Get the signed POD / waybill back</p>
                         <div className="flex flex-wrap gap-2">
-                            <button onClick={emailWaybillToSupplier} disabled={waybillBusy} className="text-xs font-bold bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 disabled:opacity-50 py-1.5 px-3 rounded-lg">{waybillBusy ? 'Sending…' : '📄 Email waybill/POD to supplier'}</button>
-                            <button onClick={podToDriverWhatsApp} className="text-xs font-bold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 py-1.5 px-3 rounded-lg">💬 WhatsApp driver to sign &amp; upload</button>
+                            <button onClick={emailWaybillToSupplier} disabled={waybillBusy} className="text-xs font-bold bg-[#13294b] text-white hover:bg-[#1d3a66] disabled:opacity-50 py-2 px-3 rounded-lg">{waybillBusy ? 'Sending…' : '📄 Email waybill/POD to supplier'}</button>
+                            <button onClick={podToDriverWhatsApp} className="text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 py-2 px-3 rounded-lg">💬 WhatsApp driver to sign &amp; upload</button>
                         </div>
                         <p className="text-[10px] text-gray-500 mt-2">Use the waybill email when the supplier prints &amp; signs; use the driver WhatsApp link when the driver signs on-screen and uploads.</p>
                     </div>

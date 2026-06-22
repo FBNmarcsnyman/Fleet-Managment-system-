@@ -84,7 +84,7 @@ const DeliveriesDayView: React.FC = () => {
                         <div key={day} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                             <button onClick={() => setCollapsed(p => ({ ...p, [day]: !p[day] }))} className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border-b border-slate-200">
                                 <span className="font-black text-[#13294b] text-sm">{isCollapsed ? '▶' : '▼'} {dayLabel(day)} <span className="text-slate-400 font-semibold">· {list.length}</span></span>
-                                {out > 0 ? <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full uppercase">{out} POD out</span> : <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full uppercase">all PODs in</span>}
+                                {out > 0 ? <span className="text-[10px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full uppercase">{out} POD due</span> : <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full uppercase">all PODs in</span>}
                             </button>
                             {!isCollapsed && (
                                 <div className="divide-y divide-slate-100">
@@ -98,8 +98,8 @@ const DeliveriesDayView: React.FC = () => {
                                                     <span className="text-[11px] text-slate-400 truncate hidden sm:inline">{l.collectionPoint} → {l.deliveryPoint}</span>
                                                     {transporterOf(l) && <span className="text-[11px] text-slate-500 truncate hidden md:inline">· {transporterOf(l)}</span>}
                                                 </button>
-                                                <span className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded uppercase ${out ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{out ? 'POD out' : 'POD in'}</span>
-                                                {out && <button onClick={() => getPod(l)} className="shrink-0 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-1 px-2.5 rounded-lg">Get POD</button>}
+                                                <span className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded uppercase ${out ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{out ? 'POD due' : 'POD in'}</span>
+                                                {out && <button onClick={() => getPod(l)} className="shrink-0 text-[11px] font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-1 px-2.5 rounded-lg">Get POD</button>}
                                             </div>
                                         );
                                     })}

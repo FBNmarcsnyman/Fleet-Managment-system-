@@ -75,6 +75,15 @@ const LclStatusReport: React.FC = () => {
     };
     useEffect(() => { fetchRows(); /* eslint-disable-line */ }, [view, report]);
 
+    // Controllers (agent's people, e.g. Bongumusa @ DHL) — name → email/phone so
+    // we can push updates to the right person. Click a controller to add/edit.
+    const [controllers, setControllers] = useState<any[]>([]);
+    const loadControllers = async () => { const { data } = await directSelect('lcl_controllers?select=*&limit=2000'); setControllers(Array.isArray(data) ? data : []); };
+    useEffect(() => { loadControllers(); }, []);
+    const ctrlKey = (agent?: string, name?: string) => `${(agent || '').trim().toLowerCase()}|${(name || '').trim().toLowerCase()}`;
+    const controllerMap = useMemo(() => { const m = new Map<string, any>(); controllers.forEach(c => m.set(ctrlKey(c.agent, c.name), c)); return m; }, [controllers]);
+    const openController = (r: Lcl) => showModal('lclController', { agent: r.agent, name: r.controller, existing: controllerMap.get(ctrlKey(r.agent, r.controller)), onSaved: loadControllers });
+
     const reports = useMemo(() => ['All', ...new Set(rows.map(r => r.client_sheet).filter(Boolean))], [rows]);
     const depots = useMemo(() => ['All', ...new Set(rows.map(r => r.depot).filter(Boolean))].sort(), [rows]);
     const agents = useMemo(() => ['All', ...new Set(rows.map(r => r.agent).filter(Boolean))].sort(), [rows]);
@@ -229,7 +238,7 @@ const LclStatusReport: React.FC = () => {
                         <thead className="sticky top-0 bg-slate-100 text-slate-500 uppercase tracking-wider">
                             <tr>
                                 <th className="p-2 w-8"><input type="checkbox" checked={filtered.length > 0 && filtered.every(r => selIds.has(r.id))} onChange={e => setSelIds(e.target.checked ? new Set(filtered.map(r => r.id)) : new Set())} /></th>
-                                <th className="p-2">FBN DI</th><th className="p-2">Container / vessel</th><th className="p-2">ETA</th><th className="p-2">Depot</th><th className="p-2">Agent</th><th className="p-2">Consignee</th><th className="p-2">Commodity</th><th className="p-2 text-right">Pkgs</th><th className="p-2 text-right">Kg</th><th className="p-2 text-right">CBM</th><th className="p-2">Status</th><th className="p-2">Unpack</th><th className="p-2">Free-time</th><th className="p-2">Delivered</th>
+                                <th className="p-2">FBN DI</th><th className="p-2">Container / vessel</th><th className="p-2">ETA</th><th className="p-2">Depot</th><th className="p-2">Agent</th><th className="p-2">Controller</th><th className="p-2">Consignee</th><th className="p-2">Commodity</th><th className="p-2 text-right">Pkgs</th><th className="p-2 text-right">Kg</th><th className="p-2 text-right">CBM</th><th className="p-2">Status</th><th className="p-2">Unpack</th><th className="p-2">Free-time</th><th className="p-2">Delivered</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -243,6 +252,11 @@ const LclStatusReport: React.FC = () => {
                                         <td className="p-2">{fmtD(r.eta)}</td>
                                         <td className="p-2 font-bold text-[#13294b]">{r.depot || '—'}</td>
                                         <td className="p-2 font-semibold text-slate-700">{r.agent || '—'}</td>
+                                        <td className="p-2" onClick={e => { e.stopPropagation(); openController(r); }}>
+                                            {(() => { const c = controllerMap.get(ctrlKey(r.agent, r.controller)); const nm = r.controller || (c && c.name); return nm
+                                                ? <button className="text-left text-blue-600 hover:underline font-semibold">{nm}{c && (c.email || c.phone) ? <span className="block text-[10px] text-slate-400 font-normal">{[c.email, c.phone].filter(Boolean).join(' · ')}</span> : <span className="block text-[9px] text-amber-600 font-normal">add email/cell</span>}</button>
+                                                : <button className="text-[10px] text-blue-500 hover:underline">+ add</button>; })()}
+                                        </td>
                                         <td className="p-2">{r.consignee || '—'}</td>
                                         <td className="p-2 truncate max-w-[140px]">{r.commodity || '—'}</td>
                                         <td className="p-2 text-right">{r.qty ?? '—'}</td>
@@ -255,7 +269,7 @@ const LclStatusReport: React.FC = () => {
                                     </tr>
                                 );
                             })}
-                            {filtered.length === 0 && <tr><td colSpan={15} className="p-6 text-center text-slate-400">No shipments for this filter.</td></tr>}
+                            {filtered.length === 0 && <tr><td colSpan={16} className="p-6 text-center text-slate-400">No shipments for this filter.</td></tr>}
                         </tbody>
                     </table>
                 </div>

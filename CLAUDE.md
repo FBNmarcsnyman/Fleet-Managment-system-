@@ -26,6 +26,21 @@ consolidation process without being asked.** This includes:
 
 **Always end by asking the user: "Session consolidated. Ready to close?"**
 
+## Context reread (every 30 min) — see `context-reread-rule.md`
+
+On long sessions, every ~30 minutes (or before touching emails, a deploy, a schema change,
+or building something that may already exist) re-read CLAUDE.md, PROJECT_BRIEF.md, the
+relevant memory, and the latest change-log entry. Prevents drift/duplication.
+
+## Email & form changes — see `validation-loop.md`
+
+Run the email/form validation loop after any change to an email, document, or load form.
+
+## Load data audit — `.claude/agents/load-audit.md`
+
+Use the `load-audit` subagent to scan `load_confirmations` / `lcl_shipments` for integrity
+issues (hidden brokered loads, missing delivery date, stalled transit, storage-charge risk).
+
 ## Deploy (CRITICAL — see memory `deploy-promote-to-main`)
 
 - Live site = Cloudflare Worker `fleet-managment-system` serving `./dist` (SPA), built by

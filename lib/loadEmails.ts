@@ -20,7 +20,6 @@ const table = (rows: [string, string | undefined][]) => {
         .map(([k, v]) => `<tr><td style="${lblTd}">${k}</td><td style="${valTd}">${v}</td></tr>`).join('');
     return body ? `<table style="border-collapse:collapse;margin:6px 0 14px">${body}</table>` : '';
 };
-const subjLoc = (lc: any, a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
 // Split a comma/semicolon list of CC emails into clean array entries.
 export const splitEmails = (s?: string): string[] => String(s || '').split(/[,;]/).map(t => t.trim()).filter(Boolean);
 
@@ -66,8 +65,10 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
       <p>Regards,<br>FBN Transport</p>`);
     try {
         // Subbie LoadCon: cc the subbie docs team + ops — strip any CLIENT address.
+        // Subject uses route localities only — NEVER the client name (a subcontractor
+        // must not learn the client's identity).
         const cc = dropAddrs(['loadcons@fbn-transport.co.za', ...splitEmails(lc.ccEmail)], lc_clientAddrs(lc));
-        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${collLoc} to ${delLoc}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
     if (b64) { void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: b64, name: 'LoadCon.pdf', kind: 'loadcon', contentType: 'application/pdf' }] }); }

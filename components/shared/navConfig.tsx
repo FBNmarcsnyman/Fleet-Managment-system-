@@ -35,7 +35,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
 
 // Sub-views (in-portal tabs) that belong to the Operations (consolidation) side.
 // Everything else in the Operations portal is Broking.
-export const OPS_SUBVIEWS = ['opsDashboard', 'shipments', 'imports', 'containers'];
+export const OPS_SUBVIEWS = ['opsDashboard', 'shipments', 'imports', 'containers', 'depotStatus'];
 
 // Admin / setup items, shown at the foot of the sidebar.
 export const SETTINGS_NAV_ITEMS: NavItem[] = [

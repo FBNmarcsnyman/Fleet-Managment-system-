@@ -75,6 +75,29 @@ export const CONTAINER_DOC_SCHEMA = {
     required: ['container_no'],
 };
 
+export const DEPOT_DOC_PROMPT =
+    'This is a shipping / clearing / cargo dip (drop) note for LCL break-bulk cargo unpacked at a container depot. ' +
+    'Extract the shipment details. Use empty strings for anything not present. Dates as YYYY-MM-DD.';
+
+export const DEPOT_DOC_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        client_name: { type: Type.STRING, description: 'Consignee / customer name' },
+        client_ref: { type: Type.STRING, description: 'Customer or booking reference' },
+        house_bill: { type: Type.STRING, description: 'House bill of lading number (HBL)' },
+        vessel_name: { type: Type.STRING, description: 'Vessel / ship name' },
+        shipping_line: { type: Type.STRING, description: 'Shipping line / carrier' },
+        eta_port: { type: Type.STRING, description: 'ETA / arrival date, YYYY-MM-DD' },
+        commodity: { type: Type.STRING, description: 'Goods / commodity description' },
+        packages: { type: Type.STRING, description: 'Number of packages / pieces, digits only' },
+        weight: { type: Type.STRING, description: 'Weight in kg, digits only' },
+        cube: { type: Type.STRING, description: 'Volume / cubic metres (CBM), digits only' },
+        delivery_point: { type: Type.STRING, description: 'Delivery address / destination' },
+        depot: { type: Type.STRING, description: 'Unpack / container depot name' },
+    },
+    required: [],
+};
+
 // ---- Cartage advice / delivery order (the road-transport instruction) ----
 // One job: collect from A, deliver to B. Works for FCL (collect from a port
 // terminal) and LCL (collect from an unpack depot like ZACPAK).

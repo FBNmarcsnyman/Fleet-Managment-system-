@@ -346,11 +346,14 @@ export interface Contact {
     // Which emails this person receives, each independently toggleable:
     //  getsDocs    = the order doc — for a CLIENT that's the Client Order; for a
     //                SUBCONTRACTOR that's the LoadCon. (A client NEVER gets a LoadCon.)
-    //  getsPod     = the signed POD.
+    //  getsPod     = the signed POD (the copy to SIGN at delivery, for a subbie).
+    //  getsPodUpload = NOT sent the POD to sign, but reminded to UPLOAD the POD /
+    //                docs once delivery is complete (e.g. accounts, back in office).
     //  getsUpdates = the running status updates.
     // Undefined = legacy (treated as both docs + updates for the main contact).
     getsDocs?: boolean;
     getsPod?: boolean;
+    getsPodUpload?: boolean;
     getsUpdates?: boolean;
 }
 
@@ -548,6 +551,7 @@ export interface LoadConfirmation {
     subcontractorEmail?: string;
     podEmail?: string;
     ccEmail?: string;
+    podUploadEmail?: string; // contacts reminded to UPLOAD the POD once delivered (e.g. accounts)
     delayReason?: string;
     eta?: string;
 }

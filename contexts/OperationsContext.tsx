@@ -252,7 +252,10 @@ export const sendAmendedLoadConEmail = async (lc: any, changed: string[]): Promi
 };
 
 export const sendPodRequestEmail = async (lc: any): Promise<void> => {
-    const to = lc?.subcontractorEmail;
+    // The carrier's main email is the To; the upload-POD contacts (accounts etc.)
+    // are CC'd here — this is the ONLY email they're added to.
+    const podUploadCc = String(lc?.podUploadEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
+    const to = lc?.subcontractorEmail || podUploadCc[0];
     if (!to) return;
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
@@ -264,7 +267,7 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
       <p>Thank you,<br>FBN Transport</p>`);
     try {
         await invokeFn('send-email', {
-            body: { to, cc: [...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, 'Delivered')], subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+            body: { to, cc: [...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...podUploadCc.filter((e: string) => e.toLowerCase() !== String(to).toLowerCase()), ...opsCcForPhase(lc, 'Delivered')], subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
         });
     } catch (e) {
         console.error('[ops] auto POD request failed:', e);
@@ -698,8 +701,12 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     .map(c => c.email);
                 const _docsCc = _pick(c => c.getsDocs);
                 const _updCc = _pick(c => c.getsUpdates);
+                // Upload-POD contacts (e.g. accounts) — only reminded to UPLOAD the
+                // POD once delivered; never on the LoadCon / status emails.
+                const _podUpCc = _pick(c => c.getsPodUpload);
                 if (_docsCc.length) (row as any).cc_email = _docsCc.join(', ');
                 (row as any).cc_updates = _updCc.length ? _updCc.join(', ') : null;
+                (row as any).pod_upload_email = _podUpCc.length ? _podUpCc.join(', ') : null;
                 // Client team CC: all the client's other saved contact emails, so the
                 // whole client team is copied on the order + every status update.
                 const _client = (stateRef.current.clients || []).find((c: any) => (data.clientId && c.id === data.clientId) || (c.name || '').toLowerCase() === (data.clientName || '').toLowerCase());

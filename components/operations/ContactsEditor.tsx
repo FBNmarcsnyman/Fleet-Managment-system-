@@ -28,7 +28,8 @@ const ContactsEditor: React.FC<{
             // updates, Accounts gets order/loadcon + POD only, others updates only.
             if (field === 'role' && c.getsDocs === undefined && c.getsUpdates === undefined && c.getsPod === undefined) {
                 const r = value.toLowerCase();
-                if (r.includes('account')) { merged.getsDocs = true; merged.getsPod = true; merged.getsUpdates = false; }
+                // Accounts: doesn't sign the POD, but uploads it when back in the office.
+                if (r.includes('account')) { merged.getsDocs = true; merged.getsPod = false; merged.getsPodUpload = true; merged.getsUpdates = false; }
                 else if (r.includes('controller')) { merged.getsDocs = true; merged.getsPod = true; merged.getsUpdates = true; }
                 else if (r.includes('pod') || r.includes('doc')) { merged.getsDocs = false; merged.getsPod = true; merged.getsUpdates = false; }
                 else { merged.getsDocs = false; merged.getsPod = false; merged.getsUpdates = true; }
@@ -37,7 +38,7 @@ const ContactsEditor: React.FC<{
         });
         onChange(next);
     };
-    const toggle = (i: number, field: 'getsDocs' | 'getsPod' | 'getsUpdates') => {
+    const toggle = (i: number, field: 'getsDocs' | 'getsPod' | 'getsPodUpload' | 'getsUpdates') => {
         onChange(contacts.map((c, idx) => idx === i ? { ...c, [field]: !(c[field] ?? false) } : c));
     };
     const add = () => onChange([...contacts, { name: '', email: '', phone: '', getsDocs: true, getsPod: true, getsUpdates: true }]);
@@ -71,6 +72,7 @@ const ContactsEditor: React.FC<{
                         <span className="uppercase tracking-wider text-gray-500">Send them:</span>
                         <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsDocs ?? false} onChange={() => toggle(i, 'getsDocs')} /> {docLabel}</label>
                         <label className="flex items-center gap-1.5 cursor-pointer" title={kind === 'client' ? 'The final signed POD, after delivery' : 'The digital POD to sign at delivery & upload back'}><input type="checkbox" checked={c.getsPod ?? false} onChange={() => toggle(i, 'getsPod')} /> {podLabel}</label>
+                        {kind !== 'client' && <label className="flex items-center gap-1.5 cursor-pointer" title="Not sent the POD to sign — gets a separate reminder to UPLOAD the POD/docs once delivered (e.g. accounts back in office)"><input type="checkbox" checked={c.getsPodUpload ?? false} onChange={() => toggle(i, 'getsPodUpload')} /> Upload POD</label>}
                         <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsUpdates ?? false} onChange={() => toggle(i, 'getsUpdates')} /> Status updates</label>
                     </div>
                 </div>

@@ -52,17 +52,17 @@ const GlobalSearch: React.FC = () => {
     const openPartners = () => { close(); handleViewChange('partners'); };
 
     const Group: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-        <div className="border-b border-gray-700/50 last:border-0">
-            <div className="px-4 py-2 text-[10px] font-black tracking-widest text-gray-500 uppercase bg-gray-900/40">{title}</div>
+        <div className="border-b border-slate-200 last:border-0">
+            <div className="px-4 py-2 text-[10px] font-black tracking-widest text-slate-500 uppercase bg-slate-100">{title}</div>
             {children}
         </div>
     );
     const Row: React.FC<{ onClick: () => void; accent: string; icon: React.ReactNode; title: string; sub?: string }> = ({ onClick, accent, icon, title, sub }) => (
-        <div onClick={onClick} className="px-4 py-2.5 hover:bg-gray-700/40 cursor-pointer flex items-center group transition-all">
-            <div className={`p-2 rounded-lg mr-3 ${accent}`}>{icon}</div>
+        <div onClick={onClick} className="px-4 py-2.5 hover:bg-slate-100 cursor-pointer flex items-center group transition-all">
+            <div className={`p-2 rounded-lg mr-3 shrink-0 ${accent}`}>{icon}</div>
             <div className="truncate min-w-0">
-                <p className="text-sm font-bold text-gray-100 truncate">{title}</p>
-                {sub && <p className="text-xs text-gray-500 truncate">{sub}</p>}
+                <p className="text-sm font-bold text-slate-900 truncate">{title}</p>
+                {sub && <p className="text-xs text-slate-500 truncate">{sub}</p>}
             </div>
         </div>
     );
@@ -89,8 +89,8 @@ const GlobalSearch: React.FC = () => {
             </div>
 
             {isOpen && query.trim().length >= 2 && (
-                <div className="absolute top-full mt-3 w-full bg-gray-800/98 backdrop-blur-2xl rounded-2xl shadow-2xl border border-gray-700/60 overflow-hidden z-[130] max-h-[34rem] overflow-y-auto ring-1 ring-black/40">
-                    {!hasResults && <div className="p-6 text-gray-400 text-sm text-center italic">No matching records found.</div>}
+                <div className="absolute top-full mt-3 w-full bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[130] max-h-[34rem] overflow-y-auto ring-1 ring-black/5">
+                    {!hasResults && <div className="p-6 text-slate-400 text-sm text-center italic">No matching records found.</div>}
 
                     {results.loads.length > 0 && (
                         <Group title="Loads / Waybills">

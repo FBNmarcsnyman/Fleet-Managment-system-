@@ -14,6 +14,8 @@ interface DepotShipment {
 }
 
 const DONE = ['Delivered', 'Empty Turned In'];
+// Cargo that is unpacked and sitting at the depot, ready/planned to be collected.
+const COLLECTABLE = ['Unpacked', 'Collection Booked'];
 
 // LCL depot status report — drop/clearing doc, cargo details, live status and
 // the storage free-time countdown (3 days incl. unpack; 1 day for hazardous).
@@ -27,6 +29,8 @@ const DepotShipmentsView: React.FC = () => {
     const [tab, setTab] = useState<'active' | 'attention' | 'all'>('active');
     const [sort, setSort] = useState<'eta' | 'client' | 'deadline'>('eta');
     const [groupClient, setGroupClient] = useState(false);
+    const [mode, setMode] = useState<'report' | 'plan'>('report');
+    const [openDepot, setOpenDepot] = useState<string | null>(null);
 
     const load = async () => {
         setLoading(true);
@@ -95,6 +99,28 @@ const DepotShipmentsView: React.FC = () => {
         return m;
     }, [filtered]);
 
+    // Collection plan: cargo ready to collect, grouped by the unpack depot we
+    // collect from, with the day's totals per depot (shipments / pkg / kg / m³).
+    const depotPlan = useMemo(() => {
+        const term = q.trim().toLowerCase();
+        const m: Record<string, { depot: string; items: DepotShipment[]; pkg: number; wt: number; cube: number; due: number }> = {};
+        rows.filter(s => COLLECTABLE.includes(s.status)).forEach(s => {
+            if (term && !`${s.client_name || ''} ${s.house_bill || ''} ${s.vessel_name || ''} ${s.client_ref || ''} ${s.depot || ''} ${s.commodity || ''}`.toLowerCase().includes(term)) return;
+            const k = (s.depot || '').trim() || '— No depot set —';
+            if (!m[k]) m[k] = { depot: k, items: [], pkg: 0, wt: 0, cube: 0, due: 0 };
+            const g = m[k];
+            g.items.push(s);
+            g.pkg += Number(s.packages) || 0;
+            g.wt += Number(s.weight) || 0;
+            g.cube += Number(s.cube) || 0;
+            const d = daysToDeadline(s);
+            if (d !== null && d <= 0) g.due += 1;
+        });
+        return Object.values(m).sort((a, b) => b.items.length - a.items.length || a.depot.localeCompare(b.depot));
+    }, [rows, q]);
+    const planTotals = useMemo(() => depotPlan.reduce((t, g) => ({ ship: t.ship + g.items.length, pkg: t.pkg + g.pkg, wt: t.wt + g.wt, cube: t.cube + g.cube }), { ship: 0, pkg: 0, wt: 0, cube: 0 }), [depotPlan]);
+    const num = (n: number) => n.toLocaleString('en-ZA', { maximumFractionDigits: 2 });
+
     const counts = useMemo(() => {
         const active = rows.filter(s => !DONE.includes(s.status));
         return {
@@ -136,6 +162,13 @@ const DepotShipmentsView: React.FC = () => {
                 {card('Active', counts.active, 'text-slate-800')}
             </div>
 
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit mb-3">
+                {([['report', 'Status report'], ['plan', 'Collection plan']] as [typeof mode, string][]).map(([v, l]) => (
+                    <button key={v} onClick={() => setMode(v)} className={chip(mode === v)}>{l}</button>
+                ))}
+            </div>
+
+            {mode === 'report' ? (<>
             <div className="flex gap-2 mb-3 flex-wrap items-center">
                 <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
                     {([['active', 'Active'], ['attention', 'Needs collection'], ['all', 'All']] as [typeof tab, string][]).map(([v, l]) => (
@@ -184,6 +217,65 @@ const DepotShipmentsView: React.FC = () => {
                             })}
                         </tbody>
                     </table>
+                </div>
+            )}
+            </>) : (
+                <div>
+                    <p className="text-xs text-slate-500 mb-3">Unpacked cargo ready to collect, grouped by the unpack depot we collect from. Click a depot to see its shipments.{q.trim() ? ' Filtered by your search.' : ''}</p>
+                    {depotPlan.length === 0 ? <p className="text-center text-slate-400 py-12">No cargo ready for collection.</p> : (
+                        <>
+                            <div className="flex flex-wrap gap-3 mb-4 text-xs font-bold text-slate-600">
+                                <span className="bg-slate-100 rounded-md px-3 py-1.5"><span className="text-slate-900 font-black">{depotPlan.length}</span> depot{depotPlan.length === 1 ? '' : 's'}</span>
+                                <span className="bg-slate-100 rounded-md px-3 py-1.5"><span className="text-slate-900 font-black">{planTotals.ship}</span> shipments</span>
+                                <span className="bg-slate-100 rounded-md px-3 py-1.5"><span className="text-slate-900 font-black">{num(planTotals.pkg)}</span> pkg</span>
+                                <span className="bg-slate-100 rounded-md px-3 py-1.5"><span className="text-slate-900 font-black">{num(planTotals.wt)}</span> kg</span>
+                                <span className="bg-slate-100 rounded-md px-3 py-1.5"><span className="text-slate-900 font-black">{num(planTotals.cube)}</span> m³</span>
+                            </div>
+                            <div className="space-y-3 max-h-[58vh] overflow-y-auto">
+                                {depotPlan.map(g => {
+                                    const open = openDepot === g.depot;
+                                    return (
+                                        <div key={g.depot} className="border border-slate-200 rounded-xl overflow-hidden">
+                                            <button onClick={() => setOpenDepot(open ? null : g.depot)} className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 text-left">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="text-slate-400">{open ? '▾' : '▸'}</span>
+                                                    <span className="font-black text-slate-900 truncate">{g.depot}</span>
+                                                    {g.due > 0 ? <span className="text-[10px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded whitespace-nowrap">{g.due} due/overdue</span> : null}
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 text-[11px] font-bold text-slate-600 justify-end">
+                                                    <span className="bg-white border border-slate-200 rounded px-2 py-0.5"><span className="text-slate-900 font-black">{g.items.length}</span> ship</span>
+                                                    <span className="bg-white border border-slate-200 rounded px-2 py-0.5"><span className="text-slate-900 font-black">{num(g.pkg)}</span> pkg</span>
+                                                    <span className="bg-white border border-slate-200 rounded px-2 py-0.5"><span className="text-slate-900 font-black">{num(g.wt)}</span> kg</span>
+                                                    <span className="bg-white border border-slate-200 rounded px-2 py-0.5"><span className="text-slate-900 font-black">{num(g.cube)}</span> m³</span>
+                                                </div>
+                                            </button>
+                                            {open && (
+                                                <table className="w-full text-left text-sm">
+                                                    <thead className="bg-white text-slate-400 text-[11px] uppercase tracking-wider"><tr>
+                                                        <th className="p-2 pl-9">Client / HBL</th><th className="p-2">Cargo</th><th className="p-2">Status</th><th className="p-2">Free-time</th><th className="p-2">Delivery</th>
+                                                    </tr></thead>
+                                                    <tbody>
+                                                        {g.items.map(s => {
+                                                            const dl = deadlineLabel(s);
+                                                            return (
+                                                                <tr key={s.id} className="border-t border-slate-100 hover:bg-slate-50 text-slate-700">
+                                                                    <td className="p-2 pl-9"><button onClick={() => showModal('logDepotShipment', { shipment: s })} className="font-bold text-blue-600 hover:underline">{s.client_name || '—'}</button>{s.hazardous ? <span className="ml-1 text-[9px] font-black bg-red-100 text-red-700 px-1 rounded">HAZ</span> : null}<div className="text-[11px] text-slate-400">{[s.house_bill, s.client_ref].filter(Boolean).join(' · ') || '—'}</div></td>
+                                                                    <td className="p-2 text-xs">{[s.packages ? `${s.packages} pkg` : '', s.weight ? `${s.weight} kg` : '', s.cube ? `${s.cube} m³` : ''].filter(Boolean).join(' · ') || '—'}<div className="text-[11px] text-slate-400 truncate max-w-[160px]">{s.commodity || ''}</div></td>
+                                                                    <td className="p-2"><select value={s.status} onChange={e => setStatus(s, e.target.value)} className="bg-white border border-slate-300 rounded-md p-1 text-xs">{DEPOT_SHIPMENT_STATUSES.map(x => <option key={x} value={x}>{x}</option>)}</select></td>
+                                                                    <td className="p-2 text-xs">{dl ? <span className={`text-[10px] font-black px-2 py-0.5 rounded ${dlTone(dl.tone)}`}>{dl.text}</span> : '—'}</td>
+                                                                    <td className="p-2 text-xs">{s.delivery_point || '—'}</td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>

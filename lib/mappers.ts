@@ -630,6 +630,11 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     podEmail: row.pod_email ?? undefined,
     ccEmail: row.cc_email ?? undefined,
     podUploadEmail: (row as any).pod_upload_email ?? undefined,
+    transitDepot: (row as any).transit_depot ?? undefined,
+    transitReceivedAt: (row as any).transit_received_at ?? undefined,
+    onwardCarrierType: (row as any).onward_carrier_type ?? undefined,
+    onwardPlannedDate: (row as any).onward_planned_date ?? undefined,
+    onwardPlannedTime: (row as any).onward_planned_time ?? undefined,
     updateCc: (row as any).cc_updates ?? undefined,
     clientCc: (row as any).client_cc ?? undefined,
     delayReason: row.delay_reason ?? undefined,
@@ -1377,6 +1382,11 @@ export const toLoadConfirmationUpdate = (
     if (updates.podEmail !== undefined) row.pod_email = updates.podEmail ?? null;
     if (updates.ccEmail !== undefined) row.cc_email = updates.ccEmail ?? null;
     if ((updates as any).podUploadEmail !== undefined) (row as any).pod_upload_email = (updates as any).podUploadEmail ?? null;
+    if ((updates as any).transitDepot !== undefined) (row as any).transit_depot = (updates as any).transitDepot ?? null;
+    if ((updates as any).transitReceivedAt !== undefined) (row as any).transit_received_at = (updates as any).transitReceivedAt ?? null;
+    if ((updates as any).onwardCarrierType !== undefined) (row as any).onward_carrier_type = (updates as any).onwardCarrierType ?? null;
+    if ((updates as any).onwardPlannedDate !== undefined) (row as any).onward_planned_date = (updates as any).onwardPlannedDate ?? null;
+    if ((updates as any).onwardPlannedTime !== undefined) (row as any).onward_planned_time = (updates as any).onwardPlannedTime ?? null;
     if ((updates as any).updateCc !== undefined) (row as any).cc_updates = (updates as any).updateCc ?? null;
     if (updates.clientName !== undefined) row.client_name = updates.clientName ?? null;
     if (updates.clientContact !== undefined) row.client_contact = updates.clientContact ?? null;

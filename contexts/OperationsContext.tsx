@@ -720,6 +720,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const _isPast = (d?: string) => { if (!d) return false; const dt = new Date(d); return !isNaN(dt.getTime()) && dt < _today0; };
                 const backDated = _isPast(data.collectionDate) && _isPast(data.deliveryDate);
                 if (backDated) { row.status = 'Delivered'; (row as any).back_dated = true; }
+                if ((data as any).transitDepot) { (row as any).transit_depot = (data as any).transitDepot; (row as any).onward_planned_date = (data as any).onwardPlannedDate || null; (row as any).onward_planned_time = (data as any).onwardPlannedTime || null; }
                 if (data.isCollection) (row as any).is_collection = true;
                 if (data.repEmail) (row as any).rep_email = data.repEmail;
                 if (data.collectionRef) (row as any).collection_ref = data.collectionRef;
@@ -874,6 +875,20 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                           ${emailButton(`${base}?accept=${id}`, 'Assign delivery driver &amp; ETA &rarr;', '#16a34a')}
                           <p>Regards,<br>FBN Transport</p>`);
                         void invokeFn('send-email', { body: { to: opsEmail(m.destinationBranch), cc: [opsEmail(m.collectionBranch), OPS_GENERAL], subject: `HANDOVER ${m.loadConNumber} at ${m.destinationBranch} - arrange delivery`, html, fromName: 'FBN Transport' } });
+                    }
+                }
+                // Transit depot: when leg 1 is received at the cross-dock, notify the
+                // TRANSIT depot ops to plan the onward leg (cc the final-region ops).
+                if ((updates as any).transitReceivedAt && !(prev as any)?.transitReceivedAt) {
+                    const m = { ...(prev || {}), ...updates, id } as any;
+                    if (m.transitDepot) {
+                        const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+                        const finalReg = (m.destinationBranch || '').replace('FBN ', '') || (m.deliveryPoint || '');
+                        const html = brandedEmail(`<p><strong>Received at transit depot — onward delivery to plan.</strong></p>
+                          <p>Load <strong>${m.loadConNumber}</strong> for <strong>${m.clientName || ''}</strong> has been received at the <strong>${m.transitDepot}</strong> depot and needs the onward leg to <strong>${finalReg}</strong> planned (assign FBN fleet or a subbie + delivery date/time).</p>
+                          ${emailButton(`${base}?track=${id}`, 'Open the load &rarr;', '#16a34a')}
+                          <p>Regards,<br>FBN Transport</p>`);
+                        void invokeFn('send-email', { body: { to: opsEmail(m.transitDepot), cc: [opsEmail(m.destinationBranch), OPS_GENERAL], subject: `TRANSIT ${m.loadConNumber} received at ${m.transitDepot} - plan onward to ${finalReg}`, html, fromName: 'FBN Transport' } });
                     }
                 }
                 // Auto-fire the POD request the moment a load becomes Delivered

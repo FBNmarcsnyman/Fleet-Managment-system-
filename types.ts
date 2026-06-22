@@ -552,6 +552,13 @@ export interface LoadConfirmation {
     podEmail?: string;
     ccEmail?: string;
     podUploadEmail?: string; // contacts reminded to UPLOAD the POD once delivered (e.g. accounts)
+    // Multi-leg via a TRANSIT depot: leg 1 (subbie) collects and drops at the
+    // transit depot; FBN then plans the onward leg to the final delivery.
+    transitDepot?: string;          // e.g. 'FBN JHB' — where leg 1 ends / cross-docks
+    transitReceivedAt?: string;     // ISO timestamp the cargo was received at the transit depot
+    onwardCarrierType?: 'fleet' | 'subbie'; // how the onward leg is being carried
+    onwardPlannedDate?: string;     // planned final-delivery date (set at the transit depot)
+    onwardPlannedTime?: string;
     delayReason?: string;
     eta?: string;
 }

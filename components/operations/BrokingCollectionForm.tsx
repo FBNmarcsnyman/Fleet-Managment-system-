@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Client, Contact, Supplier } from '../../types';
+import { Client, Contact, Supplier, Branch } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import { directInsert } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
@@ -7,6 +7,9 @@ import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
 
 const VEHICLE_SIZES = ['1 TON', '1.5 TON', '4 TON', '8 TON', 'LDV', 'FLATBED', 'TAUTLINER', 'TRI-AXLE', 'SUPERLINK', 'LINK', 'TANKER', 'REEFER'];
+const FBN_BRANCHES: { code: Branch; label: string }[] = [
+    { code: 'FBN CPT', label: 'Cape Town' }, { code: 'FBN JHB', label: 'Johannesburg' }, { code: 'FBN DBN', label: 'Durban' },
+];
 const CONTAINER_SIZES = ['20FT', '40FT', '40HC', '45FT', 'REEFER 20FT', 'REEFER 40FT', 'FLAT RACK', 'OPEN TOP'];
 
 // Quick BROKING collection — the mirror of the ops Quick Collection, but the job
@@ -41,6 +44,12 @@ const BrokingCollectionForm: React.FC = () => {
     const [supContact, setSupContact] = useState('');
     const [supCc, setSupCc] = useState('');
     const [rate, setRate] = useState('');
+    // Route via a TRANSIT depot: subbie collects → drops at an FBN depot → FBN
+    // plans the onward leg to the final delivery. (e.g. CPT → FBN JHB → DBN.)
+    const [transitVia, setTransitVia] = useState(false);
+    const [transitDepot, setTransitDepot] = useState<Branch>('FBN JHB');
+    const [collBranch, setCollBranch] = useState<Branch>('FBN CPT');
+    const [delBranch, setDelBranch] = useState<Branch>('FBN DBN');
     // Container collection (FCL): capture the box details + empty turn-in.
     const [isContainer, setIsContainer] = useState(false);
     const [ctrNo, setCtrNo] = useState('');
@@ -93,6 +102,9 @@ const BrokingCollectionForm: React.FC = () => {
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Delivery' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint, collectionDate,
             loadRefNo: loadRefNo ? loadRefNo.toUpperCase() : undefined,
+            // Transit-depot routing: cross-branch so the depot flow fires, and the
+            // subbie's leg-1 LoadCon delivers to the transit depot (not the final).
+            ...(transitVia ? { transitDepot, collectionBranch: collBranch, destinationBranch: delBranch, arrangingBranch: collBranch } : {}),
             loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (vehicleSize || undefined),
             specialInstructions: containerNote || undefined,
             packaging: packages ? `${packages}` : undefined,
@@ -145,7 +157,24 @@ const BrokingCollectionForm: React.FC = () => {
                 </div>
                 <div><label className={lbl}>FBN DI / Waybill no</label><input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={inp} placeholder="manual waybill / DI no (for tracking + invoicing)" /></div>
                 <div><label className={lbl}>Collect from *</label><AddressAutocompleteInput value={collectionPoint} onChange={setCollectionPoint} placeholder="Search address…" required className={inp} /></div>
-                <div><label className={lbl}>Deliver to</label><AddressAutocompleteInput value={deliveryPoint} onChange={setDeliveryPoint} placeholder="Search address…" className={inp} /></div>
+                <div><label className={lbl}>Deliver to {transitVia ? '(FINAL destination)' : ''}</label><AddressAutocompleteInput value={deliveryPoint} onChange={setDeliveryPoint} placeholder="Search address…" className={inp} /></div>
+
+                <div className="border-t border-gray-700 pt-3">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
+                        <input type="checkbox" checked={transitVia} onChange={e => setTransitVia(e.target.checked)} /> 🔄 Route via a transit depot (cross-dock)
+                    </label>
+                    {transitVia && (
+                        <div className="mt-3 space-y-3">
+                            <p className="text-[11px] text-purple-300">Subbie collects &amp; drops at the transit depot; FBN then plans the onward leg to the final delivery.</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div><label className={lbl}>Collecting area</label><select value={collBranch} onChange={e => setCollBranch(e.target.value as Branch)} className={inp}>{FBN_BRANCHES.map(b => <option key={b.code} value={b.code}>{b.label}</option>)}</select></div>
+                                <div><label className={lbl}>Transit depot</label><select value={transitDepot} onChange={e => setTransitDepot(e.target.value as Branch)} className={inp}>{FBN_BRANCHES.map(b => <option key={b.code} value={b.code}>{b.label}</option>)}</select></div>
+                                <div><label className={lbl}>Final delivery area</label><select value={delBranch} onChange={e => setDelBranch(e.target.value as Branch)} className={inp}>{FBN_BRANCHES.map(b => <option key={b.code} value={b.code}>{b.label}</option>)}</select></div>
+                            </div>
+                            <p className="text-[11px] text-gray-400">Leg 1 (subbie): <strong className="text-gray-200">{collBranch.replace('FBN ', '')} → {transitDepot}</strong> · Leg 2 (FBN plans): <strong className="text-gray-200">{transitDepot} → {delBranch.replace('FBN ', '')}</strong></p>
+                        </div>
+                    )}
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div><label className={lbl}>Packages</label><input value={packages} onChange={e => setPackages(e.target.value)} className={inp} placeholder="e.g. 12" /></div>
                     <div><label className={lbl}>Deck space</label><input value={deckSpace} onChange={e => setDeckSpace(e.target.value)} className={inp} placeholder="e.g. 6 m" /></div>

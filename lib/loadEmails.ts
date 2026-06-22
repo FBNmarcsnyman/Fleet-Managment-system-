@@ -48,18 +48,32 @@ const isDelivered = (lc: any): boolean => {
 
 type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };
 
+// FBN depot addresses for transit-depot legs (subbie drops here, FBN runs onward).
+const DEPOT_ADDR: Record<string, string> = {
+    'FBN JHB': 'FBN TRANSPORT, 307 KREUPELHOUT STREET, WADEVILLE, GERMISTON',
+    'FBN DBN': 'FBN TRANSPORT, 463 SYDNEY ROAD, CONGELLA, DURBAN',
+    'FBN CPT': 'FBN TRANSPORT, CAPE TOWN',
+};
+// Where the SUBBIE delivers: the transit depot when routing via one, else the final door.
+const subbieDeliveryPoint = (lc: any): string => lc.transitDepot ? (DEPOT_ADDR[lc.transitDepot] || `${lc.transitDepot} DEPOT`) : (lc.deliveryPoint || '');
+
 // LoadCon → subcontractor (their copy, with the transport rate + accept link).
 export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent> {
     const dest = (to ?? lc.subcontractorEmail ?? '').trim();
     if (!dest) return { ok: false, error: 'No transporter email.' };
+    // For a transit-depot leg the subbie's job ENDS at the depot — show that as
+    // their delivery on both the email and the attached LoadCon PDF.
+    const subDel = subbieDeliveryPoint(lc);
+    const lcForPdf = lc.transitDepot ? { ...lc, deliveryPoint: subDel } : lc;
     let attachments: any[] | undefined; let b64: string | undefined; let pdfFailed = false;
-    try { const r = await buildLoadConPdf(lc, 'loadcon'); b64 = r.base64; attachments = [{ filename: r.filename, content: r.base64, contentType: 'application/pdf' }]; }
+    try { const r = await buildLoadConPdf(lcForPdf, 'loadcon'); b64 = r.base64; attachments = [{ filename: r.filename, content: r.base64, contentType: 'application/pdf' }]; }
     catch (e) { console.error('[loadEmails] loadcon pdf', e); pdfFailed = true; }
-    const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
+    const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(subDel);
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
       <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
-      ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(lc.deliveryPoint)], ['Loading date', fmtD(lc.collectionDate)], ['Loading time', lc.loadingTime], ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Transport rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
+      ${lc.transitDepot ? `<p style="background:#eef2ff;border-radius:8px;padding:10px;color:#3730a3;font-size:13px"><strong>Delivery is to our ${lc.transitDepot} depot</strong> — FBN arranges the onward leg from there. Please offload at the depot and obtain a receipt.</p>` : ''}
+      ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(subDel)], ['Loading date', fmtD(lc.collectionDate)], ['Loading time', lc.loadingTime], ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Transport rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
       ${isDelivered(lc)
         ? `<p>This load has already been <strong>delivered</strong>. Please view the Load Confirmation above for your records and <strong>upload the signed POD</strong> to close it off.</p>
       ${emailButton(`${base()}?pod=${lc.id}`, 'Upload signed POD &rarr;', '#16a34a')}
@@ -95,8 +109,10 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
         ['Your reference', lc.customerOrderNumber],
         ['Collection', withMap(lc.collectionPoint)],
         ['Delivery', withMap(lc.deliveryPoint)],
+        ['Routing', lc.transitDepot ? `${shortLoc(lc.collectionPoint)} &rarr; via our ${lc.transitDepot} depot &rarr; ${shortLoc(lc.deliveryPoint)}` : ''],
         ['Loading date', fmtD(lc.collectionDate)],
         ['Loading time', lc.loadingTime],
+        ['Planned final delivery', lc.transitDepot && lc.onwardPlannedDate ? `${fmtD(lc.onwardPlannedDate)}${lc.onwardPlannedTime ? ' ' + lc.onwardPlannedTime : ''}` : ''],
         ['Offloading date', fmtD(lc.deliveryDate)],
         ['Load type / size', lc.loadType],
         ['Weight (kg)', lc.weightKg],

@@ -6,7 +6,7 @@ import { supabase, directInvoke, invokeFn } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
-import { sendOrderToClient } from '../../lib/loadEmails';
+import { sendOrderToClient, sendLoadConToSupplier } from '../../lib/loadEmails';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -88,74 +88,18 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         if (to !== (lc.subcontractorEmail || '')) onUpdateLoadConfirmation(lc.id, { subcontractorEmail: to });
         setSendingLc(lc.id);
         try {
-            let attachments: any[] | undefined;
-            let pdfFailed = false;
-            let loadConB64: string | undefined;
-            try {
-                const { base64, filename } = await buildLoadConPdf(lc, 'loadcon');
-                loadConB64 = base64;
-                attachments = [{ filename, content: base64, contentType: 'application/pdf' }];
-            } catch (pdfErr) {
-                console.error('[loads] LoadCon PDF build failed, sending without attachment:', pdfErr);
-                pdfFailed = true;
-            }
-            const base = `${window.location.origin}${window.location.pathname}`;
-            const fmtD = (d?: string) => { if (!d) return ''; try { return format(new Date(d), 'dd/MM/yyyy'); } catch { return d; } };
-            // Short locality (last part of the address) for a tidy intro line.
-            const shortLoc = (a?: string) => { const p = String(a || '').split(',').map(s => s.trim()).filter(Boolean); return p.length ? p[p.length - 1] : (a || ''); };
-            const collLoc = shortLoc(lc.collectionPoint); const delLoc = shortLoc(lc.deliveryPoint);
-            // Clickable Google Maps link for an address (no API key needed for the link).
-            const mapLink = (addr?: string) => addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : '';
-            const withMap = (addr?: string) => addr ? `${addr} &nbsp;<a href="${mapLink(addr)}" style="color:#1d4ed8;font-weight:700;white-space:nowrap">📍 View on map</a>` : '';
-            // Key details in the email body itself, so the load info is always there
-            // even if the PDF doesn't render in their mail client.
-            const rows: [string, string | undefined][] = [
-                ['Collection', withMap(lc.collectionPoint)],
-                ['Delivery', withMap(lc.deliveryPoint)],
-                ['Loading date', fmtD(lc.collectionDate)],
-                ['Loading time', lc.loadingTime],
-                ['Load type / size', lc.loadType],
-                ['Weight (kg)', lc.weightKg],
-                ['Commodity', lc.commodity],
-                ['Packaging', lc.packaging],
-                ['Transport rate', lc.supplierRate ? `R ${lc.supplierRate}` : ''],
-                ['Special instructions', lc.specialInstructions],
-            ];
-            const detailRows = rows.filter(([, v]) => v != null && `${v}`.trim() !== '')
-                .map(([k, v]) => `<tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
-            const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
-            const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
-              <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
-              <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
-              ${detailsTable}
-              <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
-              ${emailButton(`${base}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
-              <p>Regards,<br>FBN Transport</p>`);
-            const subjLoc = (a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
-            const { data, error } = await invokeFn('send-email', {
-                body: { to, cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])], subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(collLoc)} to ${subjLoc(delLoc)}`,
-                    html, fromName: 'FBN Transport', attachments },
-            });
-            if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message || 'unknown error'}`); return; }
+            // Use the SHARED sender so the wording is delivered-aware (no "accept this
+            // load" after delivery) and transit-depot aware — one source of truth.
+            const res = await sendLoadConToSupplier({ ...lc, subcontractorEmail: to }, to);
+            if (!res.ok) { showToast(`Email failed: ${res.error || 'unknown error'}`); return; }
             onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
-            // Send the client their Order at the SAME time the LoadCon goes to the
-            // transporter — all subsequent client updates thread under this email.
-            // Skip for already-delivered (back-dated) loads: there the client gets
-            // the order together with the signed POD once it's uploaded.
-            if (lc.clientEmail && lc.status !== 'Delivered' && lc.status !== 'POD Submitted' && lc.status !== 'Invoiced') {
-                void sendOrderToClient(lc).then(r => { if (r.ok) showToast(`Client order also emailed to ${lc.clientEmail}.`); else if (r.error) console.error('[loads] auto client order:', r.error); });
+            // Also send the client their Order (the shared sender words it correctly
+            // whether the load is on-route or already delivered).
+            if (lc.clientEmail) {
+                void sendOrderToClient({ ...lc, subcontractorEmail: to }).then(r => { if (r.ok) showToast(`Client order also emailed to ${lc.clientEmail}.`); else if (r.error) console.error('[loads] auto client order:', r.error); });
             }
-            // File the LoadCon + Client Order PDFs into the load's Google Drive folder (fire-and-forget).
-            void (async () => {
-                try {
-                    const files: any[] = [];
-                    if (loadConB64) files.push({ base64: loadConB64, name: 'LoadCon.pdf', kind: 'loadcon', contentType: 'application/pdf' });
-                    try { const co = await buildLoadConPdf(lc, 'clientOrder'); files.push({ base64: co.base64, name: 'Client-Order.pdf', kind: 'clientorder', contentType: 'application/pdf' }); } catch { /* */ }
-                    if (files.length) await directInvoke('drive-file', { loadId: lc.id, files });
-                } catch (e) { console.error('[loads] drive filing of PDFs failed:', e); }
-            })();
-            showToast(pdfFailed
-                ? `Emailed to ${to} — but the PDF attachment couldn't be built, so only the details (in the email body) were sent.`
+            showToast(res.pdfFailed
+                ? `Emailed to ${to} — but the PDF attachment couldn't be built, so only the details were sent.`
                 : `Load Confirmation ${lc.loadConNumber} emailed to ${to} with the PDF attached.`);
         } catch (e) {
             showToast(`Could not send: ${e instanceof Error ? e.message : 'unknown error'}`);
@@ -174,36 +118,9 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         if (to !== (lc.clientEmail || '')) onUpdateLoadConfirmation(lc.id, { clientEmail: to });
         setSendingLc(lc.id);
         try {
-            let attachments: any[] | undefined; let clientB64: string | undefined;
-            try { const { base64, filename } = await buildLoadConPdf(lc, 'clientOrder'); clientB64 = base64; attachments = [{ filename, content: base64, contentType: 'application/pdf' }]; }
-            catch (e) { console.error('[loads] Client Order PDF failed:', e); }
-            const base = `${window.location.origin}${window.location.pathname}`;
-            const fmtD = (d?: string) => { if (!d) return ''; try { return format(new Date(d), 'dd/MM/yyyy'); } catch { return d; } };
-            const shortLoc = (a?: string) => { const p = String(a || '').split(',').map(s => s.trim()).filter(Boolean); return p.length ? p[p.length - 1] : (a || ''); };
-            const mapLink = (a?: string) => a ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}` : '';
-            const withMap = (a?: string) => a ? `${a} &nbsp;<a href="${mapLink(a)}" style="color:#1d4ed8;font-weight:700;white-space:nowrap">📍 View on map</a>` : '';
-            const rows: [string, string | undefined][] = [
-                ['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(lc.deliveryPoint)],
-                ['Loading date', fmtD(lc.collectionDate)], ['Load type / size', lc.loadType],
-                ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging],
-                ['Your reference', lc.customerOrderNumber],
-            ];
-            const detailRows = rows.filter(([, v]) => v != null && `${v}`.trim() !== '')
-                .map(([k, v]) => `<tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
-            const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
-            const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
-              <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
-              <p><strong>Thank you for your load.</strong> We have made all the arrangements and booked it accordingly. Please find your order ${attachments ? 'attached, ' : ''}with all the details${attachments ? '' : ' below'}:</p>
-              ${detailsTable}
-              ${emailButton(`${base}?track=${lc.id}`, 'Track your shipment &rarr;')}
-              <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>
-              <p>Regards,<br>FBN Transport</p>`);
-            // Client Order goes ONLY to the client — never CC the subbie's list.
-            const { data, error } = await invokeFn('send-email', {
-                body: { to, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments },
-            });
-            if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message}`); return; }
-            if (clientB64) void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: clientB64, name: 'Client-Order.pdf', kind: 'clientorder', contentType: 'application/pdf' }] });
+            // Shared sender: words it correctly for on-route vs already-delivered.
+            const res = await sendOrderToClient({ ...lc, clientEmail: to }, to);
+            if (!res.ok) { showToast(`Email failed: ${res.error || 'unknown error'}`); return; }
             showToast(`Order confirmation emailed to the client (${to}).`);
         } catch (e) {
             showToast(`Could not send: ${e instanceof Error ? e.message : 'error'}`);

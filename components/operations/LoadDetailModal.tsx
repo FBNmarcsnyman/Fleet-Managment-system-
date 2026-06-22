@@ -220,7 +220,7 @@ const LoadDetailModal: React.FC = () => {
                                         className="bg-[#13294b] text-white font-bold py-1.5 px-3 rounded-md text-sm">Save plan</button>
                                 </div>
                                 <div className="flex flex-wrap gap-2 pt-1">
-                                    <button onClick={() => showModal('assignDriver', { loadCon: lc })} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">🚚 Onward on FBN fleet</button>
+                                    <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">🚚 Onward on FBN fleet</button>
                                     <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">+ Onward subbie LoadCon</button>
                                 </div>
                             </div>

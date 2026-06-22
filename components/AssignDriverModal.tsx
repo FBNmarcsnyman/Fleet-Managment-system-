@@ -10,7 +10,10 @@ interface AssignDriverModalProps {
 
 const AssignDriverModal: React.FC<AssignDriverModalProps> = ({ vehicle, onCancel }) => {
     const { users, handleAssignDriverToVehicle } = useVehicles();
-    const [selectedDriverId, setSelectedDriverId] = useState(vehicle.assignedDriverId || '');
+    const [selectedDriverId, setSelectedDriverId] = useState(vehicle?.assignedDriverId || '');
+    // Defensive: this modal assigns a driver to a VEHICLE. If opened without one
+    // (wrong payload), don't white-screen the whole app — bail gracefully.
+    if (!vehicle) return <div className="p-4 text-white">No vehicle selected.</div>;
 
     const availableDrivers = users
         .filter((u: any) => u.role === 'Driver' || u.role === 'Staff')

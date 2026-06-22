@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { STATUS_LABEL, statusChip } from '../../lib/loadStatus';
+import { directSelect } from '../../lib/supabase';
 
 // FBN daily operations overview: the whole live pipeline at a glance — what's
 // booked / loading / collected / in transit / at depot / delivered / awaiting POD,
@@ -24,8 +25,35 @@ const dOnly = (s?: string) => (s || '').slice(0, 10);
 
 const DailyShipmentsOverview: React.FC = () => {
     const { loadConfirmations = [], clients = [] } = useOperations() as any;
-    const { showModal } = useUIState();
+    const { showModal, handleOperationsSubViewChange } = useUIState() as any;
     const [sel, setSel] = useState<string | null>(null);
+
+    // Container snapshot for the overview — loaded straight from the containers
+    // table (same source as the Containers tab) and kept fresh on changes.
+    const [containers, setContainers] = useState<any[]>([]);
+    useEffect(() => {
+        let alive = true;
+        const load = async () => {
+            const { data } = await directSelect('containers?select=id,container_no,client_name,client_ref,vessel_name,eta_port,plan,status,branch,turn_in_area,turn_in_date&order=eta_port.desc.nullslast&limit=2000');
+            if (alive) setContainers(Array.isArray(data) ? data : []);
+        };
+        load();
+        const h = () => load();
+        window.addEventListener('containers-changed', h);
+        return () => { alive = false; window.removeEventListener('containers-changed', h); };
+    }, []);
+    const cStats = useMemo(() => {
+        const DONE = ['Turned In', 'Delivered'];
+        const active = containers.filter(c => !DONE.includes(c.status));
+        return {
+            active: active.length,
+            atSea: containers.filter(c => c.status === 'At Sea').length,
+            atPort: containers.filter(c => c.status === 'Arrived Port' || c.status === 'Available').length,
+            atDepot: containers.filter(c => c.status === 'At Depot' || c.status === 'Collected').length,
+            empty: containers.filter(c => c.status === 'Empty').length,
+            attention: active.filter(c => ['Arrived Port', 'Available', 'At Depot'].includes(c.status)),
+        };
+    }, [containers]);
 
     const today = todayIso();
     const loads = loadConfirmations as LoadConfirmation[];
@@ -114,6 +142,34 @@ const DailyShipmentsOverview: React.FC = () => {
                         ))}
                     </div>
                 </div>
+            </div>
+
+            <div>
+                <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-black text-slate-700 uppercase tracking-wider">📦 Containers ({cStats.active} active)</h4>
+                    <button onClick={() => handleOperationsSubViewChange?.('containers')} className="text-xs font-bold text-blue-600 hover:underline">View all →</button>
+                </div>
+                <div className="flex gap-2 flex-wrap mb-3">
+                    {([['At sea', cStats.atSea, 'text-blue-600'], ['At port', cStats.atPort, 'text-amber-600'], ['At depot', cStats.atDepot, 'text-teal-600'], ['Empties to turn in', cStats.empty, 'text-rose-600']] as [string, number, string][]).map(([l, n, tone]) => (
+                        <button key={l} onClick={() => handleOperationsSubViewChange?.('containers')} className="text-left rounded-xl px-3 py-2.5 border min-w-[120px] bg-white border-slate-200 hover:border-blue-300 transition">
+                            <div className={`text-2xl font-black ${tone}`}>{n}</div>
+                            <div className="text-[10px] uppercase tracking-wider text-slate-500">{l}</div>
+                        </button>
+                    ))}
+                </div>
+                {cStats.attention.length > 0 && (
+                    <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
+                        {cStats.attention.slice(0, 12).map(c => (
+                            <button key={c.id} onClick={() => showModal('logContainer', { container: c })} className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-slate-900 truncate">{c.container_no} · {c.client_name || '—'}</p>
+                                    <p className="text-[11px] text-slate-500 truncate">{c.vessel_name || ''}{c.eta_port ? ` · ETA ${new Date(c.eta_port).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' })}` : ''}{c.branch ? ` · ${c.branch}` : ''}</p>
+                                </div>
+                                <span className="shrink-0 text-[9px] font-black px-2 py-0.5 rounded uppercase bg-amber-100 text-amber-800">{c.status}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useUIState, useOperations } from '../../contexts/AppContexts';
-import { directUpdate, directInsert } from '../../lib/supabase';
+import { directUpdate, directInsert, invokeFn } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
+import { brandedEmail } from '../../lib/emailTemplate';
 import DocScanButton from '../shared/DocScanButton';
 import DateField from './DateField';
 import { DRO_DOC_PROMPT, DRO_DOC_SCHEMA } from '../../lib/docScan';
@@ -20,6 +21,36 @@ const LclShipmentModal: React.FC = () => {
     const onSaved = modal.payload?.onSaved as (() => void) | undefined;
     const [f, setF] = useState<any>(existing ? { ...existing } : { status: 'CONTAINER NOT IN', hazardous: false });
     const [busy, setBusy] = useState(false);
+    const [docs, setDocs] = useState<File[]>([]); // CRA + damage photos to attach
+    const [emailing, setEmailing] = useState(false);
+
+    const toB64 = (file: File) => new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(file); });
+
+    // Email the CRA + (if any) damage report & photos to the agent/consignee.
+    const emailReport = async () => {
+        const client = (clients as any[]).find(c => c.id === f.client_id || (c.name || '').toLowerCase() === (f.agent || '').toLowerCase());
+        const def = client?.contactEmail || (client?.contacts || [])[0]?.email || '';
+        const to = window.prompt('Email the collection report / damage advice to:', def);
+        if (to === null) return;
+        if (!to.trim()) { showToast('No email entered.'); return; }
+        setEmailing(true);
+        try {
+            const attachments = await Promise.all(docs.map(async file => ({ filename: file.name, content: await toB64(file), contentType: file.type || 'application/octet-stream' })));
+            const ref = f.fbn_di || f.file_ref || f.container_no || 'shipment';
+            const dmg = f.damaged
+                ? `<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;color:#991b1b"><strong>⚠ Damages noted on collection.</strong>${f.damage_notes ? `<br>${f.damage_notes}` : ''}</p>`
+                : `<p>No damages were noted on collection.</p>`;
+            const html = brandedEmail(`<p>Good day,</p>
+                <p>Please find the <strong>collection report${f.damaged ? ' &amp; damage advice' : ''}</strong> for shipment <strong>${ref}</strong>${f.consignee ? ` (${f.consignee})` : ''}${f.commodity ? ` — ${f.commodity}` : ''}.</p>
+                ${dmg}
+                ${attachments.length ? `<p>${attachments.length} document${attachments.length === 1 ? '' : 's'} attached.</p>` : ''}
+                <p>Regards,<br>FBN Transport</p>`);
+            const { data, error } = await invokeFn('send-email', { body: { to: to.trim(), cc: ['loadcons@fbn-transport.co.za'], subject: `Collection report${f.damaged ? ' + DAMAGE advice' : ''} - ${ref}`, html, fromName: 'FBN Transport', attachments } });
+            if (error || (data as any)?.error) { showToast(`Email failed: ${(data as any)?.error || error?.message}`); }
+            else showToast(`Report emailed to ${to.trim()}.`);
+        } catch (e) { showToast(`Could not email: ${e instanceof Error ? e.message : 'error'}`); }
+        finally { setEmailing(false); }
+    };
     const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
 
     const applyScan = (d: any) => {
@@ -51,6 +82,7 @@ const LclShipmentModal: React.FC = () => {
             status: f.status || 'CONTAINER NOT IN', unpack_date: f.unpack_date || null, uplift_date: f.uplift_date || null,
             delivered_jhb_date: f.delivered_jhb_date || null, delivered_client_date: f.delivered_client_date || null,
             remarks: f.remarks || null, is_history: /DELIVERED/i.test(f.status || ''),
+            cra_received: !!f.cra_received, damaged: !!f.damaged, damage_notes: f.damage_notes || null,
         };
         const res = existing?.id
             ? await directUpdate('lcl_shipments', { id: existing.id }, row)
@@ -97,6 +129,21 @@ const LclShipmentModal: React.FC = () => {
                 <div><label className={lbl}>Delivered FBN JHB</label><DateField value={(f.delivered_jhb_date || '').slice(0, 10)} onChange={v => set('delivered_jhb_date', v)} className={inp} /></div>
                 <div><label className={lbl}>Delivered to client</label><DateField value={(f.delivered_client_date || '').slice(0, 10)} onChange={v => set('delivered_client_date', v)} className={inp} /></div>
                 <div className="col-span-2 md:col-span-3"><label className={lbl}>Remarks</label><textarea value={f.remarks || ''} onChange={e => set('remarks', e.target.value)} rows={2} className={inp} /></div>
+            </div>
+
+            {/* Collection report (CRA) + damages — note, attach photos, email the client. */}
+            <div className="mt-4 pt-4 border-t border-gray-700">
+                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Collection report (CRA) &amp; damages</p>
+                <div className="flex flex-wrap items-center gap-4 mb-3">
+                    <label className="flex items-center gap-2 text-sm font-bold text-gray-200"><input type="checkbox" checked={!!f.cra_received} onChange={e => set('cra_received', e.target.checked)} /> CRA received</label>
+                    <label className="flex items-center gap-2 text-sm font-bold text-rose-300"><input type="checkbox" checked={!!f.damaged} onChange={e => set('damaged', e.target.checked)} /> ⚠ Damages on receipt</label>
+                </div>
+                {f.damaged && <textarea value={f.damage_notes || ''} onChange={e => set('damage_notes', e.target.value)} rows={2} className={`${inp} mb-3`} placeholder="Describe the damage (what, extent, packages affected)…" />}
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Attach CRA / {f.damaged ? 'damage photos' : 'documents'}</label>
+                <input type="file" accept="image/*,application/pdf" multiple onChange={e => setDocs(Array.from(e.target.files || []))}
+                    className="w-full text-sm text-gray-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white file:font-bold" />
+                {docs.length > 0 && <p className="text-[11px] text-emerald-300 mt-1">{docs.length} file{docs.length === 1 ? '' : 's'} ready to email</p>}
+                <button type="button" onClick={emailReport} disabled={emailing} className="mt-2 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white font-bold text-sm py-2 px-4 rounded-lg">{emailing ? 'Emailing…' : `📧 Email report${f.damaged ? ' + damage advice' : ''} to client`}</button>
             </div>
             <div className="flex justify-end gap-3 mt-6">
                 <button type="button" onClick={hideModal} disabled={busy} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2.5 px-5 rounded-lg disabled:opacity-50">Cancel</button>

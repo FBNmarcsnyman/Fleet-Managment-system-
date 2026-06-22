@@ -12,7 +12,7 @@ interface Lcl {
     consignee: string; agent: string; hazardous: boolean; un_number: string; commodity: string;
     qty: number; weight_kg: number; volume_cbm: number; status: string;
     unpack_date: string; uplift_date: string; delivered_jhb_date: string; delivered_client_date: string;
-    remarks: string; client_sheet: string; is_history: boolean;
+    remarks: string; client_sheet: string; is_history: boolean; damaged?: boolean;
 }
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -161,7 +161,7 @@ const LclStatusReport: React.FC = () => {
                                 return (
                                     <tr key={r.id} onClick={() => showModal('lclShipment', { shipment: r, onSaved: fetchRows })} className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${selIds.has(r.id) ? 'bg-blue-50' : ''}`}>
                                         <td className="p-2" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selIds.has(r.id)} onChange={() => toggleSel(r.id)} /></td>
-                                        <td className="p-2 font-mono font-bold text-slate-900">{r.fbn_di || '—'}{r.hazardous ? <span className="ml-1 text-[8px] font-black bg-rose-100 text-rose-700 px-1 rounded">HAZ</span> : null}</td>
+                                        <td className="p-2 font-mono font-bold text-slate-900">{r.fbn_di || '—'}{r.hazardous ? <span className="ml-1 text-[8px] font-black bg-rose-100 text-rose-700 px-1 rounded">HAZ</span> : null}{r.damaged ? <span className="ml-1 text-[8px] font-black bg-orange-100 text-orange-700 px-1 rounded">⚠ DMG</span> : null}</td>
                                         <td className="p-2"><span className="font-mono">{r.container_no || '—'}</span><div className="text-[10px] text-slate-400">{r.vessel}</div></td>
                                         <td className="p-2">{fmtD(r.eta)}</td>
                                         <td className="p-2 font-bold text-[#13294b]">{r.depot || '—'}</td>

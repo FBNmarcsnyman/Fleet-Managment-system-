@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { STATUS_LABEL, statusChip } from '../../lib/loadStatus';
+import { directSelect } from '../../lib/supabase';
 
 // FBN daily operations overview: the whole live pipeline at a glance — what's
 // booked / loading / collected / in transit / at depot / delivered / awaiting POD,
@@ -47,6 +48,27 @@ const DailyShipmentsOverview: React.FC = () => {
 
     const collectingToday = useMemo(() => loads.filter(l => dOnly(l.collectionDate) === today && ['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'].includes(l.status)), [loads, today]);
     const deliveringToday = useMemo(() => loads.filter(l => dOnly((l as any).deliveryDate) === today && !['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(l.status)), [loads, today]);
+
+    // FCL containers live in their own table — pull active ones for the overview.
+    const [containers, setContainers] = useState<any[]>([]);
+    useEffect(() => {
+        let alive = true;
+        directSelect('containers?select=container_no,client_name,vessel_name,eta_port,status,branch,turn_in_area,turn_in_date&order=eta_port.desc.nullslast&limit=5000')
+            .then(({ data }) => { if (alive && Array.isArray(data)) setContainers(data); });
+        return () => { alive = false; };
+    }, []);
+    const ctr = useMemo(() => {
+        const DONE = ['Turned In', 'Delivered'];
+        const active = containers.filter(c => !DONE.includes(c.status));
+        return {
+            atSea: active.filter(c => c.status === 'At Sea').length,
+            atPort: active.filter(c => c.status === 'Arrived Port' || c.status === 'Available').length,
+            atDepot: active.filter(c => c.status === 'At Depot' || c.status === 'Collected' || c.status === 'Unpacked').length,
+            empty: active.filter(c => c.status === 'Empty').length,
+            etaToday: containers.filter(c => dOnly(c.eta_port) === today),
+            active: active.length,
+        };
+    }, [containers, today]);
 
     const selected = sel ? (byStatus.get(sel) || []) : null;
 
@@ -114,6 +136,23 @@ const DailyShipmentsOverview: React.FC = () => {
                         ))}
                     </div>
                 </div>
+            </div>
+
+            <div>
+                <h4 className="text-sm font-black text-slate-700 uppercase tracking-wider mb-2">🚢 Containers (FCL) — {ctr.active} active</h4>
+                <div className="flex gap-2 flex-wrap">
+                    <Card label="At sea" n={ctr.atSea} active={false} onClick={() => {}} tone="text-blue-600" />
+                    <Card label="At port" n={ctr.atPort} active={false} onClick={() => {}} tone="text-amber-600" />
+                    <Card label="At depot / yard" n={ctr.atDepot} active={false} onClick={() => {}} tone="text-teal-600" />
+                    <Card label="Empty to turn in" n={ctr.empty} active={false} onClick={() => {}} tone="text-rose-600" />
+                    <Card label="ETA today" n={ctr.etaToday.length} active={false} onClick={() => {}} tone="text-slate-800" />
+                </div>
+                {ctr.etaToday.length > 0 && (
+                    <div className="mt-2 bg-white border border-slate-200 rounded-xl p-3">
+                        <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">Arriving port today</p>
+                        <p className="text-sm text-slate-700">{ctr.etaToday.map(c => `${c.container_no}${c.client_name ? ` · ${c.client_name}` : ''}`).slice(0, 12).join('  ·  ')}</p>
+                    </div>
+                )}
             </div>
         </div>
     );

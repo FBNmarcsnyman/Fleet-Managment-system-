@@ -17,6 +17,8 @@ const ContainersView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [q, setQ] = useState('');
     const [tab, setTab] = useState<'active' | 'all' | 'turnin'>('active');
+    const [sort, setSort] = useState<'eta' | 'client' | 'container' | 'status'>('eta');
+    const [groupByClient, setGroupByClient] = useState(false);
 
     const load = async () => {
         setLoading(true);
@@ -50,13 +52,29 @@ const ContainersView: React.FC = () => {
 
     const filtered = useMemo(() => {
         const term = q.trim().toLowerCase();
-        return rows.filter(c => {
+        const list = rows.filter(c => {
             if (tab === 'active' && DONE.includes(c.status)) return false;
             if (tab === 'turnin' && !(c.status === 'Empty' || (c.turn_in_date && c.status !== 'Turned In'))) return false;
             if (!term) return true;
-            return `${c.container_no} ${c.client_name || ''} ${c.vessel_name || ''} ${c.client_ref || ''}`.toLowerCase().includes(term);
+            return `${c.container_no} ${c.client_name || ''} ${c.vessel_name || ''} ${c.client_ref || ''} ${c.commodity || ''}`.toLowerCase().includes(term);
         });
-    }, [rows, q, tab]);
+        const cmp = (a: Container, b: Container) => {
+            if (sort === 'client') return (a.client_name || '').localeCompare(b.client_name || '') || (b.eta_port || '').localeCompare(a.eta_port || '');
+            if (sort === 'container') return (a.container_no || '').localeCompare(b.container_no || '');
+            if (sort === 'status') return (a.status || '').localeCompare(b.status || '');
+            return (b.eta_port || '').localeCompare(a.eta_port || ''); // eta: newest first
+        };
+        return [...list].sort(cmp);
+    }, [rows, q, tab, sort]);
+
+    // Optional client grouping so several containers for one client read together
+    // (e.g. "3 to collect, unpack, split over 2 trucks").
+    const grouped = useMemo(() => {
+        if (!groupByClient) return null;
+        const map = new Map<string, Container[]>();
+        filtered.forEach(c => { const k = c.client_name || '—'; map.set(k, [...(map.get(k) || []), c]); });
+        return [...map.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+    }, [filtered, groupByClient]);
 
     const counts = useMemo(() => {
         const a = rows.filter(c => !DONE.includes(c.status));
@@ -76,6 +94,26 @@ const ContainersView: React.FC = () => {
         </div>
     );
     const chip = (active: boolean) => `px-3 py-1.5 text-xs font-bold rounded-md ${active ? 'bg-[#13294b] text-white' : 'text-slate-600 hover:bg-white'}`;
+
+    const renderRow = (c: Container) => (
+        <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
+            <td className="p-2"><button onClick={() => showModal('logContainer', { container: c })} className="font-mono font-bold text-blue-600 hover:underline">{c.container_no}</button><div className="text-[11px] text-slate-400">{[c.size, c.weight ? `${c.weight} kg` : ''].filter(Boolean).join(' · ')}</div></td>
+            <td className="p-2">{c.client_name || '—'}{c.client_ref ? <div className="text-[11px] text-slate-400">{c.client_ref}</div> : null}</td>
+            <td className="p-2">{c.vessel_name || '—'}<div className="text-[11px] text-slate-400">ETA {fmt(c.eta_port)}</div></td>
+            <td className="p-2 text-xs">{c.plan === 'full_delivery' ? 'Full delivery' : 'Unpack'}</td>
+            <td className="p-2 text-xs">{c.branch || '—'}</td>
+            <td className="p-2"><select value={c.status} onChange={e => setStatus(c, e.target.value)} className="bg-white border border-slate-300 rounded-md p-1 text-xs">{CONTAINER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
+            <td className="p-2 text-xs">{c.turn_in_area || '—'}{c.turn_in_date ? <div className="text-[11px] text-slate-400">by {fmt(c.turn_in_date)}</div> : null}</td>
+            <td className="p-2 text-right whitespace-nowrap">
+                <button onClick={() => del(c)} title="Delete" className="text-slate-400 hover:text-red-500">×</button>
+            </td>
+        </tr>
+    );
+    const headRow = (
+        <tr>
+            <th className="p-2">Container</th><th className="p-2">Client</th><th className="p-2">Vessel / ETA</th><th className="p-2">Plan</th><th className="p-2">Branch</th><th className="p-2">Status</th><th className="p-2">Turn-in</th><th className="p-2"></th>
+        </tr>
+    );
 
     return (
         <div className="bg-white border border-slate-200 p-5 rounded-lg shadow-sm">
@@ -98,34 +136,33 @@ const ContainersView: React.FC = () => {
                 {card('Active', counts.active, 'text-slate-800')}
             </div>
 
-            <div className="flex gap-1 mb-3 bg-slate-100 p-1 rounded-lg w-fit">
-                {([['active', 'Active'], ['turnin', 'Empty / turn-in'], ['all', 'All']] as [typeof tab, string][]).map(([v, l]) => (
-                    <button key={v} onClick={() => setTab(v)} className={chip(tab === v)}>{l}</button>
-                ))}
+            <div className="flex gap-2 mb-3 flex-wrap items-center">
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+                    {([['active', 'Active'], ['turnin', 'Empty / turn-in'], ['all', 'All']] as [typeof tab, string][]).map(([v, l]) => (
+                        <button key={v} onClick={() => setTab(v)} className={chip(tab === v)}>{l}</button>
+                    ))}
+                </div>
+                <label className="text-xs text-slate-500 ml-auto flex items-center gap-1">Sort
+                    <select value={sort} onChange={e => setSort(e.target.value as any)} className="bg-white border border-slate-300 rounded-md p-1.5 text-xs font-semibold text-slate-700">
+                        <option value="eta">ETA (newest)</option>
+                        <option value="client">Client</option>
+                        <option value="container">Container no</option>
+                        <option value="status">Status</option>
+                    </select>
+                </label>
+                <button onClick={() => setGroupByClient(g => !g)} className={`text-xs font-bold px-3 py-1.5 rounded-md border ${groupByClient ? 'bg-[#13294b] text-white border-[#13294b]' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>Group by client</button>
             </div>
 
             {loading ? <p className="text-center text-slate-400 py-12">Loading…</p> : filtered.length === 0 ? <p className="text-center text-slate-400 py-12">No containers.</p> : (
                 <div className="overflow-x-auto max-h-[58vh]">
                     <table className="w-full text-left text-sm">
-                        <thead className="sticky top-0 bg-slate-100 text-slate-500"><tr>
-                            <th className="p-2">Container</th><th className="p-2">Client</th><th className="p-2">Vessel / ETA</th><th className="p-2">Plan</th><th className="p-2">Branch</th><th className="p-2">Status</th><th className="p-2">Turn-in</th><th className="p-2"></th>
-                        </tr></thead>
-                        <tbody>
-                            {filtered.map(c => (
-                                <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
-                                    <td className="p-2"><button onClick={() => showModal('logContainer', { container: c })} className="font-mono font-bold text-blue-600 hover:underline">{c.container_no}</button><div className="text-[11px] text-slate-400">{[c.size, c.weight ? `${c.weight} kg` : ''].filter(Boolean).join(' · ')}</div></td>
-                                    <td className="p-2">{c.client_name || '—'}{c.client_ref ? <div className="text-[11px] text-slate-400">{c.client_ref}</div> : null}</td>
-                                    <td className="p-2">{c.vessel_name || '—'}<div className="text-[11px] text-slate-400">ETA {fmt(c.eta_port)}</div></td>
-                                    <td className="p-2 text-xs">{c.plan === 'full_delivery' ? 'Full delivery' : 'Unpack'}</td>
-                                    <td className="p-2 text-xs">{c.branch || '—'}</td>
-                                    <td className="p-2"><select value={c.status} onChange={e => setStatus(c, e.target.value)} className="bg-white border border-slate-300 rounded-md p-1 text-xs">{CONTAINER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
-                                    <td className="p-2 text-xs">{c.turn_in_area || '—'}{c.turn_in_date ? <div className="text-[11px] text-slate-400">by {fmt(c.turn_in_date)}</div> : null}</td>
-                                    <td className="p-2 text-right whitespace-nowrap">
-                                        <button onClick={() => del(c)} title="Delete" className="text-slate-400 hover:text-red-500">×</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
+                        <thead className="sticky top-0 bg-slate-100 text-slate-500">{headRow}</thead>
+                        {grouped ? grouped.map(([client, list]) => (
+                            <tbody key={client}>
+                                <tr className="bg-slate-50/80"><td colSpan={8} className="px-2 py-1.5 text-xs font-black text-[#13294b] border-y border-slate-200">{client} <span className="text-slate-400 font-semibold">· {list.length} container{list.length !== 1 ? 's' : ''}</span></td></tr>
+                                {list.map(renderRow)}
+                            </tbody>
+                        )) : <tbody>{filtered.map(renderRow)}</tbody>}
                     </table>
                 </div>
             )}

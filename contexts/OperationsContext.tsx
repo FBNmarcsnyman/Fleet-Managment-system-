@@ -105,10 +105,16 @@ const waNumber = (raw?: string): string | null => {
 
 // Emails the SUBCONTRACTOR a short status update as the load moves phases
 // (the client gets their own via sendClientPhaseEmail). Fire-and-forget.
+// Statuses that belong to FBN's ONWARD leg (after the cross-dock). On a transit
+// load the subcontractor's job ends when they deliver to the FBN depot, so they
+// must NOT get these updates — FBN drives the load from the depot to the door.
+const POST_DEPOT_STATUSES = ['At Destination Depot', 'Unloaded', 'Out for Delivery', 'Delivered'];
 export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<void> => {
     const to = lc?.subcontractorEmail;
     const msg = CLIENT_PHASE_MSG[status];
     if (!to || !msg) return;
+    // Transit load: the subbie delivered to the depot — stop their updates here.
+    if (lc?.transitDepot && POST_DEPOT_STATUSES.includes(status)) return;
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
     // Once delivered, the next action is the POD — ask for that, not a status update.
@@ -252,6 +258,9 @@ export const sendAmendedLoadConEmail = async (lc: any, changed: string[]): Promi
 };
 
 export const sendPodRequestEmail = async (lc: any): Promise<void> => {
+    // Transit load: FBN delivers the onward leg and holds/uploads the final POD —
+    // never ask the leg-1 subbie for the POD on this load.
+    if (lc?.transitDepot) return;
     // The carrier's main email is the To; the upload-POD contacts (accounts etc.)
     // are CC'd here — this is the ONLY email they're added to.
     const podUploadCc = String(lc?.podUploadEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);

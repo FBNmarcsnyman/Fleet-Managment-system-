@@ -201,3 +201,34 @@ PHASES 6–10 ONLY START AFTER PHASE 5 IS LIVE AND STABLE.
 - QuickBooks live API sync (after 2 months of proven CSV imports).
 - WhatsApp/SMS notifications via Twilio.
 - Tyre management (per-position, per-km cost tracking).
+
+---
+
+## Recently completed — 2026-06-22 (Operations / Broking / Imports build)
+- [x] **Deploy pipeline fixed** — Cloudflare deploy command `wrangler versions upload`
+  (uploaded, never went live) → `wrangler deploy`. Added VersionWatcher auto-update.
+- [x] **LCL groupage Status Report** — `lcl_shipments` + `import-lcl-status` (4 client
+  sheets, 13,796 rows, daily crons), free-time clock, Agent vs Consignee + billing client,
+  bulk update, DateField dates, CRA + damages (photos + email), DRO scan.
+- [x] **Ops dashboards** — Daily Overview, Month View (+ filters/PDF), By Transporter,
+  Deliveries/POD Day View.
+- [x] **FCL container flow model** (route plan / unpack who-where / storage in-out / empty
+  turn-in / consol ref) + sort-group + Daily Overview panel.
+- [x] **Transit-depot broking** (CPT→FBN JHB→DBN) on both collection forms + onward planning.
+- [x] **Emails** — delivered-aware, single shared builder, routed subjects, threaded;
+  "Upload POD" contact role; delivery date enforced.
+- [x] **FBN DI / Waybill** on docs; client CRM (Based + pull controllers); capture photo
+  labels + camera/gallery; global search; PWA install.
+
+## New / next (carried forward)
+- [ ] **LCL: group unpacked cargo per depot → push to today's collection board → daily
+  client status emails** through the chain (received → unpacked → collected → at FBN →
+  JHB → delivered), feeding both the status report and per-shipment client notifications;
+  set `lcl_shipments.load_id` when collected to join the normal delivery flow.
+- [ ] **FCL: unpack → warehouse floor → split-over-N-trucks** re-load workflow (the
+  container flow fields exist; the action screen to consolidate/split is next).
+- [ ] **Access approval gate** — approve-only login (even staff Google) + notify owner to
+  accept new users (build + test together; never deploy unsupervised).
+- [ ] **CRA / damage photos persisted to Drive** (currently emailed as attachments only).
+- [ ] **Assisted Gmail enrichment** (review-first) to fill client controller emails/cells
+  (owner deferred; revisit).

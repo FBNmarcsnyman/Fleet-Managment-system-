@@ -1,8 +1,37 @@
 # FBN Fleet Management System — Change Log
-> Maintained by Marc Snyman | Last updated: 2026-06-19
+> Maintained by Marc Snyman | Last updated: 2026-06-22
 > Use this file at the start of every Claude Code session — paste it in with the instruction: "Read this change log and action the next PENDING item."
 
 ---
+
+## 2026-06-22 — LCL Status Report, Ops dashboards, FCL flow, transit broking, email/deploy fixes (DONE)
+- **DEPLOY ROOT-CAUSE FIXED**: Cloudflare deploy command was `wrangler versions upload`
+  (uploaded a version but never promoted to live) → changed to `wrangler deploy`. This
+  had made every push build but never go live, masking saves/edits as "not working".
+  Added **VersionWatcher** (auto-update pill) so stale tabs self-refresh. See CLAUDE.md.
+- **LCL groupage Status Report** (Operations → Status Report): new `lcl_shipments` table +
+  edge fn `import-lcl-status` (Sheets API, per-sheet `?i=`, 4 daily crons) = 13,796
+  shipments from the 4 client status sheets. Free-time clock (3 days / HAZ 1 day),
+  **Agent (bill-to=DHL) vs Consignee (end client=IFF)** + billing-client link (trigger
+  `lcl_set_agent`), **bulk update** (unpacked/collected/delivered), DateField dates,
+  **CRA + damages** (notes + photos + email-to-client), DRO scan to auto-fill.
+- **Ops dashboards**: Daily Overview (pipeline + FCL panel), Month View (+ filters +
+  Print/PDF), By Transporter viewer, Deliveries/POD Day View.
+- **FCL flow model** on containers (route plan, unpack who/where, storage in/out, empty
+  turn-in, consol ref) + sort/group + Daily Overview panel. Depot/Bulk collection moved
+  to **Imports** (it is LCL, not FCL).
+- **Transit-depot broking** (CPT→FBN JHB→DBN) on both Broking Collection + Transport Order:
+  subbie LoadCon delivers to the transit depot; received-at-depot + onward planning
+  (fleet/subbie + date/time) + dwell; auto-notify transit depot ops.
+- **Emails**: delivered-aware wording (no "accept this load" after delivery) routed through
+  the ONE shared `lib/loadEmails` builder (removed duplicate HTML in SubcontractorLoadsView);
+  subjects show routing (Client Order CPT→DBN; LoadCon CPT→JHB), threaded; client order no
+  longer shows internal routing. "Upload POD" contact role (accounts). Delivery DATE now
+  required on Transport Order.
+- **FBN DI / Waybill** field on booking + LoadCon/Order/POD. **Client CRM**: per-contact
+  "Based", "Pull controllers from status report". **Capture** photos labelled
+  (Loading/Offloading/Damages) + camera/gallery. Fixed: hidden brokered loads (no
+  supplier_id), edit-form lost pick-lists, unreadable global search dropdown.
 
 ## 2026-06-19 — Partners UX, contact prefs, HARD separation rule, containers on collections (DONE)
 - **Clients & Subcontractors lists**: search box + alphabetical sort.

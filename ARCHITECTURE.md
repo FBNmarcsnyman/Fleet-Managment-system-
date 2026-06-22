@@ -72,3 +72,38 @@ Client emails → client side only; subbie emails → subbie side only. Per-cont
 
 ## Core domain doc — LoadCon (Transport Order)
 Margin rule: LoadCon (to subbie) shows transport rate + no client data; Client Order (to client) shows client rate + no subbie data; POD/Delivery Note is rate-free. A load with a subbie + buy-rate is assigned for dispatch. Back-dated loads (both dates past) go straight to Delivered (POD-first flow).
+
+---
+
+## Update — 2026-06-22 (Operations/Imports build)
+
+**Deploy correction (CRITICAL):** Cloudflare Workers Builds deploys from `main`, but the
+**Deploy command must be `npx wrangler deploy`** (not `wrangler versions upload`, which only
+uploads a version without promoting to live). In-app `VersionWatcher` (components/shared)
+polls `/index.html` for a new entry bundle and offers a one-tap reload.
+
+**New table**
+- `lcl_shipments` — LCL groupage status report (RLS `organization_id = auth_org_id()`).
+  Cols incl. fbn_di, controller, file_ref/house_bill, container_no, vessel, eta, depot,
+  consignee, **agent**, **client_id**, hazardous, commodity, qty, weight_kg, volume_cbm,
+  status, unpack_date, uplift_date, delivered_jhb/client_date, is_history, **damaged**,
+  **damage_notes**, **cra_received**, generated `dedupe_key` (unique). Trigger
+  `lcl_set_agent` (BEFORE INSERT) derives agent from client_sheet.
+
+**New columns**
+- `load_confirmations`: pod_upload_email, transit_depot, transit_received_at,
+  onward_carrier_type, onward_planned_date, onward_planned_time.
+- `containers`: collected_date, haulier, route_plan, unpack_location, unpack_by, unpack_date,
+  storage_depot, storage_in_date, storage_out_date, turn_in_date_actual, consol_ref.
+
+**New edge fn**: `import-lcl-status` (Sheets API per-tab, `?i=0..3`, `?mode=preview|dry|import`).
+**New crons**: `import-lcl-status-0..3` (05:45/48/51/54 daily).
+
+**New components** (all wired): operations/{DailyShipmentsOverview, MonthlyLoadcons,
+TransporterLoadCons, DeliveriesDayView, LclStatusReport} → OperationsPortal tabs;
+operations/LclShipmentModal → App.tsx modal registry (`lclShipment`); shared/VersionWatcher
+→ mounted in App.tsx.
+
+**Email source of truth**: `lib/loadEmails.ts` (`sendLoadConToSupplier` / `sendOrderToClient`,
+delivered-aware, transit-aware, routed+threaded subjects via `clientSubject`/`routeLabel`).
+SubcontractorLoadsView resend buttons now call these (no duplicate HTML).

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useUIState } from '../../contexts/AppContexts';
+import { useUIState, useOperations } from '../../contexts/AppContexts';
 import { directSelect, directUpdate, directDelete } from '../../lib/supabase';
 import { DEPOT_SHIPMENT_STATUSES, daysToDeadline, deadlineLabel } from '../../lib/depotShipments';
+import { sendDepotClientUpdate } from '../../lib/depotEmails';
 
 interface DepotShipment {
     id: string; client_name: string; client_ref: string; depot: string; branch: string;
@@ -18,7 +19,9 @@ const DONE = ['Delivered', 'Empty Turned In'];
 // the storage free-time countdown (3 days incl. unpack; 1 day for hazardous).
 const DepotShipmentsView: React.FC = () => {
     const { showModal, showToast } = useUIState();
+    const { clients = [] } = useOperations() as any;
     const [rows, setRows] = useState<DepotShipment[]>([]);
+    const [emailing, setEmailing] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [q, setQ] = useState('');
     const [tab, setTab] = useState<'active' | 'attention' | 'all'>('active');
@@ -48,6 +51,22 @@ const DepotShipmentsView: React.FC = () => {
         const { error } = await directDelete('depot_shipments', { id: s.id });
         if (error) { showToast(`Could not delete: ${error.message}`); return; }
         setRows(p => p.filter(x => x.id !== s.id)); showToast('Shipment deleted.');
+    };
+
+    // Resolve the client's email from the linked client record (by id, else name).
+    const clientEmailFor = (s: DepotShipment): string => {
+        const byId = (s as any).client_id ? (clients as any[]).find(c => c.id === (s as any).client_id) : null;
+        const byName = !byId && s.client_name ? (clients as any[]).find(c => (c.name || '').toLowerCase() === (s.client_name || '').toLowerCase()) : null;
+        const c = byId || byName;
+        return c?.contactEmail || c?.clientEmail || '';
+    };
+    const emailClient = async (s: DepotShipment) => {
+        const to = clientEmailFor(s);
+        if (!to) { showToast('No client email on file — add it on the client record.'); return; }
+        setEmailing(s.id);
+        const res = await sendDepotClientUpdate({ ...s, client_email: to }, to);
+        setEmailing(null);
+        showToast(res.ok ? `Status update emailed to ${to}.` : `Email failed: ${res.error || 'unknown error'}`);
     };
 
     const fmt = (s?: string) => { if (!s) return '—'; try { return new Date(s).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' }); } catch { return s; } };
@@ -156,6 +175,7 @@ const DepotShipmentsView: React.FC = () => {
                                             <td className="p-2"><select value={s.status} onChange={e => setStatus(s, e.target.value)} className="bg-white border border-slate-300 rounded-md p-1 text-xs">{DEPOT_SHIPMENT_STATUSES.map(x => <option key={x} value={x}>{x}</option>)}</select></td>
                                             <td className="p-2 text-xs">{dl ? <span className={`text-[10px] font-black px-2 py-0.5 rounded ${dlTone(dl.tone)}`}>{dl.text}</span> : '—'}{s.unpack_date ? <div className="text-[11px] text-slate-400">unpacked {fmt(s.unpack_date)}</div> : null}</td>
                                             <td className="p-2 text-right whitespace-nowrap">
+                                                <button onClick={() => emailClient(s)} disabled={emailing === s.id} title="Email the client a status update" className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 mr-2 disabled:opacity-50">{emailing === s.id ? '…' : '✉ Update client'}</button>
                                                 <button onClick={() => del(s)} title="Delete" className="text-slate-400 hover:text-red-500">×</button>
                                             </td>
                                         </tr>

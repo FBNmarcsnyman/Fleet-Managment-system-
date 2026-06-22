@@ -15,6 +15,7 @@ const DailyPlanningView = lazy(() => import('./DailyPlanningView'));
 const BrokingDashboard = lazy(() => import('./BrokingDashboard'));
 const DailyShipmentsOverview = lazy(() => import('./DailyShipmentsOverview'));
 const MonthlyLoadcons = lazy(() => import('./MonthlyLoadcons'));
+const TransporterLoadCons = lazy(() => import('./TransporterLoadCons'));
 
 
 const OperationsPortal: React.FC = () => {
@@ -33,6 +34,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'dashboard', label: 'Dashboard' },
         { view: 'loadBoard', label: 'Load Board' },
         { view: 'subcontractorLoads', label: 'LoadCons' },
+        { view: 'transporterLoads', label: 'By Transporter' },
         { view: 'monthlyLoadcons', label: 'Month View' },
         { view: 'emailLog', label: 'Emails' },
         { view: 'driverChats', label: 'Driver Chats' },
@@ -41,6 +43,7 @@ const OperationsPortal: React.FC = () => {
     const OPS_TABS = [
         { view: 'opsDashboard', label: 'Dashboard' },
         { view: 'dailyOverview', label: 'Daily Overview' },
+        { view: 'transporterLoads', label: 'By Transporter' },
         { view: 'shipments', label: 'Shipments' },
         { view: 'planning', label: 'Planning' },
         { view: 'imports', label: 'Imports' },
@@ -85,6 +88,7 @@ const OperationsPortal: React.FC = () => {
             case 'opsDashboard': return <Suspense fallback={<div>Loading…</div>}><OperationsOverview /></Suspense>;
             case 'dailyOverview': return <Suspense fallback={<div>Loading…</div>}><DailyShipmentsOverview /></Suspense>;
             case 'monthlyLoadcons': return <Suspense fallback={<div>Loading…</div>}><MonthlyLoadcons /></Suspense>;
+            case 'transporterLoads': return <Suspense fallback={<div>Loading…</div>}><TransporterLoadCons /></Suspense>;
             case 'dashboard':
             default:
                 return <Suspense fallback={<div>Loading…</div>}><BrokingDashboard /></Suspense>;

@@ -36,6 +36,7 @@ import SupplierPortal from './components/SupplierPortal';
 import Sidebar from './components/shared/Sidebar';
 import Topbar from './components/shared/Topbar';
 import CollectFab from './components/shared/CollectFab';
+import VersionWatcher from './components/shared/VersionWatcher';
 import LiveAssistant from './components/LiveAssistant';
 import HelpChat from './components/HelpChat';
 import Modal from './components/Modal';
@@ -410,6 +411,7 @@ const App: React.FC = () => {
             </Suspense>
             <Toast message={toastMessage} onDismiss={dismissToast} />
             <CollectFab />
+            <VersionWatcher />
         </div>
     );
 };

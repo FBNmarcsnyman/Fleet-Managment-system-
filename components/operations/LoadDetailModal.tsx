@@ -6,6 +6,7 @@ import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import LoadStatusTimeline from './LoadStatusTimeline';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
+import { usePickOptions } from '../../hooks/usePickOptions';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => {
@@ -29,9 +30,13 @@ const inputCls = "w-full bg-gray-700 text-white p-2 rounded-md border border-gra
 // every render, so React remounts each input and you lose focus after one letter.
 const FieldCtx = React.createContext<{ editing: boolean; d: any; set: (k: string, v: any) => void }>({ editing: false, d: {}, set: () => {} });
 
-// Field: shows text, or an input when editing.
-const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[] }> = ({ label, k, value, type = 'text', opts }) => {
+// Field: shows text, or an input when editing. `opts` => a fixed select;
+// `list` => a free-type input WITH autocomplete suggestions (datalist) so the
+// usual client / transporter / commodity / packaging pick-lists stay available
+// while editing instead of forcing you to retype everything.
+const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[]; list?: string[] }> = ({ label, k, value, type = 'text', opts, list }) => {
     const { editing, d, set } = React.useContext(FieldCtx);
+    const listId = k ? `f-list-${k}` : undefined;
     return (
         <div>
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}</p>
@@ -39,7 +44,10 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
                 opts ? (
                     <select value={d[k]} onChange={e => set(k, e.target.value)} className={inputCls}>{opts.map(o => <option key={o} value={o}>{o}</option>)}</select>
                 ) : (
-                    <input type={type} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />
+                    <>
+                        <input type={type} list={list && list.length ? listId : undefined} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />
+                        {list && list.length ? <datalist id={listId}>{list.map(o => <option key={o} value={o} />)}</datalist> : null}
+                    </>
                 )
             ) : (
                 <p className="text-sm text-gray-100">{value || value === 0 ? value : '—'}</p>
@@ -50,7 +58,11 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
 
 const LoadDetailModal: React.FC = () => {
     const { modal, showModal, showToast, hideModal } = useUIState();
-    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, quotes = [] } = useOperations() as any;
+    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, quotes = [], clients = [], suppliers = [] } = useOperations() as any;
+    const commodityOpts = usePickOptions('commodity');
+    const packagingOpts = usePickOptions('packaging');
+    const clientNameOpts = React.useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
+    const transporterOpts = React.useMemo(() => [...new Set((suppliers as any[]).filter(s => s.type === 'Transport').map(s => s.name).filter(Boolean))].sort(), [suppliers]);
     const { currentUser } = useAuth();
     const isSuperAdmin = (currentUser as any)?.role === 'Super Admin' || (currentUser as any)?.role === 'Admin';
     const lc: LoadConfirmation | undefined = modal.payload?.loadCon;
@@ -226,7 +238,7 @@ const LoadDetailModal: React.FC = () => {
                 </Section>
                 <Section title="Client" accent="bg-blue-500">
                     <div className="grid grid-cols-2 gap-3">
-                        <F label="Company" k="clientName" value={lc.clientName} />
+                        <F label="Company" k="clientName" value={lc.clientName} list={clientNameOpts} />
                         <F label="Contact" k="clientContact" value={lc.clientContact} />
                         <F label="Email" k="clientEmail" value={lc.clientEmail} />
                         <F label="Client Rate" k="totalAmount" type="number" value={rand(lc.totalAmount)} />
@@ -257,7 +269,7 @@ const LoadDetailModal: React.FC = () => {
                     return (
                         <Section title={ownFleet ? 'FBN Vehicle / Driver' : 'Subcontractor'} accent={ownFleet ? 'bg-emerald-500' : 'bg-amber-500'}>
                             <div className="grid grid-cols-2 gap-3">
-                                <F label={ownFleet ? 'Fleet' : 'Carrier'} k="subcontractorName" value={lc.subcontractorName} />
+                                <F label={ownFleet ? 'Fleet' : 'Carrier'} k="subcontractorName" value={lc.subcontractorName} list={transporterOpts} />
                                 <F label="For Attention" k="forAttention" value={lc.forAttention} />
                                 {!ownFleet && <F label="Email" k="subcontractorEmail" value={lc.subcontractorEmail} />}
                                 <F label="Driver" k="subcontractorDriverName" value={lc.subcontractorDriverName} />
@@ -271,8 +283,8 @@ const LoadDetailModal: React.FC = () => {
                 <Section title="Cargo" accent="bg-gray-500">
                     <div className="grid grid-cols-2 gap-3">
                         <F label="Load Type" k="loadType" value={lc.loadType} />
-                        <F label="Commodity" k="commodity" value={lc.commodity} />
-                        <F label="Packaging" k="packaging" value={lc.packaging} />
+                        <F label="Commodity" k="commodity" value={lc.commodity} list={commodityOpts} />
+                        <F label="Packaging" k="packaging" value={lc.packaging} list={packagingOpts} />
                         <F label="Quantity" k="quantity" value={lc.quantity} />
                         <F label="Weight (kg)" k="weightKg" value={lc.weightKg} />
                         <F label="Volume" k="volume" value={lc.volume} />

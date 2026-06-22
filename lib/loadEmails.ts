@@ -32,6 +32,16 @@ export const splitEmails = (s?: string): string[] => String(s || '').split(/[,;]
 const lc_subbieAddrs = (lc: any): string[] => [lc?.subcontractorEmail, ...splitEmails(lc?.ccEmail), ...splitEmails(lc?.updateCc)].filter(Boolean).map((e: string) => e.toLowerCase());
 const lc_clientAddrs = (lc: any): string[] => [lc?.clientEmail, ...splitEmails(lc?.clientCc)].filter(Boolean).map((e: string) => e.toLowerCase());
 const dropAddrs = (list: string[], forbidden: string[]): string[] => list.filter(e => e && !forbidden.includes(e.toLowerCase()));
+
+// Exported so EVERY party-facing email — status updates, POD notices, amended
+// resends, inter-depot → subbie hand-offs — enforces the SAME separation, not
+// just the LoadCon/Order builders. Pass any extra cc (the party's own profile
+// cc + internal ops mailboxes); the other party's addresses are stripped out.
+// Internal FBN mailboxes (loadcons@/ops@…) are neither party, so they survive.
+export const ccForSubbie = (lc: any, extra: (string | undefined)[]): string[] =>
+    dropAddrs(extra.flatMap(e => splitEmails(e)), lc_clientAddrs(lc));
+export const ccForClient = (lc: any, extra: (string | undefined)[]): string[] =>
+    dropAddrs(extra.flatMap(e => splitEmails(e)), lc_subbieAddrs(lc));
 const base = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
 
 type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };

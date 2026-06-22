@@ -3,6 +3,7 @@ import { LoadConfirmation, Client, Branch, Contact } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
+import { bothDatesPast } from '../../lib/format';
 
 interface TransportOrderFormProps {
     onSubmit: (data: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'>) => Promise<any> | void;
@@ -234,6 +235,9 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             alert('Please set a Delivery date — it is required (a time is optional; the driver/subbie updates the ETA at the loading point).');
             return;
         }
+        // Both dates in the past = the load is created as already Delivered. Confirm
+        // so a date typo doesn't silently mark a brand-new load delivered.
+        if (bothDatesPast(collectionDate, deliveryDate) && !window.confirm('Both the loading and delivery dates are in the past — this load will be created as ALREADY DELIVERED (awaiting POD). Continue?')) return;
         const data: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'> = {
             clientId: existingClientId || '',
             items: [],

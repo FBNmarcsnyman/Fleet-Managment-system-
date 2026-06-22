@@ -99,6 +99,9 @@ const LoadDetailModal: React.FC = () => {
 
     const save = () => {
         const updates: any = { ...d, totalAmount: parseFloat(d.totalAmount) || 0, supplierRate: d.supplierRate === '' ? undefined : (parseFloat(d.supplierRate) || 0) };
+        // Guard-rail: selling below cost. Warn before committing a negative margin.
+        const sell = updates.totalAmount, buy = updates.supplierRate || 0;
+        if (sell > 0 && buy > sell && !window.confirm(`⚠ NEGATIVE MARGIN: the transport rate (${rand(buy)}) is higher than the client rate (${rand(sell)}) — this load loses ${rand(buy - sell)}. Save anyway?`)) return;
         hideModal();
         showToast(`Saving ${lc.loadConNumber}…`);
         handleUpdateLoadConfirmation(lc.id, updates)
@@ -273,7 +276,7 @@ const LoadDetailModal: React.FC = () => {
                 <div className="grid grid-cols-3 gap-3">
                     <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate</p><p className="text-lg font-black text-blue-300">{rand(lc.totalAmount)}</p></div>
                     <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Transport Rate</p><p className="text-lg font-black text-amber-300">{rand(lc.supplierRate)}</p></div>
-                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Margin</p><p className={`text-lg font-black ${marginPct < 10 ? 'text-red-400' : 'text-emerald-400'}`}>{rand(margin)} <span className="text-xs">({marginPct.toFixed(0)}%)</span></p></div>
+                    <div className={`rounded-xl p-3 ${margin < 0 ? 'bg-red-950/40 ring-1 ring-red-500' : 'bg-gray-900/50'}`}><p className="text-[10px] font-bold text-gray-500 uppercase">Margin{margin < 0 ? ' ⚠ LOSS' : ''}</p><p className={`text-lg font-black ${margin < 0 ? 'text-red-400' : marginPct < 10 ? 'text-amber-400' : 'text-emerald-400'}`}>{rand(margin)} <span className="text-xs">({marginPct.toFixed(0)}%)</span></p></div>
                 </div>
             )}
 

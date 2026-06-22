@@ -94,12 +94,27 @@ const DailyShipmentsOverview: React.FC = () => {
         </div>
     );
 
+    // Open client requests (from the track page) — surface them so ops act, rather
+    // than having to open each load to discover a pending request.
+    const openRequests = loads.filter(l => ((l as any).clientRequestStatus || (l as any).client_request_status) === 'open');
+
     return (
         <div className="space-y-5">
             <div>
                 <h3 className="text-xl font-bold text-slate-900">Daily Overview</h3>
                 <p className="text-xs text-slate-500">The live pipeline — booked → collected → in transit → delivered → POD. Click a stage to see the loads.</p>
             </div>
+
+            {openRequests.length > 0 && (
+                <div className="bg-amber-50 border border-amber-300 rounded-xl p-3">
+                    <p className="text-sm font-black text-amber-800 mb-2">📨 {openRequests.length} client request{openRequests.length !== 1 ? 's' : ''} awaiting a reply</p>
+                    <div className="flex flex-wrap gap-2">
+                        {openRequests.slice(0, 12).map(l => (
+                            <button key={l.id} onClick={() => showModal('loadDetail', { loadCon: l })} className="text-xs font-bold bg-white border border-amber-300 hover:bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg">{l.loadConNumber} · {clientName(l)}</button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="flex gap-2 flex-wrap">
                 {PIPELINE.map(s => <Card key={s.key} label={s.label} n={(byStatus.get(s.key) || []).length} active={sel === s.key} onClick={() => setSel(sel === s.key ? null : s.key)} />)}

@@ -50,6 +50,17 @@ const DepotShipmentsView: React.FC = () => {
         const { error } = await directUpdate('depot_shipments', { id: s.id }, { status });
         if (error) { showToast(`Could not update: ${error.message}`); load(); }
     };
+    // Advance a whole depot group through the collection leg in one click. Each
+    // shipment stays individual afterwards (no merging/splitting) — this only
+    // moves the cargo we collect from one depot together to the next status.
+    const bulkSetStatus = async (items: DepotShipment[], status: string) => {
+        const ids = items.map(x => x.id);
+        setRows(p => p.map(x => ids.includes(x.id) ? { ...x, status } : x));
+        const results = await Promise.all(ids.map(id => directUpdate('depot_shipments', { id }, { status })));
+        const failed = results.filter(r => r.error).length;
+        if (failed) { showToast(`${failed} of ${ids.length} could not update.`); load(); }
+        else showToast(`${ids.length} shipment${ids.length === 1 ? '' : 's'} → ${status}.`);
+    };
     const del = async (s: DepotShipment) => {
         if (!window.confirm(`Delete depot shipment ${s.house_bill || s.client_ref || ''}?`)) return;
         const { error } = await directDelete('depot_shipments', { id: s.id });
@@ -249,7 +260,15 @@ const DepotShipmentsView: React.FC = () => {
                                                     <span className="bg-white border border-slate-200 rounded px-2 py-0.5"><span className="text-slate-900 font-black">{num(g.cube)}</span> m³</span>
                                                 </div>
                                             </button>
-                                            {open && (
+                                            {open && (<>
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-white border-t border-slate-100 flex-wrap">
+                                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">Collection leg:</span>
+                                                    {g.items.some(s => s.status === 'Unpacked') && (
+                                                        <button onClick={() => bulkSetStatus(g.items.filter(s => s.status === 'Unpacked'), 'Collection Booked')} className="text-xs font-bold text-white bg-[#13294b] hover:bg-[#1d3a66] px-3 py-1.5 rounded-md">Book collection ({g.items.filter(s => s.status === 'Unpacked').length})</button>
+                                                    )}
+                                                    <button onClick={() => { if (window.confirm(`Mark all ${g.items.length} shipment(s) from "${g.depot}" as collected? Each then continues individually to its destination.`)) bulkSetStatus(g.items, 'Collected'); }} className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-md">Mark collected →</button>
+                                                    <span className="text-[11px] text-slate-400">Once collected, each shipment is handled individually onward.</span>
+                                                </div>
                                                 <table className="w-full text-left text-sm">
                                                     <thead className="bg-white text-slate-400 text-[11px] uppercase tracking-wider"><tr>
                                                         <th className="p-2 pl-9">Client / HBL</th><th className="p-2">Cargo</th><th className="p-2">Status</th><th className="p-2">Free-time</th><th className="p-2">Delivery</th>
@@ -269,7 +288,7 @@ const DepotShipmentsView: React.FC = () => {
                                                         })}
                                                     </tbody>
                                                 </table>
-                                            )}
+                                            </>)}
                                         </div>
                                     );
                                 })}

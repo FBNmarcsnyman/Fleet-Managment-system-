@@ -20,7 +20,9 @@ const ContainersView: React.FC = () => {
 
     const load = async () => {
         setLoading(true);
-        const { data } = await directSelect('containers?select=*&order=eta_port.asc.nullslast,created_at.desc&limit=1000');
+        // Order most-recent ETA first and lift the cap so active (recent) containers
+        // aren't buried behind years of delivered history (2,000+ rows).
+        const { data } = await directSelect('containers?select=*&order=eta_port.desc.nullslast,created_at.desc&limit=5000');
         setRows(Array.isArray(data) ? data : []);
         setLoading(false);
     };

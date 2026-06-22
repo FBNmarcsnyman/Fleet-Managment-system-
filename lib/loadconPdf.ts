@@ -120,16 +120,17 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
     row([{ w: CW, text: title, style: 'banner' }]);
 
     if (type === 'deliveryNote') {
-        row([{ w: L, text: 'CONSIGNMENT', style: 'label' }, { w: CW / 2 - L, text: lc.loadConNumber }, { w: L, text: 'FBN REF', style: 'label' }, { w: CW / 2 - L, text: lc.loadRefNo || '' }]);
+        row([{ w: L, text: 'CONSIGNMENT', style: 'label' }, { w: CW / 2 - L, text: lc.loadConNumber }, { w: L, text: 'FBN DI / WAYBILL', style: 'label' }, { w: CW / 2 - L, text: lc.loadRefNo || '' }]);
         row([{ w: L, text: 'CARRIER', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorName || '' }, { w: L, text: 'DRIVER', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorDriverName || '' }]);
     } else if (type === 'clientOrder') {
         row([{ w: L, text: 'INSTRUCTION FROM', style: 'label' }, { w: CW / 2 - L, text: lc.fbnRepresentative || '' }, { w: L, text: 'LOADCON NO', style: 'label' }, { w: CW / 2 - L, text: lc.loadConNumber }]);
         row([{ w: L, text: 'CLIENT', style: 'label' }, { w: CW / 2 - L, text: lc.clientName || '' }, { w: L, text: 'FOR ATT', style: 'label' }, { w: CW / 2 - L, text: lc.clientContact || '' }]);
-        row([{ w: L, text: 'FBN REF', style: 'label' }, { w: CW / 2 - L, text: lc.loadRefNo || '' }, { w: L, text: 'CUST O/NO', style: 'label' }, { w: CW / 2 - L, text: lc.customerOrderNumber || '' }]);
+        row([{ w: L, text: 'FBN DI / WAYBILL', style: 'label' }, { w: CW / 2 - L, text: lc.loadRefNo || '' }, { w: L, text: 'CUST O/NO', style: 'label' }, { w: CW / 2 - L, text: lc.customerOrderNumber || '' }]);
     } else {
         row([{ w: L, text: 'INSTRUCTION FROM', style: 'label' }, { w: CW / 2 - L, text: lc.fbnRepresentative || '' }, { w: L, text: 'LOADCON NO', style: 'label' }, { w: CW / 2 - L, text: lc.loadConNumber }]);
         row([{ w: L, text: 'SUB-CONTRACTOR', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorName || '' }, { w: L, text: 'FOR ATT', style: 'label' }, { w: CW / 2 - L, text: lc.forAttention || '' }]);
         row([{ w: L, text: 'REG + DRIVER', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorDriverName || lc.subcontractorVehicleReg || '' }, { w: L, text: 'DRIVER CELL', style: 'label' }, { w: CW / 2 - L, text: lc.subcontractorDriverCell || '' }]);
+        row([{ w: L, text: 'FBN DI / WAYBILL', style: 'label' }, { w: CW / 2 - L, text: lc.loadRefNo || '' }, { w: L, text: 'CUST O/NO', style: 'label' }, { w: CW / 2 - L, text: lc.customerOrderNumber || '' }]);
         notesBlock();
     }
 

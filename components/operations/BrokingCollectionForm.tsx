@@ -26,6 +26,7 @@ const BrokingCollectionForm: React.FC = () => {
     const [clientEmail, setClientEmail] = useState('');
     const [clientContact, setClientContact] = useState('');
     const [clientCc, setClientCc] = useState('');
+    const [loadRefNo, setLoadRefNo] = useState('');
     const [collectionPoint, setCollectionPoint] = useState('');
     const [deliveryPoint, setDeliveryPoint] = useState('');
     const [packages, setPackages] = useState('');
@@ -91,6 +92,7 @@ const BrokingCollectionForm: React.FC = () => {
             clientId: clientId || '', clientName, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined, clientCc: clientCc || undefined,
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Delivery' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint, collectionDate,
+            loadRefNo: loadRefNo ? loadRefNo.toUpperCase() : undefined,
             loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (vehicleSize || undefined),
             specialInstructions: containerNote || undefined,
             packaging: packages ? `${packages}` : undefined,
@@ -141,6 +143,7 @@ const BrokingCollectionForm: React.FC = () => {
                     <div><label className={lbl}>Contact</label><input value={clientContact} onChange={e => setClientContact(e.target.value)} className={inp} /></div>
                     <div><label className={lbl}>Client email</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp} /></div>
                 </div>
+                <div><label className={lbl}>FBN DI / Waybill no</label><input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={inp} placeholder="manual waybill / DI no (for tracking + invoicing)" /></div>
                 <div><label className={lbl}>Collect from *</label><AddressAutocompleteInput value={collectionPoint} onChange={setCollectionPoint} placeholder="Search address…" required className={inp} /></div>
                 <div><label className={lbl}>Deliver to</label><AddressAutocompleteInput value={deliveryPoint} onChange={setDeliveryPoint} placeholder="Search address…" className={inp} /></div>
                 <div className="grid grid-cols-2 gap-3">

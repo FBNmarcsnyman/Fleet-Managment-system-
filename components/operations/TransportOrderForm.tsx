@@ -307,8 +307,8 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             <select value={arrangingBranch} onChange={e => setArrangingBranch(e.target.value)} className={inputCls}>
                                 {ARRANGING_BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                             </select></div>
-                        <div><label className={labelCls}>Load Ref No (FBN DI / Manifest)</label>
-                            <input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={inputCls} placeholder="e.g. DI12345" /></div>
+                        <div><label className={labelCls}>FBN DI / Waybill no</label>
+                            <input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={inputCls} placeholder="manual waybill / DI no (tracking + invoicing)" /></div>
                         <div><label className={labelCls}>FBN Representative</label>
                             <select value={fbnRepresentative} onChange={e => setFbnRepresentative(e.target.value)} className={inputCls}>
                                 {!FBN_REPS.includes(fbnRepresentative) && fbnRepresentative && <option value={fbnRepresentative}>{fbnRepresentative}</option>}

@@ -219,8 +219,8 @@ const LoadDetailModal: React.FC = () => {
                         <F label="FBN Branch" k="arrangingBranch" value={lc.arrangingBranch} />
                         <F label="FBN Rep" k="fbnRepresentative" value={lc.fbnRepresentative} />
                         <F label="Route" k="route" value={lc.route} />
-                        <F label="Load Ref" k="loadRefNo" value={lc.loadRefNo} />
-                        <F label="Waybill" k="collectionRef" value={lc.collectionRef} />
+                        <F label="FBN DI / Waybill" k="loadRefNo" value={lc.loadRefNo} />
+                        <F label="Collection Ref" k="collectionRef" value={lc.collectionRef} />
                         <F label="Customer Order" k="customerOrderNumber" value={lc.customerOrderNumber} />
                     </div>
                 </Section>

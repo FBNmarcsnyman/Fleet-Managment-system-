@@ -355,6 +355,7 @@ export interface Contact {
     getsPod?: boolean;
     getsPodUpload?: boolean;
     getsUpdates?: boolean;
+    basedAt?: string;   // where this person is based (city/branch) — for marketing & routing
 }
 
 export interface Supplier {

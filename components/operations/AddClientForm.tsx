@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Client, Contact, ClientBranch } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
+import { directSelect } from '../../lib/supabase';
 import ContactsEditor from './ContactsEditor';
 
 const AddClientForm: React.FC = () => {
@@ -15,6 +16,30 @@ const AddClientForm: React.FC = () => {
     const [branches, setBranches] = useState<ClientBranch[]>(editing?.branches || []);
     const [address, setAddress] = useState(editing?.address || '');
     const [submitting, setSubmitting] = useState(false);
+    const [pullingCtrl, setPullingCtrl] = useState(false);
+
+    // Pull the controllers we already have for this client (as the AGENT) from the
+    // LCL status report — e.g. Bongumusa under DHL, based in DBN — and add any that
+    // aren't already a contact. Accurate, no email scraping.
+    const pullControllers = async () => {
+        if (!name.trim()) { showToast('Enter the company name first.'); return; }
+        setPullingCtrl(true);
+        try {
+            const { data } = await directSelect(`lcl_shipments?select=controller,unpack_region&agent=eq.${encodeURIComponent(name.trim())}&limit=20000`);
+            const seen = new Map<string, string>(); // controller -> region
+            (Array.isArray(data) ? data : []).forEach((r: any) => { const c = String(r.controller || '').trim(); if (c && !seen.has(c.toLowerCase())) seen.set(c.toLowerCase(), String(r.unpack_region || '').trim()); });
+            const have = new Set(contacts.map(c => (c.name || '').trim().toLowerCase()));
+            const add: Contact[] = [];
+            seen.forEach((region, key) => {
+                if (have.has(key)) return;
+                const proper = key.replace(/\b\w/g, m => m.toUpperCase());
+                add.push({ name: proper, role: 'Controller', basedAt: region || undefined, getsDocs: false, getsPod: false, getsUpdates: true } as Contact);
+            });
+            if (!add.length) { showToast('No new controllers found in the status report for this client.'); }
+            else { setContacts(prev => [...prev, ...add]); showToast(`Added ${add.length} controller${add.length === 1 ? '' : 's'} — add their email/cell and save.`); }
+        } catch (e) { showToast(`Could not pull controllers: ${e instanceof Error ? e.message : 'error'}`); }
+        finally { setPullingCtrl(false); }
+    };
 
     const setBranch = (i: number, field: keyof ClientBranch, v: string) => setBranches(p => p.map((b, idx) => idx === i ? { ...b, [field]: v } : b));
     const setBranchContacts = (i: number, cs: Contact[]) => setBranches(p => p.map((b, idx) => idx === i ? { ...b, contacts: cs } : b));
@@ -73,6 +98,9 @@ const AddClientForm: React.FC = () => {
                 </div>
                 <textarea placeholder="Company Address" value={address} onChange={e => setAddress(e.target.value)} rows={3} className={inputClasses} />
                 <div className="border-t border-gray-700 pt-4">
+                    <div className="flex justify-end mb-1">
+                        <button type="button" onClick={pullControllers} disabled={pullingCtrl} className="text-xs font-bold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg">{pullingCtrl ? 'Pulling…' : '⬇ Pull controllers from status report'}</button>
+                    </div>
                     <ContactsEditor contacts={contacts} onChange={setContacts} accent="text-blue-400" kind="client" />
                 </div>
                 <div className="border-t border-gray-700 pt-4">

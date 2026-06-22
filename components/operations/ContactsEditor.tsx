@@ -68,6 +68,9 @@ const ContactsEditor: React.FC<{
                         <input className={`${inputCls} col-span-2`} placeholder="Phone" value={c.phone || ''} onChange={e => update(i, 'phone', e.target.value)} />
                         <button type="button" onClick={() => remove(i)} title="Remove" className="col-span-1 text-gray-500 hover:text-red-400 text-lg font-bold">×</button>
                     </div>
+                    <div className="flex items-center gap-2 pl-1 flex-wrap">
+                        <input className={`${inputCls} max-w-[180px] py-1`} placeholder="Based (city / branch)" value={(c as any).basedAt || ''} onChange={e => update(i, 'basedAt' as any, e.target.value)} />
+                    </div>
                     <div className="flex items-center gap-4 pl-1 text-[11px] text-gray-400 flex-wrap">
                         <span className="uppercase tracking-wider text-gray-500">Send them:</span>
                         <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={c.getsDocs ?? false} onChange={() => toggle(i, 'getsDocs')} /> {docLabel}</label>

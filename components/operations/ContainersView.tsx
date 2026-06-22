@@ -17,6 +17,8 @@ const ContainersView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [q, setQ] = useState('');
     const [tab, setTab] = useState<'active' | 'all' | 'turnin'>('active');
+    const [sort, setSort] = useState<'eta' | 'client' | 'status'>('eta');
+    const [groupClient, setGroupClient] = useState(false);
 
     const load = async () => {
         setLoading(true);
@@ -50,13 +52,31 @@ const ContainersView: React.FC = () => {
 
     const filtered = useMemo(() => {
         const term = q.trim().toLowerCase();
-        return rows.filter(c => {
+        const out = rows.filter(c => {
             if (tab === 'active' && DONE.includes(c.status)) return false;
             if (tab === 'turnin' && !(c.status === 'Empty' || (c.turn_in_date && c.status !== 'Turned In'))) return false;
             if (!term) return true;
             return `${c.container_no} ${c.client_name || ''} ${c.vessel_name || ''} ${c.client_ref || ''}`.toLowerCase().includes(term);
         });
-    }, [rows, q, tab]);
+        // Grouping by client forces a client-ordered sort so each client's
+        // containers sit together (e.g. a client with 3 containers reads as a block).
+        const effSort = groupClient ? 'client' : sort;
+        const byEta = (a: Container, b: Container) => { const ax = a.eta_port || '', bx = b.eta_port || ''; if (!ax && !bx) return 0; if (!ax) return 1; if (!bx) return -1; return bx.localeCompare(ax); };
+        out.sort((a, b) => {
+            if (effSort === 'client') return (a.client_name || '').localeCompare(b.client_name || '') || byEta(a, b);
+            if (effSort === 'status') return (a.status || '').localeCompare(b.status || '') || byEta(a, b);
+            return byEta(a, b);
+        });
+        return out;
+    }, [rows, q, tab, sort, groupClient]);
+
+    // Per-client counts (for the group header badges) — precomputed to avoid
+    // re-scanning the list for every row.
+    const clientCounts = useMemo(() => {
+        const m: Record<string, number> = {};
+        filtered.forEach(c => { const k = c.client_name || '—'; m[k] = (m[k] || 0) + 1; });
+        return m;
+    }, [filtered]);
 
     const counts = useMemo(() => {
         const a = rows.filter(c => !DONE.includes(c.status));
@@ -98,10 +118,21 @@ const ContainersView: React.FC = () => {
                 {card('Active', counts.active, 'text-slate-800')}
             </div>
 
-            <div className="flex gap-1 mb-3 bg-slate-100 p-1 rounded-lg w-fit">
-                {([['active', 'Active'], ['turnin', 'Empty / turn-in'], ['all', 'All']] as [typeof tab, string][]).map(([v, l]) => (
-                    <button key={v} onClick={() => setTab(v)} className={chip(tab === v)}>{l}</button>
-                ))}
+            <div className="flex gap-2 mb-3 flex-wrap items-center">
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+                    {([['active', 'Active'], ['turnin', 'Empty / turn-in'], ['all', 'All']] as [typeof tab, string][]).map(([v, l]) => (
+                        <button key={v} onClick={() => setTab(v)} className={chip(tab === v)}>{l}</button>
+                    ))}
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Sort</label>
+                    <select value={sort} disabled={groupClient} onChange={e => setSort(e.target.value as any)} className="bg-white border border-slate-300 rounded-md p-1.5 text-xs disabled:opacity-50">
+                        <option value="eta">ETA (newest first)</option>
+                        <option value="client">Client</option>
+                        <option value="status">Status</option>
+                    </select>
+                    <button onClick={() => setGroupClient(g => !g)} className={chip(groupClient)}>Group by client</button>
+                </div>
             </div>
 
             {loading ? <p className="text-center text-slate-400 py-12">Loading…</p> : filtered.length === 0 ? <p className="text-center text-slate-400 py-12">No containers.</p> : (
@@ -111,8 +142,14 @@ const ContainersView: React.FC = () => {
                             <th className="p-2">Container</th><th className="p-2">Client</th><th className="p-2">Vessel / ETA</th><th className="p-2">Plan</th><th className="p-2">Branch</th><th className="p-2">Status</th><th className="p-2">Turn-in</th><th className="p-2"></th>
                         </tr></thead>
                         <tbody>
-                            {filtered.map(c => (
-                                <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
+                            {filtered.map((c, i) => (
+                              <React.Fragment key={c.id}>
+                                {groupClient && (i === 0 || (filtered[i - 1].client_name || '—') !== (c.client_name || '—')) && (
+                                    <tr className="bg-slate-50">
+                                        <td colSpan={8} className="px-2 py-1.5 text-xs font-black text-slate-700 uppercase tracking-wider">{c.client_name || '—'} <span className="text-slate-400">({clientCounts[c.client_name || '—']})</span></td>
+                                    </tr>
+                                )}
+                                <tr className="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
                                     <td className="p-2"><button onClick={() => showModal('logContainer', { container: c })} className="font-mono font-bold text-blue-600 hover:underline">{c.container_no}</button><div className="text-[11px] text-slate-400">{[c.size, c.weight ? `${c.weight} kg` : ''].filter(Boolean).join(' · ')}</div></td>
                                     <td className="p-2">{c.client_name || '—'}{c.client_ref ? <div className="text-[11px] text-slate-400">{c.client_ref}</div> : null}</td>
                                     <td className="p-2">{c.vessel_name || '—'}<div className="text-[11px] text-slate-400">ETA {fmt(c.eta_port)}</div></td>
@@ -125,6 +162,7 @@ const ContainersView: React.FC = () => {
                                         <button onClick={() => del(c)} title="Delete" className="text-slate-400 hover:text-red-500">×</button>
                                     </td>
                                 </tr>
+                              </React.Fragment>
                             ))}
                         </tbody>
                     </table>

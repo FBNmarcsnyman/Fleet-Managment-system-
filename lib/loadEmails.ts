@@ -5,6 +5,7 @@
 import { directInvoke, invokeFn } from './supabase';
 import { buildLoadConPdf } from './loadconPdf';
 import { brandedEmail, emailButton } from './emailTemplate';
+import { treatAsDelivered } from './loadStatus';
 
 const fmtD = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? (d || '') : dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }); };
 // Money always shows 2 decimals: R5000 → R 5 000.00, R5000.50 → R 5 000.50.
@@ -19,7 +20,6 @@ const table = (rows: [string, string | undefined][]) => {
         .map(([k, v]) => `<tr><td style="${lblTd}">${k}</td><td style="${valTd}">${v}</td></tr>`).join('');
     return body ? `<table style="border-collapse:collapse;margin:6px 0 14px">${body}</table>` : '';
 };
-const subjLoc = (lc: any, a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
 // Split a comma/semicolon list of CC emails into clean array entries.
 export const splitEmails = (s?: string): string[] => String(s || '').split(/[,;]/).map(t => t.trim()).filter(Boolean);
 
@@ -32,6 +32,29 @@ export const splitEmails = (s?: string): string[] => String(s || '').split(/[,;]
 const lc_subbieAddrs = (lc: any): string[] => [lc?.subcontractorEmail, ...splitEmails(lc?.ccEmail), ...splitEmails(lc?.updateCc)].filter(Boolean).map((e: string) => e.toLowerCase());
 const lc_clientAddrs = (lc: any): string[] => [lc?.clientEmail, ...splitEmails(lc?.clientCc)].filter(Boolean).map((e: string) => e.toLowerCase());
 const dropAddrs = (list: string[], forbidden: string[]): string[] => list.filter(e => e && !forbidden.includes(e.toLowerCase()));
+
+// Exported so EVERY party-facing email — status updates, POD notices, amended
+// resends, inter-depot → subbie hand-offs — enforces the SAME separation, not
+// just the LoadCon/Order builders. Pass any extra cc (the party's own profile
+// cc + internal ops mailboxes); the other party's addresses are stripped out.
+// Internal FBN mailboxes (loadcons@/ops@…) are neither party, so they survive.
+export const ccForSubbie = (lc: any, extra: (string | undefined)[]): string[] =>
+    dropAddrs(extra.flatMap(e => splitEmails(e)), lc_clientAddrs(lc));
+export const ccForClient = (lc: any, extra: (string | undefined)[]): string[] =>
+    dropAddrs(extra.flatMap(e => splitEmails(e)), lc_subbieAddrs(lc));
+
+// Canonical FBN mailbox routing — single source of truth shared by these
+// builders and the status/POD senders in OperationsContext.
+export const FBN_LOADCONS = 'loadcons@fbn-transport.co.za';
+export const OPS_GENERAL = 'ops@fbn-transport.co.za';
+export const opsMailbox = (branch?: string): string =>
+    branch === 'FBN DBN' ? 'opsdbn@fbn-transport.co.za'
+        : branch === 'FBN JHB' ? 'opsjhb@fbn-transport.co.za'
+            : OPS_GENERAL;
+// Ops mailboxes to copy for a load: the arranging/collecting branch + general
+// ops. (Phase-aware destination-branch routing lives in OperationsContext.)
+export const branchOpsCc = (lc: any): string[] =>
+    [...new Set([opsMailbox(lc?.collectionBranch || lc?.arrangingBranch), OPS_GENERAL])];
 const base = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
 
 type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };
@@ -44,17 +67,32 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
     try { const r = await buildLoadConPdf(lc, 'loadcon'); b64 = r.base64; attachments = [{ filename: r.filename, content: r.base64, contentType: 'application/pdf' }]; }
     catch (e) { console.error('[loadEmails] loadcon pdf', e); pdfFailed = true; }
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
+    // Status-aware: an already-delivered load (explicit status OR a past delivery
+    // date) asks for the POD instead of acceptance.
+    const delivered = treatAsDelivered(lc);
+    const intro = delivered
+      ? `<p>This load has been <strong>delivered</strong>. Please see the updated Load Confirmation${attachments ? ' attached' : ' below'} for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`
+      : `<p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`;
+    const callToAction = delivered
+      ? (lc.podPhoto
+          ? `<p>The signed POD is already on file — thank you. The attached copy is for your records.</p>`
+          : `<p>Kindly <strong>upload the signed POD</strong> against this load using the button below.</p>
+      ${emailButton(`${base()}?pod=${lc.id}`, 'Upload POD &rarr;', '#16a34a')}`)
+      : `<p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
+      ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}`;
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
-      <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
+      ${intro}
       ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(lc.deliveryPoint)], ['Loading date', fmtD(lc.collectionDate)], ['Loading time', lc.loadingTime], ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Transport rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
-      <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
-      ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
+      ${callToAction}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        // Subbie LoadCon: cc the subbie docs team + ops — strip any CLIENT address.
-        const cc = dropAddrs(['loadcons@fbn-transport.co.za', ...splitEmails(lc.ccEmail)], lc_clientAddrs(lc));
-        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${subjLoc(lc, collLoc)} to ${subjLoc(lc, delLoc)}`, html, fromName: 'FBN Transport', attachments } });
+        // Subbie LoadCon: cc loadcons@ + the arranging/collecting branch ops + the
+        // load's sales rep (if any) + the subbie's cc — strip any CLIENT address.
+        // Subject uses route localities only — NEVER the client name (a subcontractor
+        // must not learn the client's identity).
+        const cc = dropAddrs([FBN_LOADCONS, ...branchOpsCc(lc), lc.repEmail, ...splitEmails(lc.ccEmail)].filter(Boolean) as string[], lc_clientAddrs(lc));
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${collLoc} to ${delLoc}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
     if (b64) { void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: b64, name: 'LoadCon.pdf', kind: 'loadcon', contentType: 'application/pdf' }] }); }
@@ -69,9 +107,24 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     try { const r = await buildLoadConPdf(lc, 'clientOrder'); b64 = r.base64; attachments = [{ filename: r.filename, content: r.base64, contentType: 'application/pdf' }]; }
     catch (e) { console.error('[loadEmails] order pdf', e); pdfFailed = true; }
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
+    // Status-aware: a delivered load (explicit status OR a past delivery date)
+    // confirms delivery + POD, not "updates coming".
+    const delivered = treatAsDelivered(lc);
+    const podUrl = lc.podPhoto?.data || '';
+    const intro = delivered
+      ? `<p>This load has been <strong>delivered</strong>. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>`
+      : `<p><strong>Thank you for your load — we are pleased to confirm it is booked</strong> and all arrangements are in place. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>`;
+    const footer = delivered
+      ? (podUrl
+          ? `${emailButton(podUrl, 'View / download POD &rarr;', '#16a34a')}
+      <p>The signed POD for your delivery is available above. Should you need anything further, simply reply to this email.</p>`
+          : `${emailButton(`${base()}?track=${lc.id}`, 'Track your shipment &rarr;')}
+      <p>The signed POD will follow as soon as it is received. Should you need anything in the meantime, simply reply to this email.</p>`)
+      : `${emailButton(`${base()}?track=${lc.id}`, 'Track your shipment &rarr;')}
+      <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>`;
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
-      <p><strong>Thank you for your load — we are pleased to confirm it is booked</strong> and all arrangements are in place. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>
+      ${intro}
       ${table([
         ['FBN order no.', lc.loadConNumber],
         ['Your reference', lc.customerOrderNumber],
@@ -85,13 +138,13 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
         ['Commodity', lc.commodity],
         ['Packaging', lc.packaging],
       ])}
-      ${emailButton(`${base()}?track=${lc.id}`, 'Track your shipment &rarr;')}
-      <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>
+      ${footer}
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
         // Client Order goes to the client + the full CLIENT team (lc.clientCc) +
-        // operations. NEVER the subcontractor's list — strip any SUBBIE address.
-        const cc = dropAddrs([...splitEmails(lc.clientCc), 'loadcons@fbn-transport.co.za'], lc_subbieAddrs(lc));
+        // loadcons@ + the arranging/collecting branch ops + the load's sales rep (if
+        // any). NEVER the subcontractor's list — strip any SUBBIE address.
+        const cc = dropAddrs([...splitEmails(lc.clientCc), FBN_LOADCONS, ...branchOpsCc(lc), lc.repEmail].filter(Boolean) as string[], lc_subbieAddrs(lc));
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }

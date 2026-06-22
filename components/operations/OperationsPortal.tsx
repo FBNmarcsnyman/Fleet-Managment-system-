@@ -8,6 +8,7 @@ const SubcontractorLoadsView = lazy(() => import('./SubcontractorLoadsView'));
 const WhatsAppChatsView = lazy(() => import('./WhatsAppChatsView'));
 const ShipmentsBoard = lazy(() => import('./ShipmentsBoard'));
 const ContainersView = lazy(() => import('./ContainersView'));
+const DepotShipmentsView = lazy(() => import('./DepotShipmentsView'));
 const EmailLogView = lazy(() => import('./EmailLogView'));
 const OperationsOverview = lazy(() => import('./OperationsOverview'));
 const ImportsBoard = lazy(() => import('./ImportsBoard'));
@@ -45,6 +46,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'planning', label: 'Planning' },
         { view: 'imports', label: 'Imports' },
         { view: 'containers', label: 'Containers' },
+        { view: 'depotStatus', label: 'Depot Status' },
     ];
     // The sidebar has two flat tabs — Broking and Operations — that both open
     // this portal. The current view decides which area's tab strip to show; the
@@ -77,6 +79,7 @@ const OperationsPortal: React.FC = () => {
             case 'loadBoard': return <LoadBoard />;
             case 'shipments': return <Suspense fallback={<div>Loading…</div>}><ShipmentsBoard /></Suspense>;
             case 'containers': return <Suspense fallback={<div>Loading…</div>}><ContainersView /></Suspense>;
+            case 'depotStatus': return <Suspense fallback={<div>Loading…</div>}><DepotShipmentsView /></Suspense>;
             case 'imports': return <Suspense fallback={<div>Loading…</div>}><ImportsBoard /></Suspense>;
             case 'planning': return <Suspense fallback={<div>Loading…</div>}><DailyPlanningView loadConfirmations={loadConfirmations} vehicles={vehicles} users={users || []} clients={clients} manifests={manifests || []} tripSheets={tripSheets || []} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} onCreateManifest={handleCreateManifest} onCreateTripSheet={handleCreateTripSheet} onOpenModal={showModal} /></Suspense>;
             case 'driverChats': return <Suspense fallback={<div>Loading…</div>}><WhatsAppChatsView /></Suspense>;

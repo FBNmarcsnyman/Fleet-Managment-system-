@@ -70,6 +70,7 @@ const DriverDocuments = lazy(() => import('./components/fleet/DriverDocuments'))
 const BulkCollectionForm = lazy(() => import('./components/operations/BulkCollectionForm'));
 const PickListManager = lazy(() => import('./components/operations/PickListManager'));
 const LogContainerModal = lazy(() => import('./components/operations/LogContainerModal'));
+const LogDepotShipmentModal = lazy(() => import('./components/operations/LogDepotShipmentModal'));
 const CartageAdviceScanModal = lazy(() => import('./components/operations/CartageAdviceScanModal'));
 const BrokingCollectionForm = lazy(() => import('./components/operations/BrokingCollectionForm'));
 const PartnerDetailModal = lazy(() => import('./components/operations/PartnerDetailModal'));
@@ -145,6 +146,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     bulkCollection: BulkCollectionForm,
     pickLists: PickListManager,
     logContainer: LogContainerModal,
+    logDepotShipment: LogDepotShipmentModal,
     cartageScan: CartageAdviceScanModal,
     brokingCollection: BrokingCollectionForm,
     partnerDetail: PartnerDetailModal,
@@ -202,6 +204,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     bulkCollection: '4xl',
     pickLists: 'lg',
     logContainer: '3xl',
+    logDepotShipment: '3xl',
     cartageScan: '3xl',
     brokingCollection: 'lg',
     partnerDetail: '2xl',

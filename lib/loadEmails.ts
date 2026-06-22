@@ -34,6 +34,18 @@ const lc_clientAddrs = (lc: any): string[] => [lc?.clientEmail, ...splitEmails(l
 const dropAddrs = (list: string[], forbidden: string[]): string[] => list.filter(e => e && !forbidden.includes(e.toLowerCase()));
 const base = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
 
+// Is this load ALREADY delivered when we send the doc? A LoadCon/Order created or
+// resent after the trip is done must NOT ask the subbie to "accept & send driver
+// details" or tell the client it's "booked". We check the STATUS and — because the
+// status may not have been updated — also treat a past delivery date as delivered.
+const isDelivered = (lc: any): boolean => {
+    const s = String(lc?.status || '');
+    if (['Delivered', 'POD Submitted', 'Invoiced'].includes(s)) return true;
+    if (lc?.backDated || lc?.back_dated) return true;
+    const dd = lc?.deliveryDate; if (dd) { const d = new Date(dd); const t = new Date(); t.setHours(0, 0, 0, 0); if (!isNaN(d.getTime()) && d < t) return true; }
+    return false;
+};
+
 type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };
 
 // LoadCon → subcontractor (their copy, with the transport rate + accept link).
@@ -48,8 +60,12 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
       <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
       <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
       ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(lc.deliveryPoint)], ['Loading date', fmtD(lc.collectionDate)], ['Loading time', lc.loadingTime], ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Transport rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
-      <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
-      ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
+      ${isDelivered(lc)
+        ? `<p>This load has already been <strong>delivered</strong>. Please view the Load Confirmation above for your records and <strong>upload the signed POD</strong> to close it off.</p>
+      ${emailButton(`${base()}?pod=${lc.id}`, 'Upload signed POD &rarr;', '#16a34a')}
+      <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or reply to this email with the POD attached.</p>`
+        : `<p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
+      ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}`}
       <p>Regards,<br>FBN Transport</p>`);
     try {
         // Subbie LoadCon: cc the subbie docs team + ops — strip any CLIENT address.
@@ -71,7 +87,9 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
-      <p><strong>Thank you for your load — we are pleased to confirm it is booked</strong> and all arrangements are in place. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>
+      ${isDelivered(lc)
+        ? `<p><strong>Thank you for your load.</strong> Please note this shipment has been <strong>delivered</strong> — we are now awaiting the signed POD, which we will send through as soon as it is received. Your order details are below${attachments ? ' and attached for your records' : ''}:</p>`
+        : `<p><strong>Thank you for your load — we are pleased to confirm it is booked</strong> and all arrangements are in place. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>`}
       ${table([
         ['FBN order no.', lc.loadConNumber],
         ['Your reference', lc.customerOrderNumber],
@@ -85,8 +103,10 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
         ['Commodity', lc.commodity],
         ['Packaging', lc.packaging],
       ])}
-      ${emailButton(`${base()}?track=${lc.id}`, 'Track your shipment &rarr;')}
-      <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>
+      ${emailButton(`${base()}?track=${lc.id}`, isDelivered(lc) ? 'Track &amp; view POD &rarr;' : 'Track your shipment &rarr;')}
+      ${isDelivered(lc)
+        ? `<p>You can follow the shipment and <strong>download the signed POD from the tracking link above as soon as it is uploaded</strong>. Should you need anything in the meantime, simply reply to this email.</p>`
+        : `<p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>`}
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
         // Client Order goes to the client + the full CLIENT team (lc.clientCc) +

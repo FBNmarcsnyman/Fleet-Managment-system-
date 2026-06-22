@@ -3,6 +3,7 @@ import { useUIState } from '../../contexts/AppContexts';
 import { directUpdate, directInsert } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import DocScanButton from '../shared/DocScanButton';
+import DateField from './DateField';
 import { DRO_DOC_PROMPT, DRO_DOC_SCHEMA } from '../../lib/docScan';
 
 // View / edit one LCL groupage shipment on the status report. Update its status
@@ -75,7 +76,7 @@ const LclShipmentModal: React.FC = () => {
                 <div><label className={lbl}>File ref / HBL</label><input value={f.file_ref || ''} onChange={e => set('file_ref', e.target.value)} className={inp} /></div>
                 <div><label className={lbl}>Container</label><input value={f.container_no || ''} onChange={e => set('container_no', e.target.value.toUpperCase())} className={inp} /></div>
                 <div><label className={lbl}>Vessel</label><input value={f.vessel || ''} onChange={e => set('vessel', e.target.value)} className={inp} /></div>
-                <div><label className={lbl}>ETA</label><input type="date" value={(f.eta || '').slice(0, 10)} onChange={e => set('eta', e.target.value)} className={inp} /></div>
+                <div><label className={lbl}>ETA</label><DateField value={(f.eta || '').slice(0, 10)} onChange={v => set('eta', v)} className={inp} /></div>
                 <div><label className={lbl}>Depot</label><input list="lclDepots" value={f.depot || ''} onChange={e => set('depot', e.target.value.toUpperCase())} className={inp} /><datalist id="lclDepots">{DEPOTS.map(d => <option key={d} value={d} />)}</datalist></div>
                 <div><label className={lbl}>Consignee</label><input value={f.consignee || ''} onChange={e => set('consignee', e.target.value)} className={inp} /></div>
                 <div><label className={lbl}>Commodity</label><input value={f.commodity || ''} onChange={e => set('commodity', e.target.value)} className={inp} /></div>
@@ -87,10 +88,10 @@ const LclShipmentModal: React.FC = () => {
                 <div><label className={lbl}>Weight (kg)</label><input value={f.weight_kg || ''} onChange={e => set('weight_kg', e.target.value)} className={inp} /></div>
                 <div><label className={lbl}>Volume (m³)</label><input value={f.volume_cbm || ''} onChange={e => set('volume_cbm', e.target.value)} className={inp} /></div>
                 <div><label className={lbl}>Status</label><select value={f.status || ''} onChange={e => set('status', e.target.value)} className={inp}>{LCL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                <div><label className={lbl}>Unpack date</label><input type="date" value={(f.unpack_date || '').slice(0, 10)} onChange={e => set('unpack_date', e.target.value)} className={inp} /></div>
-                <div><label className={lbl}>Uplift / collected</label><input type="date" value={(f.uplift_date || '').slice(0, 10)} onChange={e => set('uplift_date', e.target.value)} className={inp} /></div>
-                <div><label className={lbl}>Delivered FBN JHB</label><input type="date" value={(f.delivered_jhb_date || '').slice(0, 10)} onChange={e => set('delivered_jhb_date', e.target.value)} className={inp} /></div>
-                <div><label className={lbl}>Delivered to client</label><input type="date" value={(f.delivered_client_date || '').slice(0, 10)} onChange={e => set('delivered_client_date', e.target.value)} className={inp} /></div>
+                <div><label className={lbl}>Unpack date</label><DateField value={(f.unpack_date || '').slice(0, 10)} onChange={v => set('unpack_date', v)} className={inp} /></div>
+                <div><label className={lbl}>Uplift / collected</label><DateField value={(f.uplift_date || '').slice(0, 10)} onChange={v => set('uplift_date', v)} className={inp} /></div>
+                <div><label className={lbl}>Delivered FBN JHB</label><DateField value={(f.delivered_jhb_date || '').slice(0, 10)} onChange={v => set('delivered_jhb_date', v)} className={inp} /></div>
+                <div><label className={lbl}>Delivered to client</label><DateField value={(f.delivered_client_date || '').slice(0, 10)} onChange={v => set('delivered_client_date', v)} className={inp} /></div>
                 <div className="col-span-2 md:col-span-3"><label className={lbl}>Remarks</label><textarea value={f.remarks || ''} onChange={e => set('remarks', e.target.value)} rows={2} className={inp} /></div>
             </div>
             <div className="flex justify-end gap-3 mt-6">

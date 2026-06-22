@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUIState } from '../../contexts/AppContexts';
-import { directSelect } from '../../lib/supabase';
+import { directSelect, directUpdate } from '../../lib/supabase';
 
 // LCL groupage Status Report — mirrors the per-client status sheets (DHL/IFF,
 // Schneider, all-other-clients, ADB McGregor). Tracks each shipment from
@@ -50,6 +50,15 @@ const LclStatusReport: React.FC = () => {
     const [depot, setDepot] = useState('All');
     const [status, setStatus] = useState('All');
     const [q, setQ] = useState('');
+    const [selIds, setSelIds] = useState<Set<string>>(new Set());
+    const [bulkBusy, setBulkBusy] = useState(false);
+    const toggleSel = (id: string) => setSelIds(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    const bulkApply = async (patch: Record<string, any>) => {
+        if (!selIds.size) return;
+        setBulkBusy(true);
+        for (const id of selIds) { try { await directUpdate('lcl_shipments', { id }, patch); } catch { /* keep going */ } }
+        setBulkBusy(false); setSelIds(new Set()); fetchRows();
+    };
 
     const fetchRows = async () => {
         setLoading(true);
@@ -122,11 +131,23 @@ const LclStatusReport: React.FC = () => {
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="DI, container, vessel, HBL, commodity…" className={`${sel} flex-1 min-w-[200px]`} />
             </div>
 
+            {selIds.size > 0 && (
+                <div className="flex items-center gap-2 bg-[#13294b] text-white rounded-xl p-2.5 flex-wrap sticky top-0 z-10">
+                    <span className="font-black text-sm px-2">{selIds.size} selected</span>
+                    <button disabled={bulkBusy} onClick={() => bulkApply({ status: 'UNPACKED', unpack_date: todayIso() })} className="bg-amber-500 hover:bg-amber-400 text-[#13294b] font-bold text-xs px-3 py-1.5 rounded-md disabled:opacity-50">Mark unpacked (today)</button>
+                    <button disabled={bulkBusy} onClick={() => bulkApply({ status: 'COLLECTED / ON ROUTE', uplift_date: todayIso() })} className="bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs px-3 py-1.5 rounded-md disabled:opacity-50">Mark collected (today)</button>
+                    <button disabled={bulkBusy} onClick={() => bulkApply({ status: 'DELIVERED', delivered_client_date: todayIso(), is_history: true })} className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs px-3 py-1.5 rounded-md disabled:opacity-50">Mark delivered</button>
+                    <button disabled={bulkBusy} onClick={() => setSelIds(new Set())} className="text-blue-200 hover:text-white font-bold text-xs px-3 py-1.5">Clear</button>
+                    {bulkBusy && <span className="text-xs text-blue-200">Updating…</span>}
+                </div>
+            )}
+
             {loading ? <p className="text-center text-slate-400 py-12">Loading…</p> : (
                 <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white max-h-[62vh]">
                     <table className="w-full text-left text-xs">
                         <thead className="sticky top-0 bg-slate-100 text-slate-500 uppercase tracking-wider">
                             <tr>
+                                <th className="p-2 w-8"><input type="checkbox" checked={filtered.length > 0 && filtered.every(r => selIds.has(r.id))} onChange={e => setSelIds(e.target.checked ? new Set(filtered.map(r => r.id)) : new Set())} /></th>
                                 <th className="p-2">FBN DI</th><th className="p-2">Container / vessel</th><th className="p-2">ETA</th><th className="p-2">Depot</th><th className="p-2">Consignee</th><th className="p-2">Commodity</th><th className="p-2 text-right">Pkgs</th><th className="p-2 text-right">Kg</th><th className="p-2 text-right">CBM</th><th className="p-2">Status</th><th className="p-2">Unpack</th><th className="p-2">Free-time</th><th className="p-2">Delivered</th>
                             </tr>
                         </thead>
@@ -134,7 +155,8 @@ const LclStatusReport: React.FC = () => {
                             {filtered.map(r => {
                                 const f = freeTime(r);
                                 return (
-                                    <tr key={r.id} onClick={() => showModal('lclShipment', { shipment: r, onSaved: fetchRows })} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                                    <tr key={r.id} onClick={() => showModal('lclShipment', { shipment: r, onSaved: fetchRows })} className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${selIds.has(r.id) ? 'bg-blue-50' : ''}`}>
+                                        <td className="p-2" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selIds.has(r.id)} onChange={() => toggleSel(r.id)} /></td>
                                         <td className="p-2 font-mono font-bold text-slate-900">{r.fbn_di || '—'}{r.hazardous ? <span className="ml-1 text-[8px] font-black bg-rose-100 text-rose-700 px-1 rounded">HAZ</span> : null}</td>
                                         <td className="p-2"><span className="font-mono">{r.container_no || '—'}</span><div className="text-[10px] text-slate-400">{r.vessel}</div></td>
                                         <td className="p-2">{fmtD(r.eta)}</td>
@@ -151,7 +173,7 @@ const LclStatusReport: React.FC = () => {
                                     </tr>
                                 );
                             })}
-                            {filtered.length === 0 && <tr><td colSpan={13} className="p-6 text-center text-slate-400">No shipments for this filter.</td></tr>}
+                            {filtered.length === 0 && <tr><td colSpan={14} className="p-6 text-center text-slate-400">No shipments for this filter.</td></tr>}
                         </tbody>
                     </table>
                 </div>

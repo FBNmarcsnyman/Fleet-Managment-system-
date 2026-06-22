@@ -3,6 +3,8 @@ import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState, useAuth, useVehicles } from '../../contexts/AppContexts';
 import { nextStep, statusChip, STATUS_LABEL, isCollectionStage, isAssigned } from '../../lib/loadStatus';
 import { fmtDay } from '../../lib/format';
+import { manifestHtml, opsEmailFor } from '../../lib/linehaulDocs';
+import { invokeFn } from '../../lib/supabase';
 
 // ---------------------------------------------------------------------------
 // OPERATIONS — DAY (list-flow worklist)
@@ -224,13 +226,14 @@ const OperationsDay: React.FC = () => {
                             const n = (m.loadConfirmationIds || []).length;
                             const inbound = branch !== 'All' && m.destinationBranch === branch;
                             return (
-                                <div key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                                    <span className="font-bold text-[#13294b]">{m.manifestNumber}</span>
+                                <div key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer" onClick={() => showModal('manifestDoc', { manifest: m })}>
+                                    <span className="font-bold text-[#13294b] underline decoration-dotted">{m.manifestNumber}</span>
                                     <span className="text-sm font-bold text-slate-700">{code(m.originBranch)} → {code(m.destinationBranch)}</span>
+                                    {m.trailerSize && <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{m.trailerSize}</span>}
                                     <span className="text-xs text-slate-500">{veh?.registration || 'truck'}{driverName(m.driverId) ? ` · ${driverName(m.driverId)}` : ''} · {n} load{n === 1 ? '' : 's'}</span>
                                     <span className="text-[11px] text-slate-400">disp {fmtDay(m.dispatchDate)}</span>
                                     <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">{m.status || 'In Transit'}</span>
-                                    <button onClick={() => receive(m)} disabled={busy === m.id} className={`ml-auto font-bold py-1 px-3 rounded-lg text-[11px] uppercase text-white ${inbound ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-500 hover:bg-slate-400'} disabled:opacity-50`}>{busy === m.id ? '…' : `📦 Receive at ${code(m.destinationBranch)}`}</button>
+                                    <button onClick={e => { e.stopPropagation(); receive(m); }} disabled={busy === m.id} className={`ml-auto font-bold py-1 px-3 rounded-lg text-[11px] uppercase text-white ${inbound ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-500 hover:bg-slate-400'} disabled:opacity-50`}>{busy === m.id ? '…' : `📦 Receive at ${code(m.destinationBranch)}`}</button>
                                 </div>
                             );
                         })}
@@ -268,15 +271,28 @@ const OperationsDay: React.FC = () => {
             {build && <AssignUnitPanel
                 mode={build.mode} loads={build.loads} vehicles={vehicles} users={users} driverName={driverName}
                 onClose={() => setBuild(null)}
-                onAssign={async (vehicleId, driverId) => {
+                onAssign={async (vehicleId, driverId, extra) => {
                     if (build.mode === 'manifest') {
-                        const res = await handleCreateManifest({ vehicleId, driverId, loadConIds: build.loads.map(l => l.id), originBranch: build.loads[0].collectionBranch });
+                        const res = await handleCreateManifest({ vehicleId, driverId, loadConIds: build.loads.map(l => l.id), originBranch: build.loads[0].collectionBranch, trailerSize: extra.trailerSize });
                         if (res && res.ok === false) { showToast?.(res.error || 'Could not build manifest'); return; }
-                        showToast?.('Line-haul manifest built — loads dispatched.'); setStage('linehaul');
+                        const man = (res as any)?.value;
+                        // Auto-email the RECEIVING depot the full manifest (contents, weights,
+                        // packages, cubes, totals, trailer) so they know what's inbound.
+                        if (man) {
+                            const veh = vehicles.find((v: any) => v.id === vehicleId);
+                            const vehicleLabel = veh ? `${veh.registration}${veh.name ? ` (${veh.name})` : ''}` : '';
+                            try {
+                                await invokeFn('send-email', { body: { to: opsEmailFor(man.destinationBranch), cc: [opsEmailFor(man.originBranch), 'ops@fbn-transport.co.za'], subject: `LINE-HAUL MANIFEST ${man.manifestNumber} — ${man.originBranch} to ${man.destinationBranch}`, html: manifestHtml({ manifest: man, loads: build.loads, vehicleLabel, driverName: driverName(driverId), clientNameOf: clientName }), fromName: 'FBN Transport' } });
+                            } catch { /* non-blocking */ }
+                            showModal('manifestDoc', { manifest: man });
+                        }
+                        showToast?.('Manifest built, depot emailed — loads dispatched.'); setStage('linehaul');
                     } else {
-                        const res = await handleCreateTripSheet({ vehicleId, driverId, loadConIds: build.loads.map(l => l.id), branch: build.loads[0].destinationBranch });
+                        const res = await handleCreateTripSheet({ vehicleId, driverId, loadConIds: build.loads.map(l => l.id), branch: build.loads[0].destinationBranch, odometerStart: extra.odometerStart });
                         if (res && res.ok === false) { showToast?.(res.error || 'Could not create trip sheet'); return; }
+                        const trip = (res as any)?.value;
                         showToast?.('Trip sheet created — loads out for delivery.');
+                        if (trip) showModal('tripSheetDoc', { tripSheet: trip });
                     }
                     setBuild(null); setSel(new Set());
                 }} />}
@@ -351,16 +367,18 @@ const BuildBtn: React.FC<{ count: number; dest: string; label: string; onClick: 
 );
 
 // Pick a truck + driver for either a line-haul manifest or a delivery trip sheet.
-const AssignUnitPanel: React.FC<{ mode: 'manifest' | 'trip'; loads: LoadConfirmation[]; vehicles: any[]; users: any[]; driverName: (id?: string) => string; onClose: () => void; onAssign: (vehicleId: string, driverId: string) => Promise<void> }> = ({ mode, loads, vehicles, users, onClose, onAssign }) => {
+const AssignUnitPanel: React.FC<{ mode: 'manifest' | 'trip'; loads: LoadConfirmation[]; vehicles: any[]; users: any[]; driverName: (id?: string) => string; onClose: () => void; onAssign: (vehicleId: string, driverId: string, extra: { trailerSize?: string; odometerStart?: number }) => Promise<void> }> = ({ mode, loads, vehicles, users, onClose, onAssign }) => {
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
+    const [trailerSize, setTrailerSize] = useState('12m');
+    const [odo, setOdo] = useState('');
     const [saving, setSaving] = useState(false);
     const isManifest = mode === 'manifest';
     const origin = loads[0]?.collectionBranch, dest = loads[0]?.destinationBranch;
     // Line-haul = horses; local delivery = any on-road vehicle.
     const trucks = vehicles.filter((v: any) => v.status === 'On the road' && (isManifest ? v.weightCategory === 'Horse' : true));
     const drivers = users.filter((u: any) => ['Staff', 'Driver'].includes(u.role));
-    const submit = async () => { if (!vehicleId || !driverId) { alert('Pick a truck and a driver.'); return; } setSaving(true); await onAssign(vehicleId, driverId); setSaving(false); };
+    const submit = async () => { if (!vehicleId || !driverId) { alert('Pick a truck and a driver.'); return; } setSaving(true); await onAssign(vehicleId, driverId, { trailerSize: isManifest ? trailerSize : undefined, odometerStart: !isManifest && odo ? Number(odo) : undefined }); setSaving(false); };
     return (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
@@ -396,6 +414,21 @@ const AssignUnitPanel: React.FC<{ mode: 'manifest' | 'trip'; loads: LoadConfirma
                                 {drivers.map((d: any) => <option key={d.email} value={d.email}>{d.name}</option>)}
                             </select>
                         </div>
+                        {isManifest ? (
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Trailer</label>
+                                <select value={trailerSize} onChange={e => setTrailerSize(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                                    <option value="6m">6 m</option>
+                                    <option value="12m">12 m</option>
+                                    <option value="6m + 6m">6 m + 6 m (superlink)</option>
+                                </select>
+                            </div>
+                        ) : (
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Odometer start (km)</label>
+                                <input value={odo} onChange={e => setOdo(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="e.g. 248500" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2">

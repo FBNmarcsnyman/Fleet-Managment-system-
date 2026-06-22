@@ -788,6 +788,7 @@ export interface Manifest {
     driverId: string;
     loadConfirmationIds: string[];
     status: 'In Transit' | 'Arrived';
+    trailerSize?: string; // line-haul trailer length, e.g. '6m' / '12m'
 }
 
 export interface TripSheet {
@@ -800,6 +801,8 @@ export interface TripSheet {
     driverId: string;
     loadConfirmationIds: string[];
     status: 'Out for Delivery' | 'Completed';
+    odometerStart?: number;
+    odometerEnd?: number;
 }
 
 export type NotificationType = 'JOB_CARD' | 'SERVICE' | 'INVENTORY' | 'PURCHASE' | 'COMPLIANCE' | 'ONBOARDING' | 'RFQ';

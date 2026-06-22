@@ -653,6 +653,7 @@ export const mapManifest = (row: Tables['manifests']['Row'], ctx: MapperCtx): Ma
     driverId: row.driver_id ?? '',
     loadConfirmationIds: row.load_confirmation_ids || [],
     status: row.status,
+    trailerSize: (row as any).trailer_size ?? undefined,
 });
 
 // -- trip_sheets → TripSheet -------------------------------------------------
@@ -666,6 +667,8 @@ export const mapTripSheet = (row: Tables['trip_sheets']['Row'], ctx: MapperCtx):
     driverId: row.driver_id ?? '',
     loadConfirmationIds: row.load_confirmation_ids || [],
     status: row.status,
+    odometerStart: (row as any).odometer_start ?? undefined,
+    odometerEnd: (row as any).odometer_end ?? undefined,
 });
 
 // -- incident_reports → IncidentReport ---------------------------------------

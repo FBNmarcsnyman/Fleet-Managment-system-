@@ -1,0 +1,163 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useUIState } from '../../contexts/AppContexts';
+import { directSelect } from '../../lib/supabase';
+
+// LCL groupage Status Report — mirrors the per-client status sheets (DHL/IFF,
+// Schneider, all-other-clients, ADB McGregor). Tracks each shipment from
+// "container not in" → unpacked → collected → at FBN → JHB → delivered, with a
+// FREE-TIME CLOCK: 3 days to collect after unpack (incl. unpack day), HAZ = 1 day.
+interface Lcl {
+    id: string; fbn_di: string; date_ins_rec: string; controller: string; file_ref: string;
+    container_no: string; vessel: string; eta: string; unpack_region: string; depot: string;
+    consignee: string; hazardous: boolean; un_number: string; commodity: string;
+    qty: number; weight_kg: number; volume_cbm: number; status: string;
+    unpack_date: string; uplift_date: string; delivered_jhb_date: string; delivered_client_date: string;
+    remarks: string; client_sheet: string; is_history: boolean;
+}
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const daysBetween = (a: string, b: string) => Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
+const fmtD = (s?: string) => { if (!s) return '—'; const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' }); };
+
+// Free-time: from unpack date you have N days (incl. unpack day) to collect before
+// storage is charged. HAZ = 1 day. Only matters until the cargo is uplifted.
+const freeTime = (r: Lcl): { state: 'none' | 'ok' | 'due' | 'over'; label: string; days: number } => {
+    if (!r.unpack_date) return { state: 'none', label: '', days: 0 };
+    if (r.uplift_date || /COLLECT|ROUTE|DISPATCH|JHB|DELIVER/.test((r.status || '').toUpperCase())) return { state: 'none', label: 'collected', days: 0 };
+    const free = r.hazardous ? 1 : 3;
+    const deadline = new Date(r.unpack_date); deadline.setDate(deadline.getDate() + free - 1);
+    const left = daysBetween(todayIso(), deadline.toISOString().slice(0, 10));
+    if (left < 0) return { state: 'over', label: `${-left}d over`, days: left };
+    if (left === 0) return { state: 'due', label: 'due today', days: 0 };
+    return { state: 'ok', label: `${left}d left`, days: left };
+};
+
+const STATUS_TONE = (s: string) => {
+    const u = (s || '').toUpperCase();
+    if (/DELIVER/.test(u)) return 'bg-emerald-100 text-emerald-700';
+    if (/JHB|DISPATCH/.test(u)) return 'bg-indigo-100 text-indigo-700';
+    if (/COLLECT|ROUTE/.test(u)) return 'bg-blue-100 text-blue-700';
+    if (/UNPACK/.test(u)) return 'bg-amber-100 text-amber-700';
+    return 'bg-slate-100 text-slate-600';
+};
+
+const LclStatusReport: React.FC = () => {
+    const { showModal } = useUIState();
+    const [rows, setRows] = useState<Lcl[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [view, setView] = useState<'current' | 'history'>('current');
+    const [report, setReport] = useState('All');
+    const [depot, setDepot] = useState('All');
+    const [status, setStatus] = useState('All');
+    const [q, setQ] = useState('');
+
+    const fetchRows = async () => {
+        setLoading(true);
+        const hist = view === 'history';
+        let path = `lcl_shipments?select=*&is_history=eq.${hist}&order=eta.desc.nullslast,date_ins_rec.desc.nullslast&limit=5000`;
+        if (report !== 'All') path += `&client_sheet=eq.${encodeURIComponent(report)}`;
+        const { data } = await directSelect(path);
+        setRows(Array.isArray(data) ? data : []);
+        setLoading(false);
+    };
+    useEffect(() => { fetchRows(); /* eslint-disable-line */ }, [view, report]);
+
+    const reports = useMemo(() => ['All', ...new Set(rows.map(r => r.client_sheet).filter(Boolean))], [rows]);
+    const depots = useMemo(() => ['All', ...new Set(rows.map(r => r.depot).filter(Boolean))].sort(), [rows]);
+    const statuses = useMemo(() => ['All', ...new Set(rows.map(r => r.status).filter(Boolean))].sort(), [rows]);
+
+    const filtered = useMemo(() => {
+        const term = q.trim().toLowerCase();
+        return rows.filter(r => {
+            if (depot !== 'All' && r.depot !== depot) return false;
+            if (status !== 'All' && r.status !== status) return false;
+            if (term) {
+                const hay = `${r.fbn_di || ''} ${r.container_no || ''} ${r.vessel || ''} ${r.file_ref || ''} ${r.commodity || ''} ${r.consignee || ''} ${r.depot || ''}`.toLowerCase();
+                if (!hay.includes(term)) return false;
+            }
+            return true;
+        });
+    }, [rows, depot, status, q]);
+
+    const counts = useMemo(() => {
+        let over = 0, due = 0, awaiting = 0, unpacked = 0;
+        filtered.forEach(r => {
+            const f = freeTime(r);
+            if (f.state === 'over') over++; else if (f.state === 'due') due++;
+            if (/NOT IN|AWAIT/.test((r.status || '').toUpperCase())) awaiting++;
+            if (/UNPACK/.test((r.status || '').toUpperCase())) unpacked++;
+        });
+        return { over, due, awaiting, unpacked, total: filtered.length };
+    }, [filtered]);
+
+    const card = (label: string, n: number, tone: string) => (
+        <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 min-w-[110px]"><div className={`text-2xl font-black ${tone}`}>{n}</div><div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div></div>
+    );
+    const sel = 'bg-white border border-slate-300 rounded-md p-2 text-sm text-slate-700';
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                    <h3 className="text-xl font-bold text-slate-900">LCL Unpack — Status Report</h3>
+                    <p className="text-xs text-slate-500">Groupage shipments per client report. Free-time clock = 3 days to collect after unpack (HAZ = 1 day).</p>
+                </div>
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                    {(['current', 'history'] as const).map(v => <button key={v} onClick={() => setView(v)} className={`px-3 py-1.5 text-xs font-bold rounded-md capitalize ${view === v ? 'bg-[#13294b] text-white' : 'text-slate-600 hover:bg-white'}`}>{v}</button>)}
+                </div>
+            </div>
+
+            <div className="flex gap-3 flex-wrap">
+                {card('Shipments', counts.total, 'text-slate-900')}
+                {card('Awaiting unpack', counts.awaiting, 'text-slate-600')}
+                {card('Unpacked', counts.unpacked, 'text-amber-600')}
+                {card('Free-time due', counts.due, 'text-orange-600')}
+                {card('Storage overdue', counts.over, 'text-rose-600')}
+            </div>
+
+            <div className="flex gap-2 flex-wrap items-center bg-white border border-slate-200 rounded-xl p-3">
+                <select value={report} onChange={e => setReport(e.target.value)} className={sel}>{reports.map(r => <option key={r} value={r}>{r === 'All' ? 'All reports' : r}</option>)}</select>
+                <select value={depot} onChange={e => setDepot(e.target.value)} className={sel}>{depots.map(d => <option key={d} value={d}>{d === 'All' ? 'All depots' : d}</option>)}</select>
+                <select value={status} onChange={e => setStatus(e.target.value)} className={sel}>{statuses.map(s => <option key={s} value={s}>{s === 'All' ? 'All statuses' : s}</option>)}</select>
+                <input value={q} onChange={e => setQ(e.target.value)} placeholder="DI, container, vessel, HBL, commodity…" className={`${sel} flex-1 min-w-[200px]`} />
+            </div>
+
+            {loading ? <p className="text-center text-slate-400 py-12">Loading…</p> : (
+                <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white max-h-[62vh]">
+                    <table className="w-full text-left text-xs">
+                        <thead className="sticky top-0 bg-slate-100 text-slate-500 uppercase tracking-wider">
+                            <tr>
+                                <th className="p-2">FBN DI</th><th className="p-2">Container / vessel</th><th className="p-2">ETA</th><th className="p-2">Depot</th><th className="p-2">Consignee</th><th className="p-2">Commodity</th><th className="p-2 text-right">Pkgs</th><th className="p-2 text-right">Kg</th><th className="p-2 text-right">CBM</th><th className="p-2">Status</th><th className="p-2">Unpack</th><th className="p-2">Free-time</th><th className="p-2">Delivered</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map(r => {
+                                const f = freeTime(r);
+                                return (
+                                    <tr key={r.id} onClick={() => showModal('lclShipment', { shipment: r, onSaved: fetchRows })} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                                        <td className="p-2 font-mono font-bold text-slate-900">{r.fbn_di || '—'}{r.hazardous ? <span className="ml-1 text-[8px] font-black bg-rose-100 text-rose-700 px-1 rounded">HAZ</span> : null}</td>
+                                        <td className="p-2"><span className="font-mono">{r.container_no || '—'}</span><div className="text-[10px] text-slate-400">{r.vessel}</div></td>
+                                        <td className="p-2">{fmtD(r.eta)}</td>
+                                        <td className="p-2 font-bold text-[#13294b]">{r.depot || '—'}</td>
+                                        <td className="p-2">{r.consignee || '—'}</td>
+                                        <td className="p-2 truncate max-w-[140px]">{r.commodity || '—'}</td>
+                                        <td className="p-2 text-right">{r.qty ?? '—'}</td>
+                                        <td className="p-2 text-right">{r.weight_kg ? Math.round(r.weight_kg).toLocaleString('en-ZA') : '—'}</td>
+                                        <td className="p-2 text-right">{r.volume_cbm ?? '—'}</td>
+                                        <td className="p-2"><span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${STATUS_TONE(r.status)}`}>{r.status || '—'}</span></td>
+                                        <td className="p-2">{fmtD(r.unpack_date)}</td>
+                                        <td className="p-2">{f.state === 'none' ? <span className="text-slate-300">—</span> : <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${f.state === 'over' ? 'bg-rose-100 text-rose-700' : f.state === 'due' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>{f.label}</span>}</td>
+                                        <td className="p-2">{fmtD(r.delivered_client_date)}</td>
+                                    </tr>
+                                );
+                            })}
+                            {filtered.length === 0 && <tr><td colSpan={13} className="p-6 text-center text-slate-400">No shipments for this filter.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default LclStatusReport;

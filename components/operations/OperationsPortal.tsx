@@ -16,6 +16,7 @@ const BrokingDashboard = lazy(() => import('./BrokingDashboard'));
 const DailyShipmentsOverview = lazy(() => import('./DailyShipmentsOverview'));
 const MonthlyLoadcons = lazy(() => import('./MonthlyLoadcons'));
 const TransporterLoadCons = lazy(() => import('./TransporterLoadCons'));
+const LclStatusReport = lazy(() => import('./LclStatusReport'));
 
 
 const OperationsPortal: React.FC = () => {
@@ -47,6 +48,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'shipments', label: 'Shipments' },
         { view: 'planning', label: 'Planning' },
         { view: 'imports', label: 'Imports' },
+        { view: 'lclStatus', label: 'Status Report' },
         { view: 'containers', label: 'Containers' },
     ];
     // The sidebar has two flat tabs — Broking and Operations — that both open
@@ -89,6 +91,7 @@ const OperationsPortal: React.FC = () => {
             case 'dailyOverview': return <Suspense fallback={<div>Loading…</div>}><DailyShipmentsOverview /></Suspense>;
             case 'monthlyLoadcons': return <Suspense fallback={<div>Loading…</div>}><MonthlyLoadcons /></Suspense>;
             case 'transporterLoads': return <Suspense fallback={<div>Loading…</div>}><TransporterLoadCons /></Suspense>;
+            case 'lclStatus': return <Suspense fallback={<div>Loading…</div>}><LclStatusReport /></Suspense>;
             case 'dashboard':
             default:
                 return <Suspense fallback={<div>Loading…</div>}><BrokingDashboard /></Suspense>;

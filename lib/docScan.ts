@@ -109,6 +109,35 @@ export const CARTAGE_DOC_SCHEMA = {
     required: ['collect_from', 'deliver_to'],
 };
 
+// ---- DRO / release / clearing document for ONE LCL groupage shipment ----
+// We receive these per shipment from the forwarder; pull the tracking fields so
+// the shipment lands on the status report without retyping.
+export const DRO_DOC_PROMPT =
+    'This is a delivery release order (DRO) / cargo release / clearing instruction for a single LCL groupage shipment ' +
+    'arriving by sea and being unpacked at a Durban depot (e.g. ZACPAK, CHC, ICS, MONT, SACD). ' +
+    'Extract the tracking fields. Use empty strings for anything absent; numbers as digits only. Dates as YYYY-MM-DD.';
+
+export const DRO_DOC_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        fbn_di: { type: Type.STRING, description: 'FBN DI / job / file reference if shown' },
+        file_ref: { type: Type.STRING, description: 'Forwarder file ref / shipment ref (e.g. S...)' },
+        house_bill: { type: Type.STRING, description: 'House bill of lading number' },
+        container_no: { type: Type.STRING, description: 'Container number the cargo arrived in' },
+        vessel: { type: Type.STRING, description: 'Vessel / ship name' },
+        eta: { type: Type.STRING, description: 'ETA to port, YYYY-MM-DD' },
+        depot: { type: Type.STRING, description: 'Unpack depot (ZACPAK / CHC / ICS / MONT / SACD)' },
+        consignee: { type: Type.STRING, description: 'Consignee / client name' },
+        commodity: { type: Type.STRING, description: 'Goods / commodity description' },
+        qty: { type: Type.STRING, description: 'Number of packages, digits only' },
+        weight: { type: Type.STRING, description: 'Weight in kg, digits only' },
+        cube: { type: Type.STRING, description: 'Volume in cubic metres' },
+        hazardous: { type: Type.STRING, description: 'YES if hazardous/IMO/UN cargo, else NO' },
+        un_number: { type: Type.STRING, description: 'UN number if hazardous' },
+    },
+    required: ['file_ref'],
+};
+
 // ---- Depot groupage / packing manifest (many consignments) ----
 export const BULK_DOC_PROMPT =
     'This is a depot groupage / packing manifest listing multiple consignments to collect. ' +

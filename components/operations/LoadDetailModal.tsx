@@ -7,6 +7,7 @@ import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import LoadStatusTimeline from './LoadStatusTimeline';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { usePickOptions } from '../../hooks/usePickOptions';
+import AddressAutocompleteInput from './AddressAutocompleteInput';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => {
@@ -34,14 +35,18 @@ const FieldCtx = React.createContext<{ editing: boolean; d: any; set: (k: string
 // `list` => a free-type input WITH autocomplete suggestions (datalist) so the
 // usual client / transporter / commodity / packaging pick-lists stay available
 // while editing instead of forcing you to retype everything.
-const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[]; list?: string[] }> = ({ label, k, value, type = 'text', opts, list }) => {
+const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[]; list?: string[]; address?: boolean }> = ({ label, k, value, type = 'text', opts, list, address }) => {
     const { editing, d, set } = React.useContext(FieldCtx);
     const listId = k ? `f-list-${k}` : undefined;
     return (
         <div>
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}</p>
             {editing && k ? (
-                opts ? (
+                address ? (
+                    // Google address autocomplete — picks up the company / place name
+                    // and prepends it to the address (e.g. "NWE GREEN, 190 Tsessebe…").
+                    <AddressAutocompleteInput value={d[k] ?? ''} onChange={v => set(k, v)} placeholder="Search address / company…" className={inputCls} />
+                ) : opts ? (
                     <select value={d[k]} onChange={e => set(k, e.target.value)} className={inputCls}>{opts.map(o => <option key={o} value={o}>{o}</option>)}</select>
                 ) : (
                     <>
@@ -246,7 +251,7 @@ const LoadDetailModal: React.FC = () => {
                 </Section>
                 <Section title="Collection" accent="bg-emerald-500">
                     <div className="grid grid-cols-2 gap-3">
-                        <F label="Address" k="collectionPoint" value={lc.collectionPoint} />
+                        <F label="Address" k="collectionPoint" value={lc.collectionPoint} address />
                         <F label="Date" k="collectionDate" type="date" value={fmt(lc.collectionDate)} />
                         <F label="Time" k="loadingTime" type="time" value={lc.loadingTime} />
                         <F label="Contact" k="collectionContact" value={lc.collectionContact} />
@@ -255,7 +260,7 @@ const LoadDetailModal: React.FC = () => {
                 </Section>
                 <Section title="Delivery" accent="bg-rose-500">
                     <div className="grid grid-cols-2 gap-3">
-                        <F label="Address" k="deliveryPoint" value={lc.deliveryPoint} />
+                        <F label="Address" k="deliveryPoint" value={lc.deliveryPoint} address />
                         <F label="Date" k="deliveryDate" type="date" value={fmt(lc.deliveryDate)} />
                         <F label="Time" k="offloadingTime" type="time" value={lc.offloadingTime} />
                         <F label="Contact" k="deliveryContact" value={lc.deliveryContact} />

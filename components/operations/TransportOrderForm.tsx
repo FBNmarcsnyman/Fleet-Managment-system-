@@ -66,6 +66,10 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
 
     // Order
     const [arrangingBranch, setArrangingBranch] = useState(ARRANGING_BRANCHES[0]);
+    // Route via a transit depot: subbie drops at an FBN depot, FBN runs the onward leg.
+    const [transitVia, setTransitVia] = useState(false);
+    const [transitDepot, setTransitDepot] = useState('FBN JHB');
+    const [finalBranch, setFinalBranch] = useState('FBN DBN');
     const [loadRefNo, setLoadRefNo] = useState('');
     const [fbnRepresentative, setFbnRepresentative] = useState(currentUser?.name || '');
     const [route, setRoute] = useState('');
@@ -233,7 +237,8 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             totalAmount: parseFloat(clientRate) || 0,
             supplierRate: parseFloat(transportRate) || 0,
             collectionBranch: arrangingToBranch(arrangingBranch),
-            destinationBranch: arrangingToBranch(arrangingBranch),
+            destinationBranch: transitVia ? (finalBranch as any) : arrangingToBranch(arrangingBranch),
+            ...(transitVia ? { transitDepot: transitDepot as any } : {}),
             priority,
             collectionPoint,
             deliveryPoint,
@@ -309,6 +314,20 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             </select></div>
                         <div><label className={labelCls}>FBN DI / Waybill no</label>
                             <input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={inputCls} placeholder="manual waybill / DI no (tracking + invoicing)" /></div>
+                        <div className="md:col-span-3 bg-gray-900/30 rounded-lg p-3">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
+                                <input type="checkbox" checked={transitVia} onChange={e => setTransitVia(e.target.checked)} /> 🔄 Subbie delivers to an FBN depot for inter-depot transfer (transit)
+                            </label>
+                            {transitVia && (
+                                <div className="grid grid-cols-2 gap-3 mt-3">
+                                    <div><label className={labelCls}>Transit depot (subbie drops here)</label>
+                                        <select value={transitDepot} onChange={e => setTransitDepot(e.target.value)} className={inputCls}>{['FBN DBN', 'FBN JHB', 'FBN CPT'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+                                    <div><label className={labelCls}>Final delivery region (FBN runs onward)</label>
+                                        <select value={finalBranch} onChange={e => setFinalBranch(e.target.value)} className={inputCls}>{['FBN DBN', 'FBN JHB', 'FBN CPT'].map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+                                    <p className="col-span-2 text-[11px] text-indigo-300">The subbie LoadCon will show delivery to <strong>{transitDepot}</strong>; FBN then plans the onward leg to <strong>{finalBranch}</strong> from the load (received at depot → assign fleet/subbie → deliver).</p>
+                                </div>
+                            )}
+                        </div>
                         <div><label className={labelCls}>FBN Representative</label>
                             <select value={fbnRepresentative} onChange={e => setFbnRepresentative(e.target.value)} className={inputCls}>
                                 {!FBN_REPS.includes(fbnRepresentative) && fbnRepresentative && <option value={fbnRepresentative}>{fbnRepresentative}</option>}

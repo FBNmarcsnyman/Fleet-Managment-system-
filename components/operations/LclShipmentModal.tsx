@@ -83,6 +83,7 @@ const LclShipmentModal: React.FC = () => {
             delivered_jhb_date: f.delivered_jhb_date || null, delivered_client_date: f.delivered_client_date || null,
             remarks: f.remarks || null, is_history: /DELIVERED/i.test(f.status || ''),
             cra_received: !!f.cra_received, damaged: !!f.damaged, damage_notes: f.damage_notes || null,
+            app_locked: true, // edited in-app — the daily sheet sync won't overwrite it
         };
         const res = existing?.id
             ? await directUpdate('lcl_shipments', { id: existing.id }, row)

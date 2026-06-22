@@ -60,7 +60,9 @@ const LclStatusReport: React.FC = () => {
     const bulkApply = async (patch: Record<string, any>) => {
         if (!selIds.size) return;
         setBulkBusy(true);
-        for (const id of selIds) { try { await directUpdate('lcl_shipments', { id }, patch); } catch { /* keep going */ } }
+        // app_locked: once you act on a shipment here it's app-managed — the daily
+        // sheet sync will leave it alone (won't overwrite your change).
+        for (const id of selIds) { try { await directUpdate('lcl_shipments', { id }, { ...patch, app_locked: true }); } catch { /* keep going */ } }
         setBulkBusy(false); setSelIds(new Set()); fetchRows();
     };
 
@@ -152,7 +154,7 @@ const LclStatusReport: React.FC = () => {
             const res = await handleCreateLoadConfirmation(payload);
             if (!res || res.ok === false) { showToast(`Could not book: ${res?.error || 'error'}`); setBookBusy(null); return; }
             const loadId = res.value?.id; const loadNo = res.value?.loadConNumber;
-            for (const r of list) { try { await directUpdate('lcl_shipments', { id: r.id }, { status: 'COLLECTED / ON ROUTE', uplift_date: todayIso(), load_id: loadId || null }); } catch { /* keep going */ } }
+            for (const r of list) { try { await directUpdate('lcl_shipments', { id: r.id }, { status: 'COLLECTED / ON ROUTE', uplift_date: todayIso(), load_id: loadId || null, app_locked: true }); } catch { /* keep going */ } }
             showToast(`Booked collection ${loadNo} at ${depotName} — ${list.length} shipment${list.length !== 1 ? 's' : ''}, ops notified.`);
             fetchRows();
         } catch (e) { showToast(`Could not book: ${e instanceof Error ? e.message : 'error'}`); }

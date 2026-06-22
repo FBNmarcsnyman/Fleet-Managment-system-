@@ -110,14 +110,6 @@ const OperationsPortal: React.FC = () => {
                 <div className="flex items-center gap-2 shrink-0">
                     {isOps ? (
                         <>
-                            <button onClick={() => showModal('cartageScan', {})}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                                📄 Import (scan)
-                            </button>
-                            <button onClick={() => showModal('bulkCollection', {})}
-                                className="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                                + Bulk / Depot
-                            </button>
                             <button onClick={handleNewCollection}
                                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
                                 + Collection

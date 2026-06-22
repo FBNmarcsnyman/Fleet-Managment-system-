@@ -121,7 +121,6 @@ const ContainersView: React.FC = () => {
                                     <td className="p-2"><select value={c.status} onChange={e => setStatus(c, e.target.value)} className="bg-white border border-slate-300 rounded-md p-1 text-xs">{CONTAINER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
                                     <td className="p-2 text-xs">{c.turn_in_area || '—'}{c.turn_in_date ? <div className="text-[11px] text-slate-400">by {fmt(c.turn_in_date)}</div> : null}</td>
                                     <td className="p-2 text-right whitespace-nowrap">
-                                        {c.plan !== 'full_delivery' && <button onClick={() => showModal('bulkCollection', {})} title="Unpack into shipments" className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 mr-2">Unpack →</button>}
                                         <button onClick={() => del(c)} title="Delete" className="text-slate-400 hover:text-red-500">×</button>
                                     </td>
                                 </tr>

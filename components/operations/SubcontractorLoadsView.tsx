@@ -284,8 +284,10 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         showModal('loadDocuments', { loadCon: lc });
     };
 
-    const handleViewPod = (podPhoto: Attachment) => {
-        showModal('viewPod', { podPhoto });
+    const handleViewPod = (lc: LoadConfirmation) => {
+        // ViewPodModal reads the whole load (podPhoto + AI analysis + approve flow),
+        // so pass the LoadConfirmation, not just the attachment.
+        showModal('viewPod', { loadCon: lc });
     };
 
     const handlePodSubmit = (loadConId: string, podData: { 
@@ -367,7 +369,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                                     <td className="p-2">
                                         {lc.podPhoto ? (
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => handleViewPod(lc.podPhoto!)} className="inline-flex items-center text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 py-1 px-2 rounded-lg">View POD</button>
+                                                <button onClick={() => handleViewPod(lc)} className="inline-flex items-center text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 py-1 px-2 rounded-lg">View POD</button>
                                                 <button onClick={() => handleSendPod(lc)} disabled={requesting === lc.id} title="Email the POD to the client or anyone (WhatsApp to driver coming soon)" className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">{requesting === lc.id ? 'Sending…' : 'Send / Resend'}</button>
                                             </div>
                                         ) : lc.status === 'Delivered' ? (

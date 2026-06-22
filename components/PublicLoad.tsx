@@ -50,8 +50,10 @@ const STAGES = ['Booked', 'Collecting', 'In Transit', 'Out for Delivery', 'Deliv
 const stageIndex = (status: string): number => {
     if (['Booked', 'Driver Assigned'].includes(status)) return 0;
     if (['At Collection Point', 'Loading', 'Collected', 'At Collection Depot'].includes(status)) return 1;
-    if (['In Transit'].includes(status)) return 2;
-    if (['At Destination Depot', 'Unloaded', 'Out for Delivery'].includes(status)) return 3;
+    // "At Destination Depot"/"Unloaded" = arrived at an FBN depot, still in transit
+    // to the final door — NOT yet out for delivery (was wrongly shown as Out for Delivery).
+    if (['In Transit', 'At Destination Depot', 'Unloaded'].includes(status)) return 2;
+    if (['Out for Delivery'].includes(status)) return 3;
     if (['Delivered', 'POD Submitted', 'Invoiced'].includes(status)) return 4;
     return 0;
 };

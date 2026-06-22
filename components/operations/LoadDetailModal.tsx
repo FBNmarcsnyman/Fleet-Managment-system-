@@ -208,23 +208,23 @@ const LoadDetailModal: React.FC = () => {
                 return (
                     <div className="rounded-xl p-4 border bg-indigo-50 border-indigo-200">
                         <p className="text-[11px] font-black uppercase tracking-widest mb-1 text-indigo-700">🔄 Transit via {lc.transitDepot}</p>
-                        <p className="text-sm text-slate-700 mb-2">Leg 1 (subbie): <strong>{(lc.collectionBranch || '').replace('FBN ', '') || 'origin'} → {lc.transitDepot}</strong> · Leg 2 (FBN): <strong>{lc.transitDepot} → {finalRegion}</strong></p>
+                        <p className="text-sm text-slate-700 mb-2">Leg 1 (subbie): <strong>{(lc.collectionBranch || '').replace('FBN ', '') || 'origin'} → {lc.transitDepot}</strong> · Leg 2 (FBN): <strong>line-haul {lc.transitDepot} → {finalRegion}</strong>, then local delivery.</p>
                         {!received ? (
-                            <button onClick={() => handleUpdateLoadConfirmation(lc.id, { transitReceivedAt: new Date().toISOString(), status: 'At Destination Depot' as any }).then((r: any) => showToast(r?.ok === false ? `Could not update: ${r.error}` : `Received at ${lc.transitDepot} — onward planning ready.`))}
+                            <button onClick={() => handleUpdateLoadConfirmation(lc.id, { transitReceivedAt: new Date().toISOString(), status: 'At Collection Depot' as any }).then((r: any) => showToast(r?.ok === false ? `Could not update: ${r.error}` : `Received at ${lc.transitDepot} — add it to the ${finalRegion} line-haul manifest.`))}
                                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm">📦 Mark received at {lc.transitDepot} depot</button>
                         ) : (
                             <div className="space-y-2">
-                                <p className="text-xs text-slate-600">At {lc.transitDepot} depot for <strong className={dwellH >= 48 ? 'text-rose-600' : 'text-slate-800'}>{dwellH}h</strong>{dwellH >= 48 ? ' — chase the onward leg' : ''}.</p>
+                                <p className="text-xs text-slate-600">At {lc.transitDepot} depot for <strong className={dwellH >= 48 ? 'text-rose-600' : 'text-slate-800'}>{dwellH}h</strong>{dwellH >= 48 ? ' — chase the line-haul' : ''}. Add to the <strong>{finalRegion} line-haul manifest</strong> for the inter-depot transfer, then deliver locally on arrival.</p>
                                 <div className="flex flex-wrap items-end gap-2">
-                                    <label className="text-[11px] font-bold text-slate-500 uppercase">Planned final delivery
+                                    <label className="text-[11px] font-bold text-slate-500 uppercase">Planned delivery date
                                         <input type="date" value={onwardDate} onChange={e => setOnwardDate(e.target.value)} className="block bg-white border border-slate-300 rounded-md p-1.5 text-sm text-slate-700" /></label>
                                     <input type="time" value={onwardTime} onChange={e => setOnwardTime(e.target.value)} className="bg-white border border-slate-300 rounded-md p-1.5 text-sm text-slate-700" />
-                                    <button onClick={() => handleUpdateLoadConfirmation(lc.id, { onwardPlannedDate: onwardDate || undefined, onwardPlannedTime: onwardTime || undefined } as any).then((r: any) => showToast(r?.ok === false ? `Could not save: ${r.error}` : 'Onward plan saved.'))}
+                                    <button onClick={() => handleUpdateLoadConfirmation(lc.id, { onwardPlannedDate: onwardDate || undefined, onwardPlannedTime: onwardTime || undefined } as any).then((r: any) => showToast(r?.ok === false ? `Could not save: ${r.error}` : 'Plan saved.'))}
                                         className="bg-[#13294b] text-white font-bold py-1.5 px-3 rounded-md text-sm">Save plan</button>
                                 </div>
                                 <div className="flex flex-wrap gap-2 pt-1">
-                                    <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">🚚 Onward on FBN fleet</button>
-                                    <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">+ Onward subbie LoadCon</button>
+                                    <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">🚚 FBN planned delivery</button>
+                                    <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">🔁 Reroute with subbie</button>
                                 </div>
                             </div>
                         )}

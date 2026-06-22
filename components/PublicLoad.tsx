@@ -38,6 +38,7 @@ interface Summary {
     vehicle_reg?: string;
     driver_name?: string;
     has_pod?: boolean;
+    pod_url?: string;
     accepted_at?: string;
     client_name?: string;
     request_status?: string;
@@ -164,7 +165,11 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                                         {load.loading_eta && <div>ETA at loading point: <strong>{fmtDT(load.loading_eta)}</strong></div>}
                                         {load.vehicle_reg && <div>Vehicle: <strong>{load.vehicle_reg}</strong></div>}
                                         {load.has_pod && <div style={{ color: '#16a34a', fontWeight: 700, marginTop: 4 }}>POD received ✓</div>}
+                                        {!load.has_pod && idx >= 4 && <div style={{ color: '#b45309', fontWeight: 700, marginTop: 4 }}>Delivered — awaiting signed POD. It will appear here once uploaded.</div>}
                                     </div>
+                                    {load.has_pod && load.pod_url && (
+                                        <a href={load.pod_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 14, background: '#16a34a', color: '#fff', textDecoration: 'none', fontWeight: 800, padding: '12px 20px', borderRadius: 8 }}>⬇ Download signed POD</a>
+                                    )}
                                     {/* Client → ops request channel (no detail editing, just a note). */}
                                     <div style={{ marginTop: 22, borderTop: '1px solid #e5e7eb', paddingTop: 18 }}>
                                         {load.request_reply ? (

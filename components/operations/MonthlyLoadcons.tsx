@@ -12,6 +12,10 @@ const MonthlyLoadcons: React.FC = () => {
     const { loadConfirmations = [], clients = [] } = useOperations() as any;
     const { showModal } = useUIState();
     const [month, setMonth] = useState<string>(monthKey(new Date()));
+    const [branch, setBranch] = useState('All');
+    const [client, setClient] = useState('All');
+    const [transporter, setTransporter] = useState('All');
+    const [routeQ, setRouteQ] = useState('');
 
     const loads = loadConfirmations as LoadConfirmation[];
     const clientName = (lc: any) => clients.find((c: any) => c.id === lc.clientId)?.name || lc.clientName || '—';
@@ -23,9 +27,26 @@ const MonthlyLoadcons: React.FC = () => {
         return [...set].sort().reverse();
     }, [loads]);
 
-    const rows = useMemo(() => loads
+    // All loads in the chosen month (before the branch/client/etc. filters).
+    const monthRows = useMemo(() => loads
         .filter(l => ((l.collectionDate || (l as any).date || '').slice(0, 7)) === month)
         .sort((a, b) => (a.collectionDate || '').localeCompare(b.collectionDate || '')), [loads, month]);
+
+    // Filter option lists come from the month's loads so they're always relevant.
+    const branches = useMemo(() => ['All', ...new Set(monthRows.map(l => (l as any).arrangingBranch).filter(Boolean))].sort(), [monthRows]);
+    const clientOpts = useMemo(() => ['All', ...new Set(monthRows.map(l => clientName(l)).filter(v => v && v !== '—'))].sort(), [monthRows]);
+    const transporterOpts = useMemo(() => ['All', ...new Set(monthRows.map(l => (l as any).subcontractorName).filter(Boolean))].sort(), [monthRows]);
+
+    const rows = useMemo(() => {
+        const rq = routeQ.trim().toLowerCase();
+        return monthRows.filter(l => {
+            if (branch !== 'All' && (l as any).arrangingBranch !== branch) return false;
+            if (client !== 'All' && clientName(l) !== client) return false;
+            if (transporter !== 'All' && (l as any).subcontractorName !== transporter) return false;
+            if (rq) { const hay = `${l.route || ''} ${l.collectionPoint || ''} ${l.deliveryPoint || ''}`.toLowerCase(); if (!hay.includes(rq)) return false; }
+            return true;
+        });
+    }, [monthRows, branch, client, transporter, routeQ]);
 
     const totals = useMemo(() => {
         const sell = rows.reduce((s, l) => s + (l.totalAmount || 0), 0);
@@ -61,6 +82,14 @@ const MonthlyLoadcons: React.FC = () => {
                     </select>
                     <button onClick={printSheet} disabled={!rows.length} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg text-sm">Print / PDF</button>
                 </div>
+            </div>
+
+            <div className="flex gap-2 flex-wrap items-center bg-white border border-slate-200 rounded-xl p-3">
+                <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-white border border-slate-300 rounded-md p-2 text-sm text-slate-700">{branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}</select>
+                <select value={client} onChange={e => setClient(e.target.value)} className="bg-white border border-slate-300 rounded-md p-2 text-sm text-slate-700 max-w-[200px]">{clientOpts.map(c => <option key={c} value={c}>{c === 'All' ? 'All clients' : c}</option>)}</select>
+                <select value={transporter} onChange={e => setTransporter(e.target.value)} className="bg-white border border-slate-300 rounded-md p-2 text-sm text-slate-700 max-w-[200px]">{transporterOpts.map(t => <option key={t} value={t}>{t === 'All' ? 'All transporters' : t}</option>)}</select>
+                <input value={routeQ} onChange={e => setRouteQ(e.target.value)} placeholder="Route / origin / destination…" className="bg-white border border-slate-300 rounded-md p-2 text-sm text-slate-700 flex-1 min-w-[160px]" />
+                {(branch !== 'All' || client !== 'All' || transporter !== 'All' || routeQ) && <button onClick={() => { setBranch('All'); setClient('All'); setTransporter('All'); setRouteQ(''); }} className="text-xs font-bold text-slate-500 hover:text-slate-800 px-3 py-2">Reset</button>}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

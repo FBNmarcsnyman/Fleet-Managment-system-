@@ -230,6 +230,10 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
             alert('Please fill: Client, Collection address and Delivery address. (Subcontractor & rates can be added when you assign.)');
             return;
         }
+        if (!deliveryDate) {
+            alert('Please set a Delivery date — it is required (a time is optional; the driver/subbie updates the ETA at the loading point).');
+            return;
+        }
         const data: Omit<LoadConfirmation, 'id' | 'loadConNumber' | 'status' | 'date'> = {
             clientId: existingClientId || '',
             items: [],
@@ -395,7 +399,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             <div className="grid grid-cols-2 gap-3">
                                 <div><label className={labelCls}>Contact</label><input value={deliveryContact} onChange={e => setDeliveryContact(e.target.value)} className={inputCls} /></div>
                                 <div><label className={labelCls}>Telephone</label><input value={deliveryTelephone} onChange={e => setDeliveryTelephone(e.target.value)} className={inputCls} /></div>
-                                <div><label className={labelCls}>Offloading Date</label><DateField value={deliveryDate} onChange={setDeliveryDate} className={inputCls} /></div>
+                                <div><label className={labelCls}>Delivery Date *</label><DateField value={deliveryDate} onChange={setDeliveryDate} className={inputCls} /></div>
                                 <div><label className={labelCls}>Offloading Time</label><input type="time" value={offloadingTime} onChange={e => setOffloadingTime(e.target.value)} className={inputCls} /></div>
                             </div>
                         </div>

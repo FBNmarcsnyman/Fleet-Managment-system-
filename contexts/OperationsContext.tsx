@@ -15,7 +15,7 @@ import {
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
-import { sendLoadConToSupplier, sendOrderToClient } from '../lib/loadEmails';
+import { sendLoadConToSupplier, sendOrderToClient, clientSubject } from '../lib/loadEmails';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -177,7 +177,7 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
     try {
         // Client team + ops + (for rep-logged collections) the sales rep.
         const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, status), ...(lc.repEmail ? [lc.repEmail] : [])];
-        await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, cc, subject: clientSubject(lc), html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client phase update failed:', e);
     }
@@ -196,7 +196,7 @@ export const sendClientPodEmail = async (lc: any): Promise<void> => {
       <p>Regards,<br>FBN Transport</p>`);
     try {
         const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, 'Delivered')];
-        await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        await invokeFn('send-email', { body: { to, cc, subject: clientSubject(lc), html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client POD notify failed:', e);
     }
@@ -315,7 +315,7 @@ export const sendCollectionAckToClient = async (lc: any): Promise<void> => {
       ${emailButton(`${baseUrl()}?track=${lc.id}`, 'Track this collection &rarr;')}
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), opsEmail(lc.collectionBranch || lc.arrangingBranch), OPS_GENERAL];
-    try { await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } }); }
+    try { await invokeFn('send-email', { body: { to, cc, subject: clientSubject(lc), html, fromName: 'FBN Transport' } }); }
     catch (e) { console.error('[ops] collection ack failed:', e); }
 };
 

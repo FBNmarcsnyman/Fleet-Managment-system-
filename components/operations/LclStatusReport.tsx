@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useUIState } from '../../contexts/AppContexts';
+import { useUIState, useOperations } from '../../contexts/AppContexts';
 import { directSelect, directUpdate } from '../../lib/supabase';
 
 // LCL groupage Status Report — mirrors the per-client status sheets (DHL/IFF,
@@ -42,9 +42,12 @@ const STATUS_TONE = (s: string) => {
 };
 
 const LclStatusReport: React.FC = () => {
-    const { showModal } = useUIState();
+    const { showModal, showToast } = useUIState();
+    const { handleCreateLoadConfirmation } = useOperations() as any;
     const [rows, setRows] = useState<Lcl[]>([]);
     const [loading, setLoading] = useState(true);
+    const [bookBusy, setBookBusy] = useState<string | null>(null);
+    const [showCollect, setShowCollect] = useState(true);
     const [view, setView] = useState<'current' | 'history'>('current');
     const [report, setReport] = useState('All');
     const [depot, setDepot] = useState('All');
@@ -102,6 +105,51 @@ const LclStatusReport: React.FC = () => {
         return { over, due, awaiting, unpacked, total: filtered.length };
     }, [filtered]);
 
+    // Unpacked & ready to collect — grouped per depot so ops can book one
+    // collection that picks up all of a depot's freed cargo for the day.
+    const isReadyToCollect = (r: Lcl) => /UNPACK/.test((r.status || '').toUpperCase()) && !r.uplift_date;
+    const readyByDepot = useMemo(() => {
+        const map = new Map<string, Lcl[]>();
+        filtered.filter(isReadyToCollect).forEach(r => { const k = r.depot || 'OTHER'; map.set(k, [...(map.get(k) || []), r]); });
+        return [...map.entries()].sort((a, b) => b[1].length - a[1].length);
+    }, [filtered]);
+    const depotTotals = (list: Lcl[]) => ({
+        pkgs: list.reduce((s, r) => s + (Number(r.qty) || 0), 0),
+        kg: list.reduce((s, r) => s + (Number(r.weight_kg) || 0), 0),
+        cbm: list.reduce((s, r) => s + (Number(r.volume_cbm) || 0), 0),
+        over: list.filter(r => freeTime(r).state === 'over').length,
+    });
+
+    // Book ONE collection at this depot for all its ready shipments: creates a
+    // consolidated collection load (onto the board, notifies branch ops to send a
+    // vehicle) and marks each shipment collected + linked to that load.
+    const bookDepot = async (depotName: string, list: Lcl[]) => {
+        if (!list.length) return;
+        setBookBusy(depotName);
+        const region = (list.find(r => r.unpack_region)?.unpack_region || 'DBN').toUpperCase();
+        const branch = `FBN ${region}`;
+        const t = depotTotals(list);
+        const agentName = list.find(r => r.agent)?.agent || 'LCL GROUPAGE';
+        const payload: any = {
+            clientId: '', clientName: agentName,
+            items: [], legs: [{ id: 'leg-1', collectionPoint: `${depotName} (groupage depot)`, deliveryPoint: `${branch} depot`, movementType: 'Collection' }],
+            collectionPoint: `${depotName} (groupage depot)`, deliveryPoint: `${branch} depot`, collectionDate: todayIso(),
+            commodity: 'LCL GROUPAGE', packaging: `${t.pkgs} PKGS`, weightKg: String(Math.round(t.kg)), cubeM3: t.cbm ? Number(t.cbm.toFixed(2)) : undefined, loadedPackages: t.pkgs,
+            arrangingBranch: branch, collectionBranch: branch, destinationBranch: branch,
+            priority: 'Medium', totalAmount: 0, supplierRate: 0, isCollection: true,
+            specialInstructions: `LCL groupage collection at ${depotName} — ${list.length} shipment${list.length !== 1 ? 's' : ''} (${t.pkgs} pkgs · ${Math.round(t.kg).toLocaleString('en-ZA')} kg${t.cbm ? ` · ${t.cbm.toFixed(1)} m³` : ''}): ` + list.map(r => `${r.fbn_di || r.container_no || '?'}${r.consignee ? ` (${r.consignee})` : ''}`).slice(0, 40).join(', '),
+        };
+        try {
+            const res = await handleCreateLoadConfirmation(payload);
+            if (!res || res.ok === false) { showToast(`Could not book: ${res?.error || 'error'}`); setBookBusy(null); return; }
+            const loadId = res.value?.id; const loadNo = res.value?.loadConNumber;
+            for (const r of list) { try { await directUpdate('lcl_shipments', { id: r.id }, { status: 'COLLECTED / ON ROUTE', uplift_date: todayIso(), load_id: loadId || null }); } catch { /* keep going */ } }
+            showToast(`Booked collection ${loadNo} at ${depotName} — ${list.length} shipment${list.length !== 1 ? 's' : ''}, ops notified.`);
+            fetchRows();
+        } catch (e) { showToast(`Could not book: ${e instanceof Error ? e.message : 'error'}`); }
+        finally { setBookBusy(null); }
+    };
+
     const card = (label: string, n: number, tone: string) => (
         <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 min-w-[110px]"><div className={`text-2xl font-black ${tone}`}>{n}</div><div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div></div>
     );
@@ -126,6 +174,35 @@ const LclStatusReport: React.FC = () => {
                 {card('Free-time due', counts.due, 'text-orange-600')}
                 {card('Storage overdue', counts.over, 'text-rose-600')}
             </div>
+
+            {/* Unpacked & ready to collect — group per depot, book one collection each. */}
+            {view === 'current' && readyByDepot.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <button onClick={() => setShowCollect(s => !s)} className="w-full flex items-center justify-between text-left">
+                        <span className="text-sm font-black text-amber-800">🚚 Ready to collect — {readyByDepot.reduce((s, [, l]) => s + l.length, 0)} shipment(s) unpacked at {readyByDepot.length} depot(s)</span>
+                        <span className="text-amber-700 text-xs font-bold">{showCollect ? '▼ hide' : '▶ show'}</span>
+                    </button>
+                    {showCollect && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                            {readyByDepot.map(([dep, list]) => {
+                                const t = depotTotals(list);
+                                return (
+                                    <div key={dep} className="bg-white border border-slate-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-black text-[#13294b]">{dep}</span>
+                                            {t.over > 0 && <span className="text-[9px] font-black bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full uppercase">{t.over} over free-time</span>}
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 mt-1">{list.length} shipment{list.length !== 1 ? 's' : ''} · {t.pkgs} pkgs · {Math.round(t.kg).toLocaleString('en-ZA')} kg{t.cbm ? ` · ${t.cbm.toFixed(1)} m³` : ''}</p>
+                                        <button onClick={() => bookDepot(dep, list)} disabled={bookBusy === dep} className="mt-2 w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs py-2 rounded-lg uppercase tracking-wider">
+                                            {bookBusy === dep ? 'Booking…' : `Book collection (${list.length})`}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="flex gap-2 flex-wrap items-center bg-white border border-slate-200 rounded-xl p-3">
                 <select value={report} onChange={e => setReport(e.target.value)} className={sel}>{reports.map(r => <option key={r} value={r}>{r === 'All' ? 'All reports' : r}</option>)}</select>

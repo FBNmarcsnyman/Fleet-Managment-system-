@@ -44,12 +44,23 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
     try { const r = await buildLoadConPdf(lc, 'loadcon'); b64 = r.base64; attachments = [{ filename: r.filename, content: r.base64, contentType: 'application/pdf' }]; }
     catch (e) { console.error('[loadEmails] loadcon pdf', e); pdfFailed = true; }
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
+    // Status-aware: an already-delivered load asks for the POD (no accept link).
+    const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+    const intro = delivered
+      ? `<p>This load has been <strong>delivered</strong>. Please see the updated Load Confirmation${attachments ? ' attached' : ' below'} for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`
+      : `<p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`;
+    const callToAction = delivered
+      ? (lc.podPhoto
+          ? `<p>The signed POD is already on file — thank you. The attached copy is for your records.</p>`
+          : `<p>Kindly <strong>upload the signed POD</strong> against this load using the button below.</p>
+      ${emailButton(`${base()}?pod=${lc.id}`, 'Upload POD &rarr;', '#16a34a')}`)
+      : `<p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
+      ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}`;
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
-      <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
+      ${intro}
       ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(lc.deliveryPoint)], ['Loading date', fmtD(lc.collectionDate)], ['Loading time', lc.loadingTime], ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Transport rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
-      <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
-      ${emailButton(`${base()}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
+      ${callToAction}
       <p>Regards,<br>FBN Transport</p>`);
     try {
         // Subbie LoadCon: cc the subbie docs team + ops — strip any CLIENT address.
@@ -69,9 +80,23 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     try { const r = await buildLoadConPdf(lc, 'clientOrder'); b64 = r.base64; attachments = [{ filename: r.filename, content: r.base64, contentType: 'application/pdf' }]; }
     catch (e) { console.error('[loadEmails] order pdf', e); pdfFailed = true; }
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
+    // Status-aware: a delivered load confirms delivery + POD, not "updates coming".
+    const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+    const podUrl = lc.podPhoto?.data || '';
+    const intro = delivered
+      ? `<p>This load has been <strong>delivered</strong>. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>`
+      : `<p><strong>Thank you for your load — we are pleased to confirm it is booked</strong> and all arrangements are in place. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>`;
+    const footer = delivered
+      ? (podUrl
+          ? `${emailButton(podUrl, 'View / download POD &rarr;', '#16a34a')}
+      <p>The signed POD for your delivery is available above. Should you need anything further, simply reply to this email.</p>`
+          : `${emailButton(`${base()}?track=${lc.id}`, 'Track your shipment &rarr;')}
+      <p>The signed POD will follow as soon as it is received. Should you need anything in the meantime, simply reply to this email.</p>`)
+      : `${emailButton(`${base()}?track=${lc.id}`, 'Track your shipment &rarr;')}
+      <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>`;
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
-      <p><strong>Thank you for your load — we are pleased to confirm it is booked</strong> and all arrangements are in place. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>
+      ${intro}
       ${table([
         ['FBN order no.', lc.loadConNumber],
         ['Your reference', lc.customerOrderNumber],
@@ -85,8 +110,7 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
         ['Commodity', lc.commodity],
         ['Packaging', lc.packaging],
       ])}
-      ${emailButton(`${base()}?track=${lc.id}`, 'Track your shipment &rarr;')}
-      <p>You'll receive regular updates as the load progresses through collection and delivery, and the signed POD as soon as it is available. Should you need anything in the meantime, simply reply to this email.</p>
+      ${footer}
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
         // Client Order goes to the client + the full CLIENT team (lc.clientCc) +

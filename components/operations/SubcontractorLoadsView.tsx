@@ -122,12 +122,27 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             const detailRows = rows.filter(([, v]) => v != null && `${v}`.trim() !== '')
                 .map(([k, v]) => `<tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
             const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
+            // Status-aware body. An already-DELIVERED load no longer needs an
+            // "accept the load / send driver details" call-to-action — by then the
+            // outstanding item is the signed POD. So when we (re)send a delivered
+            // load (e.g. it was first sent in TEST mode, now resent live) we drop the
+            // accept link and ask for the POD against the file instead.
+            const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+            const intro = delivered
+              ? `<p>This load has been <strong>delivered</strong>. Please see the updated Load Confirmation${attachments ? ' attached' : ' below'} for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`
+              : `<p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`;
+            const callToAction = delivered
+              ? (lc.podPhoto
+                  ? `<p>The signed POD is already on file — thank you. The attached copy is for your records.</p>`
+                  : `<p>Kindly <strong>upload the signed POD</strong> against this load using the button below.</p>
+              ${emailButton(`${base}?pod=${lc.id}`, 'Upload POD &rarr;', '#16a34a')}`)
+              : `<p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
+              ${emailButton(`${base}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}`;
             const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
               <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
-              <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
+              ${intro}
               ${detailsTable}
-              <p>Kindly <strong>confirm acceptance</strong> and send your driver name, vehicle registration and driver cell using the button below. POD to be returned on delivery.</p>
-              ${emailButton(`${base}?accept=${lc.id}`, 'Accept this load &amp; send driver details &rarr;', '#16a34a')}
+              ${callToAction}
               <p>Regards,<br>FBN Transport</p>`);
             const subjLoc = (a: string) => a ? `${lc.clientName ? lc.clientName + ', ' : ''}${a}` : '';
             const { data, error } = await invokeFn('send-email', {
@@ -189,12 +204,26 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             const detailRows = rows.filter(([, v]) => v != null && `${v}`.trim() !== '')
                 .map(([k, v]) => `<tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
             const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
+            // Status-aware: a delivered load shouldn't promise "regular updates
+            // coming" — confirm delivery and point to the POD instead.
+            const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+            const podUrl = lc.podPhoto?.data || '';
+            const intro = delivered
+              ? `<p>This load has been <strong>delivered</strong>. Please find your order ${attachments ? 'attached, ' : ''}with all the details${attachments ? '' : ' below'}:</p>`
+              : `<p><strong>Thank you for your load.</strong> We have made all the arrangements and booked it accordingly. Please find your order ${attachments ? 'attached, ' : ''}with all the details${attachments ? '' : ' below'}:</p>`;
+            const footer = delivered
+              ? (podUrl
+                  ? `${emailButton(podUrl, 'View / download POD &rarr;', '#16a34a')}
+              <p>The signed POD for your delivery is available above. Thank you for your business.</p>`
+                  : `${emailButton(`${base}?track=${lc.id}`, 'Track your shipment &rarr;')}
+              <p>The signed POD will follow as soon as it is received. Thank you for your business.</p>`)
+              : `${emailButton(`${base}?track=${lc.id}`, 'Track your shipment &rarr;')}
+              <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>`;
             const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
               <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
-              <p><strong>Thank you for your load.</strong> We have made all the arrangements and booked it accordingly. Please find your order ${attachments ? 'attached, ' : ''}with all the details${attachments ? '' : ' below'}:</p>
+              ${intro}
               ${detailsTable}
-              ${emailButton(`${base}?track=${lc.id}`, 'Track your shipment &rarr;')}
-              <p>You'll receive regular updates as we progress through collection and delivery, and the POD as soon as it's available.</p>
+              ${footer}
               <p>Regards,<br>FBN Transport</p>`);
             // Client Order goes ONLY to the client — never CC the subbie's list.
             const { data, error } = await invokeFn('send-email', {

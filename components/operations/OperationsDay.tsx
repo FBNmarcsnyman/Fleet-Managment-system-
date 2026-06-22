@@ -173,15 +173,15 @@ const OperationsDay: React.FC = () => {
                         <option value="All">All branches</option>
                         {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>}
-                <div className="flex rounded-lg overflow-hidden border border-slate-300 ml-1">
+                <div className="flex rounded-lg overflow-x-auto border border-slate-300 ml-0 sm:ml-1 max-w-full">
                     {STAGES.map(s => (
                         <button key={s.key} onClick={() => switchStage(s.key)}
-                            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${stage === s.key ? 'bg-[#13294b] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide whitespace-nowrap ${stage === s.key ? 'bg-[#13294b] text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
                             {s.label} <span className={stage === s.key ? 'text-white/70' : 'text-slate-400'}>{s.n}</span>
                         </button>
                     ))}
                 </div>
-                <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search load, client, place, reg…" className={`${inputCls} flex-1 min-w-[180px]`} />
+                <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search load, client, place, reg…" className={`${inputCls} w-full sm:flex-1 sm:w-auto sm:min-w-[180px]`} />
             </div>
 
             {/* ===== COLLECTIONS ===== */}
@@ -189,6 +189,8 @@ const OperationsDay: React.FC = () => {
                 <ListCard title="Collections to action" count={collections.length} empty="Nothing to collect for this filter."
                     leftFilter={<DateChips mode={dateMode} set={setDateMode} />}
                     action={sel.size > 0 && <BuildBtn count={sel.size} dest={selDests.length === 1 ? code(selDests[0] as string) : ''} label="🚛 Group → build manifest" onClick={() => openBuild('manifest')} onClear={() => setSel(new Set())} />}>
+                    {/* desktop table */}
+                    <div className="hidden md:block">
                     <Table cols={['', 'Load', 'Client', 'Route', 'Pkgs', 'Weight', 'Collect by', 'FBN unit', 'Status', 'Action']}>
                         {collections.map(lc => {
                             const step = nextStep(lc);
@@ -214,6 +216,23 @@ const OperationsDay: React.FC = () => {
                             );
                         })}
                     </Table>
+                    </div>
+                    {/* mobile cards */}
+                    <div className="md:hidden divide-y divide-slate-100">
+                        {collections.map(lc => {
+                            const step = nextStep(lc);
+                            const overdue = lc.collectionDate && lc.collectionDate < todayISO();
+                            return (
+                                <MobileCard key={lc.id} lc={lc} selected={sel.has(lc.id)} onOpen={() => showModal('loadDetail', { loadCon: lc })}
+                                    checkbox={<input type="checkbox" checked={sel.has(lc.id)} onChange={() => toggle(lc.id)} onClick={e => e.stopPropagation()} className="h-5 w-5 accent-[#13294b] mt-0.5" />}
+                                    client={clientName(lc)} route={`${code(lc.collectionBranch)} → ${code(lc.destinationBranch)}`} place={lc.collectionPoint}
+                                    meta={`${pkgs(lc) || '—'} pkgs · ${weight(lc)}`} dateLabel={`Collect ${fmtDay(lc.collectionDate)}`} overdue={!!overdue} unit={unit(lc)}
+                                    action={!isAssigned(lc) && lc.status === 'Booked'
+                                        ? <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
+                                        : step ? <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => advance(lc)}>{busy === lc.id ? '…' : step.label}</ActBtn> : null} />
+                            );
+                        })}
+                    </div>
                 </ListCard>
             )}
 
@@ -245,6 +264,8 @@ const OperationsDay: React.FC = () => {
             {stage === 'deliver' && (
                 <ListCard title="Deliveries from depot" count={deliveries.length} empty="No cargo waiting for delivery at this depot."
                     action={sel.size > 0 && <BuildBtn count={sel.size} dest="" label="🚚 Assign trip sheet (multi-drop)" onClick={() => openBuild('trip')} onClear={() => setSel(new Set())} />}>
+                    {/* desktop table */}
+                    <div className="hidden md:block">
                     <Table cols={['', 'Load', 'Client', 'Deliver to', 'Pkgs', 'Weight', 'Deliver by', 'FBN unit', 'Status', 'Action']}>
                         {deliveries.map(lc => (
                             <Row key={lc.id} selected={sel.has(lc.id)} onOpen={() => showModal('loadDetail', { loadCon: lc })}>
@@ -265,6 +286,18 @@ const OperationsDay: React.FC = () => {
                             </Row>
                         ))}
                     </Table>
+                    </div>
+                    {/* mobile cards */}
+                    <div className="md:hidden divide-y divide-slate-100">
+                        {deliveries.map(lc => (
+                            <MobileCard key={lc.id} lc={lc} selected={sel.has(lc.id)} onOpen={() => showModal('loadDetail', { loadCon: lc })}
+                                checkbox={READY_TO_LOAD.has(lc.status) ? <input type="checkbox" checked={sel.has(lc.id)} onChange={() => toggle(lc.id)} onClick={e => e.stopPropagation()} className="h-5 w-5 accent-[#13294b] mt-0.5" /> : undefined}
+                                client={clientName(lc)} route={lc.deliveryPoint || code(lc.destinationBranch)} place={lc.deliveryArea}
+                                meta={`${pkgs(lc) || '—'} pkgs · ${weight(lc)}`} dateLabel={`Deliver ${fmtDay(lc.deliveryDate)}`} unit={unit(lc)}
+                                action={lc.status === 'Out for Delivery' ? <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => markDelivered(lc)}>{busy === lc.id ? '…' : 'Mark delivered'}</ActBtn>
+                                    : lc.status === 'Delivered' ? <ActBtn tone="emerald" onClick={() => getPod(lc)}>Get POD</ActBtn> : null} />
+                        ))}
+                    </div>
                 </ListCard>
             )}
 
@@ -344,6 +377,27 @@ const RouteCell: React.FC<{ lc: LoadConfirmation }> = ({ lc }) => (
 
 const Chip: React.FC<{ lc: LoadConfirmation }> = ({ lc }) => (
     <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${statusChip(lc.status)}`}>{STATUS_LABEL[lc.status]}</span>
+);
+
+// One load as a stacked, tappable card — the mobile equivalent of a table row.
+const MobileCard: React.FC<{ lc: LoadConfirmation; selected: boolean; onOpen: () => void; checkbox?: React.ReactNode; client: string; route?: string; place?: string; meta: string; dateLabel: string; overdue?: boolean; unit: string; action: React.ReactNode }> = ({ lc, selected, onOpen, checkbox, client, route, place, meta, dateLabel, overdue, unit, action }) => (
+    <div onClick={onOpen} className={`flex gap-2.5 p-3 active:bg-amber-50 ${selected ? 'bg-amber-50' : ''}`}>
+        {checkbox && <div className="pt-0.5">{checkbox}</div>}
+        <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-[#13294b]">{lc.loadConNumber}</span>
+                <Chip lc={lc} />
+            </div>
+            <div className="font-bold text-slate-800 truncate">{client}</div>
+            {route && <div className="text-xs text-slate-500 truncate">{route}{place ? ` · ${place}` : ''}</div>}
+            <div className="flex items-center gap-2 flex-wrap text-[11px] mt-1">
+                <span className="font-bold text-slate-700">{meta}</span>
+                <span className={overdue ? 'text-red-600 font-bold' : 'text-slate-500'}>{dateLabel}{overdue ? ' ⚠' : ''}</span>
+            </div>
+            <div className="text-[11px] text-slate-500 truncate">🚚 {unit}</div>
+            {action && <div className="mt-2" onClick={e => e.stopPropagation()}>{action}</div>}
+        </div>
+    </div>
 );
 
 const ActBtn: React.FC<{ tone: 'emerald' | 'blue'; disabled?: boolean; onClick: () => void; children: React.ReactNode }> = ({ tone, disabled, onClick, children }) => (

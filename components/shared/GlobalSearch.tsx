@@ -68,7 +68,7 @@ const GlobalSearch: React.FC = () => {
     );
 
     return (
-        <div className="relative hidden md:block w-full max-w-md transition-all duration-300 focus-within:max-w-lg" ref={searchRef}>
+        <div className="relative hidden md:block w-full max-w-md transition-all duration-300 focus-within:max-w-lg z-[120]" ref={searchRef}>
             <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <SearchIcon className="h-4.5 w-4.5 text-gray-500 group-focus-within:text-blue-400 transition-colors" />
@@ -89,7 +89,7 @@ const GlobalSearch: React.FC = () => {
             </div>
 
             {isOpen && query.trim().length >= 2 && (
-                <div className="absolute top-full mt-3 w-full bg-gray-800/98 backdrop-blur-2xl rounded-2xl shadow-2xl border border-gray-700/60 overflow-hidden z-50 max-h-[34rem] overflow-y-auto ring-1 ring-black/40">
+                <div className="absolute top-full mt-3 w-full bg-gray-800/98 backdrop-blur-2xl rounded-2xl shadow-2xl border border-gray-700/60 overflow-hidden z-[130] max-h-[34rem] overflow-y-auto ring-1 ring-black/40">
                     {!hasResults && <div className="p-6 text-gray-400 text-sm text-center italic">No matching records found.</div>}
 
                     {results.loads.length > 0 && (

@@ -33,6 +33,12 @@ const QuoteDetailModal: React.FC<{
     const mi = quote.requestMoreInfo || {};
 
     const handleRequestMoreInfo = async () => {
+        // Don't re-request too soon if we're still waiting on a reply.
+        const last = mi.last_requested_at ? new Date(mi.last_requested_at) : null;
+        if (last && !isNaN(last.getTime())) {
+            const days = Math.floor((Date.now() - last.getTime()) / 86400000);
+            if (days < 2 && !window.confirm(`More info was already requested ${days === 0 ? 'today' : days + ' day(s) ago'}. The client may not have replied yet — send another reminder now?`)) return;
+        }
         setRequesting(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -173,8 +179,11 @@ const QuoteDetailModal: React.FC<{
             )}
 
             {/* Action Buttons */}
+            {mi.last_requested_at && (
+                <p className="text-xs text-amber-600 font-semibold mt-5 mb-1">📨 More info last requested: <strong>{new Date(mi.last_requested_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>{Number(mi.count) > 1 ? ` · ${mi.count} times` : ''} — waiting on the client's reply.</p>
+            )}
             {(quote.status === 'Requested' || quote.status === 'More Info Requested') && (
-                <div className="flex gap-3 mt-6">
+                <div className="flex gap-3 mt-2">
                     <button
                         onClick={() => onQuoteIt(quote)}
                         className="btn-on-color flex-1 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"

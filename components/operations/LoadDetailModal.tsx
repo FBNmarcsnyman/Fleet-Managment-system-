@@ -104,6 +104,20 @@ const LoadDetailModal: React.FC = () => {
             .catch((e: any) => showToast(`Could not save: ${e?.message || 'error'}`));
     };
 
+    const whatsappDriver = () => {
+        let cell = lc.subcontractorDriverCell;
+        if (!cell) {
+            const entered = window.prompt(`Driver's cell number for ${lc.loadConNumber} (WhatsApp):`, '');
+            if (entered === null) return;
+            cell = entered.trim();
+            if (!cell) { showToast('No number entered.'); return; }
+            handleUpdateLoadConfirmation(lc.id, { subcontractorDriverCell: cell });
+        }
+        const b = `${window.location.origin}${window.location.pathname}`;
+        sendDriverWhatsApp({ ...lc, subcontractorDriverCell: cell }, `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport load ${lc.loadConNumber}.\nCollect: ${lc.collectionPoint || '-'}\nDeliver: ${lc.deliveryPoint || '-'}\nCargo: ${lc.loadType || ''} ${lc.commodity || ''}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\nContact: ${lc.collectionContact || '-'} ${lc.collectionTelephone || ''}\nTrack/POD: ${b}?pod=${lc.id}\n\nWhat is your ETA at the loading point? Reply:\n1 = within 1 hour\n2 = within 2 hours\n3 = other (then type the time)`);
+        showToast('WhatsApp sent to the driver.');
+    };
+
     // Email the received POD to a chosen recipient (defaults to the client).
     // Goes only to you while EMAILS: TEST is on.
     const [sendingPod, setSendingPod] = useState(false);
@@ -170,6 +184,8 @@ const LoadDetailModal: React.FC = () => {
                 <div className="flex items-center gap-2">
                     {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-900/40 text-blue-300">{lc.status}</span>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">📷 Capture</button>}
+                    {!editing && <button onClick={whatsappDriver} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg">💬 WhatsApp Driver</button>}
+                    {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">📁 Documents</button>}
                     {!editing && !lc.supplierId && (
                         <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} title="Shipment going onward (e.g. to CPT) after collection — raise a subcontractor LoadCon; it then shows on the Broking board to keep updating." className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg">+ Onward transport → Broking</button>
                     )}
@@ -349,24 +365,7 @@ const LoadDetailModal: React.FC = () => {
                             </>
                         )}
                     </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => {
-                                let cell = lc.subcontractorDriverCell;
-                                if (!cell) {
-                                    const entered = window.prompt(`Driver's cell number for ${lc.loadConNumber} (WhatsApp):`, '');
-                                    if (entered === null) return;
-                                    cell = entered.trim();
-                                    if (!cell) { showToast('No number entered.'); return; }
-                                    handleUpdateLoadConfirmation(lc.id, { subcontractorDriverCell: cell });
-                                }
-                                const base = `${window.location.origin}${window.location.pathname}`;
-                                sendDriverWhatsApp({ ...lc, subcontractorDriverCell: cell }, `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport load ${lc.loadConNumber}.\nCollect: ${lc.collectionPoint || '-'}\nDeliver: ${lc.deliveryPoint || '-'}\nCargo: ${lc.loadType || ''} ${lc.commodity || ''}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\nContact: ${lc.collectionContact || '-'} ${lc.collectionTelephone || ''}\nTrack/POD: ${base}?pod=${lc.id}\n\nWhat is your ETA at the loading point? Reply:\n1 = within 1 hour\n2 = within 2 hours\n3 = other (then type the time)`);
-                                showToast('WhatsApp sent to the driver.');
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm">WhatsApp Driver</button>
-                        <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Documents</button>
-                    </div>
+                    <span className="text-[11px] text-gray-400 italic self-center">{isSuperAdmin ? 'Archive / delete — super admin only' : ''}</span>
                 </div>
             )}
         </div>

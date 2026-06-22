@@ -16,8 +16,16 @@ const CaptureLoadModal: React.FC = () => {
     const [cube, setCube] = useState<string>(lc?.cubeM3 != null ? String(lc.cubeM3) : '');
     const [packages, setPackages] = useState<string>(lc?.loadedPackages != null ? String(lc.loadedPackages) : '');
     const [commodity, setCommodity] = useState<string>(lc?.commodity || '');
-    const [files, setFiles] = useState<File[]>([]);
+    // Each photo is tagged with what it shows, so they file correctly.
+    const [shots, setShots] = useState<{ file: File; label: string }[]>([]);
+    const [label, setLabel] = useState('Loading');
     const [busy, setBusy] = useState(false);
+
+    const PHOTO_LABELS = ['Loading', 'Offloading', 'Damages', 'General'];
+    const addFiles = (list: FileList | null) => {
+        const arr = Array.from(list || []);
+        if (arr.length) setShots(prev => [...prev, ...arr.map(file => ({ file, label }))]);
+    };
 
     if (!lc) return null;
 
@@ -30,7 +38,9 @@ const CaptureLoadModal: React.FC = () => {
     const save = async () => {
         setBusy(true);
         try {
-            const photos = await Promise.all(files.map(async f => ({ base64: await toBase64(f), name: f.name, contentType: f.type || 'image/jpeg' })));
+            // Prefix the filename with the label so it files/reads as e.g.
+            // "DAMAGES - photo.jpg", and pass the label through for the edge fn.
+            const photos = await Promise.all(shots.map(async ({ file, label }) => ({ base64: await toBase64(file), name: `${label.toUpperCase()} - ${file.name}`, contentType: file.type || 'image/jpeg', label })));
             const { data, error } = await directInvoke('capture-load', {
                 loadId: lc.id, weightKg: weight || undefined, dimensions: dims || undefined, cube: cube || undefined,
                 packages: packages || undefined, commodity: commodity || undefined, photos,
@@ -66,9 +76,33 @@ const CaptureLoadModal: React.FC = () => {
                 <div><label className={lbl}>Commodity</label><input value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} /></div>
                 <div>
                     <label className={lbl}>Photos</label>
-                    <input type="file" accept="image/*" capture="environment" multiple onChange={e => setFiles(Array.from(e.target.files || []))}
-                        className="w-full text-sm text-gray-300 file:mr-3 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-brand-primary file:text-white file:font-bold" />
-                    {files.length > 0 && <p className="text-[11px] text-emerald-300 mt-1">{files.length} photo{files.length === 1 ? '' : 's'} selected</p>}
+                    {/* Pick what the photos show, then take/choose them — they're tagged with that label. */}
+                    <div className="flex gap-2 mb-2 flex-wrap">
+                        {PHOTO_LABELS.map(l => (
+                            <button key={l} type="button" onClick={() => setLabel(l)} className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${label === l ? (l === 'Damages' ? 'bg-rose-600 border-rose-600 text-white' : 'bg-[#13294b] border-[#13294b] text-white') : 'bg-gray-700 border-gray-600 text-gray-300'}`}>{l}</button>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <label className="cursor-pointer text-center bg-brand-primary hover:opacity-90 text-white font-bold text-sm py-2.5 rounded-lg">
+                            📷 Take photo
+                            <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={e => { addFiles(e.target.files); e.currentTarget.value = ''; }} />
+                        </label>
+                        <label className="cursor-pointer text-center bg-gray-700 hover:bg-gray-600 text-white font-bold text-sm py-2.5 rounded-lg">
+                            📁 Upload from phone
+                            <input type="file" accept="image/*" multiple className="hidden" onChange={e => { addFiles(e.target.files); e.currentTarget.value = ''; }} />
+                        </label>
+                    </div>
+                    {shots.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                            {shots.map((s, i) => (
+                                <div key={i} className="flex items-center justify-between bg-gray-900/40 rounded-md px-2 py-1 text-xs">
+                                    <span className="text-gray-200 truncate"><span className={`font-black mr-1 ${s.label === 'Damages' ? 'text-rose-400' : 'text-amber-300'}`}>{s.label}</span>· {s.file.name}</span>
+                                    <button type="button" onClick={() => setShots(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-500 hover:text-red-400 font-bold px-1">×</button>
+                                </div>
+                            ))}
+                            <p className="text-[11px] text-emerald-300">{shots.length} photo{shots.length === 1 ? '' : 's'} ready ({[...new Set(shots.map(s => s.label))].join(', ')})</p>
+                        </div>
+                    )}
                     {(lc.cargoPhotoUrls?.length ?? 0) > 0 && (
                         <div className="flex gap-2 mt-2 flex-wrap">
                             {lc.cargoPhotoUrls!.slice(0, 6).map((u, i) => <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} className="h-12 w-12 object-cover rounded-md border border-gray-600" /></a>)}

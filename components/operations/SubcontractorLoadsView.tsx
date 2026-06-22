@@ -43,7 +43,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         const sortVal = (lc: LoadConfirmation): string | number => {
             switch (sortKey) {
                 case 'number': return (lc.loadConNumber || '').toLowerCase();
-                case 'supplier': return (supplierMap.get(lc.supplierId!)?.name || '').toLowerCase();
+                case 'supplier': return (supplierMap.get(lc.supplierId!)?.name || lc.subcontractorName || '').toLowerCase();
                 case 'date': return new Date(lc.collectionDate || lc.date || 0).getTime();
                 case 'route': return `${lc.collectionPoint || ''} ${lc.deliveryPoint || ''}`.toLowerCase();
                 case 'status': return (lc.status || '').toLowerCase();
@@ -53,7 +53,9 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             }
         };
         return (loadConfirmations || [])
-            .filter(lc => lc.supplierId && supplierMap.has(lc.supplierId))
+            // A load is "brokered" if it has a linked transporter OR just a typed
+            // transporter name (older / quick-captured loads never linked an id).
+            .filter(lc => (lc.supplierId && supplierMap.has(lc.supplierId)) || (lc.subcontractorName && lc.subcontractorName.trim()))
             .filter(lc => {
                 // "Invoiced" = completed/imported history — kept out of the active
                 // board (you only send current loads); see it under History.
@@ -345,10 +347,11 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                     <tbody>
                         {brokeredLoads.map(lc => {
                             const supplier = supplierMap.get(lc.supplierId!);
+                            const supplierName = supplier?.name || lc.subcontractorName || '—';
                             return (
                                 <tr key={lc.id} className="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
                                     <td className="p-2 font-mono"><button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-blue-600 hover:text-blue-700 hover:underline font-bold">{lc.loadConNumber}</button></td>
-                                    <td className="p-2 font-semibold text-slate-900">{supplier?.name}</td>
+                                    <td className="p-2 font-semibold text-slate-900">{supplierName}</td>
                                     <td className="p-2 text-slate-500">{lc.collectionDate ? format(new Date(lc.collectionDate), 'dd MMM yyyy') : '—'}</td>
                                     <td className="p-2">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</td>
                                     <td className="p-2">{lc.status}</td>

@@ -5,6 +5,7 @@
 import { directInvoke, invokeFn } from './supabase';
 import { buildLoadConPdf } from './loadconPdf';
 import { brandedEmail, emailButton } from './emailTemplate';
+import { treatAsDelivered } from './loadStatus';
 
 const fmtD = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? (d || '') : dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }); };
 // Money always shows 2 decimals: R5000 → R 5 000.00, R5000.50 → R 5 000.50.
@@ -44,8 +45,9 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
     try { const r = await buildLoadConPdf(lc, 'loadcon'); b64 = r.base64; attachments = [{ filename: r.filename, content: r.base64, contentType: 'application/pdf' }]; }
     catch (e) { console.error('[loadEmails] loadcon pdf', e); pdfFailed = true; }
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
-    // Status-aware: an already-delivered load asks for the POD (no accept link).
-    const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+    // Status-aware: an already-delivered load (explicit status OR a past delivery
+    // date) asks for the POD instead of acceptance.
+    const delivered = treatAsDelivered(lc);
     const intro = delivered
       ? `<p>This load has been <strong>delivered</strong>. Please see the updated Load Confirmation${attachments ? ' attached' : ' below'} for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`
       : `<p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`;
@@ -80,8 +82,9 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     try { const r = await buildLoadConPdf(lc, 'clientOrder'); b64 = r.base64; attachments = [{ filename: r.filename, content: r.base64, contentType: 'application/pdf' }]; }
     catch (e) { console.error('[loadEmails] order pdf', e); pdfFailed = true; }
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
-    // Status-aware: a delivered load confirms delivery + POD, not "updates coming".
-    const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+    // Status-aware: a delivered load (explicit status OR a past delivery date)
+    // confirms delivery + POD, not "updates coming".
+    const delivered = treatAsDelivered(lc);
     const podUrl = lc.podPhoto?.data || '';
     const intro = delivered
       ? `<p>This load has been <strong>delivered</strong>. Your order details are set out below${attachments ? ' and attached for your records' : ''}:</p>`

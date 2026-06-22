@@ -7,6 +7,7 @@ import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import { sendOrderToClient } from '../../lib/loadEmails';
+import { treatAsDelivered } from '../../lib/loadStatus';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -124,10 +125,11 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
             // Status-aware body. An already-DELIVERED load no longer needs an
             // "accept the load / send driver details" call-to-action — by then the
-            // outstanding item is the signed POD. So when we (re)send a delivered
-            // load (e.g. it was first sent in TEST mode, now resent live) we drop the
-            // accept link and ask for the POD against the file instead.
-            const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+            // outstanding item is the signed POD. Delivered = explicit status OR a
+            // delivery date already in the past (a LoadCon captured after delivery is
+            // assumed delivered). So when we (re)send such a load we drop the accept
+            // link and ask for the POD against the file instead.
+            const delivered = treatAsDelivered(lc);
             const intro = delivered
               ? `<p>This load has been <strong>delivered</strong>. Please see the updated Load Confirmation${attachments ? ' attached' : ' below'} for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`
               : `<p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>`;
@@ -153,9 +155,10 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             onUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
             // Send the client their Order at the SAME time the LoadCon goes to the
             // transporter — all subsequent client updates thread under this email.
-            // Skip for already-delivered (back-dated) loads: there the client gets
-            // the order together with the signed POD once it's uploaded.
-            if (lc.clientEmail && lc.status !== 'Delivered' && lc.status !== 'POD Submitted' && lc.status !== 'Invoiced') {
+            // sendOrderToClient is itself status-aware: a delivered (or back-dated)
+            // load confirms delivery and points to the POD, while a live load gets
+            // the "booked, updates coming" wording.
+            if (lc.clientEmail) {
                 void sendOrderToClient(lc).then(r => { if (r.ok) showToast(`Client order also emailed to ${lc.clientEmail}.`); else if (r.error) console.error('[loads] auto client order:', r.error); });
             }
             // File the LoadCon + Client Order PDFs into the load's Google Drive folder (fire-and-forget).
@@ -204,9 +207,10 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             const detailRows = rows.filter(([, v]) => v != null && `${v}`.trim() !== '')
                 .map(([k, v]) => `<tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
             const detailsTable = detailRows ? `<table style="border-collapse:collapse;margin:6px 0 14px">${detailRows}</table>` : '';
-            // Status-aware: a delivered load shouldn't promise "regular updates
-            // coming" — confirm delivery and point to the POD instead.
-            const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
+            // Status-aware: a delivered load (explicit status OR a past delivery
+            // date) shouldn't promise "regular updates coming" — confirm delivery
+            // and point to the POD instead.
+            const delivered = treatAsDelivered(lc);
             const podUrl = lc.podPhoto?.data || '';
             const intro = delivered
               ? `<p>This load has been <strong>delivered</strong>. Please find your order ${attachments ? 'attached, ' : ''}with all the details${attachments ? '' : ' below'}:</p>`

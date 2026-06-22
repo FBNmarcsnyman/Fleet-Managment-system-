@@ -95,6 +95,25 @@ export const isCollectionStage = (s: LoadConfirmationStatus) => COLLECTION_STATU
 export const isDeliveryStage = (s: LoadConfirmationStatus) => DELIVERY_STATUSES.has(s);
 export const isTerminal = (s: LoadConfirmationStatus) => TERMINAL.has(s);
 
+// Should communications (LoadCon / Order emails) treat this load as DELIVERED?
+// True when it's explicitly delivered (or later), OR when its delivery/offloading
+// date is already in the past — e.g. a LoadCon captured after the delivery date is
+// assumed already delivered, so emails ask for the POD instead of acceptance.
+// Cancelled loads are never treated as delivered.
+export const treatAsDelivered = (lc: LoadConfirmation): boolean => {
+    if (lc.status === 'Cancelled') return false;
+    if (lc.status === 'Delivered' || lc.status === 'POD Submitted' || lc.status === 'Invoiced') return true;
+    const raw = lc.deliveryDate;
+    if (!raw) return false;
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return false;
+    // Date-only comparison: delivered once the delivery date is before today.
+    d.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return d.getTime() < today.getTime();
+};
+
 // True when the load crosses between two branches (shown as an incoming transfer
 // on the receiving branch's delivery board).
 export const isInterBranch = (lc: LoadConfirmation): boolean =>

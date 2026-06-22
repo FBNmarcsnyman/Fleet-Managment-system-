@@ -33,6 +33,25 @@
   (Loading/Offloading/Damages) + camera/gallery. Fixed: hidden brokered loads (no
   supplier_id), edit-form lost pick-lists, unreadable global search dropdown.
 
+**2026-06-22 (continued, same day):**
+- **LCL per-depot collection grouping** ("Ready to collect" → book one depot collection →
+  on the board + shipments marked Collected/linked). **Controller column** +
+  `lcl_controllers` (name/email/cell). **App-as-master**: `app_locked` + sheet sync 3×/day
+  (9/15/21 SAST) skipping app-managed rows. **Daily health digest** (06:00 email of
+  storage-risk/POD-out/stalled/stale-import). Quote emails CC `quotes@`; "more info
+  requested" date + re-request guard. **Guard-rails**: back-dated confirm, negative-margin
+  warning, open-client-request alert. **Tabs grouped** Dashboard/Work/Track/Reports
+  (Broking & Operations stay separate). `lib/format.ts` shared formatters. Client app set
+  **noindex**.
+- **Transit flow corrected** (the key fix): received-at-FBN-depot → **At Collection Depot**
+  (line-haul ready) not "At Destination Depot"; flow = depot → line-haul manifest →
+  destination depot → local delivery; client track shows In Transit (not premature Out for
+  Delivery); buttons "FBN planned delivery" / "Reroute with subbie"; subbie gets no onward
+  updates/POD on a transit load. Fixed the "Onward on FBN fleet" crash (wrong modal).
+- Email sender note: send FROM `quotes@` requires it as a verified Gmail "Send mail as"
+  alias on the tracking@ account (done). Pro-URL plan: `control.fbn-transport.co.za` via
+  subdomain delegation to Cloudflare (owner to action).
+
 ## 2026-06-19 — Partners UX, contact prefs, HARD separation rule, containers on collections (DONE)
 - **Clients & Subcontractors lists**: search box + alphabetical sort.
 - **Contact prefs split** into 3 independent toggles — **Order/LoadCon · POD ·

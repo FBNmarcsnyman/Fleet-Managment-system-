@@ -107,3 +107,12 @@ operations/LclShipmentModal → App.tsx modal registry (`lclShipment`); shared/V
 **Email source of truth**: `lib/loadEmails.ts` (`sendLoadConToSupplier` / `sendOrderToClient`,
 delivered-aware, transit-aware, routed+threaded subjects via `clientSubject`/`routeLabel`).
 SubcontractorLoadsView resend buttons now call these (no duplicate HTML).
+
+## Update — 2026-06-22 (continued)
+- **New table** `lcl_controllers` (RLS=org): per-agent controller name/email/phone; unique (org, lower(agent), lower(name)). UI: Controller column on the Status Report + `lclController` modal (registered in App.tsx).
+- **New columns** `lcl_shipments`: `agent`, `client_id`, `damaged`, `damage_notes`, `cra_received`, `app_locked` (true = managed in-app → importer skips it). Trigger `lcl_set_agent`.
+- **New SQL fn** `fbn_health_digest()` (SECURITY DEFINER) → JSON of ops-health counts. **New edge fn** `daily-health-digest` (emails owner) + cron `fbn-daily-health-digest` 06:00. LCL import crons rescheduled to 3×/day (07:00/13:00/19:00 UTC). `import-lcl-status` v5 skips app_locked/load-linked rows.
+- **Transit lifecycle**: marking a transit load received at the FBN depot sets status `At Collection Depot` (line-haul ready), entering the normal DEPOT_FLOW (manifest → destination depot → local delivery). Client track maps At-Destination-Depot/Unloaded → "In Transit".
+- **Quote emails** (quote-send/intake/request-info) CC `quotes@`; sent FROM `quotes@` (verified Gmail send-as alias). more_info date stored in `quotes.request_more_info`.
+- **Operations nav** grouped Dashboard/Work/Track/Reports within each (separate) area. Shared `lib/format.ts` (money/date/datetime/bothDatesPast).
+- **Local Claude tooling** (.claude, gitignored): agents `load-audit`, `deploy-verify`; skills `new-form`, `new-email`; PostToolUse/Stop guard hooks.

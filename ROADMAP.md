@@ -232,3 +232,20 @@ PHASES 6–10 ONLY START AFTER PHASE 5 IS LIVE AND STABLE.
 - [ ] **CRA / damage photos persisted to Drive** (currently emailed as attachments only).
 - [ ] **Assisted Gmail enrichment** (review-first) to fill client controller emails/cells
   (owner deferred; revisit).
+
+## Recently completed — 2026-06-22 (continued)
+- [x] **LCL per-depot collection grouping** → book one depot collection → board + shipments linked.
+- [x] **LCL Controller column** + `lcl_controllers` (name/email/cell, edit/delete).
+- [x] **App-as-master for LCL** — `app_locked`, sheet sync 3×/day, importer skips app-managed rows.
+- [x] **Daily data-health digest** (06:00 email) + `load-audit` / `deploy-verify` agents + guard hooks + scaffold skills.
+- [x] **Quote ops** — CC quotes@ on all quote emails; more-info date + re-request guard; send-as alias.
+- [x] **Flow guard-rails** — back-dated confirm, negative-margin warning, open-client-request alert.
+- [x] **Operations tabs grouped** (Dashboard/Work/Track/Reports); shared `lib/format.ts`.
+- [x] **Transit flow corrected** — received → At Collection Depot (line-haul ready) → manifest → destination depot → local delivery; client tracking fixed; crash fixed.
+
+## New / next (carried forward)
+- [ ] **LCL daily per-shipment client status emails** through the chain (needs client/consignee email per shipment).
+- [ ] **Operations layout phase 2** — standardise status terms/colours/dates across boards; optional Operations-only "one board, Snapshot/Kanban switch".
+- [ ] **control.fbn-transport.co.za** subdomain delegation to Cloudflare (owner DNS step).
+- [ ] **Access approval gate** (approve-only external registration → owner approves).
+- [ ] FCL unpack→floor→split workflow screen.

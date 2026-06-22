@@ -15,7 +15,7 @@ import {
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
-import { sendLoadConToSupplier, sendOrderToClient, ccForSubbie, ccForClient } from '../lib/loadEmails';
+import { sendLoadConToSupplier, sendOrderToClient, ccForSubbie, ccForClient, OPS_GENERAL, opsMailbox } from '../lib/loadEmails';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -123,10 +123,10 @@ export const sendSupplierPhaseEmail = async (lc: any, status: string): Promise<v
       <p style="font-size:13px;color:#5b6573">POD to be returned on delivery (you can upload it from the same portal).</p>`}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        // Status updates go to the controller (To) + the "updates" contacts, and
-        // are tracked centrally by loadcons@ (single FBN tracking inbox on EVERY
-        // party-facing email). Strip any CLIENT address.
-        const cc = ccForSubbie(lc, [lc.updateCc, OPS_EMAIL]);
+        // Status updates → controller (To) + "updates" contacts + ops@/branch ops
+        // (the arranging/collecting branch, then destination once moving) + the
+        // load's sales rep. Strip any CLIENT address.
+        const cc = ccForSubbie(lc, [lc.updateCc, ...opsCcForPhase(lc, status), lc.repEmail]);
         await invokeFn('send-email', { body: { to, cc, subject: `FBN load ${lc.loadConNumber} - ${status}`, html, fromName: 'FBN Transport' } });
     } catch (e) { console.error('[ops] supplier phase update failed:', e); }
 };
@@ -176,9 +176,9 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
       ${emailButton(trackLink, 'Track your shipment &rarr;')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        // Client team + (for rep-logged collections) the sales rep, tracked by
-        // loadcons@. Strip any SUBCONTRACTOR address so a carrier never sees client comms.
-        const cc = ccForClient(lc, [lc.clientCc, OPS_EMAIL, lc.repEmail]);
+        // Client team + ops@/branch ops + the load's sales rep. Strip any
+        // SUBCONTRACTOR address so a carrier never sees client comms.
+        const cc = ccForClient(lc, [lc.clientCc, ...opsCcForPhase(lc, status), lc.repEmail]);
         await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client phase update failed:', e);
@@ -197,7 +197,8 @@ export const sendClientPodEmail = async (lc: any): Promise<void> => {
       ${emailButton(`${base}?track=${lc.id}`, 'Track shipment')}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        const cc = ccForClient(lc, [lc.clientCc, OPS_EMAIL]);
+        // POD to client → client team + ops@/branch ops + loadcons@ + sales rep.
+        const cc = ccForClient(lc, [lc.clientCc, ...opsCcForPhase(lc, 'Delivered'), OPS_EMAIL, lc.repEmail]);
         await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] client POD notify failed:', e);
@@ -215,7 +216,8 @@ export const sendSupplierPodEmail = async (lc: any): Promise<void> => {
       <p style="font-size:13px;color:#5b6573">Please keep this for your records and quote the load number on your invoice.</p>
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        await invokeFn('send-email', { body: { to, cc: ccForSubbie(lc, [lc.ccEmail, OPS_EMAIL]), subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+        // POD copy to subbie → subbie cc + ops@/branch ops + loadcons@ + sales rep.
+        await invokeFn('send-email', { body: { to, cc: ccForSubbie(lc, [lc.ccEmail, ...opsCcForPhase(lc, 'Delivered'), OPS_EMAIL, lc.repEmail]), subject: `POD copy - load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
     } catch (e) {
         console.error('[ops] supplier POD copy failed:', e);
     }
@@ -242,7 +244,7 @@ export const sendAmendedLoadConEmail = async (lc: any, changed: string[]): Promi
         await invokeFn('send-email', {
             body: {
                 to,
-                cc: ccForSubbie(lc, [OPS_EMAIL, lc.ccEmail]),
+                cc: ccForSubbie(lc, [OPS_EMAIL, lc.ccEmail, ...opsCcForPhase(lc, 'Booked'), lc.repEmail]),
                 subject: `AMENDED Load Confirmation ${lc.loadConNumber} - please re-confirm`,
                 html,
                 fromName: 'FBN Transport',
@@ -266,7 +268,7 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
       <p>Thank you,<br>FBN Transport</p>`);
     try {
         await invokeFn('send-email', {
-            body: { to, cc: ccForSubbie(lc, [lc.ccEmail, OPS_EMAIL]), subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
+            body: { to, cc: ccForSubbie(lc, [lc.ccEmail, ...opsCcForPhase(lc, 'Delivered'), OPS_EMAIL, lc.repEmail]), subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
         });
     } catch (e) {
         console.error('[ops] auto POD request failed:', e);
@@ -276,11 +278,19 @@ export const sendPodRequestEmail = async (lc: any): Promise<void> => {
 const OPS_EMAIL = 'loadcons@fbn-transport.co.za';
 const baseUrl = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
 
-// Branch ops mailboxes (for INTERNAL FBN→FBN routing only — new-collection
-// notify and inter-branch line-haul/handover). Party-facing emails are tracked
-// solely by loadcons@ (OPS_EMAIL); they do not copy branch ops inboxes.
-const OPS_GENERAL = 'ops@fbn-transport.co.za';
-const opsEmail = (branch?: string) => branch === 'FBN DBN' ? 'opsdbn@fbn-transport.co.za' : branch === 'FBN JHB' ? 'opsjhb@fbn-transport.co.za' : OPS_GENERAL;
+// Branch ops mailbox lookup (shared canonical helper from lib/loadEmails).
+const opsEmail = opsMailbox;
+// Statuses before the inter-branch transfer (handled by the COLLECTING branch).
+const COLLECTION_PHASE = new Set(['Booked', 'Driver Assigned', 'At Collection Point', 'Loading', 'Collected', 'At Collection Depot']);
+// Which ops mailboxes to copy for a load at a given status: collecting/arranging
+// branch up to the transfer, then the destination branch (cc the origin) once
+// it's moving — always plus the general ops inbox.
+const opsCcForPhase = (lc: any, status: string): string[] => {
+    const origin = opsEmail(lc.collectionBranch || lc.arrangingBranch);
+    const dest = opsEmail(lc.destinationBranch);
+    const set = COLLECTION_PHASE.has(status) ? [origin] : (origin === dest ? [origin] : [dest, origin]);
+    return [...new Set([...set, OPS_GENERAL])];
+};
 
 // Mobile "Quick Collection" → email ops to action it (assign driver + ETA).
 export const notifyOpsNewCollection = async (lc: any): Promise<void> => {
@@ -305,7 +315,7 @@ export const sendCollectionAckToClient = async (lc: any): Promise<void> => {
       <p>Collection: <strong>${lc.collectionPoint || ''}</strong><br>Delivery: <strong>${lc.deliveryPoint || ''}</strong></p>
       ${emailButton(`${baseUrl()}?track=${lc.id}`, 'Track this collection &rarr;')}
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
-    const cc = ccForClient(lc, [lc.clientCc, OPS_EMAIL]);
+    const cc = ccForClient(lc, [lc.clientCc, ...opsCcForPhase(lc, 'Booked'), lc.repEmail]);
     try { await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } }); }
     catch (e) { console.error('[ops] collection ack failed:', e); }
 };
@@ -322,7 +332,7 @@ export const sendClientRevisedEtaEmail = async (lc: any): Promise<void> => {
       ${emailButton(`${baseUrl()}?track=${lc.id}`, 'Track this collection &rarr;')}
       <p>Apologies for any inconvenience — we'll keep you posted.</p>
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
-    const cc = ccForClient(lc, [lc.clientCc, OPS_EMAIL]);
+    const cc = ccForClient(lc, [lc.clientCc, ...opsCcForPhase(lc, 'Booked'), lc.repEmail]);
     try { await invokeFn('send-email', { body: { to, cc, subject: `FBN Transport ${lc.loadConNumber} — revised collection time`, html, fromName: 'FBN Transport' } }); }
     catch (e) { console.error('[ops] revised-eta email failed:', e); }
 };

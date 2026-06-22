@@ -42,6 +42,19 @@ export const ccForSubbie = (lc: any, extra: (string | undefined)[]): string[] =>
     dropAddrs(extra.flatMap(e => splitEmails(e)), lc_clientAddrs(lc));
 export const ccForClient = (lc: any, extra: (string | undefined)[]): string[] =>
     dropAddrs(extra.flatMap(e => splitEmails(e)), lc_subbieAddrs(lc));
+
+// Canonical FBN mailbox routing — single source of truth shared by these
+// builders and the status/POD senders in OperationsContext.
+export const FBN_LOADCONS = 'loadcons@fbn-transport.co.za';
+export const OPS_GENERAL = 'ops@fbn-transport.co.za';
+export const opsMailbox = (branch?: string): string =>
+    branch === 'FBN DBN' ? 'opsdbn@fbn-transport.co.za'
+        : branch === 'FBN JHB' ? 'opsjhb@fbn-transport.co.za'
+            : OPS_GENERAL;
+// Ops mailboxes to copy for a load: the arranging/collecting branch + general
+// ops. (Phase-aware destination-branch routing lives in OperationsContext.)
+export const branchOpsCc = (lc: any): string[] =>
+    [...new Set([opsMailbox(lc?.collectionBranch || lc?.arrangingBranch), OPS_GENERAL])];
 const base = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
 
 type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };
@@ -74,10 +87,11 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
       ${callToAction}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        // Subbie LoadCon: cc the subbie docs team + ops — strip any CLIENT address.
+        // Subbie LoadCon: cc loadcons@ + the arranging/collecting branch ops + the
+        // load's sales rep (if any) + the subbie's cc — strip any CLIENT address.
         // Subject uses route localities only — NEVER the client name (a subcontractor
         // must not learn the client's identity).
-        const cc = dropAddrs(['loadcons@fbn-transport.co.za', ...splitEmails(lc.ccEmail)], lc_clientAddrs(lc));
+        const cc = dropAddrs([FBN_LOADCONS, ...branchOpsCc(lc), lc.repEmail, ...splitEmails(lc.ccEmail)].filter(Boolean) as string[], lc_clientAddrs(lc));
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${collLoc} to ${delLoc}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
@@ -128,8 +142,9 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
         // Client Order goes to the client + the full CLIENT team (lc.clientCc) +
-        // operations. NEVER the subcontractor's list — strip any SUBBIE address.
-        const cc = dropAddrs([...splitEmails(lc.clientCc), 'loadcons@fbn-transport.co.za'], lc_subbieAddrs(lc));
+        // loadcons@ + the arranging/collecting branch ops + the load's sales rep (if
+        // any). NEVER the subcontractor's list — strip any SUBBIE address.
+        const cc = dropAddrs([...splitEmails(lc.clientCc), FBN_LOADCONS, ...branchOpsCc(lc), lc.repEmail].filter(Boolean) as string[], lc_subbieAddrs(lc));
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Transport Order ${lc.loadConNumber}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }

@@ -186,3 +186,62 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     if (b64) { void directInvoke('drive-file', { loadId: lc.id, files: [{ base64: b64, name: 'Client-Order.pdf', kind: 'clientorder', contentType: 'application/pdf' }] }); }
     return { ok: true, pdfFailed };
 }
+
+// CONSOLIDATED client update for a SPLIT waybill (several vehicles, one order).
+// Instead of one email per truck, the client gets ONE "latest update" listing
+// every vehicle's reg/driver and where it is + its ETA (or TBA), re-sent each
+// time any vehicle progresses — right through to delivered + POD.
+const _fmtDT = (s?: string) => { if (!s) return ''; const d = new Date(s); if (isNaN(d.getTime())) return String(s); return String(s).includes('T') ? d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }); };
+const _vehiclePhase = (l: any): { label: string; etaLabel: string; eta: string } => {
+    const s = l.status;
+    const dlv = l.deliveryEta || l.deliveryDate;
+    if (s === 'Delivered') return { label: '✅ Delivered', etaLabel: '', eta: '' };
+    if (s === 'POD Submitted' || s === 'Invoiced') return { label: '✅ Delivered — POD received', etaLabel: '', eta: '' };
+    if (['Out for Delivery', 'At Destination Depot', 'Unloaded'].includes(s)) return { label: '🚚 Out for delivery', etaLabel: 'ETA delivery', eta: dlv };
+    if (['Collected', 'In Transit'].includes(s)) return { label: '🚚 Loaded — in transit', etaLabel: 'ETA delivery', eta: dlv };
+    if (['At Collection Point', 'Loading'].includes(s)) return { label: '📦 At loading point', etaLabel: 'ETA loading', eta: l.loadingEta };
+    return { label: '🕒 Allocated', etaLabel: 'ETA to loading', eta: l.loadingEta }; // Booked / Driver Assigned
+};
+
+export async function sendClientGroupUpdate(loads: any[], trigger?: any): Promise<Sent> {
+    if (!loads || loads.length === 0) return { ok: false, error: 'No loads.' };
+    const ordered = [...loads].sort((a, b) => (a.isPrimary === b.isPrimary ? 0 : a.isPrimary ? -1 : 1));
+    const primary = ordered.find(l => l.isPrimary) || ordered[0];
+    const dest = (primary.clientEmail || (trigger && trigger.clientEmail) || '').trim();
+    if (!dest) return { ok: false, error: 'No client email.' };
+    const waybill = primary.loadRefNo || primary.loadConNumber;
+    const allDone = ordered.every(l => ['Delivered', 'POD Submitted', 'Invoiced'].includes(l.status));
+    const rows = ordered.map((l, i) => {
+        const reg = l.subcontractorVehicleReg || '';
+        const drv = [l.subcontractorDriverName, l.subcontractorDriverCell].filter(Boolean).join(' · ');
+        const veh = [reg, drv].filter(Boolean).join(' — ') || '<em style="color:#94a3b8">vehicle &amp; driver TBA</em>';
+        const p = _vehiclePhase(l);
+        const etaTxt = p.etaLabel ? `${p.etaLabel}: <strong>${p.eta ? _fmtDT(p.eta) : 'TBA'}</strong>` : '';
+        return `<tr>
+            <td style="border:1px solid #e5e7eb;padding:7px 9px;font-weight:800;color:#13294b;white-space:nowrap">Vehicle ${i + 1}</td>
+            <td style="border:1px solid #e5e7eb;padding:7px 9px">${veh}</td>
+            <td style="border:1px solid #e5e7eb;padding:7px 9px">${p.label}${etaTxt ? `<br><span style="font-size:12px;color:#5b6573">${etaTxt}</span>` : ''}</td>
+          </tr>`;
+    }).join('');
+    const html = brandedEmail(`<p>Good day ${primary.clientContact || primary.clientName || ''},</p>
+      <p>Please find the latest update regarding the vehicles on your shipment <strong>${waybill}</strong> (${shortLoc(primary.collectionPoint)} to ${shortLoc(primary.deliveryPoint)}), moving on <strong>${ordered.length} vehicles</strong>:</p>
+      <table style="border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 12px">
+        <thead><tr style="background:#13294b;color:#fff">
+          <th style="border:1px solid #13294b;padding:7px 9px;text-align:left">Vehicle</th>
+          <th style="border:1px solid #13294b;padding:7px 9px;text-align:left">Reg &amp; driver</th>
+          <th style="border:1px solid #13294b;padding:7px 9px;text-align:left">Status</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${emailButton(`${base()}?track=${primary.id}`, 'Track your shipment &rarr;')}
+      ${allDone
+            ? `<p>All vehicles on this shipment have been <strong>delivered</strong>. The signed PODs are available from the tracking link above as they are uploaded.</p>`
+            : `<p>We'll keep you posted with each vehicle's progress through to delivery, and the signed PODs as they come in. Should you need anything, simply reply to this email.</p>`}
+      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+    try {
+        const cc = dropAddrs([...splitEmails(primary.clientCc), 'loadcons@fbn-transport.co.za'], lc_subbieAddrs(primary));
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Shipment Update ${waybill} - ${placeAddr(primary.collectionPoint)} to ${placeAddr(primary.deliveryPoint)} (${ordered.length} vehicles)`, html, fromName: 'FBN Transport' } });
+        if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
+    return { ok: true };
+}

@@ -15,7 +15,7 @@ import {
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
-import { sendLoadConToSupplier, sendOrderToClient, clientSubject } from '../lib/loadEmails';
+import { sendLoadConToSupplier, sendOrderToClient, clientSubject, sendClientGroupUpdate } from '../lib/loadEmails';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -984,19 +984,33 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (updates.status === 'Delivered' && prev?.status !== 'Delivered' && !prev?.podPhoto && !updates.podPhoto) {
                     sendPodRequestEmail({ ...(prev || {}), ...updates, id });
                 }
-                // Auto-update the client with a tracking link as the load changes phase.
-                if (updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]) {
+                // Auto-update the client as the load changes phase. A SPLIT waybill
+                // (several trucks on one order) gets ONE consolidated update listing
+                // every vehicle — re-sent on a phase change OR when a vehicle's reg/
+                // driver/ETA is added — instead of a separate email per truck.
+                {
                     const merged = { ...(prev || {}), ...updates, id };
-                    sendClientPhaseEmail(merged, updates.status);
-                    sendSupplierPhaseEmail(merged, updates.status);
-                }
-                // Collection time reallocated (e.g. the 30-min check found it wasn't
-                // on track) → tell the client the new time, and re-arm the check so
-                // the next 30-min reminder fires against the new ETA.
-                if (updates.loadingEta && updates.loadingEta !== prev?.loadingEta && (prev?.isCollection ?? (updates as any).isCollection)) {
-                    const phaseEmailed = !!(updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]);
-                    if (!phaseEmailed) sendClientRevisedEtaEmail({ ...(prev || {}), ...updates, id });
-                    void directUpdate('load_confirmations', { id }, { eta_check_sent_at: null } as any);
+                    const groupSibs = merged.loadGroupId
+                        ? (stateRef.current.loadConfirmations || []).filter((l: any) => l.loadGroupId === merged.loadGroupId).map((l: any) => l.id === id ? merged : l)
+                        : [];
+                    const isGroup = groupSibs.length > 1;
+                    const statusPhase = !!(updates.status && updates.status !== prev?.status && CLIENT_PHASE_MSG[updates.status]);
+                    const vehicleOrEta = ['subcontractorVehicleReg', 'subcontractorDriverName', 'subcontractorDriverCell', 'loadingEta', 'deliveryEta']
+                        .some(k => k in updates && `${(updates as any)[k] ?? ''}` !== `${(prev as any)?.[k] ?? ''}`);
+                    // The subbie always gets their own per-truck phase update.
+                    if (statusPhase) sendSupplierPhaseEmail(merged, updates.status as string);
+                    if (isGroup) {
+                        if (statusPhase || vehicleOrEta) sendClientGroupUpdate(groupSibs, merged);
+                    } else if (statusPhase) {
+                        sendClientPhaseEmail(merged, updates.status as string);
+                    }
+                    // Collection time reallocated → tell the client the new time (single
+                    // load only; grouped loads already covered above), and re-arm the
+                    // 30-min check against the new ETA.
+                    if (updates.loadingEta && updates.loadingEta !== prev?.loadingEta && (prev?.isCollection ?? (updates as any).isCollection)) {
+                        if (!isGroup && !statusPhase) sendClientRevisedEtaEmail(merged);
+                        void directUpdate('load_confirmations', { id }, { eta_check_sent_at: null } as any);
+                    }
                 }
                 // Message the DRIVER on WhatsApp at each phase with the next ask.
                 if (updates.status && updates.status !== prev?.status && DRIVER_PHASE_MSG[updates.status]) {

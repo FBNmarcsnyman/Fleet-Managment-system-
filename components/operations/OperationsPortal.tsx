@@ -19,6 +19,8 @@ const TransporterLoadCons = lazy(() => import('./TransporterLoadCons'));
 const LclStatusReport = lazy(() => import('./LclStatusReport'));
 const DeliveriesDayView = lazy(() => import('./DeliveriesDayView'));
 const OperationsDay = lazy(() => import('./OperationsDay'));
+const OperationsManifests = lazy(() => import('./OperationsManifests'));
+const OperationsTripSheets = lazy(() => import('./OperationsTripSheets'));
 
 
 const OperationsPortal: React.FC = () => {
@@ -42,6 +44,8 @@ const OperationsPortal: React.FC = () => {
     const RESTRICTED_OPS = [
         { view: 'opsDashboard', label: 'Dashboard', group: 'dashboard' },
         { view: 'opsDay', label: 'Day', group: 'work' },
+        { view: 'opsManifests', label: 'Manifests', group: 'work' },
+        { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
         { view: 'shipments', label: 'Shipments', group: 'work' },
         { view: 'dailyOverview', label: 'Daily Overview', group: 'track' },
     ];
@@ -64,6 +68,8 @@ const OperationsPortal: React.FC = () => {
     const OPS_TABS = [
         { view: 'opsDashboard', label: 'Dashboard', group: 'dashboard' },
         { view: 'opsDay', label: 'Day', group: 'work' },
+        { view: 'opsManifests', label: 'Manifests', group: 'work' },
+        { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
         { view: 'shipments', label: 'Shipments', group: 'work' },
         { view: 'planning', label: 'Planning', group: 'work' },
         { view: 'imports', label: 'Imports', group: 'work' },
@@ -108,6 +114,8 @@ const OperationsPortal: React.FC = () => {
             case 'subcontractorLoads': return <Suspense fallback={<div>Loading...</div>}><SubcontractorLoadsView loadConfirmations={loadConfirmations} suppliers={suppliers} clients={clients} onUpdateLoadConfirmation={handleUpdateLoadConfirmation} /></Suspense>;
             case 'loadBoard': return <LoadBoard />;
             case 'opsDay': return <Suspense fallback={<div>Loading…</div>}><OperationsDay /></Suspense>;
+            case 'opsManifests': return <Suspense fallback={<div>Loading…</div>}><OperationsManifests /></Suspense>;
+            case 'opsTripSheets': return <Suspense fallback={<div>Loading…</div>}><OperationsTripSheets /></Suspense>;
             case 'shipments': return <Suspense fallback={<div>Loading…</div>}><ShipmentsBoard /></Suspense>;
             case 'containers': return <Suspense fallback={<div>Loading…</div>}><ContainersView /></Suspense>;
             case 'imports': return <Suspense fallback={<div>Loading…</div>}><ImportsBoard /></Suspense>;

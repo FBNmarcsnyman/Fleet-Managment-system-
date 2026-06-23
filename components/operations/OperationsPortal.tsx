@@ -1,5 +1,5 @@
 
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useUIState, useOperations, useVehicles, useAuth } from '../../contexts/AppContexts';
 import LoadBoard from './LoadBoard';
 import DocumentSettingsView from './DocumentSettingsView';
@@ -31,7 +31,7 @@ const OperationsPortal: React.FC = () => {
         handleCreateManifest, handleCreateTripSheet,
     } = useOperations() as any;
     const { vehicles = [] } = (useVehicles() as any) || {};
-    const { hasPermission } = useAuth();
+    const { hasPermission, currentUser } = useAuth();
     // LoadCons-only operators: Broking limited to Load Board / LoadCons /
     // Deliveries-POD, and Operations limited to Dashboard / Day / Shipments /
     // Daily Overview. (They're pinned to their own floor by branch.)
@@ -47,7 +47,6 @@ const OperationsPortal: React.FC = () => {
         { view: 'opsManifests', label: 'Manifests', group: 'work' },
         { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
         { view: 'shipments', label: 'Shipments', group: 'work' },
-        { view: 'dailyOverview', label: 'Daily Overview', group: 'track' },
     ];
 
     // Two SEPARATE business areas share this portal: Broking (brokered freight) and
@@ -71,16 +70,10 @@ const OperationsPortal: React.FC = () => {
         { view: 'opsManifests', label: 'Manifests', group: 'work' },
         { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
         { view: 'shipments', label: 'Shipments', group: 'work' },
-        { view: 'planning', label: 'Planning', group: 'work' },
         { view: 'imports', label: 'Imports', group: 'work' },
         { view: 'lclStatus', label: 'Status Report', group: 'work' },
         { view: 'containers', label: 'Containers', group: 'work' },
-        { view: 'dailyOverview', label: 'Daily Overview', group: 'track' },
         { view: 'transporterLoads', label: 'By Transporter', group: 'reports' },
-    ];
-    const GROUPS: { key: string; label: string }[] = [
-        { key: 'dashboard', label: 'Dashboard' }, { key: 'work', label: 'Work' },
-        { key: 'track', label: 'Track' }, { key: 'reports', label: 'Reports' },
     ];
     // The sidebar has two flat tabs — Broking and Operations — that both open
     // this portal. The current view decides which area's tab strip to show; the
@@ -90,6 +83,29 @@ const OperationsPortal: React.FC = () => {
         ? (isOps ? RESTRICTED_OPS : RESTRICTED_BROKING)
         : (isOps ? OPS_TABS : BROKING_TABS);
     const activeTab = navItems.some(t => t.view === operationsSubView) ? operationsSubView : navItems[0].view;
+
+    // Customisable tab strip — each user can hide tabs they don't use and reorder
+    // them; saved per user + area (localStorage). Keeps the strip uncluttered
+    // without removing anyone else's tabs.
+    const tabArea = isOps ? 'ops' : 'broking';
+    const prefKey = `fbnTabs_${tabArea}_${currentUser?.id || currentUser?.email || 'x'}`;
+    const [customise, setCustomise] = useState(false);
+    const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
+    const [tabOrder, setTabOrder] = useState<string[]>([]);
+    useEffect(() => {
+        try { const p = JSON.parse(localStorage.getItem(prefKey) || '{}'); setHiddenTabs(p.hidden || []); setTabOrder(p.order || []); }
+        catch { setHiddenTabs([]); setTabOrder([]); }
+        setCustomise(false);
+    }, [prefKey]);
+    const savePrefs = (hidden: string[], order: string[]) => { setHiddenTabs(hidden); setTabOrder(order); try { localStorage.setItem(prefKey, JSON.stringify({ hidden, order })); } catch { /* ignore */ } };
+    const orderedTabs = [...navItems].sort((a, b) => {
+        const ia = tabOrder.indexOf(a.view), ib = tabOrder.indexOf(b.view);
+        if (ia === -1 && ib === -1) return 0; if (ia === -1) return 1; if (ib === -1) return -1; return ia - ib;
+    });
+    const baseOrder = orderedTabs.map(t => t.view);
+    const stripTabs = customise ? orderedTabs : orderedTabs.filter(t => !hiddenTabs.includes(t.view));
+    const moveTab = (view: string, dir: number) => { const arr = [...baseOrder]; const i = arr.indexOf(view), j = i + dir; if (i < 0 || j < 0 || j >= arr.length) return;[arr[i], arr[j]] = [arr[j], arr[i]]; savePrefs(hiddenTabs, arr); };
+    const toggleHide = (view: string) => savePrefs(hiddenTabs.includes(view) ? hiddenTabs.filter(v => v !== view) : [...hiddenTabs, view], baseOrder);
 
     const handleNewTransportOrder = () => showModal('transportOrder', {
         onSubmit: async (data: any) => {
@@ -123,7 +139,8 @@ const OperationsPortal: React.FC = () => {
             case 'driverChats': return <Suspense fallback={<div>Loading…</div>}><WhatsAppChatsView /></Suspense>;
             case 'emailLog': return <Suspense fallback={<div>Loading…</div>}><EmailLogView /></Suspense>;
             case 'docSettings': return <DocumentSettingsView />;
-            case 'opsDashboard': return <Suspense fallback={<div>Loading…</div>}><OperationsOverview /></Suspense>;
+            // Merged overview — the single Operations dashboard (was Dashboard + Daily Overview).
+            case 'opsDashboard':
             case 'dailyOverview': return <Suspense fallback={<div>Loading…</div>}><DailyShipmentsOverview /></Suspense>;
             case 'monthlyLoadcons': return <Suspense fallback={<div>Loading…</div>}><MonthlyLoadcons /></Suspense>;
             case 'transporterLoads': return <Suspense fallback={<div>Loading…</div>}><TransporterLoadCons /></Suspense>;
@@ -142,22 +159,26 @@ const OperationsPortal: React.FC = () => {
                     <span className={`shrink-0 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${isOps ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800'}`}>
                         {isOps ? 'Operations' : 'Broking'}
                     </span>
-                <div className="flex items-stretch gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl">
-                    {GROUPS.map((g, gi) => {
-                        const groupTabs = navItems.filter(t => (t as any).group === g.key);
-                        if (!groupTabs.length) return null;
+                <div className="flex items-center gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl">
+                    {stripTabs.map(item => {
+                        const isHidden = hiddenTabs.includes(item.view);
                         return (
-                            <div key={g.key} className={`flex items-center gap-1 ${gi > 0 ? 'pl-1 ml-1 border-l border-slate-300/70' : ''}`}>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1 hidden lg:inline">{g.label}</span>
-                                {groupTabs.map(item => (
-                                    <button key={item.view} onClick={() => handleOperationsSubViewChange(item.view as any)}
-                                        className={`px-3.5 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition ${activeTab === item.view ? 'bg-[#13294b] text-white shadow' : 'text-slate-600 hover:bg-white'}`}>
-                                        {item.label}
-                                    </button>
-                                ))}
+                            <div key={item.view} className={`flex items-center rounded-lg ${customise ? 'border border-dashed border-slate-300 pr-1' : ''}`}>
+                                <button onClick={() => { if (!customise) handleOperationsSubViewChange(item.view as any); }}
+                                    className={`px-3.5 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition ${activeTab === item.view && !customise ? 'bg-[#13294b] text-white shadow' : isHidden ? 'text-slate-400 line-through' : 'text-slate-600 hover:bg-white'}`}>
+                                    {item.label}
+                                </button>
+                                {customise && (
+                                    <span className="flex items-center text-slate-400">
+                                        <button onClick={() => moveTab(item.view, -1)} title="Move left" className="px-1 hover:text-slate-700">◀</button>
+                                        <button onClick={() => moveTab(item.view, 1)} title="Move right" className="px-1 hover:text-slate-700">▶</button>
+                                        <button onClick={() => toggleHide(item.view)} title={isHidden ? 'Show' : 'Hide'} className={`px-1 ${isHidden ? 'text-emerald-600 hover:text-emerald-700' : 'hover:text-rose-600'}`}>{isHidden ? '＋' : '✕'}</button>
+                                    </span>
+                                )}
                             </div>
                         );
                     })}
+                    <button onClick={() => setCustomise(c => !c)} title="Show/hide & reorder your tabs" className={`ml-1 px-2.5 py-2 text-xs font-bold rounded-lg whitespace-nowrap ${customise ? 'bg-[#f5b700] text-[#13294b]' : 'text-slate-500 hover:bg-white'}`}>{customise ? 'Done' : '⚙ Customise'}</button>
                 </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

@@ -10,7 +10,7 @@ const MODULES: { key: string; label: string }[] = [
     { key: 'access_fleet', label: 'FBN Fleet' },
     { key: 'access_fuel', label: 'Fuel' },
     { key: 'access_operations', label: 'Broking / Clients / Quotes' },
-    { key: 'access_loadcons', label: 'LoadCons only' },
+    { key: 'access_loadcons', label: 'Floor team (LoadCons + Ops boards)' },
     { key: 'access_workshop', label: 'Workshop' },
     { key: 'access_finance', label: 'Finance' },
     { key: 'access_incidents', label: 'Incidents' },

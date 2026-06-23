@@ -415,6 +415,7 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     address: row.address ?? '',
     slaLevel: row.sla_level ?? undefined,
     isActive: (row as any).is_active ?? true,
+    category: (row as any).category ?? undefined,
 });
 
 // -- drivers → Driver ---------------------------------------------------------
@@ -905,7 +906,8 @@ export const toClientInsert = (client: Omit<Client, 'id'>): Tables['clients']['I
     branches: (client.branches ?? []) as any,
     address: client.address || null,
     sla_level: client.slaLevel ?? null,
-});
+    ...(((client as any).category) ? { category: (client as any).category } : {}),
+} as any);
 
 export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] => {
     const row: Tables['clients']['Update'] = {};
@@ -917,6 +919,7 @@ export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] 
     if (u.branches !== undefined) (row as any).branches = u.branches ?? [];
     if (u.address !== undefined) row.address = u.address || null;
     if (u.slaLevel !== undefined) row.sla_level = u.slaLevel ?? null;
+    if ((u as any).category !== undefined) (row as any).category = (u as any).category ?? null;
     return row;
 };
 

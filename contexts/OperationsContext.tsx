@@ -16,6 +16,7 @@ import {
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
 import { sendLoadConToSupplier, sendOrderToClient, clientSubject, sendClientGroupUpdate } from '../lib/loadEmails';
+import { phoneZA } from '../lib/format';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -76,17 +77,18 @@ const CLIENT_PHASE_MSG: Record<string, string> = {
     'Delivered': 'has been delivered',
 };
 
-// Neaten data entry: store free-text fields in UPPERCASE (transport-doc style),
-// but NEVER emails or phone numbers. Applied at the save layer so the board,
-// LoadCons and emails all read consistently.
+// Neaten data entry: store free-text fields in UPPERCASE (transport-doc style)
+// and cell/phone numbers in +27 international form — but NEVER touch emails.
+// Applied at the save layer so the board, LoadCons and emails all read consistently.
 const upStr = (v: any) => (typeof v === 'string' && v.trim() ? v.toUpperCase() : v);
-const upContacts = (cs: any) => Array.isArray(cs) ? cs.map((c: any) => ({ ...c, name: upStr(c.name), role: upStr(c.role) })) : cs;
+const upContacts = (cs: any) => Array.isArray(cs) ? cs.map((c: any) => ({ ...c, name: upStr(c.name), role: upStr(c.role), title: upStr(c.title), phone: c.phone ? phoneZA(c.phone) : c.phone })) : cs;
 const LOAD_UP = ['clientName', 'clientContact', 'collectionPoint', 'deliveryPoint', 'commodity', 'packaging', 'loadType', 'route', 'customerOrderNumber', 'loadRefNo', 'subcontractorName', 'forAttention', 'subcontractorDriverName', 'subcontractorVehicleReg', 'specialInstructions', 'dimensions'];
 export const upcaseLoad = (o: any) => { if (!o || typeof o !== 'object') return o; const x = { ...o }; for (const k of LOAD_UP) if (k in x) x[k] = upStr(x[k]); return x; };
 const PARTY_UP = ['name', 'contactPerson', 'address'];
 export const upcaseParty = (o: any) => {
     if (!o || typeof o !== 'object') return o; const x = { ...o };
     for (const k of PARTY_UP) if (k in x) x[k] = upStr(x[k]);
+    if ('contactPhone' in x && x.contactPhone) x.contactPhone = phoneZA(x.contactPhone);
     if ('contacts' in x) x.contacts = upContacts(x.contacts);
     if ('branches' in x) x.branches = Array.isArray(x.branches) ? x.branches.map((b: any) => ({ ...b, name: upStr(b.name), address: upStr(b.address), contactPerson: upStr(b.contactPerson), contacts: upContacts(b.contacts) })) : x.branches;
     return x;

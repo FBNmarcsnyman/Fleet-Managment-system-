@@ -15,6 +15,7 @@ const AddClientForm: React.FC = () => {
     const [contacts, setContacts] = useState<Contact[]>(editing?.contacts || []);
     const [branches, setBranches] = useState<ClientBranch[]>(editing?.branches || []);
     const [address, setAddress] = useState(editing?.address || '');
+    const [category, setCategory] = useState(editing?.category || '');
     const [submitting, setSubmitting] = useState(false);
     const [pullingCtrl, setPullingCtrl] = useState(false);
 
@@ -63,13 +64,13 @@ const AddClientForm: React.FC = () => {
                 // Close immediately and save in the background (free-tier DB can be slow).
                 hideModal();
                 showToast('Saving client…');
-                handleUpdateClient(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, branches: cleanBranches, address })
+                handleUpdateClient(editing.id, { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, branches: cleanBranches, address, category: category || undefined })
                     .then((result: any) => showToast(result?.ok === false ? `Failed to update client: ${result.error}` : `Client "${name}" updated.`))
                     .catch((err: any) => showToast(`Could not save: ${err?.message || 'error'}`));
                 return;
             }
 
-            const newClient = { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, branches: cleanBranches, address };
+            const newClient = { name, contactPerson, contactEmail, contactPhone, contacts: cleanContacts, branches: cleanBranches, address, category: category || undefined };
             const result = await handleAddClient(newClient);
             if (!result.ok) { showToast(`Failed to add client: ${result.error}`); return; } // keep modal open so user can correct + retry
             if (modal.payload?.onSuccess) {
@@ -92,6 +93,14 @@ const AddClientForm: React.FC = () => {
             <div className="space-y-4">
                 <input type="text" placeholder="Company Name" value={name} onChange={e => setName(e.target.value)} required className={inputClasses} />
                 <input type="text" placeholder="Primary Contact Person" value={contactPerson} onChange={e => setContactPerson(e.target.value)} className={inputClasses} />
+                <select value={category} onChange={e => setCategory(e.target.value)} className={inputClasses}>
+                    <option value="">— Category (group) —</option>
+                    <option value="Clearing & Forwarding Agent">Clearing &amp; Forwarding Agent</option>
+                    <option value="Consolidator">Consolidator</option>
+                    <option value="Manufacturer / Shipper">Manufacturer / Shipper</option>
+                    <option value="Carrier / Transporter">Carrier / Transporter</option>
+                    <option value="Other">Other</option>
+                </select>
                 <div className="grid grid-cols-2 gap-4">
                     <input type="email" placeholder="Contact Email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} className={inputClasses} />
                     <input type="tel" placeholder="Contact Phone" value={contactPhone} onChange={e => setContactPhone(e.target.value)} className={inputClasses} />

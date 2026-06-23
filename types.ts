@@ -355,6 +355,8 @@ export interface Contact {
     getsPod?: boolean;
     getsPodUpload?: boolean;
     getsUpdates?: boolean;
+    quotes?: boolean;   // this person has asked FBN for rates/quotes — a sales-target lead
+    title?: string;     // job title from their email signature
     basedAt?: string;   // where this person is based (city/branch) — for marketing & routing
 }
 
@@ -457,6 +459,7 @@ export interface Client {
     address: string;
     slaLevel?: string;
     isActive?: boolean;
+    category?: string; // Clearing & Forwarding Agent / Consolidator / Manufacturer / Shipper / Carrier / Transporter / Other
 }
 
 export interface LoadConfirmation {

@@ -79,14 +79,23 @@ issues (hidden brokered loads, missing delivery date, stalled transit, storage-c
 **Project:** FBN Control Centre — Transport ops + brokerage + fleet web app (React/TS/Vite
 + Supabase, Cloudflare Worker). Live and in daily use; now in a *unify & streamline* phase.
 
-**Skills** (invoke when the trigger in each `description` matches — BLOCKING: invoke before
-answering):
+### Active Skills Registry
+(invoke when a skill's `description` trigger matches — BLOCKING: invoke before answering)
+
+**Domain skills**
 - `fbn-fleet` — any app feature/fix/schema/deploy work (conventions + deploy rule).
 - `new-form` / `new-email` — adding a form / a load email the house way.
 - `crm-enrich` — Gmail → client/carrier CRM (scrape contacts, dedupe, normalise).
 - `provision-access` — create logins + set role/branch access (incl. the auth-seed gotcha).
 - `lcl-import` — maintain the LCL status-sheet importer + cron.
-- Agents: `deploy-verify` (is it live?), `load-audit` (data integrity).
+
+**Process skills**
+- `system-init` — "System Init" / daily resync → 🎯 goal · ⚡ skills · 🛑 blockers report.
+- `qa-check` — "Run QA Check" / after non-trivial code → rule+edge-case+side-effect+build gate,
+  output a truthful `[x] Logic | [x] Edge-cases | [x] Side-effects | [x] tsc+build` checklist.
+- `forge-skill` — "Forge Skill" / after a breakthrough → distil into a new SKILL.md + register here.
+
+**Agents:** `deploy-verify` (is it live?), `load-audit` (data integrity).
 
 **Autonomous loop (every skill follows this):**
 1. **Trigger (hook):** the skill's `description` trigger phrases; a shared Google Sheet

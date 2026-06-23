@@ -41,6 +41,23 @@ const STATUS_TONE = (s: string) => {
     return 'bg-slate-100 text-slate-600';
 };
 
+// Lifecycle stage from the free-text status. Two working groups:
+//  • INBOUND — everything up to & incl. dispatched to JHB (not unpacked / unpacked
+//    / collected / dispatched).  • DELIVERY — received in JHB → out for delivery →
+//    delivered. Holds (border/PHO/awaiting DRO/customs docs) sit in INBOUND > pre.
+type Stage = 'pre' | 'unpacked' | 'collected' | 'dispatched' | 'received' | 'out' | 'delivered';
+const stageOf = (r: Lcl): Stage => {
+    const u = (r.status || '').toUpperCase();
+    if (/DELIVERED|POD/.test(u)) return 'delivered';
+    if (/OUT.*DELIV|FOR DELIV|DELIVERING|ON DELIVERY/.test(u)) return 'out';
+    if (/REC.*JHB|RECEIVED|IN JHB|ARRIVED JHB/.test(u)) return 'received';
+    if (/DESP|DISPATCH|MOVED TO JHB|ENROUTE|EN ROUTE|TO JHB/.test(u)) return 'dispatched';
+    if (/COLLECT|UPLIFT|ON ROUTE/.test(u)) return 'collected';
+    if (/UNPACK/.test(u)) return 'unpacked';
+    return 'pre';
+};
+const INBOUND: Stage[] = ['pre', 'unpacked', 'collected', 'dispatched'];
+
 const LclStatusReport: React.FC = () => {
     const { showModal, showToast } = useUIState();
     const { handleCreateLoadConfirmation } = useOperations() as any;
@@ -53,6 +70,7 @@ const LclStatusReport: React.FC = () => {
     const [depot, setDepot] = useState('All');
     const [agent, setAgent] = useState('All');
     const [status, setStatus] = useState('All');
+    const [tab, setTab] = useState<'inbound' | 'delivery' | 'all'>('inbound');
     const [q, setQ] = useState('');
     const [selIds, setSelIds] = useState<Set<string>>(new Set());
     const [bulkBusy, setBulkBusy] = useState(false);
@@ -104,6 +122,10 @@ const LclStatusReport: React.FC = () => {
             return true;
         });
     }, [rows, depot, agent, status, q]);
+
+    // Lifecycle tab split: Inbound (→ dispatched to JHB) vs Delivery (JHB onward).
+    const staged = useMemo(() => tab === 'all' ? filtered : filtered.filter(r => INBOUND.includes(stageOf(r)) === (tab === 'inbound')), [filtered, tab]);
+    const tabCounts = useMemo(() => { let inb = 0; filtered.forEach(r => { if (INBOUND.includes(stageOf(r))) inb++; }); return { inbound: inb, delivery: filtered.length - inb, all: filtered.length }; }, [filtered]);
 
     const counts = useMemo(() => {
         let over = 0, due = 0, awaiting = 0, unpacked = 0;
@@ -223,6 +245,13 @@ const LclStatusReport: React.FC = () => {
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="DI, container, vessel, HBL, commodity…" className={`${sel} flex-1 min-w-[200px]`} />
             </div>
 
+            {/* Lifecycle tabs — Inbound (everything up to dispatched-to-JHB) vs the Delivery process. */}
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+                {([['inbound', 'Inbound → JHB', tabCounts.inbound], ['delivery', 'Delivery (JHB →)', tabCounts.delivery], ['all', 'All', tabCounts.all]] as const).map(([k, label, n]) => (
+                    <button key={k} onClick={() => { setTab(k); setSelIds(new Set()); }} className={`px-3.5 py-1.5 text-xs font-bold rounded-md ${tab === k ? 'bg-[#13294b] text-white' : 'text-slate-600 hover:bg-white'}`}>{label} <span className="opacity-60">{n}</span></button>
+                ))}
+            </div>
+
             {selIds.size > 0 && (
                 <div className="flex items-center gap-2 bg-[#13294b] text-white rounded-xl p-2.5 flex-wrap sticky top-0 z-10">
                     <span className="font-black text-sm px-2">{selIds.size} selected</span>
@@ -239,12 +268,12 @@ const LclStatusReport: React.FC = () => {
                     <table className="w-full text-left text-xs">
                         <thead className="sticky top-0 bg-slate-100 text-slate-500 uppercase tracking-wider">
                             <tr>
-                                <th className="p-2 w-8"><input type="checkbox" checked={filtered.length > 0 && filtered.every(r => selIds.has(r.id))} onChange={e => setSelIds(e.target.checked ? new Set(filtered.map(r => r.id)) : new Set())} /></th>
+                                <th className="p-2 w-8"><input type="checkbox" checked={staged.length > 0 && staged.every(r => selIds.has(r.id))} onChange={e => setSelIds(e.target.checked ? new Set(staged.map(r => r.id)) : new Set())} /></th>
                                 <th className="p-2">FBN DI</th><th className="p-2">Container / vessel</th><th className="p-2">ETA</th><th className="p-2">Depot</th><th className="p-2">Agent</th><th className="p-2">Controller</th><th className="p-2">Consignee</th><th className="p-2">Commodity</th><th className="p-2 text-right">Pkgs</th><th className="p-2 text-right">Kg</th><th className="p-2 text-right">CBM</th><th className="p-2">Status</th><th className="p-2">Unpack</th><th className="p-2">Free-time</th><th className="p-2">Delivered</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map(r => {
+                            {staged.map(r => {
                                 const f = freeTime(r);
                                 return (
                                     <tr key={r.id} onClick={() => showModal('lclShipment', { shipment: r, onSaved: fetchRows })} className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${selIds.has(r.id) ? 'bg-blue-50' : ''}`}>
@@ -271,7 +300,7 @@ const LclStatusReport: React.FC = () => {
                                     </tr>
                                 );
                             })}
-                            {filtered.length === 0 && <tr><td colSpan={16} className="p-6 text-center text-slate-400">No shipments for this filter.</td></tr>}
+                            {staged.length === 0 && <tr><td colSpan={16} className="p-6 text-center text-slate-400">No shipments in this tab/filter.</td></tr>}
                         </tbody>
                     </table>
                 </div>

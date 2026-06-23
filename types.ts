@@ -570,6 +570,7 @@ export interface LoadConfirmation {
     // carries the client charge + single invoice, children carry cost only.
     loadGroupId?: string;
     isPrimary?: boolean;
+    offeredCarriers?: { supplierId?: string; name: string; email: string; at?: string; rate?: number }[];
 }
 
 export type LoadConfirmationStatus =

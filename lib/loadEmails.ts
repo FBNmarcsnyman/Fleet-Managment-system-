@@ -144,6 +144,37 @@ export async function sendGroupLoadConToSupplier(loads: any[], to?: string): Pro
     return { ok: true };
 }
 
+// LOAD OFFER → a carrier we're marketing the load to (inviting their best rate).
+// Subbie-safe: lane + cargo + date only, NO client name/address, NO our rate.
+export async function sendLoadOfferToCarrier(lc: any, to: string, name?: string): Promise<Sent> {
+    const dest = (to || '').trim();
+    if (!dest) return { ok: false, error: 'No carrier email.' };
+    const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(lc.deliveryPoint);
+    const ref = lc.loadRefNo || lc.loadConNumber;
+    const html = brandedEmail(`<p>Good day ${name || ''},</p>
+      <p>We have the following load available and would like your <strong>best all-in rate</strong>:</p>
+      ${table([
+        ['Lane', `${collLoc} &rarr; ${delLoc}`],
+        ['Collection area', placeAddr(lc.collectionPoint)],
+        ['Delivery area', placeAddr(lc.deliveryPoint)],
+        ['Date', fmtD(lc.collectionDate)],
+        ['Cargo', lc.commodity || lc.loadType || ''],
+        ['Truck / load type', lc.loadType || ''],
+        ['Weight (kg)', lc.weightKg],
+        ['Packages', lc.loadedPackages || lc.quantity],
+        ['Equipment', Array.isArray(lc.equipmentRequired) ? lc.equipmentRequired.join(', ') : ''],
+      ])}
+      <p>Please <strong>reply to this email with your rate and availability</strong>. First suitable carrier with a competitive rate gets the load.</p>
+      <p>Regards,<br>FBN Transport &middot; Operations</p>`);
+    try {
+        // Strip any CLIENT address; offers go to the carrier (+ loadcons desk) only.
+        const cc = dropAddrs(['loadcons@fbn-transport.co.za'], lc_clientAddrs(lc));
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `Load available — ${placeAddr(lc.collectionPoint)} to ${placeAddr(lc.deliveryPoint)} (${fmtD(lc.collectionDate)}) — your rate?`, html, fromName: 'FBN Transport' } });
+        if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
+    return { ok: true };
+}
+
 // Client Order → client (no rates; thank-you + booked + regular-updates promise).
 export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     const dest = (to ?? lc.clientEmail ?? '').trim();

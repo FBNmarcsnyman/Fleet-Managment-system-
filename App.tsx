@@ -79,6 +79,7 @@ const PartnerDetailModal = lazy(() => import('./components/operations/PartnerDet
 const ManifestDoc = lazy(() => import('./components/operations/ManifestDoc'));
 const TripSheetDoc = lazy(() => import('./components/operations/TripSheetDoc'));
 const SplitLoadModal = lazy(() => import('./components/operations/SplitLoadModal'));
+const OfferLoadModal = lazy(() => import('./components/operations/OfferLoadModal'));
 const CollectHome = lazy(() => import('./components/operations/CollectHome'));
 const CreateTripSheetModal = lazy(() => import('./components/operations/CreateTripSheetModal'));
 const DismountTireModal = lazy(() => import('./components/DismountTireModal'));
@@ -158,6 +159,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     manifestDoc: ManifestDoc,
     tripSheetDoc: TripSheetDoc,
     splitLoad: SplitLoadModal,
+    offerLoad: OfferLoadModal,
     editQuote: CreateQuoteForm,
     createTripSheet: CreateTripSheetModal,
     dismountTire: DismountTireModal,
@@ -219,6 +221,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     manifestDoc: '3xl',
     tripSheetDoc: '4xl',
     splitLoad: '4xl',
+    offerLoad: '3xl',
     quotePdf: '4xl',
     supplierLoadConPdf: '4xl',
     loadDocuments: '5xl',

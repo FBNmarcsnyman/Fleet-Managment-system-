@@ -15,7 +15,7 @@ import {
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
-import { sendLoadConToSupplier, sendOrderToClient, clientSubject, sendClientGroupUpdate } from '../lib/loadEmails';
+import { sendLoadConToSupplier, sendOrderToClient, clientSubject, sendClientGroupUpdate, sendLoadOfferToCarrier } from '../lib/loadEmails';
 import { phoneZA } from '../lib/format';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
@@ -948,6 +948,26 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 console.error('[ops] handleSplitLoad threw:', e);
                 return { ok: false, error: e instanceof Error ? e.message : 'Split failed' };
             }
+        },
+        // Market a load to carriers: email each their offer (best-rate invite) and
+        // record who it went to on the load. Carrier comms only — no client info.
+        handleOfferLoad: async (loadId: string, carriers: { supplierId?: string; name: string; email: string }[]): Promise<Result<any>> => {
+            try {
+                const lc = (stateRef.current.loadConfirmations || []).find((l: any) => l.id === loadId);
+                if (!lc) return { ok: false, error: 'Load not found.' };
+                const at = new Date().toISOString();
+                let sent = 0; const failed: string[] = [];
+                for (const c of carriers) {
+                    if (!c.email) { failed.push(c.name); continue; }
+                    const r = await sendLoadOfferToCarrier(lc, c.email, c.name);
+                    if (r.ok) sent++; else failed.push(c.name);
+                }
+                const prior = Array.isArray((lc as any).offeredCarriers) ? (lc as any).offeredCarriers : [];
+                const merged = [...prior, ...carriers.map(c => ({ supplierId: c.supplierId, name: c.name, email: c.email, at }))];
+                await directUpdate('load_confirmations', { id: loadId }, { offered_carriers: merged } as any);
+                dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id: loadId, updates: { offeredCarriers: merged } as any } });
+                return { ok: true, value: { sent, failed } };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'Could not send offers' }; }
         },
         handleUpdateLoadConfirmation: async (id: string, updates: Partial<LoadConfirmation>): Promise<Result<void>> => {
             try {

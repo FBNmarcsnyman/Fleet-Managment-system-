@@ -587,6 +587,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     isCollection: (row as any).is_collection ?? false,
     loadGroupId: (row as any).load_group_id ?? undefined,
     isPrimary: (row as any).is_primary ?? true,
+    offeredCarriers: (row as any).offered_carriers ?? [],
     unpackDepot: (row as any).unpack_depot ?? undefined,
     importStage: (row as any).import_stage ?? undefined,
     repEmail: (row as any).rep_email ?? undefined,

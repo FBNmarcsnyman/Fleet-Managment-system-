@@ -133,6 +133,7 @@ const LoadBoard: React.FC = () => {
         const cls = (base: string) => `${compact ? 'flex-1 py-1.5 text-[10px]' : 'py-1 px-2.5 text-[11px]'} font-black rounded-lg uppercase tracking-wider text-white ${base}`;
         if (!assigned && lc.status === 'Booked') return (
             <div className="flex gap-1.5 justify-end">
+                <button onClick={stop(() => showModal('offerLoad', { loadCon: lc }))} title="Offer to matching carriers for a rate" className={cls('bg-[#f5b700] hover:brightness-95 !text-[#13294b]')}>📣 Offer{(lc as any).offeredCarriers?.length ? ` ${(lc as any).offeredCarriers.length}` : ''}</button>
                 <button onClick={stop(() => showModal('assignFbn', { loadCon: lc }))} className={cls('bg-emerald-600 hover:bg-emerald-500')}>Assign FBN</button>
                 <button onClick={stop(() => showModal('assignLoadCon', { loadCon: lc }))} className={cls('bg-amber-500 hover:bg-amber-400')}>Subbie</button>
             </div>

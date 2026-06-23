@@ -16,7 +16,7 @@ import {
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
 import { sendLoadConToSupplier, sendOrderToClient, clientSubject, sendClientGroupUpdate, sendLoadOfferToCarrier } from '../lib/loadEmails';
-import { phoneZA } from '../lib/format';
+import { phoneZA, fmtDate } from '../lib/format';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -302,15 +302,42 @@ const opsCcForPhase = (lc: any, status: string): string[] => {
     return [...new Set([...set, OPS_GENERAL])];
 };
 
+// A clean label/value detail block for the collection emails (skips blanks).
+const detailTable = (rows: [string, any][]): string => {
+    const body = rows
+        .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '')
+        .map(([k, v]) => `<tr>
+            <td style="padding:7px 16px 7px 0;color:#5b6573;font-size:13px;vertical-align:top;white-space:nowrap;border-bottom:1px solid #eef1f5">${k}</td>
+            <td style="padding:7px 0;color:#13294b;font-size:13px;font-weight:600;border-bottom:1px solid #eef1f5">${v}</td>
+          </tr>`).join('');
+    return `<table style="border-collapse:collapse;width:100%;margin:6px 0 14px">${body}</table>`;
+};
+// Shared cargo lines used by both collection emails.
+const cargoRows = (lc: any): [string, any][] => [
+    ['Cargo', [lc.commodity, lc.loadType].filter(Boolean).join(' · ')],
+    ['Packaging', lc.packaging],
+    ['Quantity', lc.quantity || lc.loadedPackages],
+    ['Weight', lc.weightKg ? `${Number(lc.weightKg).toLocaleString('en-ZA')} kg` : ''],
+];
+
 // Mobile "Quick Collection" → email ops to action it (assign driver + ETA).
 export const notifyOpsNewCollection = async (lc: any): Promise<void> => {
     const acceptLink = `${baseUrl()}?accept=${lc.id}`;
-    const html = brandedEmail(`<p><strong>New collection request${lc.arrangingBranch ? ` — ${lc.arrangingBranch}` : ''}.</strong></p>
-      <p><strong>${lc.clientName || ''}</strong> — collect from <strong>${lc.collectionPoint || ''}</strong> &rarr; <strong>${lc.deliveryPoint || ''}</strong>.</p>
-      <p>${[lc.packaging, lc.commodity].filter(Boolean).join(' · ') || ''}</p>
-      <p>Please assign a driver and collection ETA:</p>
+    const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:6px">${lc.loadConNumber}</div>
+      <p style="font-size:15px;color:#13294b;margin:0 0 2px"><strong>New collection request${lc.arrangingBranch ? ` — ${lc.arrangingBranch}` : ''}</strong></p>
+      <p style="color:#5b6573;margin:0 0 12px">Please assign a driver and collection ETA.</p>
+      ${detailTable([
+        ['Client', lc.clientName],
+        ['Collect from', lc.collectionPoint],
+        ['Deliver to', lc.deliveryPoint],
+        ['Collection date', fmtDate(lc.collectionDate)],
+        ['Loading time', lc.loadingTime],
+        ...cargoRows(lc),
+        ['Site contact', [lc.collectionContact, lc.collectionTelephone].filter(Boolean).join(' · ')],
+        ['Remarks / notes', lc.specialInstructions],
+      ])}
       ${emailButton(acceptLink, 'Assign driver &amp; collection ETA &rarr;', '#16a34a')}
-      <p>Regards,<br>FBN Transport</p>`);
+      <p style="color:#5b6573;font-size:13px;margin-top:14px">Regards,<br>FBN Transport &middot; Control Centre</p>`);
     const to = opsEmail(lc.collectionBranch || lc.arrangingBranch);
     try { await invokeFn('send-email', { body: { to, cc: [OPS_GENERAL], subject: `NEW COLLECTION ${lc.loadConNumber}${lc.arrangingBranch ? ` (${lc.arrangingBranch})` : ''} - ${lc.clientName || ''}`, html, fromName: 'FBN Transport' } }); }
     catch (e) { console.error('[ops] collection ops-notify failed:', e); }
@@ -319,12 +346,20 @@ export const notifyOpsNewCollection = async (lc: any): Promise<void> => {
 // Acknowledge the client that we've received their collection request.
 export const sendCollectionAckToClient = async (lc: any): Promise<void> => {
     const to = lc?.clientEmail; if (!to) return;
-    const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
+    const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:6px">${lc.loadConNumber}</div>
       <p>Good day ${lc.clientContact || lc.clientName || ''},</p>
-      <p><strong>Thank you — we've received your collection request and are arranging it.</strong> We'll confirm the vehicle and collection time shortly.</p>
-      <p>Collection: <strong>${lc.collectionPoint || ''}</strong><br>Delivery: <strong>${lc.deliveryPoint || ''}</strong></p>
+      <p style="margin:0 0 2px"><strong>Thank you — we've received your collection request and are arranging it.</strong></p>
+      <p style="color:#5b6573;margin:0 0 12px">We'll confirm the vehicle and collection time shortly. Here are the details we have:</p>
+      ${detailTable([
+        ['Collect from', lc.collectionPoint],
+        ['Deliver to', lc.deliveryPoint],
+        ['Collection date', fmtDate(lc.collectionDate)],
+        ...cargoRows(lc),
+        ['Your reference', lc.customerOrderNumber],
+        ['Remarks / notes', lc.specialInstructions],
+      ])}
       ${emailButton(`${baseUrl()}?track=${lc.id}`, 'Track this collection &rarr;')}
-      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+      <p style="color:#5b6573;font-size:13px;margin-top:14px">Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), opsEmail(lc.collectionBranch || lc.arrangingBranch), OPS_GENERAL];
     try { await invokeFn('send-email', { body: { to, cc, subject: clientSubject(lc), html, fromName: 'FBN Transport' } }); }
     catch (e) { console.error('[ops] collection ack failed:', e); }

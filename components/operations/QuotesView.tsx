@@ -279,7 +279,14 @@ const QuotesView: React.FC<{
                                 <td className="p-2">{format(new Date(quote.date), 'dd MMM yyyy')}</td>
                                 <td className="p-2 text-right font-mono">R {quote.totalAmount.toFixed(2)}</td>
                                 <td className="p-2 text-right font-mono text-green-400">{ratePerKg(quote) !== null ? `R ${ratePerKg(quote)!.toFixed(2)}` : '—'}</td>
-                                <td className="p-2 text-center"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(quote.status)}`}>{quote.status}</span></td>
+                                <td className="p-2 text-center">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(quote.status)}`}>{quote.status}</span>
+                                    {quote.requestMoreInfo?.last_requested_at && (
+                                        <div className="flex items-center justify-center text-green-400 text-xs mt-1" title="More info request sent to the client">
+                                            <CheckCircleIcon className="h-4 w-4 mr-1" />Info req {format(new Date(quote.requestMoreInfo.last_requested_at), 'dd MMM')}{Number(quote.requestMoreInfo.count) > 1 ? ` ·${quote.requestMoreInfo.count}x` : ''}
+                                        </div>
+                                    )}
+                                </td>
                                 <td className="p-2 text-right space-x-1" onClick={e => e.stopPropagation()}>
                                     {quote.status === 'Archived' && (
                                         <button onClick={() => restoreQuote(quote)} className="text-xs font-bold bg-gray-600 hover:bg-gray-500 text-white py-1 px-3 rounded-lg inline-flex items-center">

@@ -58,6 +58,10 @@ const ShipmentsBoard: React.FC = () => {
     // Default the board to the user's own branch (DBN controller → Durban, etc.);
     // managers with no single branch see All. They can still switch.
     const myBranch = (currentUser?.assignedBranches || []).find((b: string) => ['FBN DBN', 'FBN JHB', 'FBN CPT'].includes(b));
+    // Floor lock: a single-branch operator (not an admin/manager) is pinned to
+    // their own floor — JHB sees JHB, DBN sees DBN, no switching.
+    const branchLocked = !!myBranch && !['Admin', 'Super Admin'].includes(currentUser?.role as string)
+        && (currentUser?.assignedBranches || []).filter((b: string) => ['FBN DBN', 'FBN JHB', 'FBN CPT'].includes(b)).length === 1;
     const [branch, setBranch] = useState<string>(myBranch || 'All');
     // Show ONE floor at a time at full height so the desk never has to scroll —
     // collection desk lives on the collection floor, delivery desk on delivery.
@@ -216,9 +220,11 @@ const ShipmentsBoard: React.FC = () => {
                     <p className="text-xs text-slate-500">Consolidation &amp; line-haul — collect → depot → transfer → deliver. Assign a subbie to broker the national leg.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm">
+                    {branchLocked
+                        ? <span className="px-2.5 py-1 rounded-md bg-[#13294b] text-white text-xs font-black uppercase tracking-wide">{(branch || '').replace('FBN ', '')} floor</span>
+                        : <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm">
                         {branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}
-                    </select>
+                    </select>}
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search shipments…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-48" />
                 </div>
             </div>

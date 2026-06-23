@@ -30,12 +30,20 @@ const OperationsPortal: React.FC = () => {
     } = useOperations() as any;
     const { vehicles = [] } = (useVehicles() as any) || {};
     const { hasPermission } = useAuth();
-    // LoadCons-only operators: see just Load Board / LoadCons / Deliveries-POD.
+    // LoadCons-only operators: Broking limited to Load Board / LoadCons /
+    // Deliveries-POD, and Operations limited to Dashboard / Day / Shipments /
+    // Daily Overview. (They're pinned to their own floor by branch.)
     const restricted = hasPermission('access_loadcons') && !hasPermission('access_operations');
-    const RESTRICTED_TABS = [
+    const RESTRICTED_BROKING = [
         { view: 'loadBoard', label: 'Load Board', group: 'work' },
         { view: 'subcontractorLoads', label: 'LoadCons', group: 'work' },
         { view: 'deliveries', label: 'Deliveries / POD', group: 'work' },
+    ];
+    const RESTRICTED_OPS = [
+        { view: 'opsDashboard', label: 'Dashboard', group: 'dashboard' },
+        { view: 'opsDay', label: 'Day', group: 'work' },
+        { view: 'shipments', label: 'Shipments', group: 'work' },
+        { view: 'dailyOverview', label: 'Daily Overview', group: 'track' },
     ];
 
     // Two SEPARATE business areas share this portal: Broking (brokered freight) and
@@ -71,8 +79,10 @@ const OperationsPortal: React.FC = () => {
     // The sidebar has two flat tabs — Broking and Operations — that both open
     // this portal. The current view decides which area's tab strip to show; the
     // active sub-tab falls back to that area's first tab when switching across.
-    const isOps = currentView === 'operations' && !restricted;
-    const navItems = restricted ? RESTRICTED_TABS : (isOps ? OPS_TABS : BROKING_TABS);
+    const isOps = currentView === 'operations';
+    const navItems = restricted
+        ? (isOps ? RESTRICTED_OPS : RESTRICTED_BROKING)
+        : (isOps ? OPS_TABS : BROKING_TABS);
     const activeTab = navItems.some(t => t.view === operationsSubView) ? operationsSubView : navItems[0].view;
 
     const handleNewTransportOrder = () => showModal('transportOrder', {

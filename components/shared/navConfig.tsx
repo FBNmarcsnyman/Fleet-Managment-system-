@@ -23,10 +23,12 @@ export const ALL_NAV_ITEMS: NavItem[] = [
     { view: 'fleet', label: 'FBN Fleet', icon: CarIcon, permission: 'access_fleet' },
     { view: 'fuel', label: 'Fuel', icon: FuelIcon, permission: 'access_fuel' },
     { view: 'broking', label: 'Broking', icon: DocumentTextIcon, permission: 'access_operations' },
-    // Restricted operators (access_loadcons, no access_operations) see ONLY this —
-    // it opens the Broking area limited to Load Board / LoadCons / Deliveries-POD.
+    // Restricted operators (access_loadcons, no access_operations) see these two —
+    // Broking limited to Load Board / LoadCons / Deliveries-POD, and Operations
+    // limited to Dashboard / Day / Shipments / Daily Overview. Pinned to their floor.
     { view: 'broking', label: 'LoadCons', icon: DocumentTextIcon, permission: 'access_loadcons' },
     { view: 'operations', label: 'Operations', icon: TruckIcon, permission: 'access_operations' },
+    { view: 'operations', label: 'Operations', icon: TruckIcon, permission: 'access_loadcons' },
     { view: 'partners', label: 'Clients & Subbies', icon: UsersIcon, permission: 'access_operations' },
     { view: 'quotes', label: 'Quotes', icon: CurrencyDollarIcon, permission: 'access_operations' },
     { view: 'workshop', label: 'Workshop', icon: WorkshopIcon, permission: 'access_workshop' },

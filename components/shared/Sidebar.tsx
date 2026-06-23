@@ -45,7 +45,11 @@ const Sidebar: React.FC = () => {
     // Respect the user's saved order + hidden preferences (same as before).
     const navItems = useMemo(() => {
         const prefs = currentUser.navigationPreferences;
-        const allowedBase = ALL_NAV_ITEMS.filter(item => hasPermission(item.permission));
+        const allowedBase = ALL_NAV_ITEMS
+            .filter(item => hasPermission(item.permission))
+            // The restricted "LoadCons" item is only for loadcons-only operators —
+            // anyone who also has full Broking access sees the normal "Broking" item.
+            .filter(item => !(item.permission === 'access_loadcons' && hasPermission('access_operations')));
         if (!prefs) return allowedBase;
         const sorted = [...allowedBase].sort((a, b) => {
             const indexA = prefs.order.indexOf(a.view);

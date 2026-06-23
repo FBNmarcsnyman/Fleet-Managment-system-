@@ -215,6 +215,7 @@ export type Permission =
   | 'access_fleet'
   | 'access_fuel'
   | 'access_operations'
+  | 'access_loadcons'
   | 'access_workshop'
   | 'access_finance'
   | 'access_incidents'

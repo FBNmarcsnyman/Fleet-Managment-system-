@@ -59,6 +59,41 @@ issues (hidden brokered loads, missing delivery date, stalled transit, storage-c
 - **Emails**: one source of truth in `lib/loadEmails.ts` (`sendLoadConToSupplier` /
   `sendOrderToClient`); never inline duplicate email HTML in a component. Client/subbie
   separation is enforced by `dropAddrs` — do not remove.
-- **Brand**: navy `#13294b` + gold `#f5b700`; Barlow / Barlow Condensed. `lib/brand.ts` is
-  the source of truth.
+- **Brand / look & feel (unify standard)**: navy `#13294b` + gold `#f5b700` + slate
+  neutrals on white cards; Barlow / Barlow Condensed (`lib/brand.ts` is the source of
+  truth). Buttons have **3 roles only** — navy = primary, emerald = positive/confirm,
+  slate/ghost = neutral. No rainbow one-offs (purple/teal/amber blocks). New screens are
+  light-themed; convert legacy dark (`gray-800/900`, `text-white`) screens as touched.
+- **Emails (unify standard)**: one branded shell + tone; route through `lib/loadEmails.ts`
+  / `lib/emailTemplate.ts`; detail-table layout (date, cargo, remarks); subjects are
+  **plain ASCII** (the `send-email` fn strips em-dashes/smart-quotes — non-ASCII subjects
+  corrupt the message in denomailer). Client/subbie separation via `dropAddrs` — never remove.
+- **Documents**: LoadCon / Manifest / Trip Sheet / Quote / Invoice / POD share one header
+  lockup + table style (`lib/loadconPdf.ts`, `lib/linehaulDocs.ts`, the *Doc modals).
+- **Access**: `access_loadcons` = floor team (LoadCons + Operations boards, branch-pinned);
+  not `access_operations` (full). Access loads at sign-in — changed users must re-login.
 - Non-technical owner: plain English, hands-off, never ask him to use the browser console.
+
+## System state & skills (baseline)
+
+**Project:** FBN Control Centre — Transport ops + brokerage + fleet web app (React/TS/Vite
++ Supabase, Cloudflare Worker). Live and in daily use; now in a *unify & streamline* phase.
+
+**Skills** (invoke when the trigger in each `description` matches — BLOCKING: invoke before
+answering):
+- `fbn-fleet` — any app feature/fix/schema/deploy work (conventions + deploy rule).
+- `new-form` / `new-email` — adding a form / a load email the house way.
+- `crm-enrich` — Gmail → client/carrier CRM (scrape contacts, dedupe, normalise).
+- `provision-access` — create logins + set role/branch access (incl. the auth-seed gotcha).
+- `lcl-import` — maintain the LCL status-sheet importer + cron.
+- Agents: `deploy-verify` (is it live?), `load-audit` (data integrity).
+
+**Autonomous loop (every skill follows this):**
+1. **Trigger (hook):** the skill's `description` trigger phrases; a shared Google Sheet
+   link → `lcl-import`/`crm-enrich`; "deploy / is it live" → `deploy-verify`.
+2. **Evaluation loop:** run the skill's own *Evaluation loop* before presenting — for code:
+   `npx tsc --noEmit` + `npx vite build` must pass; for data: re-query and confirm the write;
+   for emails/docs: the `validation-loop.md` checklist; verify deploys by **content**.
+3. **Stop condition:** the skill's *Stop condition* is met (green build + verified live/queried
+   + nothing half-wired), then run **end-of-session consolidation** and ask "Ready to close?".
+True auto-firing (no prompt) requires `settings.json` hooks — offer to wire via `update-config`.

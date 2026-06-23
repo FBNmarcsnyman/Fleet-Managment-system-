@@ -584,6 +584,8 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     backDated: (row as any).back_dated ?? false,
     updatedAt: (row as any).updated_at ?? undefined,
     isCollection: (row as any).is_collection ?? false,
+    loadGroupId: (row as any).load_group_id ?? undefined,
+    isPrimary: (row as any).is_primary ?? true,
     unpackDepot: (row as any).unpack_depot ?? undefined,
     importStage: (row as any).import_stage ?? undefined,
     repEmail: (row as any).rep_email ?? undefined,
@@ -1400,6 +1402,8 @@ export const toLoadConfirmationUpdate = (
     // Remaining Transport Order fields, so a full edit persists everything.
     if (updates.arrangingBranch !== undefined) row.arranging_branch = updates.arrangingBranch ?? null;
     if (updates.loadRefNo !== undefined) row.load_ref_no = updates.loadRefNo ?? null;
+    if ((updates as any).loadGroupId !== undefined) (row as any).load_group_id = (updates as any).loadGroupId ?? null;
+    if ((updates as any).isPrimary !== undefined) (row as any).is_primary = (updates as any).isPrimary;
     if (updates.route !== undefined) row.route = updates.route ?? null;
     if (updates.fbnRepresentative !== undefined) row.fbn_representative = updates.fbnRepresentative ?? null;
     if (updates.loadingTime !== undefined) row.loading_time = updates.loadingTime ?? null;

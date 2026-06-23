@@ -113,6 +113,37 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
     return { ok: true, pdfFailed };
 }
 
+// Grouped LoadCon → ONE subbie that's carrying SEVERAL trucks on a single client
+// waybill. One email lists every vehicle they're allocated, each with its own
+// "accept & send driver details" link, so they enter each truck's reg/driver.
+export async function sendGroupLoadConToSupplier(loads: any[], to?: string): Promise<Sent> {
+    if (!loads || loads.length === 0) return { ok: false, error: 'No loads.' };
+    if (loads.length === 1) return sendLoadConToSupplier(loads[0], to); // single truck → normal loadcon (with PDF)
+    const lc0 = loads[0];
+    const dest = (to ?? lc0.subcontractorEmail ?? '').trim();
+    if (!dest) return { ok: false, error: 'No transporter email.' };
+    const collLoc = shortLoc(lc0.collectionPoint), delLoc = shortLoc(lc0.deliveryPoint);
+    const waybill = lc0.loadRefNo || lc0.loadConNumber;
+    const blocks = loads.map((lc, i) => `
+      <div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin:10px 0">
+        <div style="font-weight:800;color:#13294b;margin-bottom:6px">Vehicle ${i + 1} of ${loads.length} — ${lc.loadConNumber}</div>
+        ${table([['Loading date', fmtD(lc.collectionDate)], ['Weight (kg)', lc.weightKg], ['Packages', lc.loadedPackages], ['Commodity', lc.commodity], ['Rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
+        ${emailButton(`${base()}?accept=${lc.id}`, 'Accept &amp; send this vehicle&rsquo;s driver details &rarr;', '#16a34a')}
+      </div>`).join('');
+    const html = brandedEmail(`<p>Good day ${lc0.forAttention || lc0.subcontractorName || ''},</p>
+      <p>Please find your FBN Load Confirmation for <strong>${loads.length} vehicles</strong> on the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong> (our waybill <strong>${waybill}</strong>).</p>
+      <p>For <strong>each vehicle</strong> please confirm acceptance and send the driver name, vehicle registration and cell using its button below:</p>
+      ${blocks}
+      <p>A signed POD is to be returned on delivery for each vehicle.</p>
+      <p>Regards,<br>FBN Transport</p>`);
+    try {
+        const cc = dropAddrs(['loadcons@fbn-transport.co.za', ...splitEmails(lc0.ccEmail)], lc_clientAddrs(lc0));
+        const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${waybill} - ${loads.length} vehicles - ${placeAddr(lc0.collectionPoint)} to ${placeAddr(lc0.deliveryPoint)}`, html, fromName: 'FBN Transport' } });
+        if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
+    return { ok: true };
+}
+
 // Client Order → client (no rates; thank-you + booked + regular-updates promise).
 export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     const dest = (to ?? lc.clientEmail ?? '').trim();

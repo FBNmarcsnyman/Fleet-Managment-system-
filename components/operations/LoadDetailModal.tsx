@@ -63,7 +63,7 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
 
 const LoadDetailModal: React.FC = () => {
     const { modal, showModal, showToast, hideModal } = useUIState();
-    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, quotes = [], clients = [], suppliers = [] } = useOperations() as any;
+    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, quotes = [], clients = [], suppliers = [], loadConfirmations = [] } = useOperations() as any;
     const commodityOpts = usePickOptions('commodity');
     const packagingOpts = usePickOptions('packaging');
     const clientNameOpts = React.useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
@@ -79,6 +79,9 @@ const LoadDetailModal: React.FC = () => {
     const [onwardTime, setOnwardTime] = useState<string>(modal.payload?.loadCon?.onwardPlannedTime || '');
 
     if (!lc) return <div className="p-4 text-white">No load selected.</div>;
+
+    // Sibling trucks when this load is split across several transporters on one waybill.
+    const groupTrucks = (lc.loadGroupId ? (loadConfirmations as any[]).filter(l => l.loadGroupId === lc.loadGroupId) : []).sort((a, b) => (a.isPrimary === b.isPrimary ? 0 : a.isPrimary ? -1 : 1));
 
     const startEdit = () => {
         setD({
@@ -185,12 +188,16 @@ const LoadDetailModal: React.FC = () => {
                         <p className="text-xs font-bold text-amber-400 font-mono">From quote {sourceQuote.quoteNumber}{lc.totalAmount ? ` · R ${Number(lc.totalAmount).toLocaleString()}` : ''}</p>
                     )}
                     <p className="text-sm text-gray-400">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                    {groupTrucks.length > 1 && (
+                        <p className="text-xs font-bold text-purple-300 mt-0.5">🚚 Split waybill {lc.loadRefNo || ''} · truck {Math.max(1, groupTrucks.findIndex(t => t.id === lc.id) + 1)} of {groupTrucks.length}</p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">{lc.status}</span>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">📷 Capture</button>}
                     {!editing && <button onClick={whatsappDriver} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg">💬 WhatsApp Driver</button>}
                     {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">📁 Documents</button>}
+                    {!editing && <button onClick={() => showModal('splitLoad', { loadCon: lc })} title="One waybill carried by several trucks/subbies — allocate transporters, split the cost, send each their loadcon." className="bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">🚚 Split trucks{lc.loadGroupId ? ' ✓' : ''}</button>}
                     {!editing && !lc.supplierId && (
                         <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} title="Shipment going onward (e.g. to CPT) after collection — raise a subcontractor LoadCon; it then shows on the Broking board to keep updating." className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">+ Onward → Broking</button>
                     )}

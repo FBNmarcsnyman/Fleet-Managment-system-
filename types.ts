@@ -562,6 +562,11 @@ export interface LoadConfirmation {
     onwardPlannedTime?: string;
     delayReason?: string;
     eta?: string;
+    // Split across transporters: one client waybill/invoice carried by several
+    // trucks/subbies. All the truck loadcons share a loadGroupId; the primary
+    // carries the client charge + single invoice, children carry cost only.
+    loadGroupId?: string;
+    isPrimary?: boolean;
 }
 
 export type LoadConfirmationStatus =

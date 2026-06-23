@@ -731,6 +731,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (backDated) { row.status = 'Delivered'; (row as any).back_dated = true; }
                 if ((data as any).transitDepot) { (row as any).transit_depot = (data as any).transitDepot; (row as any).onward_planned_date = (data as any).onwardPlannedDate || null; (row as any).onward_planned_time = (data as any).onwardPlannedTime || null; }
                 if (data.isCollection) (row as any).is_collection = true;
+                if (data.loadGroupId) (row as any).load_group_id = data.loadGroupId;
+                if (data.isPrimary === false) (row as any).is_primary = false;
                 if (data.repEmail) (row as any).rep_email = data.repEmail;
                 if (data.collectionRef) (row as any).collection_ref = data.collectionRef;
                 if (data.unpackDepot) (row as any).unpack_depot = data.unpackDepot;
@@ -779,8 +781,11 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     // Client order intentionally NOT sent now — goes with the POD (submit-pod).
                     void directInvoke('send-push', { title: `New load ${mapped.loadConNumber}`, body: `${forEmail.clientName || 'Client'}: ${forEmail.collectionPoint || ''} → ${forEmail.deliveryPoint || ''}`, url: `?track=${newId}` });
                 } else {
-                    sendLoadConThenStamp();
-                    if (forEmail.clientEmail) void sendOrderToClient(forEmail);
+                    // Split-group child trucks suppress their own loadcon + client order:
+                    // the client already has ONE order for the waybill, and loadcons are
+                    // sent grouped per subbie by handleSplitLoad.
+                    if (!data.suppressLoadCon) sendLoadConThenStamp();
+                    if (forEmail.clientEmail && !data.suppressClientOrder) void sendOrderToClient(forEmail);
                     // Pop a web-push for every new load so ops see it even off-app.
                     void directInvoke('send-push', { title: `New load ${mapped.loadConNumber}`, body: `${forEmail.clientName || 'Client'}: ${forEmail.collectionPoint || ''} → ${forEmail.deliveryPoint || ''}`, url: `?track=${newId}` });
                 }
@@ -823,6 +828,80 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             } catch (err) {
                 console.error('[ops] createLoadConfirmation threw:', err);
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
+        // Split one client waybill across several trucks/subbies. allocations[0]
+        // applies to the existing (primary) load — truck 1, which keeps the client
+        // charge + single invoice. Each further allocation becomes a child truck
+        // loadcon (cost only, totalAmount 0) sharing the loadGroupId. Returns every
+        // load in the group so the caller can send each subbie their loadcon.
+        handleSplitLoad: async (parentId: string, allocations: any[]): Promise<Result<any>> => {
+            try {
+                const parent = (stateRef.current.loadConfirmations || []).find((l: any) => l.id === parentId);
+                if (!parent) return { ok: false, error: 'Load not found.' };
+                const groupId = parent.loadGroupId || parentId;
+                const findSupplierId = (name?: string) => {
+                    const n = (name || '').trim().toLowerCase();
+                    if (!n) return '';
+                    return (stateRef.current.suppliers || []).find((s: any) => (s.name || '').toLowerCase() === n)?.id || '';
+                };
+                // 1) Update the primary (truck 1) with its allocation + group flags.
+                const a0 = allocations[0] || {};
+                const pUpd: any = { loadGroupId: groupId, isPrimary: true };
+                if (a0.subcontractorName !== undefined) pUpd.subcontractorName = a0.subcontractorName;
+                if (a0.subcontractorEmail !== undefined) pUpd.subcontractorEmail = a0.subcontractorEmail;
+                if (a0.forAttention !== undefined) pUpd.forAttention = a0.forAttention;
+                if (a0.supplierRate !== undefined && a0.supplierRate !== '') pUpd.supplierRate = Number(a0.supplierRate);
+                if (a0.packages !== undefined && a0.packages !== '') pUpd.loadedPackages = Number(a0.packages);
+                if (a0.weightKg !== undefined && a0.weightKg !== '') pUpd.weightKg = String(a0.weightKg);
+                const sid0 = a0.supplierId || findSupplierId(a0.subcontractorName);
+                if (sid0) pUpd.supplierId = sid0;
+                await directUpdate('load_confirmations', { id: parentId }, toLoadConfirmationUpdate(pUpd, branchIdByName) as any);
+                dispatch({ type: 'UPDATE_LOAD_CONFIRMATION', payload: { id: parentId, updates: pUpd } });
+
+                // 2) Create a child truck loadcon per further allocation.
+                const now = new Date();
+                const numPrefix = `FBN-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-`;
+                let maxSeq = 0;
+                (stateRef.current.loadConfirmations || []).forEach((l: any) => {
+                    const m = (l.loadConNumber || '').match(/^FBN-\d{4}-\d{2}-(\d+)$/);
+                    if (m && (l.loadConNumber || '').startsWith(numPrefix)) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
+                });
+                const groupLoads: any[] = [{ ...parent, ...pUpd }];
+                for (const a of allocations.slice(1)) {
+                    const num = `${numPrefix}${String(++maxSeq).padStart(4, '0')}`;
+                    const childData: any = {
+                        clientId: parent.clientId, clientName: parent.clientName, clientEmail: parent.clientEmail, clientContact: parent.clientContact, clientCc: parent.clientCc,
+                        collectionBranch: parent.collectionBranch, destinationBranch: parent.destinationBranch,
+                        collectionPoint: parent.collectionPoint, deliveryPoint: parent.deliveryPoint, route: parent.route,
+                        collectionDate: parent.collectionDate, deliveryDate: parent.deliveryDate, loadingTime: parent.loadingTime,
+                        commodity: parent.commodity, packaging: parent.packaging, loadType: parent.loadType,
+                        loadRefNo: parent.loadRefNo || parent.loadConNumber, customerOrderNumber: parent.customerOrderNumber,
+                        collectionContact: parent.collectionContact, collectionTelephone: parent.collectionTelephone,
+                        deliveryContact: parent.deliveryContact, deliveryTelephone: parent.deliveryTelephone,
+                        priority: parent.priority, isCollection: parent.isCollection,
+                        totalAmount: 0, // children carry cost only — client billed once on the primary
+                        supplierRate: a.supplierRate !== undefined && a.supplierRate !== '' ? Number(a.supplierRate) : undefined,
+                        subcontractorName: a.subcontractorName || '', subcontractorEmail: a.subcontractorEmail || '', forAttention: a.forAttention || '',
+                        weightKg: a.weightKg !== undefined && a.weightKg !== '' ? String(a.weightKg) : undefined,
+                    };
+                    if (a.packages !== undefined && a.packages !== '') childData.loadedPackages = Number(a.packages);
+                    const row = toLoadConfirmationInsert(childData, num, branchIdByName);
+                    (row as any).load_group_id = groupId;
+                    (row as any).is_primary = false;
+                    const csid = a.supplierId || findSupplierId(a.subcontractorName);
+                    if (csid) { (row as any).supplier_id = csid; (row as any).status = 'Driver Assigned'; }
+                    else if (a.subcontractorName) (row as any).status = 'Driver Assigned';
+                    const { data: inserted, error } = await directInsert('load_confirmations', row as any);
+                    if (error || !inserted) { console.error('[ops] split child create failed:', error); continue; }
+                    const mapped = mapLoadConfirmation(inserted, { branchById });
+                    dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });
+                    groupLoads.push(mapped);
+                }
+                return { ok: true, value: { groupId, loads: groupLoads } };
+            } catch (e) {
+                console.error('[ops] handleSplitLoad threw:', e);
+                return { ok: false, error: e instanceof Error ? e.message : 'Split failed' };
             }
         },
         handleUpdateLoadConfirmation: async (id: string, updates: Partial<LoadConfirmation>): Promise<Result<void>> => {

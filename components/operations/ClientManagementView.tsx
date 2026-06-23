@@ -9,10 +9,11 @@ import * as XLSX from 'xlsx';
 // Carrier), each with its full contact team (roles, titles), plus a LEADS view
 // that lists every contact who has asked FBN for a rate (quote-askers) so they
 // can be targeted for more work.
-const CATEGORIES = ['Clearing & Forwarding Agent', 'Consolidator', 'Manufacturer / Shipper', 'Carrier / Transporter', 'Other'];
+const CATEGORIES = ['Clearing & Forwarding Agent', 'Consolidator', 'Broker', 'Manufacturer / Shipper', 'Carrier / Transporter', 'Other'];
 const CAT_CHIP: Record<string, string> = {
     'Clearing & Forwarding Agent': 'bg-blue-100 text-blue-700',
     'Consolidator': 'bg-indigo-100 text-indigo-700',
+    'Broker': 'bg-pink-100 text-pink-700',
     'Manufacturer / Shipper': 'bg-emerald-100 text-emerald-700',
     'Carrier / Transporter': 'bg-amber-100 text-amber-700',
     'Other': 'bg-slate-200 text-slate-600',

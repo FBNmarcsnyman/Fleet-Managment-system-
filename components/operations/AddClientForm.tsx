@@ -97,6 +97,7 @@ const AddClientForm: React.FC = () => {
                     <option value="">— Category (group) —</option>
                     <option value="Clearing & Forwarding Agent">Clearing &amp; Forwarding Agent</option>
                     <option value="Consolidator">Consolidator</option>
+                    <option value="Broker">Broker</option>
                     <option value="Manufacturer / Shipper">Manufacturer / Shipper</option>
                     <option value="Carrier / Transporter">Carrier / Transporter</option>
                     <option value="Other">Other</option>

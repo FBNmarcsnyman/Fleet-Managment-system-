@@ -82,6 +82,10 @@ const LoadDetailModal: React.FC = () => {
 
     // Sibling trucks when this load is split across several transporters on one waybill.
     const groupTrucks = (lc.loadGroupId ? (loadConfirmations as any[]).filter(l => l.loadGroupId === lc.loadGroupId) : []).sort((a, b) => (a.isPrimary === b.isPrimary ? 0 : a.isPrimary ? -1 : 1));
+    // Unified toolbar button styles — one ghost style for tools, one filled for the
+    // primary action. (Brand: navy #13294b / slate neutrals — no rainbow.)
+    const tbtn = 'inline-flex items-center gap-1 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold py-1.5 px-2.5 rounded-lg transition';
+    const tprimary = 'inline-flex items-center gap-1 bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg transition';
 
     const startEdit = () => {
         setD({
@@ -183,29 +187,29 @@ const LoadDetailModal: React.FC = () => {
         <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
             <div className="flex items-start justify-between">
                 <div>
-                    <h2 className="text-2xl font-black text-white">{lc.loadConNumber}</h2>
+                    <h2 className="text-2xl font-black text-[#13294b]">{lc.loadConNumber}</h2>
                     {sourceQuote && (
-                        <p className="text-xs font-bold text-amber-400 font-mono">From quote {sourceQuote.quoteNumber}{lc.totalAmount ? ` · R ${Number(lc.totalAmount).toLocaleString()}` : ''}</p>
+                        <p className="text-xs font-bold text-amber-600 font-mono">From quote {sourceQuote.quoteNumber}{lc.totalAmount ? ` · R ${Number(lc.totalAmount).toLocaleString()}` : ''}</p>
                     )}
-                    <p className="text-sm text-gray-400">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                    <p className="text-sm text-slate-500">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                     {groupTrucks.length > 1 && (
-                        <p className="text-xs font-bold text-purple-300 mt-0.5">🚚 Split waybill {lc.loadRefNo || ''} · truck {Math.max(1, groupTrucks.findIndex(t => t.id === lc.id) + 1)} of {groupTrucks.length}</p>
+                        <p className="text-xs font-bold text-[#13294b] mt-0.5">🚚 Split waybill {lc.loadRefNo || ''} · truck {Math.max(1, groupTrucks.findIndex(t => t.id === lc.id) + 1)} of {groupTrucks.length}</p>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                    {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">{lc.status}</span>}
-                    {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">📷 Capture</button>}
-                    {!editing && <button onClick={whatsappDriver} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg">💬 WhatsApp Driver</button>}
-                    {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">📁 Documents</button>}
-                    {!editing && <button onClick={() => showModal('splitLoad', { loadCon: lc })} title="One waybill carried by several trucks/subbies — allocate transporters, split the cost, send each their loadcon." className="bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg">🚚 Split trucks{lc.loadGroupId ? ' ✓' : ''}</button>}
-                    {!editing && <button onClick={() => showModal('offerLoad', { loadCon: lc })} title="Market this load to carriers who run this lane + truck type; invite their best rate." className="bg-[#f5b700] hover:brightness-95 text-[#13294b] text-xs font-black py-1.5 px-3 rounded-lg">📣 Offer to carriers{(lc as any).offeredCarriers?.length ? ` (${(lc as any).offeredCarriers.length})` : ''}</button>}
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">{lc.status}</span>}
+                    {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>📷 Capture</button>}
+                    {!editing && <button onClick={whatsappDriver} className={tbtn}>💬 WhatsApp</button>}
+                    {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className={tbtn}>📁 Documents</button>}
+                    {!editing && <button onClick={() => showModal('splitLoad', { loadCon: lc })} title="One waybill carried by several trucks/subbies — allocate transporters, split the cost, send each their loadcon." className={tbtn}>🚚 Split{lc.loadGroupId ? ' ✓' : ''}</button>}
+                    {!editing && <button onClick={() => showModal('offerLoad', { loadCon: lc })} title="Market this load to carriers who run this lane + truck type; invite their best rate." className={tbtn}>📣 Offer{(lc as any).offeredCarriers?.length ? ` · ${(lc as any).offeredCarriers.length}` : ''}</button>}
                     {!editing && !lc.supplierId && (
-                        <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} title="Shipment going onward (e.g. to CPT) after collection — raise a subcontractor LoadCon; it then shows on the Broking board to keep updating." className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">+ Onward → Broking</button>
+                        <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} title="Shipment going onward (e.g. to CPT) after collection — raise a subcontractor LoadCon; it then shows on the Broking board to keep updating." className={tbtn}>↪ Onward</button>
                     )}
                     {!editing
-                        ? <button onClick={startEdit} className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg">Edit</button>
-                        : <><button onClick={() => setEditing(false)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg">Cancel</button>
-                           <button onClick={save} className="bg-[#13294b] hover:bg-[#1d3a66] text-white text-xs font-bold py-1.5 px-3 rounded-lg">Save</button></>}
+                        ? <button onClick={startEdit} className={tprimary}>Edit</button>
+                        : <><button onClick={() => setEditing(false)} className={tbtn}>Cancel</button>
+                           <button onClick={save} className={tprimary}>Save</button></>}
                 </div>
             </div>
 

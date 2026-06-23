@@ -716,11 +716,18 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (_docsCc.length) (row as any).cc_email = _docsCc.join(', ');
                 (row as any).cc_updates = _updCc.length ? _updCc.join(', ') : null;
                 (row as any).pod_upload_email = _podUpCc.length ? _podUpCc.join(', ') : null;
-                // Client team CC: all the client's other saved contact emails, so the
-                // whole client team is copied on the order + every status update.
+                // Client team CC. Where a client has many CRM contacts (controllers,
+                // accounts, sales leads scraped in), only the ones flagged getsUpdates
+                // are copied on orders/updates — so we don't spam the whole office.
+                // Backward-compatible: if NO contact is flagged, fall back to all
+                // (old clients keep copying everyone, as before).
                 const _client = (stateRef.current.clients || []).find((c: any) => (data.clientId && c.id === data.clientId) || (c.name || '').toLowerCase() === (data.clientName || '').toLowerCase());
                 const _clientMain = (data.clientEmail || '').toLowerCase();
-                const _clientCc = (_client?.contacts || []).map((c: any) => c.email).filter((e: string) => e && e.toLowerCase() !== _clientMain);
+                const _clientContacts = (_client?.contacts || []);
+                const _anyFlagged = _clientContacts.some((c: any) => c.getsUpdates);
+                const _clientCc = _clientContacts
+                    .filter((c: any) => (_anyFlagged ? c.getsUpdates : true))
+                    .map((c: any) => c.email).filter((e: string) => e && e.toLowerCase() !== _clientMain);
                 (row as any).client_cc = _clientCc.length ? _clientCc.join(', ') : null;
                 // Back-dated load (loading AND delivery dates both already past) = the
                 // cargo has already been delivered. Land it straight in Delivered/POD

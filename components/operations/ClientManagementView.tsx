@@ -22,7 +22,7 @@ const catOf = (c: any) => c.category || 'Uncategorised';
 
 const ClientManagementView: React.FC = () => {
     const { showModal, showToast } = useUIState();
-    const { clients, handleBulkAddClients, handleDeleteClient } = useOperations();
+    const { clients, handleBulkAddClients, handleDeleteClient, handleConvertParty } = useOperations() as any;
     const [q, setQ] = useState('');
     const [cat, setCat] = useState<string>('All');
     const [leads, setLeads] = useState(false);
@@ -51,6 +51,12 @@ const ClientManagementView: React.FC = () => {
         if (!confirm(`Remove ${client.name}? They'll be hidden from your list (past loads & history are kept).`)) return;
         const res = await handleDeleteClient(client.id);
         if (!res.ok) showToast(`Could not remove: ${res.error}`); else showToast(`${client.name} removed.`);
+    };
+
+    const toTransporter = async (client: any) => {
+        if (!confirm(`Move ${client.name} to Transporters? They become a carrier (you can offer them loads) and leave the Clients list.`)) return;
+        const res = await handleConvertParty(client.id, 'supplier');
+        if (res?.ok === false) showToast(`Could not move: ${res.error}`); else showToast(`${client.name} moved to Transporters.`);
     };
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,6 +159,7 @@ const ClientManagementView: React.FC = () => {
                                                 <td className="py-2 px-2 text-blue-700">{main?.email || client.contactEmail || '—'}</td>
                                                 <td className="py-2 px-2 text-right pr-3 space-x-2 whitespace-nowrap">
                                                     <button onClick={() => showModal('addClient', { client })} className="px-3 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold">Edit</button>
+                                                    <button onClick={() => toTransporter(client)} title="This is actually a carrier — move it to Transporters so you can offer it loads" className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-amber-500 hover:text-white text-slate-600 text-xs font-bold">→ Transporter</button>
                                                     <button onClick={() => handleDelete(client)} className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-red-500 hover:text-white text-slate-600 text-xs font-bold">Remove</button>
                                                 </td>
                                             </tr>

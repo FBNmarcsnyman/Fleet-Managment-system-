@@ -445,6 +445,42 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
+        // Reclassify a record between Clients and Transporters (e.g. Bigfoot was
+        // logged as a client but is actually a carrier). Creates the record on the
+        // other side carrying its contacts, then hides it from the original list
+        // (history kept). kind = the destination: 'supplier' (client→transporter)
+        // or 'client' (transporter→client).
+        handleConvertParty: async (id: string, to: 'supplier' | 'client'): Promise<Result<any>> => {
+            try {
+                if (to === 'supplier') {
+                    const c = (stateRef.current.clients || []).find((x: any) => x.id === id);
+                    if (!c) return { ok: false, error: 'Client not found.' };
+                    const dupe = (stateRef.current.suppliers || []).find((s: any) => (s.name || '').toLowerCase() === (c.name || '').toLowerCase());
+                    if (!dupe) {
+                        const input: any = { name: c.name, type: 'Transport', contactPerson: c.contactPerson || '', contactEmail: c.contactEmail || '', contactPhone: c.contactPhone || '', contacts: c.contacts || [], address: c.address || '', complianceStatus: 'Pending', controllerContact: c.contactPerson || '' };
+                        const { data, error } = await directInsert('suppliers', toSupplierInsert(upcaseParty(input)) as any);
+                        if (error || !data) return { ok: false, error: error?.message || 'Could not create transporter.' };
+                        dispatch({ type: 'ADD_SUPPLIER', payload: mapSupplier(data, new Map(), new Map()) });
+                    }
+                    await directUpdate('clients', { id }, { is_active: false } as any);
+                    dispatch({ type: 'UPDATE_CLIENT', payload: { id, updates: { isActive: false } } });
+                    return { ok: true };
+                } else {
+                    const s = (stateRef.current.suppliers || []).find((x: any) => x.id === id);
+                    if (!s) return { ok: false, error: 'Transporter not found.' };
+                    const dupe = (stateRef.current.clients || []).find((c: any) => (c.name || '').toLowerCase() === (s.name || '').toLowerCase());
+                    if (!dupe) {
+                        const input: any = { name: s.name, contactPerson: s.contactPerson || '', contactEmail: s.contactEmail || '', contactPhone: s.contactPhone || '', contacts: s.contacts || [], address: s.address || '' };
+                        const { data, error } = await directInsert('clients', toClientInsert(upcaseParty(input)) as any);
+                        if (error || !data) return { ok: false, error: error?.message || 'Could not create client.' };
+                        dispatch({ type: 'ADD_CLIENT', payload: mapClient(data) });
+                    }
+                    await directUpdate('suppliers', { id }, { is_active: false } as any);
+                    dispatch({ type: 'REMOVE_SUPPLIER', payload: id });
+                    return { ok: true };
+                }
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
         handleDeleteSupplier: async (id: string): Promise<Result<void>> => {
             try {
                 // Try a real delete first so empty / junk subbies are actually removed.

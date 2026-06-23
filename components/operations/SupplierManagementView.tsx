@@ -6,7 +6,12 @@ import { useUIState, useOperations, useCommonData } from '../../contexts/AppCont
 
 const SubcontractorManagementView: React.FC = () => {
     const { showModal, showToast } = useUIState();
-    const { suppliers = [], handleBulkAddSuppliers, handleDeleteSupplier } = useOperations();
+    const { suppliers = [], handleBulkAddSuppliers, handleDeleteSupplier, handleConvertParty } = useOperations() as any;
+    const toClient = async (supplier: Supplier) => {
+        if (!confirm(`Move ${supplier.name} to Clients? They become a client (you can market freight to them) and leave the Transporters list.`)) return;
+        const res = await handleConvertParty(supplier.id, 'client');
+        if (res?.ok === false) showToast(`Could not move: ${res.error}`); else showToast(`${supplier.name} moved to Clients.`);
+    };
     const { users = [], handleAddUser } = useCommonData();
     const [q, setQ] = useState('');
 
@@ -90,6 +95,7 @@ const SubcontractorManagementView: React.FC = () => {
                                         ? <span className="text-[11px] text-emerald-400 font-bold">Has login</span>
                                         : <button onClick={() => handleCreateLogin(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-emerald-600 text-white text-xs font-bold">Create login</button>}
                                     <button onClick={() => handleEdit(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-brand-secondary text-white text-xs font-bold">Edit</button>
+                                    <button onClick={() => toClient(supplier)} title="This is actually a client — move it to Clients" className="px-3 py-1 rounded bg-gray-700 hover:bg-amber-600 text-white text-xs font-bold">→ Client</button>
                                     <button onClick={() => handleDelete(supplier)} className="px-3 py-1 rounded bg-gray-700 hover:bg-red-600 text-white text-xs font-bold">Delete</button>
                                 </td>
                             </tr>

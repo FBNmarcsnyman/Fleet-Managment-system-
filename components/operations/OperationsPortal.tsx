@@ -18,6 +18,7 @@ const MonthlyLoadcons = lazy(() => import('./MonthlyLoadcons'));
 const TransporterLoadCons = lazy(() => import('./TransporterLoadCons'));
 const LclStatusReport = lazy(() => import('./LclStatusReport'));
 const DeliveriesDayView = lazy(() => import('./DeliveriesDayView'));
+const PodSignOffBoard = lazy(() => import('./PodSignOffBoard'));
 const OperationsDay = lazy(() => import('./OperationsDay'));
 const OperationsManifests = lazy(() => import('./OperationsManifests'));
 const OperationsTripSheets = lazy(() => import('./OperationsTripSheets'));
@@ -40,6 +41,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'loadBoard', label: 'Load Board', group: 'work' },
         { view: 'subcontractorLoads', label: 'LoadCons', group: 'work' },
         { view: 'deliveries', label: 'Deliveries / POD', group: 'work' },
+        { view: 'pods', label: 'PODs', group: 'work' },
     ];
     const RESTRICTED_OPS = [
         { view: 'opsDashboard', label: 'Dashboard', group: 'dashboard' },
@@ -59,6 +61,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'subcontractorLoads', label: 'LoadCons', group: 'work' },
         { view: 'driverChats', label: 'Driver Chats', group: 'work' },
         { view: 'deliveries', label: 'Deliveries / POD', group: 'track' },
+        { view: 'pods', label: 'PODs', group: 'track' },
         { view: 'transporterLoads', label: 'By Transporter', group: 'reports' },
         { view: 'monthlyLoadcons', label: 'Month View', group: 'reports' },
         { view: 'emailLog', label: 'Emails', group: 'reports' },
@@ -146,6 +149,7 @@ const OperationsPortal: React.FC = () => {
             case 'transporterLoads': return <Suspense fallback={<div>Loading…</div>}><TransporterLoadCons /></Suspense>;
             case 'lclStatus': return <Suspense fallback={<div>Loading…</div>}><LclStatusReport /></Suspense>;
             case 'deliveries': return <Suspense fallback={<div>Loading…</div>}><DeliveriesDayView /></Suspense>;
+            case 'pods': return <Suspense fallback={<div>Loading…</div>}><PodSignOffBoard /></Suspense>;
             case 'dashboard':
             default:
                 return <Suspense fallback={<div>Loading…</div>}><BrokingDashboard /></Suspense>;

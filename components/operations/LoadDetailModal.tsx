@@ -225,6 +225,7 @@ const LoadDetailModal: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">{lc.status}</span>}
+                    {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">📄 View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>📷 Capture</button>}
                     {!editing && <button onClick={whatsappDriver} className={tbtn}>💬 WhatsApp</button>}
                     {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className={tbtn}>📁 Documents</button>}

@@ -124,13 +124,15 @@ const LoadDocumentsModal: React.FC = () => {
                 ? `<p style="text-align:center;margin:20px 0"><a href="${base}?track=${lc.id}" style="background:${NAVY};color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Track this shipment &rarr;</a></p>`
                 : '';
             const html = brandedEmail(`${coverNote(lc, tab, sender)}<p style="font-size:13px;color:${GREY};margin-top:6px">Your ${label} (Ref ${lc.loadConNumber}) is attached to this email as a PDF.</p>${cta}`);
+            // Both the LoadCon and the Client Order are copied to loadcons@ so the
+            // ops monitoring team always has a record that the document went out.
+            const opsCc = (tab === 'loadcon' || tab === 'clientOrder')
+                ? ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])]
+                : undefined;
             const { data, error } = await invokeFn('send-email', {
                 body: {
-                    // LoadCons are always copied to loadcons@ for the monitoring team.
                     to,
-                    cc: tab === 'loadcon'
-                        ? ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])]
-                        : (tab === 'clientOrder' ? (lc.ccEmail || undefined) : undefined),
+                    cc: opsCc,
                     subject,
                     html,
                     fromName: sender,

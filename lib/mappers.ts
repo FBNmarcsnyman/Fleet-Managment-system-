@@ -43,6 +43,14 @@ const urlToAttachment = (url: string | null, name?: string | null, type = ''): A
 const urlsToAttachments = (urls: string[] | null): Attachment[] =>
     (urls || []).map(url => ({ name: '', type: '', data: url }));
 
+// Postgres date/timestamp columns reject empty strings ("invalid input syntax
+// for type date: ''" — error 22007). Forms send '' for a cleared date, so any
+// value bound for a date column must be coerced to null when blank.
+const dateOrNull = (v: unknown): string | null => {
+    const s = (v ?? '').toString().trim();
+    return s === '' ? null : s;
+};
+
 // -- profiles → User ---------------------------------------------------------
 export const mapProfile = (row: Tables['profiles']['Row'], ctx: MapperCtx): User => ({
     id: row.id,
@@ -1032,18 +1040,18 @@ export const toLoadConfirmationInsert = (
     status: 'Booked',
     collection_point: lc.collectionPoint || null,
     delivery_point: lc.deliveryPoint || null,
-    collection_date: lc.collectionDate ?? null,
-    delivery_date: lc.deliveryDate ?? null,
+    collection_date: dateOrNull(lc.collectionDate),
+    delivery_date: dateOrNull(lc.deliveryDate),
     vehicle_id: lc.vehicleId ?? null,
     driver_id: lc.driverId ?? null,
     payment_status: lc.paymentStatus ?? null,
     customer_order_number: lc.customerOrderNumber ?? null,
     invoice_number: lc.invoiceNumber ?? null,
-    invoice_date: lc.invoiceDate ?? null,
+    invoice_date: dateOrNull(lc.invoiceDate),
     damage_report: lc.damageReport ?? null,
     notes: (lc.notes ?? null) as unknown as Tables['load_confirmations']['Insert']['notes'],
     delivery_area: lc.deliveryArea ?? null,
-    sent_to_supplier_date: lc.sentToSupplierDate ?? null,
+    sent_to_supplier_date: dateOrNull(lc.sentToSupplierDate),
     subcontractor_vehicle_reg: lc.subcontractorVehicleReg ?? null,
     subcontractor_driver_name: lc.subcontractorDriverName ?? null,
     subcontractor_driver_cell: lc.subcontractorDriverCell ?? null,
@@ -1348,18 +1356,18 @@ export const toLoadConfirmationUpdate = (
     if (updates.status !== undefined) row.status = updates.status;
     if (updates.collectionPoint !== undefined) row.collection_point = updates.collectionPoint || null;
     if (updates.deliveryPoint !== undefined) row.delivery_point = updates.deliveryPoint || null;
-    if (updates.collectionDate !== undefined) row.collection_date = updates.collectionDate ?? null;
-    if (updates.deliveryDate !== undefined) row.delivery_date = updates.deliveryDate ?? null;
+    if (updates.collectionDate !== undefined) row.collection_date = dateOrNull(updates.collectionDate);
+    if (updates.deliveryDate !== undefined) row.delivery_date = dateOrNull(updates.deliveryDate);
     if (updates.vehicleId !== undefined) row.vehicle_id = updates.vehicleId ?? null;
     if (updates.driverId !== undefined) row.driver_id = updates.driverId ?? null;
     if (updates.paymentStatus !== undefined) row.payment_status = updates.paymentStatus ?? null;
     if (updates.customerOrderNumber !== undefined) row.customer_order_number = updates.customerOrderNumber ?? null;
     if (updates.invoiceNumber !== undefined) row.invoice_number = updates.invoiceNumber ?? null;
-    if (updates.invoiceDate !== undefined) row.invoice_date = updates.invoiceDate ?? null;
+    if (updates.invoiceDate !== undefined) row.invoice_date = dateOrNull(updates.invoiceDate);
     if (updates.damageReport !== undefined) row.damage_report = updates.damageReport ?? null;
     if (updates.notes !== undefined) row.notes = updates.notes as unknown as Tables['load_confirmations']['Update']['notes'];
     if (updates.deliveryArea !== undefined) row.delivery_area = updates.deliveryArea ?? null;
-    if (updates.sentToSupplierDate !== undefined) row.sent_to_supplier_date = updates.sentToSupplierDate ?? null;
+    if (updates.sentToSupplierDate !== undefined) row.sent_to_supplier_date = dateOrNull(updates.sentToSupplierDate);
     if (updates.subcontractorVehicleReg !== undefined) row.subcontractor_vehicle_reg = updates.subcontractorVehicleReg ?? null;
     if (updates.subcontractorDriverName !== undefined) row.subcontractor_driver_name = updates.subcontractorDriverName ?? null;
     if ((updates as any).clientRequestStatus !== undefined) (row as any).client_request_status = (updates as any).clientRequestStatus ?? null;

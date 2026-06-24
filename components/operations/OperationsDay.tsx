@@ -124,6 +124,14 @@ const OperationsDay: React.FC = () => {
         setBusy(null);
         if (res && res.ok === false) showToast?.(res.error || 'Could not update');
     };
+    // Quick path: a collection booked with no driver/details, cargo already collected —
+    // move it straight to "collected" without forcing the assign step first.
+    const markCollected = async (lc: LoadConfirmation) => {
+        setBusy(lc.id);
+        const res = await handleUpdateLoadConfirmation(lc.id, { status: 'Collected' });
+        setBusy(null);
+        if (res && res.ok === false) showToast?.(res.error || 'Could not update');
+    };
     const markDelivered = async (lc: LoadConfirmation) => {
         setBusy(lc.id);
         const res = await handleUpdateLoadConfirmation(lc.id, { status: 'Delivered' });
@@ -208,7 +216,10 @@ const OperationsDay: React.FC = () => {
                                     <Cell><Chip lc={lc} /></Cell>
                                     <Cell stop className="text-right">
                                         {!isAssigned(lc) && lc.status === 'Booked'
-                                            ? <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
+                                            ? <div className="flex gap-1.5 justify-end">
+                                                <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
+                                                <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => markCollected(lc)}>{busy === lc.id ? '…' : '✓ Collected'}</ActBtn>
+                                              </div>
                                             : step ? <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => advance(lc)}>{busy === lc.id ? '…' : step.label}</ActBtn>
                                                 : <span className="text-[11px] text-slate-400">ready</span>}
                                     </Cell>
@@ -228,7 +239,10 @@ const OperationsDay: React.FC = () => {
                                     client={clientName(lc)} route={`${code(lc.collectionBranch)} → ${code(lc.destinationBranch)}`} place={lc.collectionPoint}
                                     meta={`${pkgs(lc) || '—'} pkgs · ${weight(lc)}`} dateLabel={`Collect ${fmtDay(lc.collectionDate)}`} overdue={!!overdue} unit={unit(lc)}
                                     action={!isAssigned(lc) && lc.status === 'Booked'
-                                        ? <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
+                                        ? <div className="flex gap-1.5">
+                                            <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
+                                            <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => markCollected(lc)}>{busy === lc.id ? '…' : '✓ Collected'}</ActBtn>
+                                          </div>
                                         : step ? <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => advance(lc)}>{busy === lc.id ? '…' : step.label}</ActBtn> : null} />
                             );
                         })}

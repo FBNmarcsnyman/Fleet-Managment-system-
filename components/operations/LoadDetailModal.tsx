@@ -397,7 +397,7 @@ const LoadDetailModal: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-center">
                         <F label="Sent to Supplier" value={lc.sentToSupplierDate ? fmt(lc.sentToSupplierDate) : 'Not sent'} />
                         <F label="Payment" value={lc.paymentStatus || '—'} />
-                        <F label="POD" value={podLink ? (lc.podAuthorisation === 'pending' ? 'Received — awaiting authorisation' : lc.podAuthorisation === 'authorised' ? 'Sent to client ✓' : 'Received') : 'Awaiting'} />
+                        <F label="POD" value={podLink ? (lc.podAuthorisation === 'blocked' ? 'BLOCKED — do not send' : lc.podAuthorisation === 'pending' ? 'Received — awaiting authorisation' : lc.podAuthorisation === 'authorised' ? 'Sent to client ✓' : 'Received') : 'Awaiting'} />
                         {podLink && (
                             <div className="flex items-center gap-3">
                                 <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>
@@ -405,16 +405,25 @@ const LoadDetailModal: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    {/* Subbie POD held for review — check for rates/wrong docs, then release to the client. */}
-                    {lc.podAuthorisation === 'pending' && (
-                        <div className="mt-3 p-3 rounded-lg border border-amber-400/40 bg-amber-500/5">
-                            <p className="text-[11px] font-black text-amber-400 uppercase tracking-widest">⚠ POD awaiting authorisation</p>
-                            <p className="text-xs text-slate-300 mt-1 mb-2">Subcontractor upload — open it and make sure there are <strong>no rates or incorrect documents</strong> before the client sees it. The original is always kept on file.</p>
+                    {/* POD held for review — nothing reaches the client until an admin authorises. */}
+                    {(lc.podAuthorisation === 'pending' || lc.podAuthorisation === 'blocked') && (
+                        <div className={`mt-3 p-3 rounded-lg border ${lc.podAuthorisation === 'blocked' ? 'border-red-500/50 bg-red-500/10' : 'border-amber-400/40 bg-amber-500/5'}`}>
+                            {lc.podAuthorisation === 'blocked' ? (
+                                <>
+                                    <p className="text-[11px] font-black text-red-400 uppercase tracking-widest">⛔ POD BLOCKED — never send as-is</p>
+                                    <p className="text-xs text-slate-300 mt-1 mb-2">This upload contained an <strong>invoice or incorrect document</strong> and must <strong>never</strong> go to the client. To serve a clean POD, upload a <strong>cleaned version</strong> below — the as-is file is permanently barred from sending.</p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-[11px] font-black text-amber-400 uppercase tracking-widest">⚠ POD awaiting authorisation</p>
+                                    <p className="text-xs text-slate-300 mt-1 mb-2">Open it and make sure there are <strong>no invoices, rates or incorrect documents</strong> before the client sees it. Nothing is sent until you authorise. The original is always kept on file.</p>
+                                </>
+                            )}
                             {isSuperAdmin ? (
                                 <div className="flex flex-wrap gap-2">
                                     {podLink && <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-2 px-3 rounded-lg">📄 View / download original</a>}
-                                    <button onClick={() => authorisePod()} disabled={authorising} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{authorising ? '…' : '✅ Authorise as-is & send to client'}</button>
-                                    <label className="text-xs font-bold bg-amber-500 hover:bg-amber-400 text-white py-2 px-3 rounded-lg cursor-pointer">⬆ Upload cleaned version & send<input type="file" className="hidden" accept="application/pdf,image/*" onChange={e => { const f = e.target.files?.[0]; if (f) authorisePod(f); e.currentTarget.value = ''; }} /></label>
+                                    {lc.podAuthorisation !== 'blocked' && <button onClick={() => authorisePod()} disabled={authorising} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{authorising ? '…' : '✅ Authorise as-is & send to client'}</button>}
+                                    <label className="text-xs font-bold bg-amber-500 hover:bg-amber-400 text-white py-2 px-3 rounded-lg cursor-pointer">⬆ Upload cleaned version &amp; send<input type="file" className="hidden" accept="application/pdf,image/*" onChange={e => { const f = e.target.files?.[0]; if (f) authorisePod(f); e.currentTarget.value = ''; }} /></label>
                                 </div>
                             ) : (
                                 <p className="text-[11px] text-slate-400">An admin must review and authorise this POD before it goes to the client.</p>

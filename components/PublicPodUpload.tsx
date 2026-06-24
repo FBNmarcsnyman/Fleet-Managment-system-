@@ -100,7 +100,11 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
                     ) : (
                         <>
                             <h2 style={{ color: NAVY, margin: '0 0 4px', fontSize: 20 }}>Load {load.load_con_number}</h2>
-                            <p style={{ color: '#6b7280', fontSize: 14, margin: '0 0 16px' }}>{load.collection_point} → {load.delivery_point}</p>
+                            <p style={{ color: '#6b7280', fontSize: 14, margin: '0 0 12px' }}>{load.collection_point} → {load.delivery_point}</p>
+                            <div style={{ background: '#fffbeb', border: '1px solid #f5b700', borderRadius: 8, padding: '10px 12px', margin: '0 0 16px' }}>
+                                <p style={{ color: '#13294b', fontSize: 13, fontWeight: 800, margin: 0 }}>Please upload ONLY your signed delivery note / FBN POD / client backing documents.</p>
+                                <p style={{ color: '#b91c1c', fontSize: 14, fontWeight: 800, margin: '6px 0 0' }}>⚠ DO NOT UPLOAD YOUR INVOICE HERE.</p>
+                            </div>
                             {err && <p style={{ color: '#b91c1c', fontSize: 13 }}>{err}</p>}
 
                             <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '0 0 6px' }}>1. Attach the signed POD</p>
@@ -122,9 +126,9 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
                             </button>
                             <input ref={dmgRef} type="file" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={onMulti(setDamages)} />
 
-                            <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '18px 0 6px' }}>4. Other documents (optional)</p>
+                            <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '18px 0 6px' }}>4. Client backing documents (optional) <span style={{ color: '#b91c1c', fontWeight: 800 }}>— no invoices</span></p>
                             <button onClick={() => docRef.current?.click()} style={{ width: '100%', background: '#fff', color: '#1e293b', border: '1px solid #cbd5e1', padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                                {docs.length ? `📎 ${docs.length} document(s) added — add more` : '📎 Add backing documents'}
+                                {docs.length ? `📎 ${docs.length} document(s) added — add more` : '📎 Add client backing documents'}
                             </button>
                             <input ref={docRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }} onChange={onMulti(setDocs)} />
 

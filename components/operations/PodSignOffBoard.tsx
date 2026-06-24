@@ -42,6 +42,7 @@ const PodSignOffBoard: React.FC = () => {
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <span className="font-bold text-blue-700 font-mono text-xs">{lc.loadConNumber}</span>
+                        {(lc as any).podAuthorisation === 'blocked' && <span className="text-[10px] font-black text-red-600 uppercase">⛔ blocked</span>}
                         {pending && <span className="text-[10px] font-black text-amber-600 uppercase">⚠ review</span>}
                         {(lc as any).podAuthorisation === 'authorised' && <span className="text-[10px] font-black text-emerald-600 uppercase">sent ✓</span>}
                     </div>

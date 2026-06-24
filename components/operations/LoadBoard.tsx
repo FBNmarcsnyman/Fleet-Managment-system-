@@ -160,8 +160,10 @@ const LoadBoard: React.FC = () => {
             </div>
         );
         if (showPod) return <button onClick={stop(() => getPod(lc))} className={cls('bg-green-600 hover:bg-green-500')}>Get POD</button>;
-        if (lc.status === 'POD Submitted') return <div className="flex gap-1.5 justify-end">{viewPod}{(lc as any).podAuthorisation === 'pending'
-            ? <button onClick={stop(() => showModal('loadDetail', { loadCon: lc }))} title="Subbie POD awaiting review — open to authorise" className={cls('bg-amber-500 hover:bg-amber-400')}>⚠ Authorise</button>
+        if (lc.status === 'POD Submitted') return <div className="flex gap-1.5 justify-end">{viewPod}{(lc as any).podAuthorisation === 'blocked'
+            ? <button onClick={stop(() => showModal('loadDetail', { loadCon: lc }))} title="POD blocked — contained an invoice/incorrect doc; never send as-is" className={cls('bg-red-600 hover:bg-red-500')}>⛔ Blocked</button>
+            : (lc as any).podAuthorisation === 'pending'
+            ? <button onClick={stop(() => showModal('loadDetail', { loadCon: lc }))} title="POD awaiting review — open to authorise" className={cls('bg-amber-500 hover:bg-amber-400')}>⚠ Authorise</button>
             : <button onClick={stop(() => close(lc))} disabled={busy === lc.id} className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Close'}</button>}</div>;
         if (step) return <div className="flex gap-1.5 justify-end">{viewPod}<button onClick={stop(() => step.status === 'In Transit' ? showModal('dispatchLoad', { loadCon: lc }) : advance(lc))} disabled={busy === lc.id} className={cls('bg-blue-600 hover:bg-blue-500 disabled:opacity-50')}>{busy === lc.id ? '…' : step.label}</button></div>;
         return viewPod || <span className="text-[11px] text-slate-400">—</span>;

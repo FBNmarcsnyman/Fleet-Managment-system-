@@ -1355,6 +1355,9 @@ export const toLoadConfirmationUpdate = (
     branchIdByName: BranchIdByName,
 ): Tables['load_confirmations']['Update'] => {
     const row: Tables['load_confirmations']['Update'] = {};
+    // Date / time / timestamp columns reject an empty string ('') — a cleared
+    // DateField/time input must be stored as NULL, not ''. (?? only catches null/undefined.)
+    const orNull = (v: any) => (v === '' || v == null ? null : v);
     if (updates.clientId !== undefined) row.client_id = updates.clientId;
     if (updates.quoteId !== undefined) row.quote_id = updates.quoteId ?? null;
     if (updates.supplierId !== undefined) row.supplier_id = updates.supplierId ?? null;
@@ -1368,18 +1371,18 @@ export const toLoadConfirmationUpdate = (
     if (updates.status !== undefined) row.status = updates.status;
     if (updates.collectionPoint !== undefined) row.collection_point = updates.collectionPoint || null;
     if (updates.deliveryPoint !== undefined) row.delivery_point = updates.deliveryPoint || null;
-    if (updates.collectionDate !== undefined) row.collection_date = updates.collectionDate ?? null;
-    if (updates.deliveryDate !== undefined) row.delivery_date = updates.deliveryDate ?? null;
+    if (updates.collectionDate !== undefined) row.collection_date = orNull(updates.collectionDate);
+    if (updates.deliveryDate !== undefined) row.delivery_date = orNull(updates.deliveryDate);
     if (updates.vehicleId !== undefined) row.vehicle_id = updates.vehicleId ?? null;
     if (updates.driverId !== undefined) row.driver_id = updates.driverId ?? null;
     if (updates.paymentStatus !== undefined) row.payment_status = updates.paymentStatus ?? null;
     if (updates.customerOrderNumber !== undefined) row.customer_order_number = updates.customerOrderNumber ?? null;
     if (updates.invoiceNumber !== undefined) row.invoice_number = updates.invoiceNumber ?? null;
-    if (updates.invoiceDate !== undefined) row.invoice_date = updates.invoiceDate ?? null;
+    if (updates.invoiceDate !== undefined) row.invoice_date = orNull(updates.invoiceDate);
     if (updates.damageReport !== undefined) row.damage_report = updates.damageReport ?? null;
     if (updates.notes !== undefined) row.notes = updates.notes as unknown as Tables['load_confirmations']['Update']['notes'];
     if (updates.deliveryArea !== undefined) row.delivery_area = updates.deliveryArea ?? null;
-    if (updates.sentToSupplierDate !== undefined) row.sent_to_supplier_date = updates.sentToSupplierDate ?? null;
+    if (updates.sentToSupplierDate !== undefined) row.sent_to_supplier_date = orNull(updates.sentToSupplierDate);
     if (updates.subcontractorVehicleReg !== undefined) row.subcontractor_vehicle_reg = updates.subcontractorVehicleReg ?? null;
     if (updates.subcontractorDriverName !== undefined) row.subcontractor_driver_name = updates.subcontractorDriverName ?? null;
     if ((updates as any).clientRequestStatus !== undefined) (row as any).client_request_status = (updates as any).clientRequestStatus ?? null;
@@ -1397,10 +1400,10 @@ export const toLoadConfirmationUpdate = (
     if (updates.ccEmail !== undefined) row.cc_email = updates.ccEmail ?? null;
     if ((updates as any).podUploadEmail !== undefined) (row as any).pod_upload_email = (updates as any).podUploadEmail ?? null;
     if ((updates as any).transitDepot !== undefined) (row as any).transit_depot = (updates as any).transitDepot ?? null;
-    if ((updates as any).transitReceivedAt !== undefined) (row as any).transit_received_at = (updates as any).transitReceivedAt ?? null;
+    if ((updates as any).transitReceivedAt !== undefined) (row as any).transit_received_at = orNull((updates as any).transitReceivedAt);
     if ((updates as any).onwardCarrierType !== undefined) (row as any).onward_carrier_type = (updates as any).onwardCarrierType ?? null;
-    if ((updates as any).onwardPlannedDate !== undefined) (row as any).onward_planned_date = (updates as any).onwardPlannedDate ?? null;
-    if ((updates as any).onwardPlannedTime !== undefined) (row as any).onward_planned_time = (updates as any).onwardPlannedTime ?? null;
+    if ((updates as any).onwardPlannedDate !== undefined) (row as any).onward_planned_date = orNull((updates as any).onwardPlannedDate);
+    if ((updates as any).onwardPlannedTime !== undefined) (row as any).onward_planned_time = orNull((updates as any).onwardPlannedTime);
     if ((updates as any).updateCc !== undefined) (row as any).cc_updates = (updates as any).updateCc ?? null;
     if (updates.clientName !== undefined) row.client_name = updates.clientName ?? null;
     if (updates.clientContact !== undefined) row.client_contact = updates.clientContact ?? null;
@@ -1416,8 +1419,8 @@ export const toLoadConfirmationUpdate = (
     if ((updates as any).archived !== undefined) (row as any).archived = (updates as any).archived;
     if (updates.route !== undefined) row.route = updates.route ?? null;
     if (updates.fbnRepresentative !== undefined) row.fbn_representative = updates.fbnRepresentative ?? null;
-    if (updates.loadingTime !== undefined) row.loading_time = updates.loadingTime ?? null;
-    if (updates.offloadingTime !== undefined) row.offloading_time = updates.offloadingTime ?? null;
+    if (updates.loadingTime !== undefined) row.loading_time = orNull(updates.loadingTime);
+    if (updates.offloadingTime !== undefined) row.offloading_time = orNull(updates.offloadingTime);
     if (updates.collectionContact !== undefined) row.collection_contact = updates.collectionContact ?? null;
     if (updates.collectionTelephone !== undefined) row.collection_telephone = updates.collectionTelephone ?? null;
     if (updates.deliveryContact !== undefined) row.delivery_contact = updates.deliveryContact ?? null;

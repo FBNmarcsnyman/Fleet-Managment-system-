@@ -469,7 +469,8 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                         onChange={e => handleFieldChange('specialRequirements' as any, e.target.value)}
                         rows={2}
                         placeholder="e.g. Rate excludes loading/offloading, standby & after-hours. Crane/labour quoted separately on request."
-                        className={inputClasses}
+                        className={inputClasses + ' normal-case'}
+                        style={{ textTransform: 'none' }}
                     />
                     {labourRequested && (
                         <p className="text-[11px] text-amber-400 mt-1">⚠ The client requested labour/crane/forklift — make sure the rate and wording reflect whether that's included.</p>

@@ -191,7 +191,8 @@ const QuoteDetailModal: React.FC<{
                         onChange={e => setMoreInfoNote(e.target.value)}
                         rows={2}
                         placeholder="e.g. Is the site forklift-accessible? Any after-hours collection? Confirm exact delivery suburb…"
-                        className="w-full bg-gray-800 text-gray-100 text-sm rounded-lg border border-gray-600 p-2.5 placeholder-gray-500 focus:border-amber-400 focus:outline-none"
+                        className="normal-case w-full bg-gray-800 text-gray-100 text-sm rounded-lg border border-gray-600 p-2.5 placeholder-gray-500 focus:border-amber-400 focus:outline-none"
+                        style={{ textTransform: 'none' }}
                     />
                     {!String(quote.commodity || rd.commodity || '').trim() && (
                         <p className="text-[11px] text-gray-400 mt-1">ℹ The email will also automatically ask for the <strong>commodity</strong> (none on file yet).</p>

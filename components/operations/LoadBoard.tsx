@@ -134,6 +134,11 @@ const LoadBoard: React.FC = () => {
         onCancel: () => showModal('hide'),
     });
 
+    // Any POD reference, whatever channel it arrived by (supplier/driver Drive
+    // upload, manual photo, or extra doc pages).
+    const podLink = (lc: LoadConfirmation): string | null =>
+        (lc as any).podDriveUrl || lc.podPhoto?.data || (lc as any).podDocUrls?.[0] || null;
+
     const transporterOf = (lc: LoadConfirmation): string =>
         lc.supplierId ? (supplierMap.get(lc.supplierId) || lc.subcontractorName || 'Subcontractor') : (lc.subcontractorName || (isAssigned(lc) ? 'Own fleet' : ''));
 
@@ -141,10 +146,12 @@ const LoadBoard: React.FC = () => {
     const RowActions: React.FC<{ lc: LoadConfirmation; compact?: boolean }> = ({ lc, compact }) => {
         const step = nextStep(lc);
         const assigned = isAssigned(lc);
-        const showPod = lc.status === 'Out for Delivery' || (lc.status === 'Delivered' && !lc.podPhoto);
+        const pod = podLink(lc);
+        const showPod = !pod && (lc.status === 'Out for Delivery' || lc.status === 'Delivered');
         const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
         const cls = (base: string) => `${compact ? 'flex-1 py-1.5 text-[10px]' : 'py-1 px-2.5 text-[11px]'} font-black rounded-lg uppercase tracking-wider text-white ${base}`;
-        if (isArch(lc)) return <button onClick={stop(() => setArchived(lc, false))} disabled={busy === lc.id} title="Move back onto the active board" className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Unarchive'}</button>;
+        const viewPod = pod ? <button onClick={stop(() => window.open(pod, '_blank', 'noopener'))} title="View the uploaded POD" className={cls('bg-[#13294b] hover:bg-[#1d3a66]')}>📄 View POD</button> : null;
+        if (isArch(lc)) return <div className="flex gap-1.5 justify-end">{viewPod}<button onClick={stop(() => setArchived(lc, false))} disabled={busy === lc.id} title="Move back onto the active board" className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Unarchive'}</button></div>;
         if (!assigned && lc.status === 'Booked') return (
             <div className="flex gap-1.5 justify-end">
                 <button onClick={stop(() => showModal('offerLoad', { loadCon: lc }))} title="Offer to matching carriers for a rate" className={cls('bg-[#f5b700] hover:brightness-95 !text-[#13294b]')}>📣 Offer{(lc as any).offeredCarriers?.length ? ` ${(lc as any).offeredCarriers.length}` : ''}</button>
@@ -153,9 +160,9 @@ const LoadBoard: React.FC = () => {
             </div>
         );
         if (showPod) return <button onClick={stop(() => getPod(lc))} className={cls('bg-green-600 hover:bg-green-500')}>Get POD</button>;
-        if (lc.status === 'POD Submitted') return <button onClick={stop(() => close(lc))} disabled={busy === lc.id} className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Close'}</button>;
-        if (step) return <button onClick={stop(() => step.status === 'In Transit' ? showModal('dispatchLoad', { loadCon: lc }) : advance(lc))} disabled={busy === lc.id} className={cls('bg-blue-600 hover:bg-blue-500 disabled:opacity-50')}>{busy === lc.id ? '…' : step.label}</button>;
-        return <span className="text-[11px] text-slate-400">—</span>;
+        if (lc.status === 'POD Submitted') return <div className="flex gap-1.5 justify-end">{viewPod}<button onClick={stop(() => close(lc))} disabled={busy === lc.id} className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Close'}</button></div>;
+        if (step) return <div className="flex gap-1.5 justify-end">{viewPod}<button onClick={stop(() => step.status === 'In Transit' ? showModal('dispatchLoad', { loadCon: lc }) : advance(lc))} disabled={busy === lc.id} className={cls('bg-blue-600 hover:bg-blue-500 disabled:opacity-50')}>{busy === lc.id ? '…' : step.label}</button></div>;
+        return viewPod || <span className="text-[11px] text-slate-400">—</span>;
     };
 
     return (

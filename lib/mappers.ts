@@ -565,6 +565,8 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     vehicleId: row.vehicle_id ?? undefined,
     driverId: row.driver_id ?? undefined,
     podPhoto: urlToAttachment(row.pod_photo_url, 'POD', 'image/jpeg'),
+    podDriveUrl: (row as any).pod_drive_url ?? undefined,
+    podDocUrls: (row as any).pod_doc_urls ?? undefined,
     podSignature: row.pod_signature_url ?? undefined,
     paymentStatus: row.payment_status ?? undefined,
     customerOrderNumber: row.customer_order_number ?? undefined,

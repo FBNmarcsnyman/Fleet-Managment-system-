@@ -133,8 +133,11 @@ const LoadDetailModal: React.FC = () => {
     // Email the received POD to a chosen recipient (defaults to the client).
     // Goes only to you while EMAILS: TEST is on.
     const [sendingPod, setSendingPod] = useState(false);
+    // Any POD reference, whatever channel it arrived by (supplier/driver Drive
+    // upload, manual photo, or extra doc pages).
+    const podLink: string | null = (lc as any).podDriveUrl || lc.podPhoto?.data || (lc as any).podDocUrls?.[0] || null;
     const sendPod = async () => {
-        const podUrl = lc.podPhoto?.data;
+        const podUrl = podLink;
         if (!podUrl) { showToast('No POD on this load yet.'); return; }
         const entered = window.prompt(`Send POD for ${lc.loadConNumber} to (email):`, lc.clientEmail || lc.subcontractorEmail || '');
         if (entered === null) return;
@@ -369,10 +372,10 @@ const LoadDetailModal: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-center">
                         <F label="Sent to Supplier" value={lc.sentToSupplierDate ? fmt(lc.sentToSupplierDate) : 'Not sent'} />
                         <F label="Payment" value={lc.paymentStatus || '—'} />
-                        <F label="POD" value={lc.podPhoto ? 'Received' : 'Awaiting'} />
-                        {lc.podPhoto?.data && (
+                        <F label="POD" value={podLink ? 'Received' : 'Awaiting'} />
+                        {podLink && (
                             <div className="flex items-center gap-3">
-                                <a href={lc.podPhoto.data} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>
+                                <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>
                                 <button onClick={sendPod} disabled={sendingPod} className="text-xs font-bold text-emerald-400 hover:underline disabled:opacity-50">{sendingPod ? 'Sending…' : 'Send / Resend POD →'}</button>
                             </div>
                         )}

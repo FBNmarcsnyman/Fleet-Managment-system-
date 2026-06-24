@@ -485,6 +485,8 @@ export interface LoadConfirmation {
     vehicleId?: string;
     driverId?: string;
     podPhoto?: Attachment;
+    podDriveUrl?: string;          // Drive link when the POD was filed to Google Drive (supplier/driver upload)
+    podDocUrls?: string[];         // additional POD pages/docs, grouped under this load
     podSignature?: string;
     paymentStatus?: 'Awaiting POD' | 'Awaiting Review' | 'Ready for Payment' | 'Paid';
     customerOrderNumber?: string;

@@ -487,6 +487,10 @@ export interface LoadConfirmation {
     podPhoto?: Attachment;
     podDriveUrl?: string;          // Drive link when the POD was filed to Google Drive (supplier/driver upload)
     podDocUrls?: string[];         // additional POD pages/docs, grouped under this load
+    // Subbie-uploaded PODs are held for admin review before the client sees them:
+    // 'pending' = awaiting authorisation, 'authorised' = released, 'auto' = own-fleet auto-sent.
+    podAuthorisation?: 'pending' | 'authorised' | 'auto' | string;
+    podOriginalUrl?: string;       // the original supplier upload, kept when a cleaned version is sent
     podSignature?: string;
     paymentStatus?: 'Awaiting POD' | 'Awaiting Review' | 'Ready for Payment' | 'Paid';
     customerOrderNumber?: string;

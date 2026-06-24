@@ -160,6 +160,30 @@ const LoadDetailModal: React.FC = () => {
         }
     };
 
+    // Authorise a held (subbie-uploaded) POD and release it to the client. Optionally
+    // swap in a cleaned version first (re-upload) — the original stays on file.
+    const [authorising, setAuthorising] = useState(false);
+    const fileToB64 = (file: File) => new Promise<{ b64: string; name: string; type: string }>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => { const s = String(r.result); res({ b64: s.split(',')[1] || '', name: file.name, type: file.type || 'application/octet-stream' }); };
+        r.onerror = rej; r.readAsDataURL(file);
+    });
+    const authorisePod = async (file?: File) => {
+        if (!window.confirm(file
+            ? `Send the UPLOADED cleaned POD to the client for ${lc.loadConNumber}? (The original supplier upload stays on file.)`
+            : `Authorise the POD as-is and send it to the client for ${lc.loadConNumber}?`)) return;
+        setAuthorising(true);
+        try {
+            const body: any = { loadId: lc.id };
+            if (file) { const f = await fileToB64(file); body.authorisedBase64 = f.b64; body.authorisedName = f.name; body.authorisedContentType = f.type; }
+            const { data, error } = await invokeFn('authorise-pod', { body });
+            if (error || (data && (data as any).error)) { showToast(`Could not authorise: ${(data as any)?.error || error?.message}`); }
+            else { showToast(`POD authorised and sent to the client.`); hideModal(); }
+        } catch (e) {
+            showToast(`Could not authorise: ${e instanceof Error ? e.message : 'error'}`);
+        } finally { setAuthorising(false); }
+    };
+
     // Email the computer-generated waybill / POD to the supplier (print & sign).
     const [waybillBusy, setWaybillBusy] = useState(false);
     const emailWaybillToSupplier = async () => {
@@ -372,14 +396,31 @@ const LoadDetailModal: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-center">
                         <F label="Sent to Supplier" value={lc.sentToSupplierDate ? fmt(lc.sentToSupplierDate) : 'Not sent'} />
                         <F label="Payment" value={lc.paymentStatus || '—'} />
-                        <F label="POD" value={podLink ? 'Received' : 'Awaiting'} />
+                        <F label="POD" value={podLink ? (lc.podAuthorisation === 'pending' ? 'Received — awaiting authorisation' : lc.podAuthorisation === 'authorised' ? 'Sent to client ✓' : 'Received') : 'Awaiting'} />
                         {podLink && (
                             <div className="flex items-center gap-3">
                                 <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>
-                                <button onClick={sendPod} disabled={sendingPod} className="text-xs font-bold text-emerald-400 hover:underline disabled:opacity-50">{sendingPod ? 'Sending…' : 'Send / Resend POD →'}</button>
+                                {lc.podAuthorisation !== 'pending' && <button onClick={sendPod} disabled={sendingPod} className="text-xs font-bold text-emerald-400 hover:underline disabled:opacity-50">{sendingPod ? 'Sending…' : 'Send / Resend POD →'}</button>}
                             </div>
                         )}
                     </div>
+                    {/* Subbie POD held for review — check for rates/wrong docs, then release to the client. */}
+                    {lc.podAuthorisation === 'pending' && (
+                        <div className="mt-3 p-3 rounded-lg border border-amber-400/40 bg-amber-500/5">
+                            <p className="text-[11px] font-black text-amber-400 uppercase tracking-widest">⚠ POD awaiting authorisation</p>
+                            <p className="text-xs text-slate-300 mt-1 mb-2">Subcontractor upload — open it and make sure there are <strong>no rates or incorrect documents</strong> before the client sees it. The original is always kept on file.</p>
+                            {isSuperAdmin ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {podLink && <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-2 px-3 rounded-lg">📄 View / download original</a>}
+                                    <button onClick={() => authorisePod()} disabled={authorising} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{authorising ? '…' : '✅ Authorise as-is & send to client'}</button>
+                                    <label className="text-xs font-bold bg-amber-500 hover:bg-amber-400 text-white py-2 px-3 rounded-lg cursor-pointer">⬆ Upload cleaned version & send<input type="file" className="hidden" accept="application/pdf,image/*" onChange={e => { const f = e.target.files?.[0]; if (f) authorisePod(f); e.currentTarget.value = ''; }} /></label>
+                                </div>
+                            ) : (
+                                <p className="text-[11px] text-slate-400">An admin must review and authorise this POD before it goes to the client.</p>
+                            )}
+                        </div>
+                    )}
+                    {lc.podAuthorisation === 'authorised' && <p className="mt-2 text-[11px] font-bold text-emerald-400">✓ POD authorised &amp; sent to the client.</p>}
                     {/* Electronic POD / waybill: choose how the signed POD comes back. */}
                     <div className="mt-3 pt-3 border-t border-slate-200">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Get the signed POD / waybill back</p>

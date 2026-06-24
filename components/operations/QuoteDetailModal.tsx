@@ -29,6 +29,7 @@ const QuoteDetailModal: React.FC<{
     const [requesting, setRequesting] = useState(false);
     const [sending, setSending] = useState(false);
     const [proforma, setProforma] = useState(false);
+    const [moreInfoNote, setMoreInfoNote] = useState('');
     const rd = quote.requestData || {};
     const mi = quote.requestMoreInfo || {};
 
@@ -51,7 +52,7 @@ const QuoteDetailModal: React.FC<{
                         apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
                         Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
                     },
-                    body: JSON.stringify({ quote_id: quote.id }),
+                    body: JSON.stringify({ quote_id: quote.id, note: moreInfoNote.trim() }),
                 }
             );
             const data = await resp.json();
@@ -181,6 +182,21 @@ const QuoteDetailModal: React.FC<{
             {/* Action Buttons */}
             {mi.last_requested_at && (
                 <p className="text-xs text-amber-600 font-semibold mt-5 mb-1">📨 More info last requested: <strong>{new Date(mi.last_requested_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>{Number(mi.count) > 1 ? ` · ${mi.count} times` : ''} — waiting on the client's reply.</p>
+            )}
+            {(quote.status === 'Requested' || quote.status === 'More Info Requested') && (
+                <div className="mb-3">
+                    <label className="block text-xs font-bold uppercase tracking-wide text-amber-400 mb-1">📝 Extra questions for the client <span className="text-gray-400 font-normal normal-case">(optional — added to the "Request More Info" email)</span></label>
+                    <textarea
+                        value={moreInfoNote}
+                        onChange={e => setMoreInfoNote(e.target.value)}
+                        rows={2}
+                        placeholder="e.g. Is the site forklift-accessible? Any after-hours collection? Confirm exact delivery suburb…"
+                        className="w-full bg-gray-800 text-gray-100 text-sm rounded-lg border border-gray-600 p-2.5 placeholder-gray-500 focus:border-amber-400 focus:outline-none"
+                    />
+                    {!String(quote.commodity || rd.commodity || '').trim() && (
+                        <p className="text-[11px] text-gray-400 mt-1">ℹ The email will also automatically ask for the <strong>commodity</strong> (none on file yet).</p>
+                    )}
+                </div>
             )}
             {(quote.status === 'Requested' || quote.status === 'More Info Requested') && (
                 <div className="flex gap-3 mt-2">

@@ -121,6 +121,12 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
             : null);
     const hasSummary = !!(reqSummary.total_weight || reqSummary.packages || reqSummary.load_type || cubes || reqSummary.collection_area);
 
+    // Rate scope / terms shown on the client quote. Default to "transport only"
+    // unless the client actually asked for labour / crane / forklift / tail-lift.
+    const TRANSPORT_ONLY = 'Rate is for TRANSPORT ONLY. Client to arrange loading & offloading (no labour, crane, forklift or tail-lift included).';
+    const equip = moreInfo.equipment || {};
+    const labourRequested = ['crane_truck', 'forklift', 'labour', 'driver_hire', 'taillift_collection', 'taillift_delivery'].some(k => equip[k]);
+
     useEffect(() => {
         // The sell rate is the price for the whole shipment, so the line total is
         // the rate itself (NOT rate × qty — qty is just how many units there are).
@@ -144,6 +150,15 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     const handleFieldChange = (field: keyof Quote, value: any) => {
         setQuote(prev => ({ ...prev, [field]: value }));
     };
+
+    // New quotes: pre-fill the transport-only term when no loading equipment was
+    // requested (the common case). Never override an existing/edited quote.
+    useEffect(() => {
+        if (quoteData) return;
+        if ((quote.specialRequirements || '').trim()) return;
+        if (!labourRequested) setQuote(prev => (prev.specialRequirements ? prev : { ...prev, specialRequirements: TRANSPORT_ONLY }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Edit a value inside the cargo request payload (weight / cubes).
     const handleReqChange = (key: string, value: any) => {
@@ -435,6 +450,30 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                         ))}
                         {quote.subcontractorQuotes.length === 0 && <p className="text-center text-xs text-gray-600 italic py-4">No subcontractor rates recorded yet.</p>}
                     </div>
+                </div>
+
+                {/* Section 4b: Rate scope / terms — shown on the client quote */}
+                <div>
+                    <h3 className="text-sm font-black text-gray-500 uppercase tracking-tighter mb-3 ml-1">Rate Scope / Terms <span className="text-gray-600 font-bold normal-case tracking-normal">(appears on the client quote)</span></h3>
+                    <label className="flex items-center gap-2 text-sm text-gray-300 mb-2 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={(quote.specialRequirements || '').includes('TRANSPORT ONLY')}
+                            onChange={e => handleFieldChange('specialRequirements' as any, e.target.checked ? TRANSPORT_ONLY : '')}
+                            className="h-4 w-4 rounded border-gray-600 bg-gray-700"
+                        />
+                        Rate is for <strong>transport only</strong> — client to arrange loading &amp; offloading
+                    </label>
+                    <textarea
+                        value={quote.specialRequirements || ''}
+                        onChange={e => handleFieldChange('specialRequirements' as any, e.target.value)}
+                        rows={2}
+                        placeholder="e.g. Rate excludes loading/offloading, standby & after-hours. Crane/labour quoted separately on request."
+                        className={inputClasses}
+                    />
+                    {labourRequested && (
+                        <p className="text-[11px] text-amber-400 mt-1">⚠ The client requested labour/crane/forklift — make sure the rate and wording reflect whether that's included.</p>
+                    )}
                 </div>
 
                 {/* Section 5: Cargo Items */}

@@ -572,6 +572,9 @@ export interface LoadConfirmation {
     loadGroupId?: string;
     isPrimary?: boolean;
     offeredCarriers?: { supplierId?: string; name: string; email: string; at?: string; rate?: number }[];
+    // Archived loads (e.g. bulk-imported from the LoadCon sheet, or manually filed away)
+    // drop off the active Load Board but stay searchable/filterable.
+    archived?: boolean;
 }
 
 export type LoadConfirmationStatus =

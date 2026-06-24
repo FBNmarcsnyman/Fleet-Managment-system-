@@ -49,7 +49,7 @@ const LoadBoard: React.FC = () => {
     const [q, setQ] = useState('');
     const [refreshing, setRefreshing] = useState(false);
     const [view, setView] = useState<'list' | 'board'>(() => { try { return (localStorage.getItem('brokingView') as any) || 'list'; } catch { return 'list'; } });
-    const [stageFilter, setStageFilter] = useState<StageKey | 'all'>('all');
+    const [stageFilter, setStageFilter] = useState<StageKey | 'all' | 'archived'>('all');
     useEffect(() => { try { localStorage.setItem('brokingView', view); } catch { /* ignore */ } }, [view]);
 
     const refresh = async () => { setRefreshing(true); try { await handleRefreshLoads?.(); } finally { setRefreshing(false); } };
@@ -72,6 +72,8 @@ const LoadBoard: React.FC = () => {
     // Brokered loads only — own-fleet collection shipments live on Operations and
     // appear here only once brokered to a subcontractor (the national leg).
     const inBroking = (lc: LoadConfirmation) => !(lc.isCollection && !lc.supplierId);
+    const isArch = (lc: LoadConfirmation) => (lc as any).archived === true;
+    const searching = q.trim().length > 0;
     const filtered = useMemo(() => {
         const needle = q.trim().toLowerCase();
         return (loadConfirmations || []).filter((lc: LoadConfirmation) => {
@@ -83,15 +85,20 @@ const LoadBoard: React.FC = () => {
         });
     }, [loadConfirmations, branch, q, clientMap]);
 
-    // Active (board) = everything not closed. Closed = Invoiced / Cancelled.
-    const active = useMemo(() => filtered.filter((lc: LoadConfirmation) => lc.status !== 'Invoiced' && lc.status !== 'Cancelled'), [filtered]);
-    const counts = useMemo(() => { const c: Record<string, number> = {}; filtered.forEach(lc => { const k = stageOf(lc); c[k] = (c[k] || 0) + 1; }); return c; }, [filtered]);
+    // Active (board) = everything not closed and not archived. Closed = Invoiced /
+    // Cancelled; archived = filed away (e.g. bulk-imported from the LoadCon sheet).
+    const active = useMemo(() => filtered.filter((lc: LoadConfirmation) => !isArch(lc) && lc.status !== 'Invoiced' && lc.status !== 'Cancelled'), [filtered]);
+    const counts = useMemo(() => { const c: Record<string, number> = {}; filtered.forEach(lc => { if (isArch(lc)) return; const k = stageOf(lc); c[k] = (c[k] || 0) + 1; }); return c; }, [filtered]);
+    const archivedCount = useMemo(() => filtered.filter(isArch).length, [filtered]);
     const listRows = useMemo(() => {
         const order: Record<StageKey, number> = { collection: 0, collecting: 1, loading: 2, onroute: 3, arrived: 4, delivered: 5, pod: 6, closed: 7 };
-        return filtered
-            .filter(lc => stageFilter === 'all' ? lc.status !== 'Invoiced' && lc.status !== 'Cancelled' : stageOf(lc) === stageFilter)
-            .sort((a, b) => (order[stageOf(a)] - order[stageOf(b)]) || (new Date(a.collectionDate || a.date).getTime() - new Date(b.collectionDate || b.date).getTime()));
-    }, [filtered, stageFilter]);
+        // Archived loads are hidden from the active stages unless the Archived chip is
+        // selected — but a search still reaches them so they stay findable.
+        const base = stageFilter === 'archived'
+            ? filtered.filter(isArch)
+            : filtered.filter(lc => (searching || !isArch(lc)) && (stageFilter === 'all' ? lc.status !== 'Invoiced' && lc.status !== 'Cancelled' : stageOf(lc) === stageFilter));
+        return base.sort((a, b) => (order[stageOf(a)] - order[stageOf(b)]) || (new Date(a.collectionDate || a.date).getTime() - new Date(b.collectionDate || b.date).getTime()));
+    }, [filtered, stageFilter, searching]);
 
     const fmtR = (n: number) => 'R ' + Math.round(n).toLocaleString('en-ZA');
     const fmtEta = (s?: string) => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? s : d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
@@ -110,6 +117,12 @@ const LoadBoard: React.FC = () => {
         const res = await handleUpdateLoadConfirmation(lc.id, { status: 'Invoiced' });
         setBusy(null);
         if (res && res.ok === false) showToast(`Could not close: ${res.error}`);
+    };
+    const setArchived = async (lc: LoadConfirmation, archived: boolean) => {
+        setBusy(lc.id);
+        const res = await handleUpdateLoadConfirmation(lc.id, { archived } as any);
+        setBusy(null);
+        if (res && res.ok === false) showToast(`Could not ${archived ? 'archive' : 'unarchive'}: ${res.error}`);
     };
     const getPod = (lc: LoadConfirmation) => showModal('pod', {
         loadCon: lc,
@@ -131,6 +144,7 @@ const LoadBoard: React.FC = () => {
         const showPod = lc.status === 'Out for Delivery' || (lc.status === 'Delivered' && !lc.podPhoto);
         const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
         const cls = (base: string) => `${compact ? 'flex-1 py-1.5 text-[10px]' : 'py-1 px-2.5 text-[11px]'} font-black rounded-lg uppercase tracking-wider text-white ${base}`;
+        if (isArch(lc)) return <button onClick={stop(() => setArchived(lc, false))} disabled={busy === lc.id} title="Move back onto the active board" className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Unarchive'}</button>;
         if (!assigned && lc.status === 'Booked') return (
             <div className="flex gap-1.5 justify-end">
                 <button onClick={stop(() => showModal('offerLoad', { loadCon: lc }))} title="Offer to matching carriers for a rate" className={cls('bg-[#f5b700] hover:brightness-95 !text-[#13294b]')}>📣 Offer{(lc as any).offeredCarriers?.length ? ` ${(lc as any).offeredCarriers.length}` : ''}</button>
@@ -170,6 +184,9 @@ const LoadBoard: React.FC = () => {
                         {STAGES.map(s => (
                             <button key={s.key} onClick={() => setStageFilter(s.key)} className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide ${stageFilter === s.key ? 'bg-[#13294b] text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>{s.label} <span className="opacity-60">{counts[s.key] || 0}</span></button>
                         ))}
+                        {archivedCount > 0 && (
+                            <button onClick={() => setStageFilter('archived')} title="Loads filed away / bulk-imported from the LoadCon sheet — still searchable" className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide ${stageFilter === 'archived' ? 'bg-[#13294b] text-white' : 'bg-white border border-slate-300 text-slate-500 hover:bg-slate-50'}`}>🗄 Archived <span className="opacity-60">{archivedCount}</span></button>
+                        )}
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">

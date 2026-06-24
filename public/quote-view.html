@@ -213,6 +213,11 @@ body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f1f5f9;color:
         <div class="notes-box" id="q-notes"></div>
       </div>
 
+      <div class="section" id="ratescope-section" style="display:none">
+        <div class="section-title">Rate Scope</div>
+        <div class="notes-box" id="q-ratescope"></div>
+      </div>
+
       <div class="terms">
         <div>
           <h4>Terms & Conditions</h4>
@@ -347,11 +352,14 @@ function render(q) {
   document.getElementById('q-subtotal').textContent = fmt(q.total_amount);
   document.getElementById('q-total').textContent = fmt(q.total_amount * 1.15);
 
-  // Notes
-  const notes = q.notes || q.special_requirements;
-  if (notes) {
+  // Notes (general) and Rate Scope (what the rate does / doesn't cover)
+  if (q.notes) {
     document.getElementById('notes-section').style.display = 'block';
-    document.getElementById('q-notes').textContent = notes;
+    document.getElementById('q-notes').textContent = q.notes;
+  }
+  if (q.special_requirements) {
+    document.getElementById('ratescope-section').style.display = 'block';
+    document.getElementById('q-ratescope').textContent = q.special_requirements;
   }
 
   // Actions

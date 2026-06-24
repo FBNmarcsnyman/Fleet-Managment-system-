@@ -588,6 +588,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     loadGroupId: (row as any).load_group_id ?? undefined,
     isPrimary: (row as any).is_primary ?? true,
     offeredCarriers: (row as any).offered_carriers ?? [],
+    archived: (row as any).archived ?? false,
     unpackDepot: (row as any).unpack_depot ?? undefined,
     importStage: (row as any).import_stage ?? undefined,
     repEmail: (row as any).rep_email ?? undefined,
@@ -1408,6 +1409,7 @@ export const toLoadConfirmationUpdate = (
     if (updates.loadRefNo !== undefined) row.load_ref_no = updates.loadRefNo ?? null;
     if ((updates as any).loadGroupId !== undefined) (row as any).load_group_id = (updates as any).loadGroupId ?? null;
     if ((updates as any).isPrimary !== undefined) (row as any).is_primary = (updates as any).isPrimary;
+    if ((updates as any).archived !== undefined) (row as any).archived = (updates as any).archived;
     if (updates.route !== undefined) row.route = updates.route ?? null;
     if (updates.fbnRepresentative !== undefined) row.fbn_representative = updates.fbnRepresentative ?? null;
     if (updates.loadingTime !== undefined) row.loading_time = updates.loadingTime ?? null;

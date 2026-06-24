@@ -176,12 +176,26 @@ export const sendClientPhaseEmail = async (lc: any, status: string): Promise<voi
     // For a dispatch (In Transit) we tell the client the PLANNED DELIVERY date.
     const eta = (status === 'Driver Assigned' || status === 'At Collection Point') ? lc.loadingEta : status === 'Out for Delivery' ? lc.deliveryEta : status === 'In Transit' ? (lc.deliveryEta || lc.deliveryDate) : '';
     const etaLabel = status === 'In Transit' ? 'Planned delivery' : 'ETA';
-    const etaLine = eta ? `<p style="font-size:15px;color:#13294b">${etaLabel}: <strong>${fmtDT(eta)}</strong></p>` : '';
-    const html = brandedEmail(`<p>Good day ${greet},</p>
+    // House detail-table layout (same as the collection / order emails).
+    const drow = (k: string, v?: any) => v ? `<tr><td style="padding:7px 16px 7px 0;color:#64748b;font-size:12px;font-weight:700;text-transform:uppercase;white-space:nowrap;vertical-align:top;border-bottom:1px solid #eef2f6">${k}</td><td style="padding:7px 0;color:#0f172a;font-size:14px;border-bottom:1px solid #eef2f6">${v}</td></tr>` : '';
+    const detailTable = `<table style="width:100%;border-collapse:collapse;margin:10px 0 16px">${[
+        drow('Order no.', lc.loadConNumber),
+        drow('Your reference', lc.customerOrderNumber),
+        drow('Collection', lc.collectionPoint),
+        drow('Delivery', lc.deliveryPoint),
+        drow('Collection date', fmtDT(lc.collectionDate)),
+        drow('Cargo', lc.commodity || lc.loadType),
+        drow('Packaging', lc.packaging),
+        drow('Weight (kg)', lc.weightKg),
+        drow(etaLabel, eta ? fmtDT(eta) : ''),
+    ].join('')}</table>`;
+    const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:6px">${lc.loadConNumber}</div>
+      <p>Good day ${greet},</p>
       <p>An update on your shipment <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}: it <strong>${msg}</strong>.</p>
-      ${etaLine}
+      ${detailTable}
       ${emailButton(trackLink, 'Track your shipment &rarr;')}
-      <p>Regards,<br>FBN Transport</p>`);
+      <p>You'll receive further updates as your shipment progresses. Should you need anything in the meantime, simply reply to this email.</p>
+      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
         // Client team + ops + (for rep-logged collections) the sales rep.
         const cc = [...String(lc.clientCc || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean), ...opsCcForPhase(lc, status), ...(lc.repEmail ? [lc.repEmail] : [])];

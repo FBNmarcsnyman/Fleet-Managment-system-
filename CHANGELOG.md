@@ -61,6 +61,17 @@ All notable changes to the FBN Fleet Management System. Newest first.
 - **Request More Info** no longer blocks when the quote has no client email (falls back to the
   requester's email from the original request — `quote-request-info` v11).
 
+### Added (COD workflow + quote pricing, later same day)
+- **COD Phases 1–4 complete**: new clients = COD/Unauthorised + vetting (Phase 1); proforma with
+  FBN banking + requests client VAT/invoicing details (Phase 2, `quote-proforma` v2); **cargo HOLD**
+  flag + loadcon "⛔ DO NOT DELIVER until released" + payment capture (Phase 3); admin **Payment
+  received → release** (`cod-release` fn) emails ops/subbie "deliver now" + vehicle/ETA update link
+  and thanks the client (Phase 4). Load fields `cod_hold`/`cod_paid_at`/`cod_released_at`.
+- **Quote pricing**: truck types with capacities on Load Spec (Superlink 34t / Tri-axle 28t /
+  15t–2t / Taut / Flat); line items now **rate per vehicle × vehicles = line total**.
+- **Quote "Sent" status** updates in the UI on send (no reload); **Request More Info** falls back
+  to the requester's email when the client has none on file.
+
 ### Process
 - CLAUDE.md: mandatory **auto-capture of flows/logic** into memory/skills/hooks/cron the moment
   they're defined ("lock it in" trigger). New memories: pod-authorisation-workflow,

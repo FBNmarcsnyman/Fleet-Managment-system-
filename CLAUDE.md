@@ -2,6 +2,23 @@
 
 Project instructions for Claude Code. Read this at the start of every session.
 
+## Capture flows & logic automatically (MANDATORY — do not wait to be asked)
+
+**The moment Marc defines a flow, rule, standard, or "way of doing/managing something"
+— or we solve a non-obvious problem — persist it immediately, in the same turn, before
+moving on.** Do not rely on end-of-session consolidation or on being reminded; capture it
+when it's created. Pick the right home (often more than one):
+- **`memory/` note** — for facts, decisions, rules, the "why" (most flows go here). Add the
+  one-line pointer to `MEMORY.md`.
+- **`.claude/skills/<name>/SKILL.md`** — for a repeatable workflow/way-of-doing; register it
+  in the Active Skills Registry below (use the `forge-skill` process).
+- **Hook** (`.claude/hooks/…` + settings) — for something that must be *enforced* on every edit.
+- **Cron + edge function** — for anything that must run on a schedule (reminders, syncs).
+Then **tell Marc exactly where it was saved** ("saved to memory `x` / skill `y` / cron `z`").
+**Trigger phrases Marc can use to force this on demand:** "**lock it in**", "save this",
+"make it a skill", "forge skill", "remember this flow". Treat any of them as: capture now +
+confirm where. The goal: nothing we agree on is ever lost between sessions.
+
 ## End-of-session consolidation (MANDATORY, automatic)
 
 **At the end of every coding session, automatically run the full end-of-session

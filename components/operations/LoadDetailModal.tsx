@@ -186,6 +186,25 @@ const LoadDetailModal: React.FC = () => {
         } finally { setAuthorising(false); }
     };
 
+    // COD: hold the cargo until payment, then release (emails ops/subbie + client).
+    const [codBusy, setCodBusy] = useState(false);
+    const toggleCodHold = async (on: boolean) => {
+        setCodBusy(true);
+        const res = await handleUpdateLoadConfirmation(lc.id, { codHold: on } as any);
+        setCodBusy(false);
+        if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
+    };
+    const codReleasePay = async () => {
+        if (!window.confirm(`Confirm COD PAYMENT RECEIVED for ${lc.loadConNumber}? This RELEASES the cargo for delivery and emails ops/the subbie + the client.`)) return;
+        setCodBusy(true);
+        try {
+            const { data, error } = await invokeFn('cod-release', { body: { loadId: lc.id } });
+            if (error || (data as any)?.error) showToast(`Could not release: ${(data as any)?.error || error?.message}`);
+            else { showToast('Payment recorded — cargo released; ops/subbie & client notified.'); hideModal(); }
+        } catch (e) { showToast(`Could not release: ${e instanceof Error ? e.message : 'error'}`); }
+        finally { setCodBusy(false); }
+    };
+
     // Email the computer-generated waybill / POD to the supplier (print & sign).
     const [waybillBusy, setWaybillBusy] = useState(false);
     const emailWaybillToSupplier = async () => {
@@ -452,6 +471,24 @@ const LoadDetailModal: React.FC = () => {
                         </div>
                     )}
                     {lc.podAuthorisation === 'authorised' && <p className="mt-2 text-[11px] font-bold text-emerald-400">✓ POD authorised &amp; sent to the client.</p>}
+
+                    {/* COD — cargo held until payment, then released for delivery. */}
+                    <div className="mt-3 pt-3 border-t border-slate-200">
+                        {(lc as any).codReleasedAt ? (
+                            <p className="text-[11px] font-bold text-emerald-400">💰 COD payment received — cargo RELEASED for delivery ({fmt((lc as any).codReleasedAt)}).</p>
+                        ) : (lc as any).codHold ? (
+                            <div className="p-3 rounded-lg border border-red-500/50 bg-red-500/10">
+                                <p className="text-[11px] font-black text-red-400 uppercase tracking-widest">⛔ COD — cargo HELD pending payment</p>
+                                <p className="text-xs text-slate-300 mt-1 mb-2">Ops &amp; the subcontractor must <strong>NOT deliver</strong> until payment is received and the cargo is released.</p>
+                                {isSuperAdmin && <button onClick={codReleasePay} disabled={codBusy} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{codBusy ? '…' : '✓ Payment received — release cargo'}</button>}
+                            </div>
+                        ) : (
+                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
+                                <input type="checkbox" checked={false} disabled={codBusy} onChange={e => toggleCodHold(e.target.checked)} className="h-4 w-4 accent-[#13294b]" />
+                                💰 Mark this load <strong>COD</strong> — hold cargo until payment (ops/subbie can't deliver until released)
+                            </label>
+                        )}
+                    </div>
                     {/* Electronic POD / waybill: choose how the signed POD comes back. */}
                     <div className="mt-3 pt-3 border-t border-slate-200">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Get the signed POD / waybill back</p>

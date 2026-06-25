@@ -597,6 +597,9 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     isPrimary: (row as any).is_primary ?? true,
     legRole: (row as any).leg_role ?? undefined,
     podRequired: (row as any).pod_required ?? true,
+    codHold: (row as any).cod_hold ?? false,
+    codPaidAt: (row as any).cod_paid_at ?? undefined,
+    codReleasedAt: (row as any).cod_released_at ?? undefined,
     offeredCarriers: (row as any).offered_carriers ?? [],
     archived: (row as any).archived ?? false,
     unpackDepot: (row as any).unpack_depot ?? undefined,
@@ -1433,6 +1436,9 @@ export const toLoadConfirmationUpdate = (
     if ((updates as any).archived !== undefined) (row as any).archived = (updates as any).archived;
     if ((updates as any).legRole !== undefined) (row as any).leg_role = (updates as any).legRole ?? null;
     if ((updates as any).podRequired !== undefined) (row as any).pod_required = (updates as any).podRequired;
+    if ((updates as any).codHold !== undefined) (row as any).cod_hold = (updates as any).codHold;
+    if ((updates as any).codPaidAt !== undefined) (row as any).cod_paid_at = orNull((updates as any).codPaidAt);
+    if ((updates as any).codReleasedAt !== undefined) (row as any).cod_released_at = orNull((updates as any).codReleasedAt);
     if ((updates as any).acceptedAt !== undefined) (row as any).accepted_at = orNull((updates as any).acceptedAt);
     if (updates.route !== undefined) row.route = updates.route ?? null;
     if (updates.fbnRepresentative !== undefined) row.fbn_representative = updates.fbnRepresentative ?? null;

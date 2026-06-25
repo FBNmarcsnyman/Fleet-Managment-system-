@@ -461,6 +461,11 @@ export interface Client {
     slaLevel?: string;
     isActive?: boolean;
     category?: string; // Clearing & Forwarding Agent / Consolidator / Manufacturer / Shipper / Carrier / Transporter / Other
+    // COD workflow: new clients are 'cod' + unvetted until approved for an account.
+    accountStatus?: 'cod' | 'account';
+    vetted?: boolean;
+    vatNo?: string;
+    invoiceDetails?: string;
 }
 
 export interface LoadConfirmation {

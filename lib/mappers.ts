@@ -416,6 +416,10 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     slaLevel: row.sla_level ?? undefined,
     isActive: (row as any).is_active ?? true,
     category: (row as any).category ?? undefined,
+    accountStatus: (row as any).account_status ?? 'account',
+    vetted: (row as any).vetted ?? true,
+    vatNo: (row as any).vat_no ?? undefined,
+    invoiceDetails: (row as any).invoice_details ?? undefined,
 });
 
 // -- drivers → Driver ---------------------------------------------------------
@@ -915,6 +919,10 @@ export const toClientInsert = (client: Omit<Client, 'id'>): Tables['clients']['I
     address: client.address || null,
     sla_level: client.slaLevel ?? null,
     ...(((client as any).category) ? { category: (client as any).category } : {}),
+    ...((client as any).accountStatus ? { account_status: (client as any).accountStatus } : {}),
+    ...((client as any).vetted !== undefined ? { vetted: (client as any).vetted } : {}),
+    ...((client as any).vatNo ? { vat_no: (client as any).vatNo } : {}),
+    ...((client as any).invoiceDetails ? { invoice_details: (client as any).invoiceDetails } : {}),
 } as any);
 
 export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] => {
@@ -928,6 +936,10 @@ export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] 
     if (u.address !== undefined) row.address = u.address || null;
     if (u.slaLevel !== undefined) row.sla_level = u.slaLevel ?? null;
     if ((u as any).category !== undefined) (row as any).category = (u as any).category ?? null;
+    if ((u as any).accountStatus !== undefined) (row as any).account_status = (u as any).accountStatus ?? 'account';
+    if ((u as any).vetted !== undefined) (row as any).vetted = (u as any).vetted;
+    if ((u as any).vatNo !== undefined) (row as any).vat_no = (u as any).vatNo ?? null;
+    if ((u as any).invoiceDetails !== undefined) (row as any).invoice_details = (u as any).invoiceDetails ?? null;
     return row;
 };
 

@@ -470,6 +470,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         handleAddClient: async (client: Omit<Client, 'id'>): Promise<Result<Client>> => {
             try {
                 client = upcaseParty(client);
+                // New clients default to COD / unauthorised (vetting) until approved for an account.
+                if ((client as any).accountStatus === undefined) { (client as any).accountStatus = 'cod'; (client as any).vetted = false; }
                 const row = toClientInsert(client);
                 const { data, error } = await supabase
                     .from('clients').insert(row).select().single();

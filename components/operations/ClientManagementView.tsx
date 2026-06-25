@@ -23,20 +23,29 @@ const catOf = (c: any) => c.category || 'Uncategorised';
 
 const ClientManagementView: React.FC = () => {
     const { showModal, showToast } = useUIState();
-    const { clients, handleBulkAddClients, handleDeleteClient, handleConvertParty } = useOperations() as any;
+    const { clients, handleBulkAddClients, handleDeleteClient, handleConvertParty, handleUpdateClient } = useOperations() as any;
     const [q, setQ] = useState('');
     const [cat, setCat] = useState<string>('All');
     const [leads, setLeads] = useState(false);
+    const [codOnly, setCodOnly] = useState(false);
 
     const active = useMemo(() => (clients as any[]).filter(c => c.isActive !== false), [clients]);
+    const isCod = (c: any) => c.accountStatus === 'cod' || c.vetted === false;
+    const codCount = useMemo(() => active.filter(isCod).length, [active]);
+    const approveAccount = async (c: any) => {
+        if (!window.confirm(`Approve ${c.name} for an ACCOUNT? (Moves them out of COD / Unauthorised.)`)) return;
+        const res = await handleUpdateClient?.(c.id, { accountStatus: 'account', vetted: true } as any);
+        if (res && res.ok === false) showToast(`Could not approve: ${res.error}`); else showToast(`${c.name} approved for account.`);
+    };
 
     const filtered = useMemo(() => {
         const needle = q.trim().toLowerCase();
         return active
             .filter(c => cat === 'All' || catOf(c) === cat)
+            .filter(c => !codOnly || isCod(c))
             .filter(c => !needle || `${c.name || ''} ${c.contactPerson || ''} ${c.contactEmail || ''} ${(c.contacts || []).map((x: any) => `${x.name} ${x.email} ${x.title || ''}`).join(' ')}`.toLowerCase().includes(needle))
             .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-    }, [active, q, cat]);
+    }, [active, q, cat, codOnly]);
 
     // Counts per category (for the filter chips).
     const counts = useMemo(() => { const m: Record<string, number> = {}; active.forEach(c => { const k = catOf(c); m[k] = (m[k] || 0) + 1; }); return m; }, [active]);
@@ -100,6 +109,7 @@ const ClientManagementView: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={() => setLeads(l => !l)} className={`font-bold py-2 px-3 rounded-lg text-sm ${leads ? 'bg-[#f5b700] text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>🎯 Leads {leadRows.length ? `(${leadRows.length})` : ''}</button>
+                    <button onClick={() => { setCodOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${codOnly ? 'bg-rose-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="New / unvetted clients on COD — approve to an account when vetted">💰 COD / Unauthorised {codCount ? `(${codCount})` : ''}</button>
                     <label htmlFor="bulk-upload" className="flex items-center font-bold py-2 px-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer text-sm"><UploadIcon className="h-4 w-4 mr-1.5" /> Import</label>
                     <input id="bulk-upload" type="file" onChange={handleFileChange} className="hidden" accept=".xlsx, .xls" />
                     <button onClick={() => showModal('addClient')} className="flex items-center font-bold py-2 px-3 rounded-lg bg-[#13294b] hover:bg-[#1d3a66] text-white text-sm"><PlusIcon className="h-4 w-4 mr-1.5" /> Add Client</button>
@@ -159,6 +169,8 @@ const ClientManagementView: React.FC = () => {
                                                 <td className="py-2 px-2 text-slate-500">{contacts.length} contact{contacts.length === 1 ? '' : 's'}{qn ? <span className="ml-1 text-[10px] font-bold text-amber-600">· {qn} lead{qn === 1 ? '' : 's'}</span> : ''}</td>
                                                 <td className="py-2 px-2 text-blue-700">{main?.email || client.contactEmail || '—'}</td>
                                                 <td className="py-2 px-2 text-right pr-3 space-x-2 whitespace-nowrap">
+                                                    {isCod(client) && <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700" title="COD / unauthorised — vet before granting account terms">COD</span>}
+                                                    {isCod(client) && <button onClick={() => approveAccount(client)} title="Vetted — approve for an account" className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">✓ Approve account</button>}
                                                     <button onClick={() => showModal('addClient', { client })} className="px-3 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold">Edit</button>
                                                     <button onClick={() => toTransporter(client)} title="This is actually a carrier — move it to Transporters so you can offer it loads" className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-amber-500 hover:text-white text-slate-600 text-xs font-bold">→ Transporter</button>
                                                     <button onClick={() => handleDelete(client)} className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-red-500 hover:text-white text-slate-600 text-xs font-bold">Remove</button>

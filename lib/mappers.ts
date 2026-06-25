@@ -1029,6 +1029,9 @@ export const toQuoteInsert = (
 
 export const toQuoteUpdate = (updates: Partial<Quote>): Tables['quotes']['Update'] => {
     const row: Tables['quotes']['Update'] = {};
+    // Date columns reject '' — a blank date must be NULL (?? only catches null/undefined).
+    // This was silently failing quote updates (e.g. archiving a quote with a blank date).
+    const dnull = (v: any) => (v === '' || v == null ? null : v);
     if (updates.status !== undefined) row.status = updates.status as any;
     if (updates.sentToClient !== undefined) row.sent_to_client = updates.sentToClient;
     if (updates.items !== undefined) row.items = updates.items as unknown as Tables['quotes']['Update']['items'];
@@ -1037,14 +1040,14 @@ export const toQuoteUpdate = (updates: Partial<Quote>): Tables['quotes']['Update
     if (updates.customerOrderNumber !== undefined) row.customer_order_number = updates.customerOrderNumber ?? null;
     if (updates.notes !== undefined) row.notes = updates.notes ?? null;
     if (updates.specialRequirements !== undefined) row.special_requirements = updates.specialRequirements ?? null;
-    if (updates.collectionDate !== undefined) row.collection_date = updates.collectionDate ?? null;
+    if (updates.collectionDate !== undefined) row.collection_date = dnull(updates.collectionDate);
     if (updates.subcontractorQuotes !== undefined) row.subcontractor_quotes = updates.subcontractorQuotes as unknown as Tables['quotes']['Update']['subcontractor_quotes'];
     if (updates.commodity !== undefined) row.commodity = updates.commodity ?? null;
     if (updates.packaging !== undefined) row.packaging = updates.packaging ?? null;
     if (updates.loadSpec !== undefined) row.load_spec = updates.loadSpec ?? null;
     if (updates.requestData !== undefined) (row as any).request_data = updates.requestData ?? null;
-    if (updates.date !== undefined) row.date = updates.date;
-    if (updates.expiryDate !== undefined) row.expiry_date = updates.expiryDate ?? null;
+    if (updates.date !== undefined) row.date = dnull(updates.date);
+    if (updates.expiryDate !== undefined) row.expiry_date = dnull(updates.expiryDate);
     return row;
 };
 

@@ -702,7 +702,8 @@ export interface QuoteItem {
     description: string;
     packagingType: string;
     quantity: number;
-    rate: number;
+    rate: number;          // rate PER VEHICLE
+    vehicles?: number;     // how many vehicles at this rate (default 1); total = rate × vehicles
     total: number;
     weight?: number;
     volume?: number;

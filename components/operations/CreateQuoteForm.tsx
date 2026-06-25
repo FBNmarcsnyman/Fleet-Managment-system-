@@ -152,10 +152,9 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     const labourRequested = ['crane_truck', 'forklift', 'labour', 'driver_hire', 'taillift_collection', 'taillift_delivery'].some(k => equip[k]);
 
     useEffect(() => {
-        // The sell rate is the price for the whole shipment, so the line total is
-        // the rate itself (NOT rate × qty — qty is just how many units there are).
+        // Quote total = sum of each line's total (rate per vehicle × number of vehicles).
         const total: number = (quote.items as QuoteItem[]).reduce(
-            (sum: number, item: QuoteItem) => sum + (Number(item.rate) || 0),
+            (sum: number, item: QuoteItem) => sum + ((Number(item.rate) || 0) * (Number((item as any).vehicles) || 1)),
             0,
         );
         if (total !== quote.totalAmount) {
@@ -242,11 +241,11 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
         const newItems = [...quote.items];
         const item = newItems[index];
         (item as any)[field] = value;
-        // Line total = the sell rate (full-shipment price); quantity is informational.
-        item.total = Number(item.rate) || 0;
+        // Line total = rate PER VEHICLE × number of vehicles (default 1). Quantity is informational.
+        item.total = (Number(item.rate) || 0) * (Number((item as any).vehicles) || 1);
         setQuote(prev => ({ ...prev, items: newItems }));
     };
-    const addItem = () => setQuote(prev => ({ ...prev, items: [...prev.items, { id: generateId(), description: '', packagingType: (packagingTypes?.[0] || 'Pallets'), quantity: 1, rate: 0, total: 0 }] }));
+    const addItem = () => setQuote(prev => ({ ...prev, items: [...prev.items, { id: generateId(), description: '', packagingType: (packagingTypes?.[0] || 'Pallets'), quantity: 1, rate: 0, vehicles: 1, total: 0 }] }));
     const removeItem = (index: number) => setQuote(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
     
     const handleSubmit = (e: React.FormEvent) => {
@@ -520,7 +519,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     <div className="space-y-3">
                          {quote.items.map((item, index) => (
                              <div key={item.id} className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:gap-x-3 sm:items-end bg-gray-900/40 p-4 rounded-xl border border-gray-800">
-                                <div className="col-span-4"><label className={labelClasses}>Description</label><input type="text" value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} className={inputClasses} /></div>
+                                <div className="col-span-3"><label className={labelClasses}>Description</label><input type="text" value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} className={inputClasses} /></div>
                                 <div className="col-span-2">
                                     <label className={labelClasses}>Packaging</label>
                                     <select value={item.packagingType} onChange={e => handleItemChange(index, 'packagingType', e.target.value)} className={inputClasses}>
@@ -528,7 +527,8 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                                     </select>
                                 </div>
                                 <div className="col-span-1"><label className={labelClasses}>Qty</label><input type="number" min="0" value={item.quantity || ''} onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} className={inputClasses} /></div>
-                                <div className="col-span-2"><label className={labelClasses}>Sell Rate (R)</label><input type="number" min="0" step="0.01" placeholder="0.00" value={item.rate || ''} onChange={e => handleItemChange(index, 'rate', Number(e.target.value))} className={inputClasses} /></div>
+                                <div className="col-span-2"><label className={labelClasses}>Rate / vehicle (R)</label><input type="number" min="0" step="0.01" placeholder="0.00" value={item.rate || ''} onChange={e => handleItemChange(index, 'rate', Number(e.target.value))} className={inputClasses} /></div>
+                                <div className="col-span-1"><label className={labelClasses}>Vehicles</label><input type="number" min="1" placeholder="1" value={(item as any).vehicles || ''} onChange={e => handleItemChange(index, 'vehicles' as any, Number(e.target.value))} className={inputClasses} /></div>
                                 <div className="col-span-2"><label className={labelClasses}>Total</label><div className="p-2 bg-gray-800 rounded-md border border-gray-700 text-sm font-mono text-green-400">R {item.total.toFixed(2)}</div></div>
                                 <div className="col-span-1 flex justify-end">
                                     <button type="button" onClick={() => removeItem(index)} disabled={quote.items.length === 1} className="p-2 text-red-400/50 hover:text-red-400"><TrashIcon className="h-4 w-4"/></button>

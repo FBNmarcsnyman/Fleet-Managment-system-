@@ -47,6 +47,7 @@ const BrokingCollectionForm: React.FC = () => {
     const [supContact, setSupContact] = useState('');
     const [supCc, setSupCc] = useState('');
     const [rate, setRate] = useState('');
+    const [clientRate, setClientRate] = useState('');
     // Route via a TRANSIT depot: subbie collects → drops at an FBN depot → FBN
     // plans the onward leg to the final delivery. (e.g. CPT → FBN JHB → DBN.)
     const [transitVia, setTransitVia] = useState(false);
@@ -119,7 +120,7 @@ const BrokingCollectionForm: React.FC = () => {
             subcontractorEmail: supEmail || undefined, forAttention: supContact || undefined, ccEmail: supCc || undefined,
             supplierRate: rate ? Number(rate) : 0,
             status: supId || supName ? 'Driver Assigned' : 'Booked',
-            priority: 'Medium', totalAmount: 0, isCollection: false,
+            priority: 'Medium', totalAmount: clientRate ? Number(clientRate) : 0, isCollection: false,
             repEmail: currentUser?.email,
             // Capture WHO logged it + their branch (shows as FBN REP / FBN BRANCH).
             fbnRepresentative: currentUser?.name || currentUser?.email,
@@ -211,7 +212,8 @@ const BrokingCollectionForm: React.FC = () => {
                     <datalist id="bkSups">{supplierNames.map(n => <option key={n} value={n} />)}</datalist>
                     <div className="grid grid-cols-2 gap-3 mt-3">
                         <div><label className={lbl}>Transporter email</label><input type="email" value={supEmail} onChange={e => setSupEmail(e.target.value)} className={inp} /></div>
-                        <div><label className={lbl}>Transport rate (R)</label><input value={rate} onChange={e => setRate(e.target.value)} className={inp} placeholder="e.g. 8500" /></div>
+                        <div><label className={lbl}>Transport rate (R) <span className="text-gray-500 normal-case font-normal">— supplier cost</span></label><input value={rate} onChange={e => setRate(e.target.value)} className={inp} placeholder="e.g. 8500" /></div>
+                        <div><label className={lbl}>Client rate (R) <span className="text-gray-500 normal-case font-normal">— what we bill</span></label><input value={clientRate} onChange={e => setClientRate(e.target.value)} className={inp} placeholder="e.g. 11000" /></div>
                     </div>
                 </div>
             </div>

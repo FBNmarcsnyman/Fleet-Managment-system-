@@ -92,10 +92,14 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
     const collLoc = shortLoc(lc.collectionPoint), delLoc = shortLoc(subDel);
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
-      <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
+      <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation${lc.legRole && lc.legRole !== 'Truck' ? ` (<strong>${lc.legRole}</strong>)` : ''} for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
       ${lc.transitDepot ? `<p style="background:#eef2ff;border-radius:8px;padding:10px;color:#3730a3;font-size:13px"><strong>Delivery is to our ${lc.transitDepot} depot</strong> — FBN arranges the onward leg from there. Please offload at the depot and obtain a receipt.</p>` : ''}
-      ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(subDel)], ['Loading date', fmtD(lc.collectionDate)], ['Loading time', lc.loadingTime], ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Transport rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
-      ${isDelivered(lc)
+      ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(subDel)], ['Loading date', fmtD(lc.collectionDate)], ['Loading time', lc.loadingTime], lc.legRole && lc.legRole !== 'Truck' ? ['Service', lc.legRole] : ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Transport rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
+      ${lc.specialInstructions ? `<p style="background:#fffbeb;border:1px solid #f5b700;border-radius:8px;padding:10px;font-size:13px;color:#374151"><strong>Instructions:</strong> ${lc.specialInstructions}</p>` : ''}
+      ${lc.podRequired === false
+        ? `<p>This is a <strong>${lc.legRole || 'service'}</strong> leg — <strong>no POD is required</strong> from you. Please confirm acceptance and send your driver/operator name, vehicle registration and cell using the button below.</p>
+      ${emailButton(`${base()}?accept=${lc.id}`, 'Accept &amp; send details &rarr;', '#16a34a')}`
+        : isDelivered(lc)
         ? `<p>This load has already been <strong>delivered</strong>. Please view the Load Confirmation above for your records and <strong>upload the signed POD</strong> to close it off.</p>
       ${emailButton(`${base()}?pod=${lc.id}`, 'Upload signed POD &rarr;', '#16a34a')}
       <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or reply to this email with the POD attached.</p>`
@@ -134,7 +138,7 @@ export async function sendGroupLoadConToSupplier(loads: any[], to?: string): Pro
       <p>Please find your FBN Load Confirmation for <strong>${loads.length} vehicles</strong> on the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong> (our waybill <strong>${waybill}</strong>).</p>
       <p>For <strong>each vehicle</strong> please confirm acceptance and send the driver name, vehicle registration and cell using its button below:</p>
       ${blocks}
-      <p>A signed POD is to be returned on delivery for each vehicle.</p>
+      ${loads.some(l => l.podRequired !== false) ? '<p>A signed POD is to be returned on delivery for each delivering vehicle.</p>' : ''}
       <p>Regards,<br>FBN Transport</p>`);
     try {
         const cc = dropAddrs(['loadcons@fbn-transport.co.za', ...splitEmails(lc0.ccEmail)], lc_clientAddrs(lc0));

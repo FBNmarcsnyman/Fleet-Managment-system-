@@ -1096,8 +1096,6 @@ export const toLoadConfirmationInsert = (
     container_operator: lc.containerOperator ?? null,
     container_seal_no: lc.containerSealNo ?? null,
     special_instructions: lc.specialInstructions ?? null,
-    leg_role: (lc as any).legRole ?? null,
-    pod_required: (lc as any).podRequired ?? true,
     subcontractor_name: lc.subcontractorName ?? null,
     for_attention: lc.forAttention ?? null,
     subcontractor_email: lc.subcontractorEmail ?? null,

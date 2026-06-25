@@ -9,9 +9,14 @@ import { money } from '../../lib/format';
 // invoice; each extra truck becomes its own loadcon (cost only) under the same
 // waybill group. Each subbie gets ONE loadcon listing their vehicle(s); the
 // client is then updated per vehicle as each loads / moves.
-type Alloc = { subcontractorName: string; subcontractorEmail: string; forAttention: string; supplierRate: string; packages: string; weightKg: string };
+type Alloc = { subcontractorName: string; subcontractorEmail: string; forAttention: string; supplierRate: string; packages: string; weightKg: string; role: string; podRequired: boolean; collectionPoint: string; deliveryPoint: string; specialInstructions: string };
 
-const blank = (): Alloc => ({ subcontractorName: '', subcontractorEmail: '', forAttention: '', supplierRate: '', packages: '', weightKg: '' });
+const ROLE_OPTIONS = ['Truck', 'Forklift hire', 'Crane hire', 'Crane truck', 'Tail-lift', 'Tow / recovery', 'Other'];
+// Equipment / non-final-delivery roles don't deliver to the end client, so they
+// shouldn't be asked for a client POD by default.
+const roleNeedsPod = (role: string) => !/forklift|crane|tail|tow|hire/i.test(role || '');
+
+const blank = (): Alloc => ({ subcontractorName: '', subcontractorEmail: '', forAttention: '', supplierRate: '', packages: '', weightKg: '', role: 'Truck', podRequired: true, collectionPoint: '', deliveryPoint: '', specialInstructions: '' });
 
 const SplitLoadModal: React.FC = () => {
     const { modal, hideModal, showToast } = useUIState();
@@ -24,9 +29,12 @@ const SplitLoadModal: React.FC = () => {
 
     // Truck 1 pre-filled from the existing load's transporter (if any).
     const [rows, setRows] = useState<Alloc[]>(() => [{
+        ...blank(),
         subcontractorName: lc?.subcontractorName || '', subcontractorEmail: lc?.subcontractorEmail || '', forAttention: lc?.forAttention || '',
         supplierRate: lc?.supplierRate != null ? String(lc.supplierRate) : '', packages: lc?.loadedPackages != null ? String(lc.loadedPackages) : '', weightKg: lc?.weightKg != null ? String(lc.weightKg) : '',
+        role: lc?.legRole || 'Truck', podRequired: lc?.podRequired ?? true,
     }, blank()]);
+    const [showRoute, setShowRoute] = useState<Record<number, boolean>>({});
 
     if (!lc) return null;
 
@@ -37,6 +45,8 @@ const SplitLoadModal: React.FC = () => {
         if (sup) { if (!rows[i].subcontractorEmail) patch.subcontractorEmail = sup.contactEmail || ''; if (!rows[i].forAttention) patch.forAttention = sup.contactPerson || ''; }
         set(i, patch);
     };
+    // Changing the role auto-sets whether a POD is expected (toggle still overridable).
+    const onRole = (i: number, role: string) => set(i, { role, podRequired: roleNeedsPod(role) });
     const addRow = () => setRows(rs => [...rs, blank()]);
     const removeRow = (i: number) => setRows(rs => rs.length > 1 ? rs.filter((_, idx) => idx !== i) : rs);
 
@@ -80,6 +90,7 @@ const SplitLoadModal: React.FC = () => {
             </div>
 
             <datalist id="split-subbies">{(suppliers as any[]).map(s => <option key={s.id} value={s.name} />)}</datalist>
+            <datalist id="split-roles">{ROLE_OPTIONS.map(r => <option key={r} value={r} />)}</datalist>
 
             <div className="space-y-2">
                 {rows.map((r, i) => (
@@ -113,7 +124,38 @@ const SplitLoadModal: React.FC = () => {
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase mb-0.5">Weight (kg)</label>
                                 <input value={r.weightKg} onChange={e => set(i, { weightKg: e.target.value.replace(/[^\d.]/g, '') })} inputMode="decimal" placeholder="kg" className={inp} />
                             </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-0.5">Role / job</label>
+                                <input list="split-roles" value={r.role} onChange={e => onRole(i, e.target.value)} placeholder="Truck" className={inp} />
+                            </div>
+                            <div className="flex items-end pb-1">
+                                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                                    <input type="checkbox" checked={r.podRequired} onChange={e => set(i, { podRequired: e.target.checked })} className="h-4 w-4 accent-[#13294b]" />
+                                    Request POD
+                                </label>
+                            </div>
                         </div>
+                        {/* Per-leg routing override — e.g. forklift collects in Phoenix → FBN depot,
+                            or crane goes to the loading point. Blank = same as the main load. */}
+                        <button type="button" onClick={() => setShowRoute(s => ({ ...s, [i]: !s[i] }))} className="mt-2 text-[11px] font-bold text-[#13294b] hover:underline">
+                            {showRoute[i] ? '− Hide' : '+ Different routing / instructions for this leg'}
+                        </button>
+                        {showRoute[i] && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 bg-white border border-slate-200 rounded-lg p-2">
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-0.5">Collection (this leg)</label>
+                                    <input value={r.collectionPoint} onChange={e => set(i, { collectionPoint: e.target.value })} placeholder="Same as load if blank" className={inp} />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-0.5">Delivery (this leg)</label>
+                                    <input value={r.deliveryPoint} onChange={e => set(i, { deliveryPoint: e.target.value })} placeholder="Same as load if blank" className={inp} />
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase mb-0.5">Handling instructions (this leg)</label>
+                                    <textarea value={r.specialInstructions} onChange={e => set(i, { specialInstructions: e.target.value })} rows={2} placeholder="e.g. Crane to load cargo onto the linehaul vehicle at the loading point" className={inp + ' normal-case'} style={{ textTransform: 'none' }} />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

@@ -951,6 +951,12 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (a0.supplierRate !== undefined && a0.supplierRate !== '') pUpd.supplierRate = Number(a0.supplierRate);
                 if (a0.packages !== undefined && a0.packages !== '') pUpd.loadedPackages = Number(a0.packages);
                 if (a0.weightKg !== undefined && a0.weightKg !== '') pUpd.weightKg = String(a0.weightKg);
+                if (a0.role) pUpd.legRole = a0.role;
+                if (a0.podRequired !== undefined) pUpd.podRequired = !!a0.podRequired;
+                // Per-leg routing override (blank = keep the load's own routing).
+                if (a0.collectionPoint) pUpd.collectionPoint = a0.collectionPoint;
+                if (a0.deliveryPoint) pUpd.deliveryPoint = a0.deliveryPoint;
+                if (a0.specialInstructions) pUpd.specialInstructions = a0.specialInstructions;
                 const sid0 = a0.supplierId || findSupplierId(a0.subcontractorName);
                 if (sid0) pUpd.supplierId = sid0;
                 await directUpdate('load_confirmations', { id: parentId }, toLoadConfirmationUpdate(pUpd, branchIdByName) as any);
@@ -970,22 +976,27 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const childData: any = {
                         clientId: parent.clientId, clientName: parent.clientName, clientEmail: parent.clientEmail, clientContact: parent.clientContact, clientCc: parent.clientCc,
                         collectionBranch: parent.collectionBranch, destinationBranch: parent.destinationBranch,
-                        collectionPoint: parent.collectionPoint, deliveryPoint: parent.deliveryPoint, route: parent.route,
+                        // Per-leg routing override (e.g. forklift Phoenix->FBN, crane to the loading point); blank = inherit the load's routing.
+                        collectionPoint: a.collectionPoint || parent.collectionPoint, deliveryPoint: a.deliveryPoint || parent.deliveryPoint, route: parent.route,
                         collectionDate: parent.collectionDate, deliveryDate: parent.deliveryDate, loadingTime: parent.loadingTime,
                         commodity: parent.commodity, packaging: parent.packaging, loadType: parent.loadType,
                         loadRefNo: parent.loadRefNo || parent.loadConNumber, customerOrderNumber: parent.customerOrderNumber,
                         collectionContact: parent.collectionContact, collectionTelephone: parent.collectionTelephone,
                         deliveryContact: parent.deliveryContact, deliveryTelephone: parent.deliveryTelephone,
+                        specialInstructions: a.specialInstructions || undefined,
                         priority: parent.priority, isCollection: parent.isCollection,
                         totalAmount: 0, // children carry cost only — client billed once on the primary
                         supplierRate: a.supplierRate !== undefined && a.supplierRate !== '' ? Number(a.supplierRate) : undefined,
                         subcontractorName: a.subcontractorName || '', subcontractorEmail: a.subcontractorEmail || '', forAttention: a.forAttention || '',
                         weightKg: a.weightKg !== undefined && a.weightKg !== '' ? String(a.weightKg) : undefined,
+                        legRole: a.role || 'Truck', podRequired: a.podRequired !== undefined ? !!a.podRequired : true,
                     };
                     if (a.packages !== undefined && a.packages !== '') childData.loadedPackages = Number(a.packages);
                     const row = toLoadConfirmationInsert(childData, num, branchIdByName);
                     (row as any).load_group_id = groupId;
                     (row as any).is_primary = false;
+                    (row as any).leg_role = childData.legRole || 'Truck';
+                    (row as any).pod_required = childData.podRequired !== false;
                     const csid = a.supplierId || findSupplierId(a.subcontractorName);
                     if (csid) { (row as any).supplier_id = csid; (row as any).status = 'Driver Assigned'; }
                     else if (a.subcontractorName) (row as any).status = 'Driver Assigned';

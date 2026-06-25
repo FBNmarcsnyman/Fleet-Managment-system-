@@ -208,8 +208,14 @@ const LoadDetailModal: React.FC = () => {
         showToast('Sign-and-upload link sent to the driver on WhatsApp.');
     };
 
-    const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
-    const marginPct = lc.totalAmount ? (margin / lc.totalAmount) * 100 : 0;
+    // Group-aware costing: a split waybill has ONE client charge (on the primary) and a
+    // cost per truck. Margin = the single client charge − the SUM of every truck's cost.
+    const isGrouped = groupTrucks.length > 1;
+    const groupPrimary = isGrouped ? (groupTrucks.find((t: any) => t.isPrimary) || groupTrucks[0]) : lc;
+    const groupClient = Number(groupPrimary.totalAmount) || 0;
+    const groupCost = isGrouped ? groupTrucks.reduce((s: number, t: any) => s + (Number(t.supplierRate) || 0), 0) : (lc.supplierRate || 0);
+    const margin = groupClient - groupCost;
+    const marginPct = groupClient ? (margin / groupClient) * 100 : 0;
 
     return (
         <FieldCtx.Provider value={{ editing, d, set }}>
@@ -315,11 +321,24 @@ const LoadDetailModal: React.FC = () => {
             )}
 
             {!editing && (
+                <>
                 <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate</p><p className="text-lg font-black text-blue-300">{rand(lc.totalAmount)}</p></div>
-                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Transport Rate</p><p className="text-lg font-black text-amber-300">{rand(lc.supplierRate)}</p></div>
-                    <div className={`rounded-xl p-3 ${margin < 0 ? 'bg-red-950/40 ring-1 ring-red-500' : 'bg-gray-900/50'}`}><p className="text-[10px] font-bold text-gray-500 uppercase">Margin{margin < 0 ? ' ⚠ LOSS' : ''}</p><p className={`text-lg font-black ${margin < 0 ? 'text-red-400' : marginPct < 10 ? 'text-amber-400' : 'text-emerald-400'}`}>{rand(margin)} <span className="text-xs">({marginPct.toFixed(0)}%)</span></p></div>
+                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate{isGrouped ? ' (waybill)' : ''}</p><p className="text-lg font-black text-blue-300">{rand(groupClient)}</p></div>
+                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">{isGrouped ? `Transport cost (all ${groupTrucks.length})` : 'Transport Rate'}</p><p className="text-lg font-black text-amber-300">{rand(groupCost)}</p>{isGrouped && <p className="text-[10px] text-gray-500">this truck: {rand(lc.supplierRate)}</p>}</div>
+                    <div className={`rounded-xl p-3 ${margin < 0 ? 'bg-red-950/40 ring-1 ring-red-500' : 'bg-gray-900/50'}`}><p className="text-[10px] font-bold text-gray-500 uppercase">Margin{isGrouped ? ' (waybill)' : ''}{margin < 0 ? ' ⚠ LOSS' : ''}</p><p className={`text-lg font-black ${margin < 0 ? 'text-red-400' : marginPct < 10 ? 'text-amber-400' : 'text-emerald-400'}`}>{rand(margin)} <span className="text-xs">({marginPct.toFixed(0)}%)</span></p></div>
                 </div>
+                {isGrouped && (
+                    <div className="mt-2 bg-gray-900/40 rounded-xl p-3">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Trucks on waybill {lc.loadRefNo || groupPrimary.loadConNumber} — ONE client charge of {rand(groupClient)}</p>
+                        {groupTrucks.map((t: any, i: number) => (
+                            <div key={t.id} className={`flex justify-between text-xs py-0.5 ${t.id === lc.id ? 'text-white font-bold' : 'text-gray-300'}`}>
+                                <span>{i + 1}. {t.legRole || 'Truck'} · {t.subcontractorName || 'TBA'}{t.isPrimary ? ' (primary · invoiced)' : ''}{t.podRequired === false ? ' · no POD' : ''}</span>
+                                <span className="text-amber-300">{rand(t.supplierRate)}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                </>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

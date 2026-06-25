@@ -82,7 +82,10 @@ const CLIENT_PHASE_MSG: Record<string, string> = {
 // Applied at the save layer so the board, LoadCons and emails all read consistently.
 const upStr = (v: any) => (typeof v === 'string' && v.trim() ? v.toUpperCase() : v);
 const upContacts = (cs: any) => Array.isArray(cs) ? cs.map((c: any) => ({ ...c, name: upStr(c.name), role: upStr(c.role), title: upStr(c.title), phone: c.phone ? phoneZA(c.phone) : c.phone })) : cs;
-const LOAD_UP = ['clientName', 'clientContact', 'collectionPoint', 'deliveryPoint', 'commodity', 'packaging', 'loadType', 'route', 'customerOrderNumber', 'loadRefNo', 'subcontractorName', 'forAttention', 'subcontractorDriverName', 'subcontractorVehicleReg', 'specialInstructions', 'dimensions'];
+// NB: specialInstructions is deliberately NOT here — it's free-text PROSE (remarks /
+// notes) that must stay natural sentence case so it reads normally and the browser's
+// spell-check works (it skips ALL-CAPS). Structured codes/names stay uppercase.
+const LOAD_UP = ['clientName', 'clientContact', 'collectionPoint', 'deliveryPoint', 'commodity', 'packaging', 'loadType', 'route', 'customerOrderNumber', 'loadRefNo', 'subcontractorName', 'forAttention', 'subcontractorDriverName', 'subcontractorVehicleReg', 'dimensions'];
 export const upcaseLoad = (o: any) => { if (!o || typeof o !== 'object') return o; const x = { ...o }; for (const k of LOAD_UP) if (k in x) x[k] = upStr(x[k]); return x; };
 const PARTY_UP = ['name', 'contactPerson', 'address'];
 export const upcaseParty = (o: any) => {

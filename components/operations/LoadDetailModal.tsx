@@ -35,7 +35,7 @@ const FieldCtx = React.createContext<{ editing: boolean; d: any; set: (k: string
 // `list` => a free-type input WITH autocomplete suggestions (datalist) so the
 // usual client / transporter / commodity / packaging pick-lists stay available
 // while editing instead of forcing you to retype everything.
-const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[]; list?: string[]; address?: boolean }> = ({ label, k, value, type = 'text', opts, list, address }) => {
+const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[]; list?: string[]; address?: boolean; prose?: boolean }> = ({ label, k, value, type = 'text', opts, list, address, prose }) => {
     const { editing, d, set } = React.useContext(FieldCtx);
     const listId = k ? `f-list-${k}` : undefined;
     return (
@@ -50,7 +50,9 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
                     <select value={d[k]} onChange={e => set(k, e.target.value)} className={inputCls}>{opts.map(o => <option key={o} value={o}>{o}</option>)}</select>
                 ) : (
                     <>
-                        <input type={type} list={list && list.length ? listId : undefined} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />
+                        {prose
+                            ? <textarea rows={2} spellCheck value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={`${inputCls} normal-case`} style={{ textTransform: 'none' }} />
+                            : <input type={type} list={list && list.length ? listId : undefined} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />}
                         {list && list.length ? <datalist id={listId}>{list.map(o => <option key={o} value={o} />)}</datalist> : null}
                     </>
                 )
@@ -388,7 +390,7 @@ const LoadDetailModal: React.FC = () => {
                         <F label="Cargo Value" k="cargoValue" value={lc.cargoValue} />
                         <F label="Container" k="containerNo" value={lc.containerNo} />
                     </div>
-                    <div className="mt-2"><F label="Instructions" k="specialInstructions" value={lc.specialInstructions} /></div>
+                    <div className="mt-2"><F label="Instructions" k="specialInstructions" value={lc.specialInstructions} prose /></div>
                 </Section>
             </div>
 

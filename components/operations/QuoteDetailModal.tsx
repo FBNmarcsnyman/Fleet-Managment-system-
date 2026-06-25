@@ -189,7 +189,7 @@ const QuoteDetailModal: React.FC<{
                     {/* One-click question presets — append a standard question to the note. */}
                     <div className="flex flex-wrap gap-1.5 mb-2">
                         {[
-                            { k: 'Vehicle size', q: 'What size vehicle do you require? Superlink (34t) / Tri-axle (34t) / Rigid (8t) / 4t / 1t / Bakkie (1t).' },
+                            { k: 'Vehicle size', q: 'What size vehicle do you require? Superlink (34t) / Tri-axle (28t) / 15t / 12t / 8t / 5t / 2t — and Taut-liner or Flat deck?' },
                             { k: 'Full or part load', q: 'Is this a full load or a part load?' },
                             { k: 'Pallets / cartons', q: 'How many pallets or cartons, and the weight & dimensions (L x W x H) of each?' },
                             { k: 'Weights & dims', q: 'Please confirm total weight (kg) and overall dimensions (L x W x H).' },

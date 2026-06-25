@@ -6,7 +6,7 @@ import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
 
-const VEHICLE_SIZES = ['1 TON', '1.5 TON', '4 TON', '8 TON', 'LDV', 'FLATBED', 'TAUTLINER', 'TRI-AXLE', 'SUPERLINK', 'LINK', 'TANKER', 'REEFER'];
+const VEHICLE_SIZES = ['2 TON', '5 TON', '8 TON', '12 TON', '15 TON', 'TRI-AXLE (28T)', 'SUPERLINK (34T)', 'LINK', 'TAUTLINER', 'FLAT DECK', 'LDV', 'TANKER', 'REEFER', 'ABNORMAL'];
 const FBN_BRANCHES: { code: Branch; label: string }[] = [
     { code: 'FBN CPT', label: 'Cape Town' }, { code: 'FBN JHB', label: 'Johannesburg' }, { code: 'FBN DBN', label: 'Durban' },
 ];
@@ -111,7 +111,7 @@ const BrokingCollectionForm: React.FC = () => {
             ...(transitVia ? { transitDepot, collectionBranch: collBranch, destinationBranch: delBranch, arrangingBranch: collBranch } : {}),
             loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (vehicleSize || undefined),
             commodity: commodity || undefined,
-            specialInstructions: [remarks, dimensions ? `Dims: ${dimensions}` : '', containerNote].filter(Boolean).join(' · ') || undefined,
+            specialInstructions: [remarks, dimensions ? `Total cubes: ${dimensions} m³` : '', containerNote].filter(Boolean).join(' · ') || undefined,
             packaging: packages ? `${packages}` : undefined,
             loadedPackages: packages ? Number(String(packages).replace(/[^\d]/g, '')) || undefined : undefined,
             weightKg: weight || undefined, volume: deckSpace || undefined,
@@ -188,7 +188,7 @@ const BrokingCollectionForm: React.FC = () => {
                     <div><label className={lbl}>Vehicle size</label><input list="bkSizes" value={vehicleSize} onChange={e => setVehicleSize(e.target.value)} className={inp} placeholder="e.g. Superlink" /><datalist id="bkSizes">{VEHICLE_SIZES.map(s => <option key={s} value={s} />)}</datalist></div>
                     <div><label className={lbl}>Weight (kg)</label><input value={weight} onChange={e => setWeight(e.target.value)} className={inp} /></div>
                     <div><label className={lbl}>Commodity</label><input value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. steel" /></div>
-                    <div><label className={lbl}>Dimensions (L×W×H)</label><input value={dimensions} onChange={e => setDimensions(e.target.value)} className={inp} placeholder="e.g. 2.4 x 1.2 x 1.5 m" /></div>
+                    <div><label className={lbl}>Total cubes (m³)</label><input value={dimensions} onChange={e => setDimensions(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 12.5" /></div>
                     <div className="col-span-2"><label className={lbl}>Remarks / notes</label><textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={2} className={inp} placeholder="anything ops/the subbie should know" /></div>
                 </div>
                 <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>

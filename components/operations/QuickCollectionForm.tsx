@@ -48,6 +48,12 @@ const QuickCollectionForm: React.FC = () => {
     const [collArea, setCollArea] = useState<Branch>('FBN JHB');
     const [delArea, setDelArea] = useState<Branch>('FBN JHB');
     const [notes, setNotes] = useState('');
+    // Full cargo details (expandable).
+    const [showDetails, setShowDetails] = useState(false);
+    const [loadType, setLoadType] = useState('');
+    const [weightKg, setWeightKg] = useState('');
+    const [dimensions, setDimensions] = useState('');
+    const [rate, setRate] = useState('');
     // Add a new person against the chosen client (saved for next time).
     const [addingPerson, setAddingPerson] = useState(false);
     const [np, setNp] = useState({ name: '', email: '' });
@@ -113,11 +119,12 @@ const QuickCollectionForm: React.FC = () => {
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint,
             collectionDate, commodity: commodity || undefined,
             loadRefNo: loadRefNo ? loadRefNo.toUpperCase() : undefined,
-            loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : undefined,
+            loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (loadType || undefined),
             packaging: packages ? `${packages}` : undefined,
-            specialInstructions: [notes, containerNote].filter(Boolean).join(' · ') || undefined,
+            weightKg: weightKg || undefined,
+            specialInstructions: [notes, dimensions ? `Dims: ${dimensions}` : '', containerNote].filter(Boolean).join(' · ') || undefined,
             arrangingBranch: collArea, collectionBranch: collArea, destinationBranch: delArea,
-            priority: 'Medium', totalAmount: 0, supplierRate: 0,
+            priority: 'Medium', totalAmount: rate ? Number(rate) : 0, supplierRate: 0,
             isCollection: true, repEmail: currentUser?.email,
             fbnRepresentative: currentUser?.name || currentUser?.email,
         };
@@ -194,7 +201,18 @@ const QuickCollectionForm: React.FC = () => {
                 </div>
                 {collArea !== delArea && <p className="text-[11px] text-purple-300">Inter-branch: {collArea} → {delArea} (handed over at the depot).</p>}
                 <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>
-                <div><label className={lbl}>Notes</label><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inp} placeholder="anything ops should know" /></div>
+                {/* Full cargo details — optional, expandable */}
+                <div>
+                    <button type="button" onClick={() => setShowDetails(s => !s)} className="text-xs font-bold text-brand-secondary hover:underline">{showDetails ? '− Hide full details' : '+ Full details (load type, weight, dims, rate)'}</button>
+                    {showDetails && (
+                        <div className="grid grid-cols-2 gap-3 mt-2 bg-gray-900/40 p-3 rounded-lg border border-gray-700">
+                            <div><label className={lbl}>Load type</label><input list="qcLoadTypes" value={loadType} onChange={e => setLoadType(e.target.value)} className={inp} placeholder="Full load / Part load / Deckspace" /><datalist id="qcLoadTypes">{['FULL LOAD', 'PART LOAD', 'DECKSPACE', 'ABNORMAL', 'GROUPAGE', 'SUPERLINK (34T)', 'TRI-AXLE (34T)', 'RIGID (8T)'].map(o => <option key={o} value={o} />)}</datalist></div>
+                            <div><label className={lbl}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 8000" /></div>
+                            <div><label className={lbl}>Dimensions (L×W×H)</label><input value={dimensions} onChange={e => setDimensions(e.target.value)} className={inp} placeholder="e.g. 2.4 x 1.2 x 1.5 m" /></div>
+                            <div><label className={lbl}>Rate (R, client)</label><input value={rate} onChange={e => setRate(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="optional" /></div>
+                        </div>
+                    )}
+                </div>
                 <div className="border-t border-gray-700 pt-3">
                     <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
                         <input type="checkbox" checked={isContainer} onChange={e => setIsContainer(e.target.checked)} /> 📦 Container collection

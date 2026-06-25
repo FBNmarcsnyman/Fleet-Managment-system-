@@ -121,6 +121,8 @@ const QuotesView: React.FC<{
             );
             const data = await resp.json();
             if (data.error) throw new Error(data.error);
+            // Reflect the new status in the UI immediately (no reload needed).
+            void handleUpdateQuote({ ...quote, status: 'Sent' as QuoteStatus, sentToClient: true } as any);
             showToast(`Quote ${quote.quoteNumber} sent to ${data.sent_to}`);
         } catch (e: any) {
             showToast(`Failed to send: ${e.message}`);

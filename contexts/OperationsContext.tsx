@@ -340,9 +340,21 @@ const cargoRows = (lc: any): [string, any][] => [
 // Mobile "Quick Collection" → email ops to action it (assign driver + ETA).
 export const notifyOpsNewCollection = async (lc: any): Promise<void> => {
     const acceptLink = `${baseUrl()}?accept=${lc.id}`;
+    // Same-day (collecting today or overdue) → ops must action it NOW (assign driver + ETA).
+    // Future-dated → a lighter "acknowledge & add to planning" step; the loading-day
+    // reminder (ops-daily-checks 07:00) then prompts the assign + ETA.
+    const todayISO = new Date(Date.now() + 2 * 3600e3).toISOString().slice(0, 10);
+    const sameDay = !lc.collectionDate || String(lc.collectionDate).slice(0, 10) <= todayISO;
+    const intro = sameDay
+        ? `<p style="font-size:15px;color:#13294b;margin:0 0 2px"><strong>New collection request${lc.arrangingBranch ? ` — ${lc.arrangingBranch}` : ''}</strong></p>
+      <p style="color:#5b6573;margin:0 0 12px">Collecting today — please <strong>assign a driver and collection ETA</strong>.</p>`
+        : `<p style="font-size:15px;color:#13294b;margin:0 0 2px"><strong>New booking${lc.arrangingBranch ? ` — ${lc.arrangingBranch}` : ''}</strong></p>
+      <p style="color:#5b6573;margin:0 0 12px">Please <strong>acknowledge you're aware of this booking</strong> and add it to your planning. (No need to assign the driver yet — you'll get a reminder on the loading day to confirm everything's in order, assign the driver and set the ETA.)</p>`;
+    const cta = sameDay
+        ? emailButton(acceptLink, 'Assign driver &amp; collection ETA &rarr;', '#16a34a')
+        : emailButton(acceptLink, '&#10003; Acknowledge &amp; add to planning &rarr;', '#16a34a');
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:6px">${lc.loadConNumber}</div>
-      <p style="font-size:15px;color:#13294b;margin:0 0 2px"><strong>New booking${lc.arrangingBranch ? ` — ${lc.arrangingBranch}` : ''}</strong></p>
-      <p style="color:#5b6573;margin:0 0 12px">Please <strong>acknowledge you're aware of this booking</strong> and add it to your planning. (No need to assign the driver yet — you'll get a reminder on the loading day to confirm everything's in order, assign the driver and set the ETA.)</p>
+      ${intro}
       ${detailTable([
         ['Client', lc.clientName],
         ['Collect from', lc.collectionPoint],
@@ -353,9 +365,8 @@ export const notifyOpsNewCollection = async (lc: any): Promise<void> => {
         ['Site contact', [lc.collectionContact, lc.collectionTelephone].filter(Boolean).join(' · ')],
         ['Remarks / notes', lc.specialInstructions],
       ])}
-      ${emailButton(acceptLink, '&#10003; Acknowledge &amp; add to planning &rarr;', '#16a34a')}
-      <p style="color:#5b6573;font-size:13px;margin-top:14px">Opening the load lets you tap <strong>&#10003; Accept</strong> to acknowledge it. Nothing is sent to the client at this step.</p>
-      <p style="color:#5b6573;font-size:13px;margin-top:10px">Regards,<br>FBN Transport &middot; Control Centre</p>`);
+      ${cta}
+      <p style="color:#5b6573;font-size:13px;margin-top:14px">Regards,<br>FBN Transport &middot; Control Centre</p>`);
     const to = opsEmail(lc.collectionBranch || lc.arrangingBranch);
     try { await invokeFn('send-email', { body: { to, cc: [OPS_GENERAL], subject: `NEW COLLECTION ${lc.loadConNumber}${lc.arrangingBranch ? ` (${lc.arrangingBranch})` : ''} - ${lc.clientName || ''}`, html, fromName: 'FBN Transport' } }); }
     catch (e) { console.error('[ops] collection ops-notify failed:', e); }

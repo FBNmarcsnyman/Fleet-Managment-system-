@@ -16,6 +16,8 @@ interface CreateQuoteFormProps {
     quoteData?: Quote;
     // Pre-fill a brand-new quote from an inbound quote request ("Quote It").
     prefill?: any;
+    // Create a brand-new client inline; returns the created Client (or null).
+    onAddClient?: (input: Partial<Client>) => Promise<Client | null>;
 }
 
 const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -97,7 +99,7 @@ const getInitialState = (quoteData?: Quote, commodities?: string[], packagingTyp
     };
 };
 
-const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, onSubmit, quoteData, prefill }) => {
+const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, onSubmit, quoteData, prefill, onAddClient }) => {
     const { hideModal } = useUIState();
     const { commodities, packagingTypes, handleAddCommodity, handleAddPackagingType } = useFleetData();
     // Form state is the union of "new quote literal" and "loaded existing Quote".
@@ -108,6 +110,28 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
     // Once the user picks a load spec manually we stop auto-suggesting. Existing
     // quotes that already carry a spec start "touched" so we never override them.
     const [specTouched, setSpecTouched] = useState(!!quoteData?.loadSpec);
+    // Inline "add a brand-new client" from the quote form (no need to leave to the CRM).
+    const [localClients, setLocalClients] = useState<Client[]>([]);
+    const allClients = React.useMemo(() => {
+        const seen = new Set<string>(); const out: Client[] = [];
+        [...clients, ...localClients].forEach(c => { if (!seen.has(c.id)) { seen.add(c.id); out.push(c); } });
+        return out.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }, [clients, localClients]);
+    const [showNewClient, setShowNewClient] = useState(false);
+    const [nc, setNc] = useState({ name: '', contactPerson: '', contactEmail: '', contactPhone: '' });
+    const [addingClient, setAddingClient] = useState(false);
+    const addClientInline = async () => {
+        if (!onAddClient || !nc.name.trim()) return;
+        setAddingClient(true);
+        try {
+            const created = await onAddClient({ name: nc.name.trim(), contactPerson: nc.contactPerson.trim() || undefined, contactEmail: nc.contactEmail.trim() || undefined, contactPhone: nc.contactPhone.trim() || undefined } as any);
+            if (created) {
+                setLocalClients(prev => [...prev, created]);
+                setQuote((p: any) => ({ ...p, clientId: created.id }));
+                setShowNewClient(false); setNc({ name: '', contactPerson: '', contactEmail: '', contactPhone: '' });
+            }
+        } finally { setAddingClient(false); }
+    };
 
     const transportSuppliers = suppliers.filter(s => s.type === 'Transport');
 
@@ -284,11 +308,24 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                 {/* Section 1: Core Details */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-800/40 p-4 rounded-xl border border-gray-700">
                     <div>
-                        <label className={labelClasses}>Client</label>
-                        <select value={quote.clientId} onChange={e => handleFieldChange('clientId', e.target.value)} required className={inputClasses}>
-                            <option value="" disabled>-- Select Client --</option>
-                            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                        <div className="flex items-center justify-between">
+                            <label className={labelClasses}>Client</label>
+                            {onAddClient && <button type="button" onClick={() => setShowNewClient(s => !s)} className="text-[11px] font-bold text-blue-400 hover:text-blue-300 mb-1">{showNewClient ? '× Cancel' : '+ New client'}</button>}
+                        </div>
+                        {!showNewClient ? (
+                            <select value={quote.clientId} onChange={e => handleFieldChange('clientId', e.target.value)} required className={inputClasses}>
+                                <option value="" disabled>-- Select Client --</option>
+                                {allClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        ) : (
+                            <div className="space-y-2 bg-gray-900/50 p-2 rounded-lg border border-blue-500/40">
+                                <input value={nc.name} onChange={e => setNc({ ...nc, name: e.target.value })} placeholder="Company name *" className={inputClasses} />
+                                <input value={nc.contactPerson} onChange={e => setNc({ ...nc, contactPerson: e.target.value })} placeholder="Contact person" className={inputClasses} />
+                                <input value={nc.contactEmail} onChange={e => setNc({ ...nc, contactEmail: e.target.value })} placeholder="Email" type="email" className={inputClasses + ' normal-case'} style={{ textTransform: 'none' }} />
+                                <input value={nc.contactPhone} onChange={e => setNc({ ...nc, contactPhone: e.target.value })} placeholder="Phone" className={inputClasses} />
+                                <button type="button" onClick={addClientInline} disabled={!nc.name.trim() || addingClient} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2 rounded-lg text-sm">{addingClient ? 'Adding…' : '+ Add & select client'}</button>
+                            </div>
+                        )}
                     </div>
                     <div><label className={labelClasses}>Quote Date</label><input type="date" value={quote.date} onChange={e => handleFieldChange('date', e.target.value)} className={inputClasses} /></div>
                     <div><label className={labelClasses}>Expiry Date</label><input type="date" value={quote.expiryDate} onChange={e => handleFieldChange('expiryDate', e.target.value)} className={inputClasses} /></div>

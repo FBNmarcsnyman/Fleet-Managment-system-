@@ -577,6 +577,11 @@ export interface LoadConfirmation {
     // carries the client charge + single invoice, children carry cost only.
     loadGroupId?: string;
     isPrimary?: boolean;
+    // Multi-transporter legs: an editable role label (Truck / Forklift hire / Crane hire …)
+    // and whether a POD is requested/chased from this subbie (false for forklift/crane or
+    // non-final-delivery legs that don't deliver to the end client).
+    legRole?: string;
+    podRequired?: boolean;
     offeredCarriers?: { supplierId?: string; name: string; email: string; at?: string; rate?: number }[];
     // Archived loads (e.g. bulk-imported from the LoadCon sheet, or manually filed away)
     // drop off the active Load Board but stay searchable/filterable.

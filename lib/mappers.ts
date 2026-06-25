@@ -591,6 +591,8 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     isCollection: (row as any).is_collection ?? false,
     loadGroupId: (row as any).load_group_id ?? undefined,
     isPrimary: (row as any).is_primary ?? true,
+    legRole: (row as any).leg_role ?? undefined,
+    podRequired: (row as any).pod_required ?? true,
     offeredCarriers: (row as any).offered_carriers ?? [],
     archived: (row as any).archived ?? false,
     unpackDepot: (row as any).unpack_depot ?? undefined,
@@ -1094,6 +1096,8 @@ export const toLoadConfirmationInsert = (
     container_operator: lc.containerOperator ?? null,
     container_seal_no: lc.containerSealNo ?? null,
     special_instructions: lc.specialInstructions ?? null,
+    leg_role: (lc as any).legRole ?? null,
+    pod_required: (lc as any).podRequired ?? true,
     subcontractor_name: lc.subcontractorName ?? null,
     for_attention: lc.forAttention ?? null,
     subcontractor_email: lc.subcontractorEmail ?? null,
@@ -1417,6 +1421,8 @@ export const toLoadConfirmationUpdate = (
     if ((updates as any).loadGroupId !== undefined) (row as any).load_group_id = (updates as any).loadGroupId ?? null;
     if ((updates as any).isPrimary !== undefined) (row as any).is_primary = (updates as any).isPrimary;
     if ((updates as any).archived !== undefined) (row as any).archived = (updates as any).archived;
+    if ((updates as any).legRole !== undefined) (row as any).leg_role = (updates as any).legRole ?? null;
+    if ((updates as any).podRequired !== undefined) (row as any).pod_required = (updates as any).podRequired;
     if ((updates as any).acceptedAt !== undefined) (row as any).accepted_at = orNull((updates as any).acceptedAt);
     if (updates.route !== undefined) row.route = updates.route ?? null;
     if (updates.fbnRepresentative !== undefined) row.fbn_representative = updates.fbnRepresentative ?? null;

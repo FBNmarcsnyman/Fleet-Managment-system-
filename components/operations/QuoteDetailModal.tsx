@@ -186,10 +186,24 @@ const QuoteDetailModal: React.FC<{
             {(quote.status === 'Requested' || quote.status === 'More Info Requested') && (
                 <div className="mb-3">
                     <label className="block text-xs font-bold uppercase tracking-wide text-amber-400 mb-1">📝 Extra questions for the client <span className="text-gray-400 font-normal normal-case">(optional — added to the "Request More Info" email)</span></label>
+                    {/* One-click question presets — append a standard question to the note. */}
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                        {[
+                            { k: 'Vehicle size', q: 'What size vehicle do you require? Superlink (34t) / Tri-axle (34t) / Rigid (8t) / 4t / 1t / Bakkie (1t).' },
+                            { k: 'Full or part load', q: 'Is this a full load or a part load?' },
+                            { k: 'Pallets / cartons', q: 'How many pallets or cartons, and the weight & dimensions (L x W x H) of each?' },
+                            { k: 'Weights & dims', q: 'Please confirm total weight (kg) and overall dimensions (L x W x H).' },
+                            { k: 'Equipment', q: 'Any equipment needed for loading/offloading? Crane truck / forklift / tail-lift / labour.' },
+                        ].map(p => (
+                            <button key={p.k} type="button"
+                                onClick={() => setMoreInfoNote(prev => prev.includes(p.q) ? prev : (prev.trim() ? prev.trim() + '\n' : '') + p.q)}
+                                className="text-[11px] font-semibold bg-gray-700 hover:bg-gray-600 text-gray-100 border border-gray-600 rounded-full px-2.5 py-1">+ {p.k}</button>
+                        ))}
+                    </div>
                     <textarea
                         value={moreInfoNote}
                         onChange={e => setMoreInfoNote(e.target.value)}
-                        rows={2}
+                        rows={3}
                         placeholder="e.g. Is the site forklift-accessible? Any after-hours collection? Confirm exact delivery suburb…"
                         className="normal-case w-full bg-gray-800 text-gray-100 text-sm rounded-lg border border-gray-600 p-2.5 placeholder-gray-500 focus:border-amber-400 focus:outline-none"
                         style={{ textTransform: 'none' }}

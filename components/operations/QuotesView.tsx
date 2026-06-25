@@ -20,7 +20,13 @@ const QuotesView: React.FC<{
     onShowPdf: (quote: Quote, client: Client) => void;
 }> = ({ quotes = [], clients = [], suppliers = [], onShowPdf }) => {
     const { showModal, showToast } = useUIState();
-    const { loadConfirmations = [], handleCreateQuote, handleUpdateQuote } = useOperations();
+    const { loadConfirmations = [], handleCreateQuote, handleUpdateQuote, handleAddClient } = useOperations() as any;
+    // Create a client inline from the quote form; returns the new Client or null.
+    const onAddClient = async (input: any) => {
+        const res = await handleAddClient(input);
+        if (res?.ok) { showToast(`Client ${res.value?.name || ''} added.`); return res.value; }
+        showToast(`Could not add client: ${res?.error || 'error'}`); return null;
+    };
     const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'All'>('All');
     const [quoteToAccept, setQuoteToAccept] = useState<Quote | null>(null);
     const [tab, setTab] = useState<'quotes' | 'rfq'>('quotes');
@@ -165,6 +171,7 @@ const QuotesView: React.FC<{
         showModal('createQuote', {
             clients,
             suppliers,
+            onAddClient,
             onSubmit: async (quote: any) => {
                 const result = await handleCreateQuote(quote);
                 if (result.ok) showToast(`Quote ${result.value!.quoteNumber} created.`);
@@ -178,6 +185,7 @@ const QuotesView: React.FC<{
             quoteData: quote,
             clients,
             suppliers,
+            onAddClient,
             onSubmit: async (q: Quote) => {
                 const result = await handleUpdateQuote(q);
                 if (result.ok) showToast(`Quote ${q.quoteNumber} updated.`);

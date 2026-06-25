@@ -45,6 +45,22 @@ All notable changes to the FBN Fleet Management System. Newest first.
 - LCL importer routes FCL tabs to the container report (FCL→FCL, LCL→LCL); cron auth headers
   added after `verify_jwt` flips on MCP redeploys.
 
+### Added (later same day)
+- **COD Phase 1**: new clients default to **COD / Unauthorised** (`account_status`/`vetted`/
+  `vat_no`/`invoice_details`); client area COD filter + **Approve account** vetting action + badge.
+- **Collection forms — Full details**: new-collection "+ Full details" (load type, weight, **total
+  cubes**, client rate); broking gained commodity/dimensions→**total cubes**/remarks + a **client
+  rate** alongside the supplier rate.
+- **Load types**: Tri-axle **28t** (was 34t), added 2t/5t/12t/15t + **Taut/Flat**.
+- **New Quote mobile layout**: 12-col item/leg/rate rows stack on mobile.
+
+### Fixed (later same day)
+- **Quote "Sent" status not refreshing**: sending a quote now updates the status to Sent in the UI
+  immediately (was only persisting to the DB → showed Draft until reload). Same class of stale-UI
+  issue noted for archive (data correct; full reload shows it) — in-app refresh tracked.
+- **Request More Info** no longer blocks when the quote has no client email (falls back to the
+  requester's email from the original request — `quote-request-info` v11).
+
 ### Process
 - CLAUDE.md: mandatory **auto-capture of flows/logic** into memory/skills/hooks/cron the moment
   they're defined ("lock it in" trigger). New memories: pod-authorisation-workflow,

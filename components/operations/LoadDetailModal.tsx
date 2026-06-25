@@ -189,10 +189,20 @@ const LoadDetailModal: React.FC = () => {
     // COD: hold the cargo until payment, then release (emails ops/subbie + client).
     const [codBusy, setCodBusy] = useState(false);
     const toggleCodHold = async (on: boolean) => {
+        if (on && !window.confirm(`Put ${lc.loadConNumber} on COD HOLD and email the subcontractor + ops "DO NOT DELIVER until released"?`)) return;
         setCodBusy(true);
-        const res = await handleUpdateLoadConfirmation(lc.id, { codHold: on } as any);
-        setCodBusy(false);
-        if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
+        try {
+            if (on) {
+                // cod-hold sets the flag AND emails the subbie + ops the do-not-deliver notice.
+                const { data, error } = await invokeFn('cod-hold', { body: { loadId: lc.id } });
+                if (error || (data as any)?.error) showToast(`Could not set COD hold: ${(data as any)?.error || error?.message}`);
+                else { showToast('COD hold set — subcontractor & ops emailed "do not deliver".'); hideModal(); }
+            } else {
+                const res = await handleUpdateLoadConfirmation(lc.id, { codHold: false } as any);
+                if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
+            }
+        } catch (e) { showToast(`Could not update: ${e instanceof Error ? e.message : 'error'}`); }
+        finally { setCodBusy(false); }
     };
     const codReleasePay = async () => {
         if (!window.confirm(`Confirm COD PAYMENT RECEIVED for ${lc.loadConNumber}? This RELEASES the cargo for delivery and emails ops/the subbie + the client.`)) return;

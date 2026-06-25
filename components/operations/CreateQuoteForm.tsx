@@ -400,7 +400,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     </h3>
                     <div className="space-y-3">
                         {dims.map((d: any, index: number) => (
-                            <div key={index} className="grid grid-cols-12 gap-x-3 items-end bg-gray-900/40 p-4 rounded-xl border border-gray-800">
+                            <div key={index} className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:gap-x-3 sm:items-end bg-gray-900/40 p-4 rounded-xl border border-gray-800">
                                 <div className="col-span-2"><label className={labelClasses}>Length (cm)</label><input type="number" min="0" value={d.length_cm ?? ''} onChange={e => handleDimChange(index, 'length_cm', e.target.value)} className={inputClasses} /></div>
                                 <div className="col-span-2"><label className={labelClasses}>Width (cm)</label><input type="number" min="0" value={d.width_cm ?? ''} onChange={e => handleDimChange(index, 'width_cm', e.target.value)} className={inputClasses} /></div>
                                 <div className="col-span-2"><label className={labelClasses}>Height (cm)</label><input type="number" min="0" value={d.height_cm ?? ''} onChange={e => handleDimChange(index, 'height_cm', e.target.value)} className={inputClasses} /></div>
@@ -423,7 +423,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     <h3 className="text-sm font-black text-gray-500 uppercase tracking-tighter mb-3 ml-1">Route & Locations</h3>
                     <div className="space-y-3">
                         {quote.legs.map((leg, index) => (
-                            <div key={leg.id} className="grid grid-cols-12 gap-x-3 items-end bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                            <div key={leg.id} className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:gap-x-3 sm:items-end bg-gray-900/50 p-4 rounded-xl border border-gray-800">
                                 <div className="col-span-5 relative">
                                     <label className={labelClasses}>Collection Address</label>
                                     <AddressAutocompleteInput value={leg.collectionPoint} onChange={val => handleLegChange(index, 'collectionPoint', val)} placeholder="Search address..." className={inputClasses} />
@@ -468,7 +468,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     </div>
                     <div className="space-y-3">
                         {quote.subcontractorQuotes.map((sq, index) => (
-                            <div key={sq.id} className="grid grid-cols-12 gap-3 items-end">
+                            <div key={sq.id} className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:gap-3 sm:items-end">
                                 <div className="col-span-6">
                                     <label className={labelClasses}>Carrier Name</label>
                                     <select value={sq.supplierId} onChange={e => handleSubQuoteChange(index, 'supplierId', e.target.value)} className={inputClasses}>
@@ -519,7 +519,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     <h3 className="text-sm font-black text-gray-500 uppercase tracking-tighter mb-3 ml-1">Line Items (Client Billing)</h3>
                     <div className="space-y-3">
                          {quote.items.map((item, index) => (
-                             <div key={item.id} className="grid grid-cols-12 gap-x-3 items-end bg-gray-900/40 p-4 rounded-xl border border-gray-800">
+                             <div key={item.id} className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:gap-x-3 sm:items-end bg-gray-900/40 p-4 rounded-xl border border-gray-800">
                                 <div className="col-span-4"><label className={labelClasses}>Description</label><input type="text" value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} className={inputClasses} /></div>
                                 <div className="col-span-2">
                                     <label className={labelClasses}>Packaging</label>

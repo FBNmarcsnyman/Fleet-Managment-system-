@@ -2,6 +2,55 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-25]
+
+### Added
+- **POD authorisation gate**: every POD upload is now HELD — nothing reaches a client
+  without an admin authorising it. `submit-pod` sets `pod_authorisation='pending'` and
+  emails loadcons@ to review; new `authorise-pod` fn releases it (as-is or with a cleaned
+  re-upload; original kept in `pod_original_url`). `blocked` state bars a bad upload (incl.
+  invoice) from ever being sent. Admin-only panel in LoadDetailModal + board indicators.
+- **View POD everywhere**: maps `pod_drive_url`/`pod_doc_urls`; green View POD in the load
+  toolbar/board (all states incl. Archived) + a dedicated **PODs tab** (Awaiting sign-off →
+  Finalised → Archived, searchable).
+- **Multi-transporter / split**: editable per-leg **role** (Truck/Forklift hire/Crane hire),
+  per-leg **Request POD** toggle (forklift/crane legs skip POD request + chase), per-leg
+  **routing override + handling instructions**, **group-aware costing** (one client charge,
+  margin = client − all truck costs, per-truck breakdown). Each subbie gets their own loadcon,
+  never sees the others (`leg_role`, `pod_required` columns).
+- **Load Board archive**: 304 sheet-imported loadcons archived (off the active board, in an
+  **Archived** filter, searchable; Unarchive action); importer auto-archives future rows.
+- **Collections lifecycle**: ✓ Accept (acknowledge, `accepted_at`); ops booking email is
+  date-aware (same-day = assign now / future = acknowledge & plan); one-tap ✓ Collected for
+  unassigned bookings; 07:00 loading-day ops reminder (confirm + assign + ETA); ETA check now
+  **1h before** (on-track) + **10 min after** (arrived?) via `arrival_check_sent_at`.
+- **Quotes**: add a brand-new client inline on the New Quote form; "Request More Info"
+  question presets (vehicle size w/ capacities e.g. Superlink 34t, full/part load, pallets,
+  dims, equipment) + asks commodity when missing + free-text notes; Rate Scope/Terms
+  (transport-only default) on the client quote.
+- **Collection form**: pick/add additional saved client contacts (saved to the client);
+  collection/delivery **area auto-derives from the address**. Deliveries: ✉ **Request POD**
+  emails the subbie an upload link (held for authorisation).
+- **Spell-check**: prose fields (remarks/notes/special instructions) now natural sentence case
+  so the browser spell-checks them; structured codes/refs stay ALL CAPS.
+
+### Fixed
+- **Emails `=20` / word-splits**: `send-email` strips trailing whitespace per line + entity-
+  encodes non-ASCII so denomailer stays clean (no quoted-printable artifacts). All emails.
+- **Collection update error**: empty date/time fields now save as NULL not '' (Postgres
+  rejected '' for date/time) — `orNull()` in `toLoadConfirmationUpdate`.
+- **Security**: enabled RLS + removed public (anon) access on `quote_compliance_log` (Supabase
+  Security Advisor finding).
+- Client status-update email reformatted to the branded detail-table layout.
+- LCL importer routes FCL tabs to the container report (FCL→FCL, LCL→LCL); cron auth headers
+  added after `verify_jwt` flips on MCP redeploys.
+
+### Process
+- CLAUDE.md: mandatory **auto-capture of flows/logic** into memory/skills/hooks/cron the moment
+  they're defined ("lock it in" trigger). New memories: pod-authorisation-workflow,
+  multi-transporter-split, capture-flows-automatically, supabase-security-advisor; new-email +
+  form-standards skills/rules updated.
+
 ## [2026-06-22] — continued (later same day)
 
 ### Added

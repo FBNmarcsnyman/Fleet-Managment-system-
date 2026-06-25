@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
+import { invokeFn } from '../../lib/supabase';
 
 // Delivered / POD — a day-by-day checklist instead of one giant column. Loads are
 // grouped by delivery date (newest first), each day collapsible with an
@@ -10,7 +11,8 @@ const podOut = (lc: LoadConfirmation) => lc.status === 'Delivered' && !(lc as an
 
 const DeliveriesDayView: React.FC = () => {
     const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation } = useOperations() as any;
-    const { showModal } = useUIState();
+    const { showModal, showToast } = useUIState();
+    const [reqBusy, setReqBusy] = useState<string | null>(null);
     const [scope, setScope] = useState<'week' | 'all' | 'podout'>('week');
     const [q, setQ] = useState('');
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -47,6 +49,30 @@ const DeliveriesDayView: React.FC = () => {
         onSubmit: (loadConId: string, podData: any) => handleUpdateLoadConfirmation(loadConId, { podPhoto: podData.photo, podSignature: podData.signature, podAnalysis: podData.analysisResult, status: 'POD Submitted', paymentStatus: 'Awaiting POD' }),
         onCancel: () => showModal('hide'),
     });
+
+    // Email the SUBCONTRACTOR on the load to upload the signed POD (link opens the
+    // public upload page). They upload -> submit-pod HOLDS it for admin authorisation
+    // before it ever reaches the client (see the POD authorisation rule). loadcons@ CC'd.
+    const requestPod = async (lc: any) => {
+        const to = (lc.subcontractorEmail || '').trim();
+        if (!to) { showToast('No subcontractor email on this load — add one in the load details first.'); return; }
+        const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+        const link = `${base}?pod=${lc.id}`;
+        const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
+        const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#1f2937"><p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>`
+            + `<p>Please upload the <strong>signed POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}:</p>`
+            + `<p style="text-align:center;margin:18px 0"><a href="${link}" style="background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:8px;display:inline-block">Upload signed POD &rarr;</a></p>`
+            + `<p style="font-size:13px;color:#374151"><strong>Please upload ONLY the signed delivery note / FBN POD / client backing documents.</strong></p>`
+            + `<p style="font-size:13px;color:#b91c1c;font-weight:800;margin:4px 0 0">DO NOT UPLOAD YOUR INVOICE HERE.</p>`
+            + `<p>Regards,<br>FBN Transport</p></div>`;
+        setReqBusy(lc.id);
+        try {
+            const { data, error } = await invokeFn('send-email', { body: { to, cc: ['loadcons@fbn-transport.co.za', ...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean)], subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
+            if (error || (data as any)?.error) showToast(`Could not send: ${(data as any)?.error || error?.message}`);
+            else showToast(`POD request emailed to ${to}.`);
+        } catch (e) { showToast(`Could not send: ${e instanceof Error ? e.message : 'error'}`); }
+        finally { setReqBusy(null); }
+    };
 
     const dayLabel = (k: string) => {
         if (k === 'No date') return 'No delivery date';
@@ -99,7 +125,8 @@ const DeliveriesDayView: React.FC = () => {
                                                     {transporterOf(l) && <span className="text-[11px] text-slate-500 truncate hidden md:inline">· {transporterOf(l)}</span>}
                                                 </button>
                                                 <span className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded uppercase ${out ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{out ? 'POD due' : 'POD in'}</span>
-                                                {out && <button onClick={() => getPod(l)} className="shrink-0 text-[11px] font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-1 px-2.5 rounded-lg">Get POD</button>}
+                                                {out && (l as any).subcontractorName && <button onClick={() => requestPod(l)} disabled={reqBusy === l.id} title="Email the subcontractor to upload the signed POD" className="shrink-0 text-[11px] font-bold bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white py-1 px-2.5 rounded-lg">{reqBusy === l.id ? '…' : '✉ Request POD'}</button>}
+                                                {out && <button onClick={() => getPod(l)} title="Upload the POD yourself" className="shrink-0 text-[11px] font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-1 px-2.5 rounded-lg">Get POD</button>}
                                             </div>
                                         );
                                     })}

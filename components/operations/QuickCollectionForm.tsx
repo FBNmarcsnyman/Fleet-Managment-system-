@@ -15,12 +15,22 @@ const AREAS: { code: Branch; label: string }[] = [
     { code: 'FBN CPT', label: 'Cape Town' },
 ];
 
+// Read the ops AREA straight off the address (so the dropdowns follow what's typed).
+// Returns null when nothing matches (leave the area as-is).
+const classifyArea = (text: string): Branch | null => {
+    const t = (text || '').toLowerCase();
+    if (/johannesburg|jhb|gauteng|germiston|wadeville|kempton|isando|midrand|pretoria|\bpta\b|boksburg|edenvale|jet park|alberton|roodepoort|sandton|centurion|benoni|brakpan|springs|vereeniging|vanderbijl|krugersdorp|chamdor|nigel|heidelberg/.test(t)) return 'FBN JHB';
+    if (/cape town|\bcpt\b|western cape|bellville|paarl|stellenbosch|somerset west|epping|montague|maitland|parow|brackenfell|killarney/.test(t)) return 'FBN CPT';
+    if (/durban|\bdbn\b|kzn|kwazulu|pinetown|phoenix|umhlanga|pietermaritzburg|\bpmb\b|mobeni|jacobs|prospecton|congella|westmead|new germany|hammarsdale|cato ridge|richards bay/.test(t)) return 'FBN DBN';
+    return null;
+};
+
 // Fast, mobile-first "log a collection" form. A collection IS a load — on send it
 // creates the load (flagged is_collection), emails ops in that area to assign a
 // driver + ETA, and acknowledges the client. Then it rides the normal LoadCon rails.
 const QuickCollectionForm: React.FC = () => {
     const { hideModal, modal, showToast } = useUIState();
-    const { clients = [], loadConfirmations = [] } = useOperations() as any;
+    const { clients = [], loadConfirmations = [], handleUpdateClient } = useOperations() as any;
     const { currentUser } = useAuth();
     const onSubmit = modal.payload?.onSubmit as (data: any) => Promise<any>;
 
@@ -38,6 +48,9 @@ const QuickCollectionForm: React.FC = () => {
     const [collArea, setCollArea] = useState<Branch>('FBN JHB');
     const [delArea, setDelArea] = useState<Branch>('FBN JHB');
     const [notes, setNotes] = useState('');
+    // Add a new person against the chosen client (saved for next time).
+    const [addingPerson, setAddingPerson] = useState(false);
+    const [np, setNp] = useState({ name: '', email: '' });
     const [isContainer, setIsContainer] = useState(false);
     const [ctrNo, setCtrNo] = useState('');
     const [seal, setSeal] = useState('');
@@ -63,6 +76,28 @@ const QuickCollectionForm: React.FC = () => {
             if (past[0]?.collectionPoint && !collectionPoint) setCollectionPoint(past[0].collectionPoint);
         } else { setClientId(''); }
     };
+
+    const selClient = useMemo(() => (clients as any[]).find(c => c.id === clientId), [clients, clientId]);
+    const clientContacts: Contact[] = (selClient?.contacts || []) as Contact[];
+    // Pick a saved person for this company → fills contact + email.
+    const pickContact = (name: string) => {
+        const c = clientContacts.find(x => x.name === name);
+        if (c) { setClientContact(c.name || ''); if (c.email) setClientEmail(c.email); }
+    };
+    // Add a NEW person and save it against the client for next time.
+    const addPerson = async () => {
+        if (!np.name.trim() || !selClient) return;
+        const contact: any = { name: np.name.trim().toUpperCase(), email: np.email.trim() || undefined };
+        const next = [...clientContacts, contact];
+        setClientContact(contact.name); if (contact.email) setClientEmail(contact.email);
+        setAddingPerson(false); setNp({ name: '', email: '' });
+        try { await handleUpdateClient?.(selClient.id, { contacts: next } as any); showToast('Person saved to this client.'); }
+        catch { showToast('Selected for this load (could not save to client).'); }
+    };
+
+    // Area dropdowns follow the address typed (override still possible afterwards).
+    const onCollPoint = (v: string) => { setCollectionPoint(v); const a = classifyArea(v); if (a) { setCollArea(a); } };
+    const onDelPoint = (v: string) => { setDeliveryPoint(v); const a = classifyArea(v); if (a) setDelArea(a); };
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -115,9 +150,27 @@ const QuickCollectionForm: React.FC = () => {
                     <input list="qcClients" value={clientName} onChange={e => onClient(e.target.value)} className={inp} placeholder="start typing the client" required />
                     <datalist id="qcClients">{clientNames.map(n => <option key={n} value={n} />)}</datalist>
                 </div>
+                {clientId && (clientContacts.length > 0 || true) && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {clientContacts.length > 0 && (
+                            <select value={clientContacts.find(c => c.name === clientContact) ? clientContact : ''} onChange={e => pickContact(e.target.value)} className={inp + ' flex-1 min-w-[160px]'}>
+                                <option value="">— pick a saved person —</option>
+                                {clientContacts.map((c, i) => <option key={i} value={c.name}>{c.name}{c.email ? ` · ${c.email}` : ''}</option>)}
+                            </select>
+                        )}
+                        <button type="button" onClick={() => setAddingPerson(s => !s)} className="text-xs font-bold text-brand-secondary hover:underline">{addingPerson ? '× Cancel' : '+ New person'}</button>
+                    </div>
+                )}
+                {addingPerson && (
+                    <div className="grid grid-cols-2 gap-2 bg-gray-900/40 p-2 rounded-lg border border-brand-secondary/40">
+                        <input value={np.name} onChange={e => setNp({ ...np, name: e.target.value })} placeholder="Person name *" className={inp} />
+                        <input value={np.email} onChange={e => setNp({ ...np, email: e.target.value })} placeholder="Email" type="email" className={inp + ' normal-case'} style={{ textTransform: 'none' }} />
+                        <button type="button" onClick={addPerson} disabled={!np.name.trim()} className="col-span-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2 rounded-lg text-sm">+ Add &amp; save to {selClient?.name || 'client'}</button>
+                    </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                     <div><label className={lbl}>Contact</label><input value={clientContact} onChange={e => setClientContact(e.target.value)} className={inp} /></div>
-                    <div><label className={lbl}>Client email</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp} /></div>
+                    <div><label className={lbl}>Client email</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} /></div>
                 </div>
                 <div>
                     <label className={lbl}>FBN DI / Waybill no</label>
@@ -125,11 +178,11 @@ const QuickCollectionForm: React.FC = () => {
                 </div>
                 <div>
                     <label className={lbl}>Collect from *</label>
-                    <AddressAutocompleteInput value={collectionPoint} onChange={setCollectionPoint} placeholder="Search address…" required className={inp} />
+                    <AddressAutocompleteInput value={collectionPoint} onChange={onCollPoint} placeholder="Search address…" required className={inp} />
                 </div>
                 <div>
                     <label className={lbl}>Deliver to</label>
-                    <AddressAutocompleteInput value={deliveryPoint} onChange={setDeliveryPoint} placeholder="Search address…" className={inp} />
+                    <AddressAutocompleteInput value={deliveryPoint} onChange={onDelPoint} placeholder="Search address…" className={inp} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div><label className={lbl}>Commodity</label><input list="qcComm" value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. flour" /><datalist id="qcComm">{commodities.map(c => <option key={c} value={c} />)}</datalist></div>

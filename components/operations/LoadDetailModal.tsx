@@ -6,6 +6,7 @@ import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import LoadStatusTimeline from './LoadStatusTimeline';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
+import { nextStep } from '../../lib/loadStatus';
 import { usePickOptions } from '../../hooks/usePickOptions';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 
@@ -215,6 +216,16 @@ const LoadDetailModal: React.FC = () => {
         finally { setCodBusy(false); }
     };
 
+    // One-tap status progression from the detail view (no need to enter Edit mode).
+    const [advancing, setAdvancing] = useState(false);
+    const quickAdvance = async () => {
+        const step = nextStep(lc); if (!step) return;
+        setAdvancing(true);
+        const res = await handleUpdateLoadConfirmation(lc.id, { status: step.status });
+        setAdvancing(false);
+        if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
+    };
+
     // Email the computer-generated waybill / POD to the supplier (print & sign).
     const [waybillBusy, setWaybillBusy] = useState(false);
     const emailWaybillToSupplier = async () => {
@@ -262,6 +273,7 @@ const LoadDetailModal: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">{lc.status}</span>}
+                    {!editing && nextStep(lc) && <button onClick={quickAdvance} disabled={advancing} title="Move this load to the next status" className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-50">{advancing ? '…' : `${nextStep(lc)!.label} →`}</button>}
                     {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">📄 View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>📷 Capture</button>}
                     {!editing && <button onClick={whatsappDriver} className={tbtn}>💬 WhatsApp</button>}

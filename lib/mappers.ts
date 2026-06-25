@@ -1417,6 +1417,7 @@ export const toLoadConfirmationUpdate = (
     if ((updates as any).loadGroupId !== undefined) (row as any).load_group_id = (updates as any).loadGroupId ?? null;
     if ((updates as any).isPrimary !== undefined) (row as any).is_primary = (updates as any).isPrimary;
     if ((updates as any).archived !== undefined) (row as any).archived = (updates as any).archived;
+    if ((updates as any).acceptedAt !== undefined) (row as any).accepted_at = orNull((updates as any).acceptedAt);
     if (updates.route !== undefined) row.route = updates.route ?? null;
     if (updates.fbnRepresentative !== undefined) row.fbn_representative = updates.fbnRepresentative ?? null;
     if (updates.loadingTime !== undefined) row.loading_time = orNull(updates.loadingTime);

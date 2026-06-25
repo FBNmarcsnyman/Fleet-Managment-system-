@@ -132,6 +132,14 @@ const OperationsDay: React.FC = () => {
         setBusy(null);
         if (res && res.ok === false) showToast?.(res.error || 'Could not update');
     };
+    // Ops confirms they've accepted the booking (esp. future-dated ones). Stamps
+    // acceptedAt → the "Accepted ✓" badge shows and the daily reminder stops nagging.
+    const acceptLoad = async (lc: LoadConfirmation) => {
+        setBusy(lc.id);
+        const res = await handleUpdateLoadConfirmation(lc.id, { acceptedAt: new Date().toISOString() } as any);
+        setBusy(null);
+        if (res && res.ok === false) showToast?.(res.error || 'Could not accept');
+    };
     const markDelivered = async (lc: LoadConfirmation) => {
         setBusy(lc.id);
         const res = await handleUpdateLoadConfirmation(lc.id, { status: 'Delivered' });
@@ -215,13 +223,16 @@ const OperationsDay: React.FC = () => {
                                     <Cell className="text-slate-600 max-w-[150px] truncate">{unit(lc)}</Cell>
                                     <Cell><Chip lc={lc} /></Cell>
                                     <Cell stop className="text-right">
-                                        {!isAssigned(lc) && lc.status === 'Booked'
-                                            ? <div className="flex gap-1.5 justify-end">
-                                                <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
-                                                <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => markCollected(lc)}>{busy === lc.id ? '…' : '✓ Collected'}</ActBtn>
-                                              </div>
-                                            : step ? <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => advance(lc)}>{busy === lc.id ? '…' : step.label}</ActBtn>
-                                                : <span className="text-[11px] text-slate-400">ready</span>}
+                                        <div className="flex gap-1.5 justify-end flex-wrap">
+                                            {!lc.acceptedAt && <ActBtn tone="navy" disabled={busy === lc.id} onClick={() => acceptLoad(lc)}>{busy === lc.id ? '…' : '✓ Accept'}</ActBtn>}
+                                            {!isAssigned(lc) && lc.status === 'Booked'
+                                                ? <>
+                                                    <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
+                                                    <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => markCollected(lc)}>{busy === lc.id ? '…' : '✓ Collected'}</ActBtn>
+                                                  </>
+                                                : step ? <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => advance(lc)}>{busy === lc.id ? '…' : step.label}</ActBtn>
+                                                    : <span className="text-[11px] text-slate-400">ready</span>}
+                                        </div>
                                     </Cell>
                                 </Row>
                             );
@@ -238,12 +249,15 @@ const OperationsDay: React.FC = () => {
                                     checkbox={<input type="checkbox" checked={sel.has(lc.id)} onChange={() => toggle(lc.id)} onClick={e => e.stopPropagation()} className="h-5 w-5 accent-[#13294b] mt-0.5" />}
                                     client={clientName(lc)} route={`${code(lc.collectionBranch)} → ${code(lc.destinationBranch)}`} place={lc.collectionPoint}
                                     meta={`${pkgs(lc) || '—'} pkgs · ${weight(lc)}`} dateLabel={`Collect ${fmtDay(lc.collectionDate)}`} overdue={!!overdue} unit={unit(lc)}
-                                    action={!isAssigned(lc) && lc.status === 'Booked'
-                                        ? <div className="flex gap-1.5">
-                                            <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
-                                            <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => markCollected(lc)}>{busy === lc.id ? '…' : '✓ Collected'}</ActBtn>
-                                          </div>
-                                        : step ? <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => advance(lc)}>{busy === lc.id ? '…' : step.label}</ActBtn> : null} />
+                                    action={<div className="flex gap-1.5 flex-wrap">
+                                        {!lc.acceptedAt && <ActBtn tone="navy" disabled={busy === lc.id} onClick={() => acceptLoad(lc)}>{busy === lc.id ? '…' : '✓ Accept'}</ActBtn>}
+                                        {!isAssigned(lc) && lc.status === 'Booked'
+                                            ? <>
+                                                <ActBtn tone="emerald" onClick={() => showModal('assignFbn', { loadCon: lc })}>Assign FBN</ActBtn>
+                                                <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => markCollected(lc)}>{busy === lc.id ? '…' : '✓ Collected'}</ActBtn>
+                                              </>
+                                            : step ? <ActBtn tone="blue" disabled={busy === lc.id} onClick={() => advance(lc)}>{busy === lc.id ? '…' : step.label}</ActBtn> : null}
+                                      </div>} />
                             );
                         })}
                     </div>
@@ -414,8 +428,8 @@ const MobileCard: React.FC<{ lc: LoadConfirmation; selected: boolean; onOpen: ()
     </div>
 );
 
-const ActBtn: React.FC<{ tone: 'emerald' | 'blue'; disabled?: boolean; onClick: () => void; children: React.ReactNode }> = ({ tone, disabled, onClick, children }) => (
-    <button onClick={onClick} disabled={disabled} className={`${tone === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500'} disabled:opacity-50 text-white font-bold py-1 px-2.5 rounded-lg text-[11px] uppercase`}>{children}</button>
+const ActBtn: React.FC<{ tone: 'emerald' | 'blue' | 'navy'; disabled?: boolean; onClick: () => void; children: React.ReactNode }> = ({ tone, disabled, onClick, children }) => (
+    <button onClick={onClick} disabled={disabled} className={`${tone === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-500' : tone === 'navy' ? 'bg-[#13294b] hover:bg-[#1d3a66]' : 'bg-blue-600 hover:bg-blue-500'} disabled:opacity-50 text-white font-bold py-1 px-2.5 rounded-lg text-[11px] uppercase`}>{children}</button>
 );
 
 const DateChips: React.FC<{ mode: DateMode; set: (m: DateMode) => void }> = ({ mode, set }) => (

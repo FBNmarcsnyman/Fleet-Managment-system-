@@ -598,6 +598,12 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     legRole: (row as any).leg_role ?? undefined,
     podRequired: (row as any).pod_required ?? true,
     onwardRequired: (row as any).onward_required ?? false,
+    collectionLat: (row as any).collection_lat ?? undefined,
+    collectionLng: (row as any).collection_lng ?? undefined,
+    deliveryLat: (row as any).delivery_lat ?? undefined,
+    deliveryLng: (row as any).delivery_lng ?? undefined,
+    geofenceCollectionAt: (row as any).geofence_collection_at ?? undefined,
+    geofenceDeliveryAt: (row as any).geofence_delivery_at ?? undefined,
     codHold: (row as any).cod_hold ?? false,
     codPaidAt: (row as any).cod_paid_at ?? undefined,
     codReleasedAt: (row as any).cod_released_at ?? undefined,
@@ -1476,6 +1482,10 @@ export const toLoadConfirmationUpdate = (
     if ((updates as any).legRole !== undefined) (row as any).leg_role = (updates as any).legRole ?? null;
     if ((updates as any).podRequired !== undefined) (row as any).pod_required = (updates as any).podRequired;
     if ((updates as any).onwardRequired !== undefined) (row as any).onward_required = (updates as any).onwardRequired;
+    if ((updates as any).collectionLat !== undefined) (row as any).collection_lat = (updates as any).collectionLat;
+    if ((updates as any).collectionLng !== undefined) (row as any).collection_lng = (updates as any).collectionLng;
+    if ((updates as any).deliveryLat !== undefined) (row as any).delivery_lat = (updates as any).deliveryLat;
+    if ((updates as any).deliveryLng !== undefined) (row as any).delivery_lng = (updates as any).deliveryLng;
     if ((updates as any).codHold !== undefined) (row as any).cod_hold = (updates as any).codHold;
     if ((updates as any).codPaidAt !== undefined) (row as any).cod_paid_at = orNull((updates as any).codPaidAt);
     if ((updates as any).codReleasedAt !== undefined) (row as any).cod_released_at = orNull((updates as any).codReleasedAt);

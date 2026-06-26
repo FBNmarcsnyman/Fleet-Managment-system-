@@ -591,6 +591,14 @@ export interface LoadConfirmation {
     // (no subcontractor). ON = out-of-network end destination (CPT/PE/EL/Bloem…): FBN
     // collects on its own truck then forwards on to the destination with a subbie.
     onwardRequired?: boolean;
+    // Geofence coordinates (captured in-browser from Google) + once-per-arrival
+    // throttle stamps, used by the geofence-check cron to auto-advance status.
+    collectionLat?: number;
+    collectionLng?: number;
+    deliveryLat?: number;
+    deliveryLng?: number;
+    geofenceCollectionAt?: string;
+    geofenceDeliveryAt?: string;
     // COD cargo hold: held pending payment; released (for delivery) once payment confirmed.
     codHold?: boolean;
     codPaidAt?: string;

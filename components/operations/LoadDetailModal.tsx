@@ -6,6 +6,7 @@ import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import LoadStatusTimeline from './LoadStatusTimeline';
 import WaybillTimeline from './WaybillTimeline';
+import { geocodeAddress } from '../../lib/geocode';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { nextStep } from '../../lib/loadStatus';
 import { usePickOptions } from '../../hooks/usePickOptions';
@@ -112,6 +113,20 @@ const LoadDetailModal: React.FC = () => {
         if (res?.ok) setWaybillEvents(res.value || []);
     }, [modal.payload?.loadCon?.id, handleGetWaybillEvents]);
     React.useEffect(() => { loadWaybillEvents(); }, [loadWaybillEvents]);
+    // Backfill geofence coordinates for this load (browser-side geocode, once) so
+    // the geofence-check cron can auto-update status on arrival.
+    React.useEffect(() => {
+        const lc0 = modal.payload?.loadCon;
+        if (!lc0?.id) return;
+        let active = true;
+        (async () => {
+            const upd: any = {};
+            if (lc0.collectionPoint && lc0.collectionLat == null) { const c = await geocodeAddress(lc0.collectionPoint); if (c) { upd.collectionLat = c.lat; upd.collectionLng = c.lng; } }
+            if (lc0.deliveryPoint && lc0.deliveryLat == null) { const d = await geocodeAddress(lc0.deliveryPoint); if (d) { upd.deliveryLat = d.lat; upd.deliveryLng = d.lng; } }
+            if (active && Object.keys(upd).length) handleUpdateLoadConfirmation(lc0.id, upd);
+        })();
+        return () => { active = false; };
+    }, [modal.payload?.loadCon?.id]);
     const commodityOpts = usePickOptions('commodity');
     const packagingOpts = usePickOptions('packaging');
     const clientNameOpts = React.useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);

@@ -133,6 +133,22 @@ const LoadDetailModal: React.FC = () => {
         showToast('WhatsApp sent to the driver.');
     };
 
+    // Copy a ready-to-paste driver message: the job summary + the driver self-update link
+    // (?update=<id>). The driver taps it from WhatsApp and pushes each status (loaded →
+    // on route → arrived → delivered) and uploads the POD — no login, auto-notifies FBN +
+    // client. Manual paste for now; auto-WhatsApp dispatch comes later.
+    const copyDriverLink = async () => {
+        const link = `${window.location.origin}${window.location.pathname}?update=${lc.id}`;
+        const msg = `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport load ${lc.loadConNumber}.\n`
+            + `Collect: ${lc.collectionPoint || '-'}\n`
+            + `Deliver: ${lc.deliveryPoint || '-'}\n`
+            + `Cargo: ${[lc.loadType, lc.commodity].filter(Boolean).join(' ')}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\n`
+            + `Contact: ${lc.collectionContact || '-'} ${lc.collectionTelephone || ''}\n\n`
+            + `Tap to update us as you go + upload the POD:\n${link}`;
+        try { await navigator.clipboard.writeText(msg); showToast('Driver job + link copied — paste it into the driver’s WhatsApp.'); }
+        catch { window.prompt('Copy this driver link:', link); }
+    };
+
     // Email the received POD to a chosen recipient (defaults to the client).
     // Goes only to you while EMAILS: TEST is on.
     const [sendingPod, setSendingPod] = useState(false);
@@ -305,6 +321,7 @@ const LoadDetailModal: React.FC = () => {
                     {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">📄 View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>📷 Capture</button>}
                     {!editing && <button onClick={whatsappDriver} className={tbtn}>💬 WhatsApp</button>}
+                    {!editing && <button onClick={copyDriverLink} title="Copy the driver job + self-update link to paste into WhatsApp — the driver taps it to update status (loaded → on route → arrived → delivered) and upload the POD." className={tbtn}>🔗 Driver link</button>}
                     {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className={tbtn}>📁 Documents</button>}
                     {!editing && <button onClick={() => showModal('splitLoad', { loadCon: lc })} title="One waybill carried by several trucks/subbies — allocate transporters, split the cost, send each their loadcon." className={tbtn}>🚚 Split{lc.loadGroupId ? ' ✓' : ''}</button>}
                     {!editing && <button onClick={() => showModal('offerLoad', { loadCon: lc })} title="Market this load to carriers who run this lane + truck type; invite their best rate." className={tbtn}>📣 Offer{(lc as any).offeredCarriers?.length ? ` · ${(lc as any).offeredCarriers.length}` : ''}</button>}

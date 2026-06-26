@@ -19,6 +19,13 @@ All notable changes to the FBN Fleet Management System. Newest first.
   applicant a confirmation + admins a notification (CC loadcons@). Verified end-to-end live.
 - `supplier_applications` schema extended (registration_number, vat_number, years_operating,
   vehicles, routes_detail, cross_border_countries, documents, agreement_* fields).
+- **Vetting step**: the onboarding queue + `SupplierApplicationDetailModal` (both converted
+  to light theme) now show the full submission — company (reg/VAT/years/BEE/haz), a
+  per-vehicle fleet table, routes + per-lane load types + cross-border countries, the
+  electronic-acceptance block (name/ID/position/server timestamp/IP), and a documents list
+  with per-doc **View** + **View signed agreement (PDF)**. New role-gated edge fn
+  `supplier-doc-url` (verify_jwt=true) mints 1-hour signed URLs for the private
+  `supplier-applications` bucket; `tsconfig` now excludes `supabase/functions` (Deno).
 
 ### Changed
 - **Subcontractor SLA single-sourced** in `lib/subcontractorSla.ts` — now feeds the public

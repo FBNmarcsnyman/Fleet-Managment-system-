@@ -729,6 +729,7 @@ export const mapTripSheet = (row: Tables['trip_sheets']['Row'], ctx: MapperCtx):
     status: row.status,
     odometerStart: (row as any).odometer_start ?? undefined,
     odometerEnd: (row as any).odometer_end ?? undefined,
+    stops: Array.isArray((row as any).stops) ? (row as any).stops : [],
 });
 
 // -- incident_reports → IncidentReport ---------------------------------------

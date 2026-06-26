@@ -151,6 +151,7 @@ export type AppAction =
     | { type: 'BULK_ADD_SUPPLIERS', payload: Supplier[] }
     | { type: 'CREATE_MANIFEST', payload: any }
     | { type: 'CREATE_TRIP_SHEET', payload: any }
+    | { type: 'UPDATE_TRIP_SHEET', payload: any }
     | { type: 'APPLY_AI_ASSIGNMENTS', payload: Partial<JobCard>[] }
     | { type: 'ADD_PART', payload: Part }
     | { type: 'CREATE_PURCHASE_REQUEST', payload: PurchaseRequest }
@@ -414,6 +415,8 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'CREATE_QUOTE': return { ...state, quotes: [action.payload, ...(state.quotes || [])] };
         case 'UPDATE_QUOTE': return { ...state, quotes: (state.quotes || []).map(q => q.id === action.payload.id ? action.payload : q) };
         case 'CREATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: [action.payload, ...(state.loadConfirmations || [])] };
+        case 'CREATE_TRIP_SHEET': return { ...state, tripSheets: [action.payload, ...(state.tripSheets || [])] };
+        case 'UPDATE_TRIP_SHEET': return { ...state, tripSheets: (state.tripSheets || []).map(t => t.id === action.payload.id ? action.payload : t) };
         case 'UPDATE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: (state.loadConfirmations || []).map(lc => lc.id === action.payload.id ? { ...lc, ...action.payload.updates } : lc) };
         case 'DELETE_LOAD_CONFIRMATION': return { ...state, loadConfirmations: (state.loadConfirmations || []).filter(lc => lc.id !== action.payload.id) };
         // Push 5: incident payloads now arrive with DB-assigned ids.

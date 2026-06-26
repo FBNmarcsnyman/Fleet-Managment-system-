@@ -15,7 +15,7 @@ const kg = (n: number) => Math.round(n).toLocaleString('en-ZA');
 const ON_FLOOR = new Set(['At Destination Depot', 'Unloaded']);     // arrived, awaiting local delivery
 
 const OperationsTripSheets: React.FC = () => {
-    const { loadConfirmations = [], clients = [], users = [], tripSheets = [], handleCreateTripSheet, handleUpdateLoadConfirmation } = useOperations() as any;
+    const { loadConfirmations = [], clients = [], users = [], tripSheets = [], handleCreateTripSheet, handleUpdateTripSheet, handleUpdateLoadConfirmation } = useOperations() as any;
     const { vehicles = [] } = (useVehicles() as any) || {};
     const { showModal, showToast } = useUIState();
     const { currentUser } = useAuth();
@@ -51,6 +51,15 @@ const OperationsTripSheets: React.FC = () => {
     const toggle = (id: string) => setSel(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
     const getPod = (lc: LoadConfirmation) => showModal('pod', { loadCon: lc, onSubmit: (id: string, pod: any) => handleUpdateLoadConfirmation(id, { podPhoto: pod.photo, podSignature: pod.signature, status: 'POD Submitted', paymentStatus: 'Awaiting POD' }), onCancel: () => showModal('hide') });
     const markDelivered = async (lc: LoadConfirmation) => { setBusy(lc.id); const r = await handleUpdateLoadConfirmation(lc.id, { status: 'Delivered' }); setBusy(null); if (r?.ok === false) showToast(`Could not update: ${r.error}`); };
+
+    // The ordered delivery run for a trip sheet (falls back to load order for old sheets).
+    const runStops = (t: any): { loadId: string; order: number; urgent?: boolean }[] => {
+        const base = (Array.isArray(t.stops) && t.stops.length) ? t.stops : (t.loadConfirmationIds || []).map((id: string, i: number) => ({ loadId: id, order: i, urgent: false }));
+        return [...base].sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+    };
+    const saveStops = async (t: any, stops: any[]) => { const r = await handleUpdateTripSheet(t.id, { stops }); if (r?.ok === false) showToast(`Could not reorder: ${r.error}`); };
+    const move = (t: any, fromIdx: number, toIdx: number) => { const arr = runStops(t); if (toIdx < 0 || toIdx >= arr.length) return; const [m] = arr.splice(fromIdx, 1); arr.splice(toIdx, 0, m); saveStops(t, arr.map((s, i) => ({ ...s, order: i }))); };
+    const toggleUrgent = (t: any, loadId: string) => { const arr = runStops(t).map(s => s.loadId === loadId ? { ...s, urgent: !s.urgent } : s); saveStops(t, arr); };
 
     return (
         <div className="max-w-[1600px] mx-auto px-1">
@@ -100,20 +109,35 @@ const OperationsTripSheets: React.FC = () => {
                                         <span className="text-xs text-slate-500">{loads.length} drop{loads.length === 1 ? '' : 's'} · {code(t.branch)}</span>
                                         <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">{t.status || 'Out for Delivery'}</span>
                                     </div>
-                                    {/* what's loaded on this vehicle */}
-                                    <div className="mt-2 divide-y divide-slate-50 border border-slate-100 rounded-lg">
-                                        {loads.map(l => (
-                                            <div key={l.id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
-                                                <span className="font-bold text-[#13294b] w-32">{l.loadConNumber}</span>
+                                    {/* Ordered delivery run — drop 1, 2, 3… (reorder / flag urgent) */}
+                                    {loads.length > 1 && <p className="text-[10px] text-slate-400 mt-2 mb-0.5 uppercase tracking-wider font-bold">Delivery run · {loads.length} drops — reorder with ▲▼ or flag urgent</p>}
+                                    <div className="mt-1 divide-y divide-slate-50 border border-slate-100 rounded-lg">
+                                        {runStops(t).map((stop, idx) => {
+                                            const l = loads.find(x => x.id === stop.loadId);
+                                            if (!l) return null;
+                                            const multi = loads.length > 1;
+                                            return (
+                                            <div key={l.id} className={`flex items-center gap-2 px-3 py-1.5 text-sm ${stop.urgent ? 'bg-red-50' : ''}`}>
+                                                {multi && (
+                                                    <span className="flex flex-col leading-none">
+                                                        <button onClick={() => move(t, idx, idx - 1)} disabled={idx === 0} className="text-slate-400 hover:text-[#13294b] disabled:opacity-20 text-xs">▲</button>
+                                                        <button onClick={() => move(t, idx, idx + 1)} disabled={idx === runStops(t).length - 1} className="text-slate-400 hover:text-[#13294b] disabled:opacity-20 text-xs">▼</button>
+                                                    </span>
+                                                )}
+                                                {multi && <span className="text-[10px] font-black text-white bg-[#13294b] rounded-full w-5 h-5 flex items-center justify-center shrink-0">{idx + 1}</span>}
+                                                <span className="font-bold text-[#13294b] w-32 truncate">{l.loadConNumber}</span>
                                                 <span className="text-slate-600 flex-1 truncate">{clientName(l)} — {l.deliveryPoint || ''}</span>
-                                                <span className="text-[11px] text-slate-400">{pkgsOf(l) || '?'} pkgs</span>
+                                                {stop.urgent && <span className="text-[9px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded uppercase">Urgent</span>}
+                                                <span className="text-[11px] text-slate-400 hidden sm:inline">{pkgsOf(l) || '?'} pkgs</span>
+                                                {multi && <button onClick={() => toggleUrgent(t, l.id)} title="Flag this drop urgent (go first)" className={`text-[10px] font-bold py-1 px-1.5 rounded ${stop.urgent ? 'bg-red-600 text-white' : 'text-red-500 hover:bg-red-50'}`}>⚑</button>}
                                                 {l.status === 'Delivered' && !l.podPhoto
                                                     ? <button onClick={() => getPod(l)} className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold py-1 px-2 rounded uppercase">Get POD</button>
                                                     : l.status === 'POD Submitted'
                                                         ? <span className="text-[10px] font-bold text-emerald-600">✓ POD</span>
                                                         : <button onClick={() => markDelivered(l)} disabled={busy === l.id} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-bold py-1 px-2 rounded uppercase">{busy === l.id ? '…' : 'Delivered'}</button>}
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );

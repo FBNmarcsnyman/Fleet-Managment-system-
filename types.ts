@@ -875,6 +875,13 @@ export interface TripSheet {
     status: 'Out for Delivery' | 'Completed';
     odometerStart?: number;
     odometerEnd?: number;
+    // Ordered multi-drop delivery run. order = sequence (0-based); urgent floats to the front.
+    stops?: TripStop[];
+}
+export interface TripStop {
+    loadId: string;
+    order: number;
+    urgent?: boolean;
 }
 
 export type NotificationType = 'JOB_CARD' | 'SERVICE' | 'INVENTORY' | 'PURCHASE' | 'COMPLIANCE' | 'ONBOARDING' | 'RFQ';

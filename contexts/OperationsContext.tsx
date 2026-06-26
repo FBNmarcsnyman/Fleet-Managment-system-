@@ -1323,11 +1323,27 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const today = new Date().toISOString().slice(0, 10);
                 const number = `TRP-${today.replace(/-/g, '')}-${String(Date.now()).slice(-4)}`;
                 const trpDriver = payload.driverId && String(payload.driverId).includes('@') ? ((users || []).find((u: any) => u.email === payload.driverId)?.id || null) : (payload.driverId || null);
-                const row: any = { organization_id: FBN_ORGANIZATION_ID, trip_sheet_number: number, branch_id: branchIdByName.get(payload.branch) || null, dispatch_date: today, vehicle_id: payload.vehicleId || null, driver_id: trpDriver, load_confirmation_ids: payload.loadConIds || [], status: 'Out for Delivery', odometer_start: payload.odometerStart ?? null };
+                const ids: string[] = payload.loadConIds || [];
+                const stops = ids.map((id, i) => ({ loadId: id, order: i, urgent: false }));
+                const row: any = { organization_id: FBN_ORGANIZATION_ID, trip_sheet_number: number, branch_id: branchIdByName.get(payload.branch) || null, dispatch_date: today, vehicle_id: payload.vehicleId || null, driver_id: trpDriver, load_confirmation_ids: ids, status: 'Out for Delivery', odometer_start: payload.odometerStart ?? null, stops };
                 const { data, error } = await directInsert('trip_sheets', row);
                 if (error || !data) return { ok: false, error: error?.message || 'Could not save trip sheet.' };
                 dispatch({ type: 'CREATE_TRIP_SHEET', payload: mapTripSheet(data, { branchById }) });
                 return { ok: true, value: mapTripSheet(data, { branchById }) };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+        // Update a trip sheet's delivery-run order / urgent flags (ops reorder).
+        handleUpdateTripSheet: async (id: string, updates: any) => {
+            try {
+                const row: any = { updated_at: new Date().toISOString() };
+                if (updates.stops !== undefined) row.stops = updates.stops;
+                if (updates.status !== undefined) row.status = updates.status;
+                if (updates.odometerEnd !== undefined) row.odometer_end = updates.odometerEnd;
+                const { error } = await directUpdate('trip_sheets', { id }, row);
+                if (error) return { ok: false, error: error.message };
+                const cur = (stateRef.current.tripSheets || []).find((t: any) => t.id === id);
+                if (cur) dispatch({ type: 'UPDATE_TRIP_SHEET', payload: { ...cur, ...updates } });
+                return { ok: true };
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
         // Receive a line-haul manifest at the destination depot: mark it Arrived

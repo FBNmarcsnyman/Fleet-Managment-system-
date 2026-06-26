@@ -167,10 +167,14 @@ const DRIVER_PHASE_MSG: Record<string, (lc: any, podLink: string) => string> = {
 
 // Emails the client a short branded status update with a live tracking link as
 // the load moves through its phases. Fire-and-forget.
+// Internal depot moves the CLIENT should NOT be emailed about — their tracker
+// rolls these up as "In Transit". Keeps client updates to clean milestones.
+const CLIENT_SILENT_STATUSES = new Set(['At Collection Depot', 'At Destination Depot', 'Unloaded']);
 export const sendClientPhaseEmail = async (lc: any, status: string): Promise<void> => {
     const to = lc?.clientEmail;
     const msg = CLIENT_PHASE_MSG[status];
     if (!to || !msg) return;
+    if (CLIENT_SILENT_STATUSES.has(status)) return; // internal depot logistics — not client-facing
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
     const trackLink = `${base}?track=${lc.id}`;
     const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;

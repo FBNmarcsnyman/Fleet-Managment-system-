@@ -33,16 +33,22 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuo
     const linkableQuotes = useMemo(() => (quotes as any[]).filter(q => q.status === 'Requested' || q.status === 'Draft'), [quotes]);
     const onQuote = (id: string) => {
         const q = (quotes as any[]).find(x => x.id === id);
+        // Website quote requests keep their detail in request_data (rd); priced quotes
+        // use legs/fields. Pull from both so the RFQ form fills in either way.
+        const rd = q?.requestData || {};
+        const legs = Array.isArray(q?.legs) ? q.legs : [];
         setF(prev => ({
             ...prev, quoteId: id,
             clientId: q?.clientId || prev.clientId,
-            origin: q?.legs?.[0]?.collectionPoint || prev.origin,
-            destination: q?.legs?.[q.legs.length - 1]?.deliveryPoint || prev.destination,
-            commodity: q?.commodity || prev.commodity,
-            weightKg: q?.weightKg != null ? String(q.weightKg) : prev.weightKg,
-            packages: q?.quantity != null ? String(q.quantity) : (q?.pieces != null ? String(q.pieces) : prev.packages),
+            origin: rd.collect_from || legs[0]?.collectionPoint || rd.collection_area || prev.origin,
+            destination: rd.deliver_to || legs[legs.length - 1]?.deliveryPoint || rd.delivery_area || prev.destination,
+            commodity: rd.commodity || q?.commodity || prev.commodity,
+            weightKg: rd.total_weight ? String(rd.total_weight) : (q?.weightKg != null ? String(q.weightKg) : prev.weightKg),
+            packages: rd.packages || (q?.quantity != null ? String(q.quantity) : (q?.pieces != null ? String(q.pieces) : prev.packages)),
             cubeM3: q?.cubeM3 != null ? String(q.cubeM3) : prev.cubeM3,
-            loadType: q?.loadSpec || prev.loadType,
+            loadType: rd.load_type || q?.loadSpec || prev.loadType,
+            hazardous: rd.hazardous != null ? !!rd.hazardous : prev.hazardous,
+            collectionDate: rd.loading_date || q?.collectionDate || prev.collectionDate,
         }));
     };
     const clientName = (id: string) => (clients as any[]).find(c => c.id === id)?.name || '';

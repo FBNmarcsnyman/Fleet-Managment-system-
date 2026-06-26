@@ -289,6 +289,21 @@ const QuoteDetailModal: React.FC<{
                 </button>
             )}
 
+            {(quote.status === 'Draft' || quote.status === 'Sent' || quote.status === 'Accepted') && (() => {
+                const link = `${window.location.origin}/quote-view.html?id=${quote.id}`;
+                const incl = `R ${(Number(quote.totalAmount || 0) * 1.15).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const msg = `Hi ${client?.contactPerson || client?.name || 'there'}, here is your FBN Transport quote ${quote.quoteNumber} (${incl} incl VAT). View, download the PDF and accept or decline here:\n${link}`;
+                const phone = (client?.contactPhone || '').replace(/\D/g, '');
+                const wa = phone ? `https://wa.me/${phone.startsWith('0') ? '27' + phone.slice(1) : phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                const copyLink = async () => { try { await navigator.clipboard.writeText(link); } catch { window.prompt('Copy the quote link:', link); } };
+                return (
+                    <div className="flex gap-2 mt-4">
+                        <a href={wa} target="_blank" rel="noreferrer" className="btn-on-color flex-1 text-center py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110" style={{ background: '#25D366' }}>📱 Share on WhatsApp</a>
+                        <button onClick={copyLink} className="btn-on-color px-4 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110" style={{ background: NAVY }} title="Copy the client view/accept link">🔗 Copy link</button>
+                    </div>
+                );
+            })()}
+
             <button onClick={onClose} className="w-full mt-3 py-2 text-gray-400 hover:text-white text-sm font-bold uppercase tracking-wide">
                 Close
             </button>

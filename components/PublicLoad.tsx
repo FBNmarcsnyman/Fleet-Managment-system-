@@ -43,6 +43,7 @@ interface Summary {
     client_name?: string;
     request_status?: string;
     request_reply?: string;
+    live_tracking?: boolean;
 }
 
 // Public client-facing stages (no internal jargon).
@@ -152,7 +153,15 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                             <h2 style={{ color: NAVY, margin: '0 0 4px', fontSize: 26 }}>Load {load.load_con_number}</h2>
                             <p style={{ color: '#6b7280', fontSize: 16, margin: '0 0 24px' }}>{load.collection_point} → {load.delivery_point}</p>
 
-                            {mode === 'track' && (
+                            {mode === 'track' && load.live_tracking === false && (
+                                <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 18, fontSize: 14, color: '#374151', lineHeight: 1.7 }}>
+                                    <p style={{ margin: 0 }}>Live tracking for this shipment is currently turned off. <strong>FBN Transport will keep you updated by email and WhatsApp</strong> at each stage and with the delivery ETA.</p>
+                                    {load.has_pod && load.pod_url && (
+                                        <a href={load.pod_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 14, background: '#16a34a', color: '#fff', textDecoration: 'none', fontWeight: 800, padding: '12px 20px', borderRadius: 8 }}>⬇ Download signed POD</a>
+                                    )}
+                                </div>
+                            )}
+                            {mode === 'track' && load.live_tracking !== false && (
                                 <>
                                     <div style={{ marginBottom: 20 }}>
                                         {STAGES.map((s, i) => (

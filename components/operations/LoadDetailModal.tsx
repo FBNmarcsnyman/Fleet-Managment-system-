@@ -216,6 +216,16 @@ const LoadDetailModal: React.FC = () => {
         finally { setCodBusy(false); }
     };
 
+    // Click a rate card to set it (no need to enter Edit mode).
+    const quickRate = async (field: 'totalAmount' | 'supplierRate', label: string) => {
+        const cur = field === 'totalAmount' ? lc.totalAmount : lc.supplierRate;
+        const v = window.prompt(`${label} (R):`, cur != null ? String(cur) : '');
+        if (v === null) return;
+        const num = parseFloat(String(v).replace(/[^\d.]/g, '')) || 0;
+        const res = await handleUpdateLoadConfirmation(lc.id, { [field]: num } as any);
+        if (res && res.ok === false) showToast(`Could not save: ${res.error}`);
+    };
+
     // One-tap status progression from the detail view (no need to enter Edit mode).
     const [advancing, setAdvancing] = useState(false);
     const quickAdvance = async () => {
@@ -363,11 +373,18 @@ const LoadDetailModal: React.FC = () => {
 
             {!editing && (
                 <>
-                <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate{isGrouped ? ' (waybill)' : ''}</p><p className="text-lg font-black text-blue-300">{rand(groupClient)}</p></div>
-                    <div className="bg-gray-900/50 rounded-xl p-3"><p className="text-[10px] font-bold text-gray-500 uppercase">{isGrouped ? `Transport cost (all ${groupTrucks.length})` : 'Transport Rate'}</p><p className="text-lg font-black text-amber-300">{rand(groupCost)}</p>{isGrouped && <p className="text-[10px] text-gray-500">this truck: {rand(lc.supplierRate)}</p>}</div>
-                    <div className={`rounded-xl p-3 ${margin < 0 ? 'bg-red-950/40 ring-1 ring-red-500' : 'bg-gray-900/50'}`}><p className="text-[10px] font-bold text-gray-500 uppercase">Margin{isGrouped ? ' (waybill)' : ''}{margin < 0 ? ' ⚠ LOSS' : ''}</p><p className={`text-lg font-black ${margin < 0 ? 'text-red-400' : marginPct < 10 ? 'text-amber-400' : 'text-emerald-400'}`}>{rand(margin)} <span className="text-xs">({marginPct.toFixed(0)}%)</span></p></div>
+                {(() => {
+                    // Transport rate/margin only make sense once a transporter is on the load
+                    // (brokered/split) or it's a broking load — not for an own-fleet collection.
+                    const isBrokered = isGrouped || !!lc.supplierId || !!(lc.subcontractorName || '').trim() || lc.isCollection === false;
+                    return (
+                <div className={`grid ${isBrokered ? 'grid-cols-3' : 'grid-cols-1'} gap-3`}>
+                    <button type="button" onClick={() => quickRate('totalAmount', 'Client rate')} className="text-left bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-3 transition"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate{isGrouped ? ' (waybill)' : ''} <span className="text-blue-400 normal-case">· tap to edit</span></p><p className="text-lg font-black text-blue-300">{rand(groupClient)}</p></button>
+                    {isBrokered && <button type="button" onClick={() => !isGrouped && quickRate('supplierRate', 'Transport rate')} className="text-left bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-3 transition"><p className="text-[10px] font-bold text-gray-500 uppercase">{isGrouped ? `Transport cost (all ${groupTrucks.length})` : 'Transport Rate'}{!isGrouped ? ' · tap to edit' : ''}</p><p className="text-lg font-black text-amber-300">{rand(groupCost)}</p>{isGrouped && <p className="text-[10px] text-gray-500">this truck: {rand(lc.supplierRate)}</p>}</button>}
+                    {isBrokered && <div className={`rounded-xl p-3 ${margin < 0 ? 'bg-red-950/40 ring-1 ring-red-500' : 'bg-gray-900/50'}`}><p className="text-[10px] font-bold text-gray-500 uppercase">Margin{isGrouped ? ' (waybill)' : ''}{margin < 0 ? ' ⚠ LOSS' : ''}</p><p className={`text-lg font-black ${margin < 0 ? 'text-red-400' : marginPct < 10 ? 'text-amber-400' : 'text-emerald-400'}`}>{rand(margin)} <span className="text-xs">({marginPct.toFixed(0)}%)</span></p></div>}
                 </div>
+                    );
+                })()}
                 {isGrouped && (
                     <div className="mt-2 bg-gray-900/40 rounded-xl p-3">
                         <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Trucks on waybill {lc.loadRefNo || groupPrimary.loadConNumber} — ONE client charge of {rand(groupClient)}</p>

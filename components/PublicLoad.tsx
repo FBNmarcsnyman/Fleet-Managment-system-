@@ -63,7 +63,8 @@ const fmtDT = (d?: string) => { if (!d) return ''; const dt = new Date(d); retur
 
 // Supplier portal: the next action(s) they can push, by current internal status.
 const NEXT_ACTION = (status: string): { to: string; label: string; askEta?: boolean; askLoaded?: boolean } | null => {
-    if (['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'].includes(status)) return { to: 'Collected', label: 'Mark as Loaded / Collected', askLoaded: true };
+    if (['Booked', 'Driver Assigned'].includes(status)) return { to: 'At Collection Point', label: 'Mark Arrived to collect' };
+    if (['At Collection Point', 'Loading'].includes(status)) return { to: 'Collected', label: 'Mark as Loaded / Collected', askLoaded: true };
     if (['Collected', 'At Collection Depot'].includes(status)) return { to: 'In Transit', label: 'Mark On Route to delivery', askEta: true };
     if (status === 'In Transit') return { to: 'Out for Delivery', label: 'Mark Arrived at delivery' };
     if (['Out for Delivery', 'At Destination Depot', 'Unloaded'].includes(status)) return { to: 'Delivered', label: 'Mark Delivered / Offloaded' };

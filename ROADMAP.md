@@ -249,3 +249,41 @@ PHASES 6–10 ONLY START AFTER PHASE 5 IS LIVE AND STABLE.
 - [ ] **control.fbn-transport.co.za** subdomain delegation to Cloudflare (owner DNS step).
 - [ ] **Access approval gate** (approve-only external registration → owner approves).
 - [ ] FCL unpack→floor→split workflow screen.
+
+---
+
+## Recently completed — 2026-06-23 → 26 (COD, comms lifecycle, tracking, cargo verification)
+- [x] **COD payment-gated workflow** — new clients default COD/unauthorised; **proforma** (FBN banking
+  + requests client VAT/invoicing) with a **preview/edit modal** (cc debtors + ops, add extra cc);
+  cargo HELD (`cod_hold`) with subbie/ops "DO NOT DELIVER" banner; **payment→release** email frees delivery.
+- [x] **POD authorisation gate** — `submit-pod` holds every POD `pending`; `authorise-pod` required before
+  client send; `blocked` state for invoice-contaminated PODs. View POD everywhere + PODs tab.
+- [x] **Collection lifecycle** — Accept (`accepted_at`); booking email date-aware + **routed to the branch
+  ops floor** (opsjhb/opsdbn); 07:00 loading-day reminder (`ops-daily-checks`); ETA check ~1h-before +
+  ~10min-after arrival (`collection-eta-check`).
+- [x] **Multi-transporter split** — one waybill / several subbies (`load_group_id`); ONE client charge;
+  each subbie own LoadCon; per-leg `leg_role` + `pod_required` + routing; group-aware margin.
+- [x] **Own-truck flow** — subbie field hidden in-network (GP/KZN); manual `onward_required` toggle for
+  out-of-network (CPT/PE/EL/Bloem). Inline client/transport rate editing on the load.
+- [x] **Driver self-update link** — copy-paste `?update=` into WhatsApp → driver pushes status
+  (arrived→loaded→on route→arrived→delivered) + uploads POD. **WhatsApp kill-switch** (management toggle).
+- [x] **Live vehicle tracking (Pulsit)** — `track` edge fn (key in `integration_settings`); live fleet map
+  in **Fleet AND Operations** + per-load position; **35 drivers linked to trucks** from the tracker
+  (`drivers.assigned_vehicle_id`), Asset List shows the driver reactively; 3 missing bakkies added.
+- [x] **Geofence auto-status** — `geofence-check` cron (10 min): truck within 500 m of collection/delivery
+  → auto-advance status + notify branch ops + client. Coords captured in-browser (`lib/geocode.ts`).
+- [x] **Cargo verification spine** — `waybill_events` table + reusable `CaptureWaybillEventModal` +
+  `WaybillTimeline` (packages expected/actual, weight, condition, damage photos per stage); on each load.
+- [x] **Docs** — ARCHITECTURE.md rewritten as the live source of truth; CLAUDE.md mandatory
+  session-start / before-feature / after-update rules.
+
+## New / next (carried forward — 2026-06-26)
+- [ ] **Cargo verification Phase 2+** — wire the capture into the collection flow + **digital waybill**
+  the client signs on the driver's phone; origin/destination depot **Goods-Received** (mobile per-waybill
+  confirm + damage); **manifest trailer-pairing (Superlink 6m+12m) + overload engine** (6m≤12t, 12m≤22t,
+  triaxle≤28t; rigid payloads; flag + override-notifies-management); tripsheet weight checks.
+- [ ] **Geofence coverage** — capture coords at address-entry (AddressAutocompleteInput Place geometry)
+  for instant cover on brand-new loads; populate `vehicles.payload_kg` from weight categories.
+- [ ] **Auto-trigger** — auto-set COD hold + auto-raise proforma at COD load creation; auto in/out-of-network.
+- [ ] **Waybill photos to Drive/Storage** (currently data-URLs in jsonb).
+- [ ] Carried over: FCL unpack→floor→split; access approval gate; LCL daily client status emails.

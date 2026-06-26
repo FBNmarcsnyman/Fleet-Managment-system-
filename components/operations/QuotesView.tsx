@@ -131,31 +131,10 @@ const QuotesView: React.FC<{
         }
     };
 
+    // Open the proforma preview/edit modal (confirm recipient, add CC, capture VAT/invoicing) before sending.
     const handleSendProforma = async (quote: Quote) => {
-        if (!confirm(`Email a COD proforma invoice for ${quote.quoteNumber} to the client (cc debtors)?`)) return;
-        setSending(quote.id);
-        try {
-            const { data: { session } } = await (await import('../../lib/supabase')).supabase.auth.getSession();
-            const resp = await fetch(
-                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quote-proforma`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-                        Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                    },
-                    body: JSON.stringify({ quote_id: quote.id }),
-                }
-            );
-            const data = await resp.json();
-            if (data.error) throw new Error(data.error);
-            showToast(`Proforma ${quote.quoteNumber} sent to ${data.sent_to} (cc debtors)`);
-        } catch (e: any) {
-            showToast(`Failed to send proforma: ${e.message}`);
-        } finally {
-            setSending(null);
-        }
+        const client = (clients as any[]).find(c => c.id === quote.clientId);
+        showModal('proforma', { quote, client });
     };
 
     const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c.name])), [clients]);

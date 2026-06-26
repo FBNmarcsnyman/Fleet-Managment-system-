@@ -2,6 +2,23 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-26] — Invitation broadcast
+
+### Added / Changed
+- **Carrier invite funnel now advances to Applied**: when an invited transporter registers
+  via their `?invite=<token>` link, the `supplier-register` edge fn flips the matching
+  `subcontractor_invites` row to **Applied** (+ application_id + applied_at). The campaign
+  funnel is now On List → Invited (send) → Applied (register) → Vetted (approve). Verified
+  end-to-end.
+- **Canonical invite link**: invite emails and "Copy Public Link" now use
+  `/supplier-register?invite=<token>` (was `?portal=become-supplier&invite=`).
+- **Invite email** gains an "already registered? log in here" link (`/?portal=supplier`)
+  and the support contact **missioncontrol@fbn-transport.co.za**.
+- **Light theme**: `CarrierInviteCampaign` + `SubcontractorControlCenter` (Active Network /
+  Onboarding Queue / Invite Carriers) converted from the legacy dark theme.
+- Edge functions `supplier-register` + `supplier-doc-url` are now version-controlled on
+  disk under `supabase/functions/`.
+
 ## [2026-06-26]
 
 ### Added

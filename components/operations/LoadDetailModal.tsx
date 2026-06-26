@@ -18,6 +18,42 @@ const fmt = (d?: string) => {
 };
 const STATUSES = ['Booked', 'Driver Assigned', 'At Collection Point', 'Collected', 'At Collection Depot', 'In Transit', 'At Destination Depot', 'Out for Delivery', 'Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'];
 
+// Ops-only live position of the assigned truck, pulled from Pulsit via the
+// `track` edge function (the browser never sees the tracking key). Shows the
+// last-known address, speed and time + a Google Maps link. Silent if the reg
+// isn't on the tracker.
+const LoadLivePosition: React.FC<{ reg?: string }> = ({ reg }) => {
+    const [pos, setPos] = useState<any>(null);
+    const [state, setState] = useState<'loading' | 'none' | 'ok'>('loading');
+    React.useEffect(() => {
+        let active = true;
+        if (!reg) { setState('none'); return; }
+        (async () => {
+            try {
+                const { data } = await supabase.functions.invoke('track', { body: { action: 'vehicle', reg } });
+                if (!active) return;
+                const v = (data as any)?.vehicle;
+                if (v && v.lat != null) { setPos(v); setState('ok'); } else setState('none');
+            } catch { if (active) setState('none'); }
+        })();
+        return () => { active = false; };
+    }, [reg]);
+    if (state !== 'ok' || !pos) return null;
+    const moving = (pos.speed || 0) > 5;
+    const seen = pos.at ? new Date(pos.at).toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    return (
+        <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+            <div className="flex items-center gap-2 mb-1">
+                <span className={`w-2 h-2 rounded-full ${moving ? 'bg-emerald-400' : pos.ignition ? 'bg-amber-400' : 'bg-slate-400'}`} />
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Live tracking · {pos.reg}</span>
+            </div>
+            {pos.address && <p className="text-sm text-gray-200">{pos.address}</p>}
+            <p className="text-xs text-gray-400 mt-0.5">{moving ? `Moving · ${Math.round(pos.speed)} km/h` : pos.ignition ? 'Stopped (ignition on)' : 'Stationary'}{seen ? ` · last seen ${seen}` : ''}</p>
+            <a href={`https://maps.google.com/?q=${pos.lat},${pos.lng}`} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View on map →</a>
+        </div>
+    );
+};
+
 const Section: React.FC<{ title: string; accent: string; children: React.ReactNode }> = ({ title, accent, children }) => (
     <div className="bg-gray-900/40 rounded-xl border border-gray-700/50 p-4">
         <h3 className="flex items-center text-xs font-black text-gray-300 uppercase tracking-[0.15em] mb-3"><span className={`w-1.5 h-4 rounded-full mr-2 ${accent}`} />{title}</h3>
@@ -508,6 +544,7 @@ const LoadDetailModal: React.FC = () => {
                                     <F label="Vehicle Reg" k="subcontractorVehicleReg" value={lc.subcontractorVehicleReg} />
                                 </div>
                             )}
+                            {!editing && <LoadLivePosition reg={lc.subcontractorVehicleReg} />}
                         </Section>
                     );
                 })()}

@@ -30,6 +30,8 @@ const QuotesView: React.FC<{
     const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'All'>('All');
     const [quoteToAccept, setQuoteToAccept] = useState<Quote | null>(null);
     const [tab, setTab] = useState<'quotes' | 'rfq'>('quotes');
+    // When "Request Transporter Rates" is clicked on a quote, jump to the RFQ tab pre-filled.
+    const [rfqPrefillQuoteId, setRfqPrefillQuoteId] = useState<string | null>(null);
     const [quoteDetail, setQuoteDetail] = useState<Quote | null>(null);
     const [sending, setSending] = useState<string | null>(null);
     // Test-quote tidy-up: Marc ticks the ones he wants gone, then archives them
@@ -192,7 +194,7 @@ const QuotesView: React.FC<{
                 <button onClick={() => setTab('rfq')} className={`px-4 py-2 text-sm font-bold -mb-px border-b-2 ${tab === 'rfq' ? 'border-brand-secondary text-white' : 'border-transparent text-gray-400 hover:text-white'}`}>Carrier RFQs</button>
             </div>
 
-            {tab === 'rfq' ? <RfqBoard suppliers={suppliers} /> : (
+            {tab === 'rfq' ? <RfqBoard suppliers={suppliers} prefillQuoteId={rfqPrefillQuoteId} onPrefillConsumed={() => setRfqPrefillQuoteId(null)} /> : (
             <>
             {/* Win / loss dashboard */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
@@ -334,6 +336,7 @@ const QuotesView: React.FC<{
                         onClose={() => setQuoteDetail(null)}
                         onSendQuote={async (q) => { await handleSendQuote(q); }}
                         onSendProforma={async (q) => { await handleSendProforma(q); }}
+                        onRequestRates={(q) => { setQuoteDetail(null); setRfqPrefillQuoteId(q.id); setTab('rfq'); }}
                         onQuoteIt={(q) => {
                             setQuoteDetail(null);
                             // Price the SAME quote in place — keep its number, just move

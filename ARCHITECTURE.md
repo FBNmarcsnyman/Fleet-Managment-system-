@@ -48,7 +48,7 @@ _Live snapshot — last rewritten **2026-06-26**. ALWAYS read this before creati
 
 **Quoting / RFQ**
 - `quotes` (+ request_data, request_more_info), `quote_requests` (website intake), `fbn_quotes` (legacy quoting tool), `quote_compliance_log`.
-- `rfq_requests`, `rfq_recipients`, `rfq_carrier_quotes` (carrier RFQ marketplace).
+- `rfq_requests` (+ `packages`, `dimensions`, `cube_m3`), `rfq_recipients`, `rfq_carrier_quotes` (carrier RFQ marketplace). **RFQ client-detail rule:** the carrier email includes client name/contact/rate ONLY for internal recipients on `@fbn-transport.co.za`; subbies NEVER see client detail (`handleCreateRfq` in OperationsContext). Raise from a quote via **"Request Transporter Rates"** on QuoteDetailModal → pre-fills RfqForm.
 
 **Config / platform**
 - `organizations`, `branches`, `profiles`, `role_permissions`, `user_roles`, `user_profiles`, `pick_options`, `document_settings`.

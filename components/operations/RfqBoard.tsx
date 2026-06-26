@@ -9,7 +9,7 @@ import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
 
 const BRANCHES = ['FBN DBN', 'FBN JHB', 'FBN CPT', 'LOADMASTER'];
-const VEHICLE_OPTIONS = ['Superlink', 'Tri-axle', 'Tautliner (6m)', 'Tautliner (12m)', 'Flat deck (6m)', 'Flat deck (12m)', 'Tanker', 'Tipper / Bulk', 'Lowbed / Abnormal', 'Container', '8 Ton', '4 Ton', '1 Ton'];
+const VEHICLE_OPTIONS = ['Superlink', 'Superlink Tautliner', 'Superlink Flatbed', 'Tri-axle', 'Tautliner (6m)', 'Tautliner (12m)', 'Flat deck (6m)', 'Flat deck (12m)', 'Tanker', 'Tipper / Bulk', 'Lowbed / Abnormal', 'Container', '15 Ton', '12 Ton', '8 Ton', '5 Ton', '4 Ton', '2 Ton', '1 Ton'];
 const LOAD_TYPES = ['Full Load', 'Mixed Load', 'Part Load'];
 
 const input = 'w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-brand-secondary focus:border-transparent outline-none';
@@ -17,14 +17,14 @@ const label = 'block text-[11px] font-bold uppercase tracking-wider text-gray-40
 const rand = (n?: number | null) => n || n === 0 ? `R ${Number(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
 
 // ── Raise-RFQ form ───────────────────────────────────────────────────────────
-const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ suppliers, onClose }) => {
+const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuoteId?: string | null }> = ({ suppliers, onClose, prefillQuoteId }) => {
     const { handleCreateRfq, routes = [], clients = [], quotes = [] } = useOperations() as any;
     const { commodities = [], handleAddCommodity } = useFleetData() as any;
     const { showToast } = useUIState();
     const [saving, setSaving] = useState(false);
     const [f, setF] = useState({
         arrangingBranch: 'FBN DBN', clientId: '', quoteId: '', origin: '', destination: '', vehicleType: VEHICLE_OPTIONS[0],
-        loadType: 'Full Load', commodity: '', weightKg: '', gitRequired: true, hazardous: false,
+        loadType: 'Full Load', commodity: '', weightKg: '', packages: '', dimensions: '', cubeM3: '', gitRequired: true, hazardous: false,
         collectionDate: '', collectionTime: '', deliveryDate: '', deliveryTime: '', notes: '',
     });
     const set = (k: string, v: any) => setF(prev => ({ ...prev, [k]: v }));
@@ -39,9 +39,15 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
             origin: q?.legs?.[0]?.collectionPoint || prev.origin,
             destination: q?.legs?.[q.legs.length - 1]?.deliveryPoint || prev.destination,
             commodity: q?.commodity || prev.commodity,
+            weightKg: q?.weightKg != null ? String(q.weightKg) : prev.weightKg,
+            packages: q?.quantity != null ? String(q.quantity) : (q?.pieces != null ? String(q.pieces) : prev.packages),
+            cubeM3: q?.cubeM3 != null ? String(q.cubeM3) : prev.cubeM3,
+            loadType: q?.loadSpec || prev.loadType,
         }));
     };
     const clientName = (id: string) => (clients as any[]).find(c => c.id === id)?.name || '';
+    // Pre-fill from a quote when opened via "Request Transporter Rates" on a quote.
+    React.useEffect(() => { if (prefillQuoteId) onQuote(prefillQuoteId); /* eslint-disable-next-line */ }, [prefillQuoteId]);
 
     const carriers = useMemo(() => (suppliers || []).filter(s => s.type === 'Transport' && s.isActive !== false), [suppliers]);
     const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -93,7 +99,7 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
         } catch { /* never block the send */ }
         setSaving(true);
         const res = await handleCreateRfq(
-            { ...f, weightKg: f.weightKg ? Number(f.weightKg) : undefined },
+            { ...f, weightKg: f.weightKg ? Number(f.weightKg) : undefined, cubeM3: f.cubeM3 ? Number(f.cubeM3) : undefined },
             recipients,
         );
         setSaving(false);
@@ -162,6 +168,9 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
                     <datalist id="rfq-commodity-list">{(commodities as string[]).map(c => <option key={c} value={c} />)}</datalist>
                 </div>
                 <div><label className={label}>Weight (kg)</label><input type="number" value={f.weightKg} onChange={e => set('weightKg', e.target.value)} placeholder="34000" className={input} /></div>
+                <div><label className={label}>Packages</label><input value={f.packages} onChange={e => set('packages', e.target.value)} placeholder="e.g. 16 pallets" className={input} /></div>
+                <div><label className={label}>Dimensions (L×W×H)</label><input value={f.dimensions} onChange={e => set('dimensions', e.target.value)} placeholder="e.g. 1.2 x 1.0 x 1.5 m" className={input} /></div>
+                <div><label className={label}>Cube (m³)</label><input type="number" value={f.cubeM3} onChange={e => set('cubeM3', e.target.value)} placeholder="e.g. 28" className={input} /></div>
                 <div className="flex items-end pb-1 gap-4">
                     <label className="flex items-center gap-2 text-sm text-gray-200 cursor-pointer">
                         <input type="checkbox" checked={f.gitRequired} onChange={e => set('gitRequired', e.target.checked)} className="h-4 w-4 rounded" /> GIT cover required
@@ -203,6 +212,7 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void }> = ({ sup
                     ))}
                 </div>
                 <input value={extraEmails} onChange={e => setExtraEmails(e.target.value)} placeholder="Add other emails (comma-separated)" className={`${input} mt-2`} />
+                <p className="text-[11px] text-gray-500 mt-1">🔒 Client name/contact/rate are included <strong>only</strong> for FBN internal recipients (<span className="text-gray-400">@fbn-transport.co.za</span>). Subcontractors never see any client detail.</p>
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
@@ -444,10 +454,13 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
 };
 
 // ── Board ────────────────────────────────────────────────────────────────────
-const RfqBoard: React.FC<{ suppliers: Supplier[] }> = ({ suppliers = [] }) => {
+const RfqBoard: React.FC<{ suppliers: Supplier[]; prefillQuoteId?: string | null; onPrefillConsumed?: () => void }> = ({ suppliers = [], prefillQuoteId, onPrefillConsumed }) => {
     const { rfqRequests = [] } = useOperations() as any;
     const [showForm, setShowForm] = useState(false);
     const [filter, setFilter] = useState<'Active' | 'All'>('Active');
+    // Opened from a quote's "Request Transporter Rates" button → auto-open the form pre-filled.
+    React.useEffect(() => { if (prefillQuoteId) setShowForm(true); }, [prefillQuoteId]);
+    const closeForm = () => { setShowForm(false); onPrefillConsumed?.(); };
 
     const list = useMemo(() => {
         const sorted = [...(rfqRequests as RfqRequest[])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -473,8 +486,8 @@ const RfqBoard: React.FC<{ suppliers: Supplier[] }> = ({ suppliers = [] }) => {
             </div>
             {list.length === 0 && <p className="text-center text-gray-500 py-16">No quote requests yet. Raise one to broadcast a load to your carriers.</p>}
 
-            <Modal isOpen={showForm} onClose={() => setShowForm(false)} size="2xl">
-                <RfqForm suppliers={suppliers} onClose={() => setShowForm(false)} />
+            <Modal isOpen={showForm} onClose={closeForm} size="2xl">
+                <RfqForm suppliers={suppliers} onClose={closeForm} prefillQuoteId={prefillQuoteId} />
             </Modal>
         </div>
     );

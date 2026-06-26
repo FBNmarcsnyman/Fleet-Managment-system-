@@ -808,6 +808,9 @@ export interface RfqRequest {
     loadType?: string;         // Full Load / Mixed Load
     commodity?: string;
     weightKg?: number;
+    packages?: string;
+    dimensions?: string;
+    cubeM3?: number;
     gitRequired: boolean;
     hazardous?: boolean;
     collectionDate?: string;

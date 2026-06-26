@@ -1634,23 +1634,41 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const branchLabel = rfq.arrangingBranch === 'FBN DBN' ? 'FBN DBN Ops' : rfq.arrangingBranch === 'FBN JHB' ? 'FBN JHB Ops' : 'FBN Transport';
                 const replyTo = opsEmail(rfq.arrangingBranch);
                 const fmt = (v?: string | number | null) => (v === undefined || v === null || v === '') ? '&mdash;' : String(v);
+                const dimsCube = [(rfq as any).dimensions, (rfq as any).cubeM3 ? `${(rfq as any).cubeM3} m³` : ''].filter(Boolean).join(' &middot; ') || '&mdash;';
                 const specRows = [
                     ['Route', `${fmt(rfq.origin)} &rarr; ${fmt(rfq.destination)}`],
-                    ['Vehicle required', fmt(rfq.vehicleType)],
-                    ['Load', [rfq.loadType, rfq.commodity].filter(Boolean).join(' &middot; ') || '&mdash;'],
+                    ['Vehicle / trailer required', fmt(rfq.vehicleType)],
+                    ['Load type', fmt(rfq.loadType)],
+                    ['Commodity', fmt(rfq.commodity)],
+                    ['Packages', fmt((rfq as any).packages)],
                     ['Weight', rfq.weightKg ? `${Number(rfq.weightKg).toLocaleString('en-ZA')} kg` : '&mdash;'],
+                    ['Dimensions / cube', dimsCube],
                     ['Hazardous (DG)', rfq.hazardous ? 'YES — DG load' : 'No'],
                     ['GIT cover', rfq.gitRequired ? 'Required' : 'Not required'],
                     ['Collection', [rfq.collectionDate, rfq.collectionTime].filter(Boolean).join(' &middot; ') || '&mdash;'],
                     ['Delivery', [rfq.deliveryDate, rfq.deliveryTime].filter(Boolean).join(' &middot; ') || '&mdash;'],
                 ].map(([k, v]) => `<tr><td style="padding:6px 16px 6px 0;color:#64748b;font-size:13px;white-space:nowrap">${k}</td><td style="padding:6px 0;color:#13294b;font-size:13px;font-weight:700">${v}</td></tr>`).join('');
 
+                // ⚠️ CLIENT DETAILS RULE: only an INTERNAL FBN ops recipient (@fbn-transport.co.za)
+                // may see the client name/contact + target rate. A SUBCONTRACTOR must NEVER see any
+                // client detail. Default-safe: anything not on the FBN domain = subby = no client block.
+                const isInternal = (email?: string) => /@fbn-transport\.co\.za$/i.test(String(email || '').trim().toLowerCase());
+                const client = (rfq as any).clientId ? (stateRef.current.clients || []).find((c: any) => c.id === (rfq as any).clientId) : null;
+                const srcQuote = (rfq as any).quoteId ? (stateRef.current.quotes || []).find((q: any) => q.id === (rfq as any).quoteId) : null;
+                const clientBlock = client ? `<div style="margin:6px 0 4px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:10px 14px;font-size:13px;color:#3730a3"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">FBN internal — client (do not forward)</div><table style="border-collapse:collapse">${[
+                    ['Client', [client.name, client.contactPerson].filter(Boolean).join(' &middot; ')],
+                    ['Contact', [client.contactEmail, client.contactPhone].filter(Boolean).join(' &middot; ') || '&mdash;'],
+                    ...(srcQuote?.totalAmount ? [['Client rate (target)', `R ${Number(srcQuote.totalAmount).toLocaleString('en-ZA')}`]] : []),
+                ].map(([k, v]) => `<tr><td style="padding:3px 14px 3px 0;color:#4338ca;white-space:nowrap">${k}</td><td style="padding:3px 0;font-weight:700">${v}</td></tr>`).join('')}</table></div>` : '';
+
                 for (const rec of savedRecipients) {
                     if (rec.channel !== 'email' || !rec.email) continue;
                     const link = `${base}?rfq=${rec.token}`;
+                    const internal = isInternal(rec.email);
                     const html = brandedEmail(`<p>Good day ${rec.companyName || 'there'},</p>
                       <p>We have a load available and would like your best rate if you can assist. Please review the details and submit your quote &mdash; or let us know you can't help on this one.</p>
                       <table style="border-collapse:collapse;margin:8px 0 4px;background:#f8fafc;border:1px solid #e6ebf1;border-radius:10px;padding:8px">${specRows}</table>
+                      ${internal ? clientBlock : ''}
                       ${rfq.notes ? `<p style="color:#475569;font-size:13px"><strong>Notes:</strong> ${rfq.notes}</p>` : ''}
                       ${emailButton(link, 'Submit your quote &rarr;', '#16a34a')}
                       <p style="color:#94a3b8;font-size:12px">Reference ${requestNumber}. Reply to this email to reach ${branchLabel} directly.</p>`);

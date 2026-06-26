@@ -24,7 +24,8 @@ const QuoteDetailModal: React.FC<{
     onQuoteIt: (quote: Quote) => void;
     onSendQuote?: (quote: Quote) => Promise<void>;
     onSendProforma?: (quote: Quote) => Promise<void>;
-}> = ({ quote, client, onClose, onQuoteIt, onSendQuote, onSendProforma }) => {
+    onRequestRates?: (quote: Quote) => void;
+}> = ({ quote, client, onClose, onQuoteIt, onSendQuote, onSendProforma, onRequestRates }) => {
     const { showToast } = useUIState();
     const [requesting, setRequesting] = useState(false);
     const [sending, setSending] = useState(false);
@@ -231,6 +232,16 @@ const QuoteDetailModal: React.FC<{
                         {requesting ? 'Sending...' : 'Request More Info'}
                     </button>
                 </div>
+            )}
+            {(quote.status === 'Requested' || quote.status === 'Draft') && onRequestRates && (
+                <button
+                    onClick={() => onRequestRates(quote)}
+                    title="Send this load's shipping details to transporters for their best rate (RFQ). Client details are NOT sent to subbies."
+                    className="btn-on-color w-full mt-3 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
+                    style={{ background: '#0e7490' }}
+                >
+                    📨 Request Transporter Rates →
+                </button>
             )}
 
             {quote.status === 'Draft' && onSendQuote && (

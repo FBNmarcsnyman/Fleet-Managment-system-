@@ -34,7 +34,7 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ users = [], loadConfirmatio
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
-    const [isApiLoaded, setIsApiLoaded] = useState(!!window.google?.maps?.marker);
+    const [isApiLoaded, setIsApiLoaded] = useState(!!window.google?.maps?.Map);
     const [positions, setPositions] = useState<LivePos[]>([]);
     const [err, setErr] = useState<string | null>(null);
     const [updatedAt, setUpdatedAt] = useState<string>('');
@@ -57,29 +57,29 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ users = [], loadConfirmatio
         return () => { active = false; clearInterval(t); };
     }, []);
 
-    // Wait for the Google Maps script (loaded in index.html with the marker library).
+    // Wait for the Google Maps core script (loaded in index.html). We use the
+    // CLASSIC google.maps.Marker (no Cloud Map ID needed) so markers always render.
     useEffect(() => {
         if (isApiLoaded) return;
-        const handle = () => { if (window.google?.maps?.marker) setIsApiLoaded(true); };
+        const handle = () => { if (window.google?.maps?.Map) setIsApiLoaded(true); };
         window.addEventListener('google-maps-api-loaded', handle);
-        const interval = setInterval(() => { if (window.google?.maps?.marker) { setIsApiLoaded(true); clearInterval(interval); } }, 500);
+        const interval = setInterval(() => { if (window.google?.maps?.Map) { setIsApiLoaded(true); clearInterval(interval); } }, 500);
         return () => { window.removeEventListener('google-maps-api-loaded', handle); clearInterval(interval); };
     }, [isApiLoaded]);
 
     useEffect(() => {
         if (isApiLoaded && mapRef.current && !mapInstanceRef.current) {
             mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
-                center: JHB_COORDS, zoom: MAP_ZOOM, mapId: 'FBN_FLEET_MAP', disableDefaultUI: true, zoomControl: true,
+                center: JHB_COORDS, zoom: MAP_ZOOM, disableDefaultUI: true, zoomControl: true,
             });
         }
     }, [isApiLoaded]);
 
     // Render / refresh the markers whenever positions change.
     useEffect(() => {
-        if (!mapInstanceRef.current || !isApiLoaded || !window.google?.maps?.marker) return;
-        markersRef.current.forEach(m => { m.map = null; });
+        if (!mapInstanceRef.current || !isApiLoaded || !window.google?.maps?.Map) return;
+        markersRef.current.forEach(m => { try { m.setMap(null); } catch { /* */ } });
         markersRef.current = [];
-        const { PinElement, AdvancedMarkerElement } = window.google.maps.marker;
         const bounds = new window.google.maps.LatLngBounds();
 
         positions.forEach(p => {
@@ -99,8 +99,10 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ users = [], loadConfirmatio
                     <div style="font-size:11px;color:#94a3b8;margin-top:4px">Last seen ${fmtTime(p.at)}</div>
                 </div>`,
             });
-            const pin = new PinElement({ background: colour, borderColor: '#FFFFFF', glyphColor: '#FFFFFF' });
-            const marker = new AdvancedMarkerElement({ position: { lat: p.lat, lng: p.lng }, map: mapInstanceRef.current, title: p.reg, content: pin.element });
+            const marker = new window.google.maps.Marker({
+                position: { lat: p.lat, lng: p.lng }, map: mapInstanceRef.current, title: p.reg,
+                icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: colour, fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 },
+            });
             marker.addListener('click', () => info.open({ anchor: marker, map: mapInstanceRef.current }));
             markersRef.current.push(marker);
             bounds.extend({ lat: p.lat, lng: p.lng });

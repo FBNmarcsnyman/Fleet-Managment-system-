@@ -10,6 +10,7 @@ const RigChecklistFlow = lazy(() => import('./components/RigChecklistFlow'));
 import SupplierPODUploadView from './components/SupplierPODUploadView';
 import ClientQuoteView from './components/ClientQuoteView';
 import PublicPodUpload from './components/PublicPodUpload';
+import CompleteCargoDetails from './components/CompleteCargoDetails';
 import PublicLoad from './components/PublicLoad';
 import PublicTerms from './components/PublicTerms';
 import PublicRfqQuote from './components/PublicRfqQuote';
@@ -259,6 +260,7 @@ const App: React.FC = () => {
     const publicQuoteId = urlParams.get('viewQuote');
     const checklistVehicleId = urlParams.get('checklist');
     const podLoadId = urlParams.get('pod');
+    const completeLoadId = urlParams.get('complete');
     const trackLoadId = urlParams.get('track');
     const acceptLoadId = urlParams.get('accept');
     const updateLoadId = urlParams.get('update');
@@ -287,6 +289,10 @@ const App: React.FC = () => {
     // Public, no-login POD upload from the link in our POD-request email.
     if (podLoadId) {
         return <PublicPodUpload loadId={podLoadId} />;
+    }
+    // Public "complete cargo details" page from the depot-arrival email link.
+    if (completeLoadId) {
+        return <CompleteCargoDetails loadId={completeLoadId} />;
     }
     // Public client tracking page.
     if (trackLoadId) {

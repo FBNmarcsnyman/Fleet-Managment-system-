@@ -1145,14 +1145,14 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     if (!m.totalAmount) miss.push('Rate');
                     miss.push('Confirm condition — damages at collection or all in good order (+ photos)');
                     const base = baseUrl();
-                    const link = `${base}?track=${id}`;
+                    const link = `${base}?complete=${id}`;
                     const html = brandedEmail(`<p><strong>Cargo arrived at the ${depot || ''} depot — please complete the details.</strong></p>
-                      <p>Load <strong>${m.loadConNumber}</strong> (${m.clientName || ''}) is in. Open it in the app and confirm / add:</p>
+                      <p>Load <strong>${m.loadConNumber}</strong> (${m.clientName || ''}) is in. Click below to fill in the missing details + upload any damage photos:</p>
                       <ul>${miss.map(x => `<li>${x}</li>`).join('')}</ul>
-                      ${emailButton(link, 'Open the load &rarr;', '#13294b')}
-                      <p style="color:#64748b;font-size:12px">Tip: on the load you can now <strong>tap any field to edit it</strong>. Photos &amp; damage notes stay on the FBN system — they are not sent to the client unless you choose to.</p>`);
+                      ${emailButton(link, 'Complete cargo details &rarr;', '#16a34a')}
+                      <p style="color:#64748b;font-size:12px">Photos &amp; damage notes stay on the FBN system — they are not sent to the client unless you choose to.</p>`);
                     void invokeFn('send-email', { body: { to: opsEmail(depot), cc: [OPS_GENERAL], subject: `Complete cargo details - ${m.loadConNumber} at ${depot}`, html, fromName: 'FBN Control Centre' } });
-                    void directInvoke('send-push', { title: `Cargo in at ${depot} - complete details`, body: `${m.loadConNumber}: ${miss.length} item(s) to confirm`, url: `?track=${id}` });
+                    void directInvoke('send-push', { title: `Cargo in at ${depot} - complete details`, body: `${m.loadConNumber}: ${miss.length} item(s) to confirm`, url: `?complete=${id}` });
                     // No rate captured → ping management to enter it.
                     if (!m.totalAmount) {
                         const admins = (users || []).filter((u: any) => ['Admin', 'Super Admin'].includes(u.role) && u.isActive !== false).map((u: any) => u.email).filter(Boolean);

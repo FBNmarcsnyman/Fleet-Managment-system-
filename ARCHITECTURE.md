@@ -120,4 +120,25 @@ State machine: `lib/loadStatus.ts` — DIRECT vs DEPOT flow. Cargo verification 
 
 **Crons (pg_cron):** `whatsapp-chase-30min` (*/30) · `ops-daily-checks` (07:00 SA — routes day-of collection reminders to branch ops) · `collection-eta-check-10min` (*/10) · `geofence-check-10min` (*/10) · `fuel-sheet-sync-6h` · `validate-flows` (4×/day) · `import-loadcon-daily` · `import-fcl-daily` · `import-lcl-status-0..4` · `fbn-daily-health-digest` (06:00).
 
+---
+
+## Session additions — 2026-06-26 (later)
+- **New edge fns:** `track` (Pulsit proxy), `geofence-check` (cron), `cargo-details` (the public
+  Complete-cargo-details page backend), `quote-proforma` v4. **New cron:** `geofence-check-10min`.
+- **New public route:** `?complete=<id>` → `CompleteCargoDetails` (ops fill missing waybill/weight/
+  dims/cube/rate + condition + damage photos; saves load + logs `waybill_events` GRN).
+- **New tables:** `waybill_events` (cargo-verification spine), `integration_settings` (Pulsit key).
+- **New columns:** `load_confirmations`.{onward_required, collection_lat/lng, delivery_lat/lng,
+  geofence_collection_at/geofence_delivery_at}; `rfq_requests`.{packages, dimensions, cube_m3};
+  `trip_sheets`.stops (ordered delivery run: loadId/order/urgent); `email_settings`.{whatsapp_enabled,
+  client_live_tracking}; `drivers.assigned_vehicle_id` now populated (driver↔truck links).
+- **RLS fix:** `rfq_requests`↔`rfq_recipients` recursion broken via SECURITY DEFINER `rfq_org()` /
+  `rfq_is_recipient()`.
+- **Management toggles (Topbar, Admin/Super Admin):** WHATSAPP on/off, CLIENT TRACK on/off (notifications
+  keep running when off).
+- **Comms rule:** client NOT emailed for internal depot statuses (At Collection/Destination Depot,
+  Unloaded) — clean milestones only. Depot arrival → ops "complete details" email + push; no rate → admins + push.
+- **In progress (memory):** Delivery Run / Tripsheet v2 (Phase 1 done — ordered stops/reorder/urgent;
+  Phases 2-4 pending: route optimise, driver run page, per-stop client ETA). Email control centre (spec only).
+
 _Companion deep-dives live in the `memory/` notes (depot-linehaul-process-spec, cargo-verification-journey-spec, vehicle-tracking-pulsit, fleet-structure, scheduled-jobs, comms-routing, etc.)._

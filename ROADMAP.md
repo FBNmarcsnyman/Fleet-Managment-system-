@@ -277,7 +277,25 @@ PHASES 6–10 ONLY START AFTER PHASE 5 IS LIVE AND STABLE.
 - [x] **Docs** — ARCHITECTURE.md rewritten as the live source of truth; CLAUDE.md mandatory
   session-start / before-feature / after-update rules.
 
+## Recently completed — 2026-06-26 (later session)
+- [x] **Delivery Run / Tripsheet v2 — Phase 1** (ordered stops, ▲▼ reorder, Urgent flag; `trip_sheets.stops`).
+- [x] **RFQ** — "Request Transporter Rates" from a quote (pre-fills from `request_data`); packages/dims/
+  cube/load-type fields; **internal-vs-subby client-detail rule** (FBN-domain only); **RLS recursion fixed**.
+- [x] **Live Fleet map** fixed (classic markers — Advanced markers needed a Cloud Map ID we lack).
+- [x] **Quote** — Share on WhatsApp + Copy link (client quote-view accept/decline link).
+- [x] **Management toggles** — WhatsApp on/off, Client live-tracking on/off (notifications keep running).
+- [x] **Load detail UX** — depot name in status, one-click status dropdown, tap-any-field-to-edit.
+- [x] **Depot arrival → complete cargo details** — ops email + push (missing waybill/weight/dims/cube/
+  rate + condition/photos) linking to a public **Complete cargo details** page; no rate → management + push.
+- [x] **Client emails** — internal depot statuses no longer notify the client (clean milestones).
+
 ## New / next (carried forward — 2026-06-26)
+- [ ] **Delivery Run Phases 2-4** — route optimise (browser Google Directions) + ops urgent override;
+  driver run page (tap done + geofence, per-stop POD); per-stop client "on the way / ETA-with-traffic"
+  link + en-route delay updates + arrival closes the link. (memory: delivery-run-tripsheet-v2)
+- [ ] **Email control centre** (super-admin) — registry of every email + recipients/CC/on-off/wording.
+  (memory: email-registry-management)
+- [ ] RFQ: save extra controller emails under the subby; consolidation "what else is loaded" view.
 - [ ] **Cargo verification Phase 2+** — wire the capture into the collection flow + **digital waybill**
   the client signs on the driver's phone; origin/destination depot **Goods-Received** (mobile per-waybill
   confirm + damage); **manifest trailer-pairing (Superlink 6m+12m) + overload engine** (6m≤12t, 12m≤22t,

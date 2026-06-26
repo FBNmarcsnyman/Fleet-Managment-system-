@@ -18,7 +18,7 @@ const rand = (n?: number | null) => n || n === 0 ? `R ${Number(n).toLocaleString
 
 // ── Raise-RFQ form ───────────────────────────────────────────────────────────
 const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuoteId?: string | null }> = ({ suppliers, onClose, prefillQuoteId }) => {
-    const { handleCreateRfq, routes = [], clients = [], quotes = [] } = useOperations() as any;
+    const { handleCreateRfq, handleUpdateSupplier, routes = [], clients = [], quotes = [] } = useOperations() as any;
     const { commodities = [], handleAddCommodity } = useFleetData() as any;
     const { showToast } = useUIState();
     const [saving, setSaving] = useState(false);
@@ -58,6 +58,7 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuo
     const carriers = useMemo(() => (suppliers || []).filter(s => s.type === 'Transport' && s.isActive !== false), [suppliers]);
     const [picked, setPicked] = useState<Set<string>>(new Set());
     const [extraEmails, setExtraEmails] = useState('');
+    const [saveToSubby, setSaveToSubby] = useState(true);
     const [routeId, setRouteId] = useState('');
     const [onRouteOnly, setOnRouteOnly] = useState(false);
     const toggle = (id: string) => setPicked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -95,9 +96,20 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuo
         if (saving) return;
         if (!f.origin.trim() || !f.destination.trim()) { showToast('Origin and destination are required.'); return; }
         const recipients: { supplierId?: string; email?: string; companyName?: string; channel?: RfqRecipient['channel'] }[] = [];
-        carriers.filter(c => picked.has(c.id)).forEach(c => recipients.push({ supplierId: c.id, email: c.contactEmail || undefined, companyName: c.name, channel: 'email' }));
-        extraEmails.split(/[,;\n]/).map(e => e.trim()).filter(e => e.includes('@')).forEach(e => recipients.push({ email: e, companyName: e.split('@')[0], channel: 'email' }));
+        const pickedCarriers = carriers.filter(c => picked.has(c.id));
+        pickedCarriers.forEach(c => recipients.push({ supplierId: c.id, email: c.contactEmail || undefined, companyName: c.name, channel: 'email' }));
+        const extras = extraEmails.split(/[,;\n]/).map(e => e.trim()).filter(e => e.includes('@'));
+        extras.forEach(e => recipients.push({ email: e, companyName: e.split('@')[0], channel: 'email' }));
         if (!recipients.length) { showToast('Pick at least one carrier (or add an email).'); return; }
+        // Save the extra controller emails onto the single picked carrier's contacts
+        // (so next time they're already there). Only when exactly one carrier is chosen.
+        if (saveToSubby && extras.length && pickedCarriers.length === 1 && typeof handleUpdateSupplier === 'function') {
+            const c = pickedCarriers[0];
+            const existing: any[] = Array.isArray(c.contacts) ? c.contacts : [];
+            const add = extras.filter(e => !existing.some((x: any) => String(x.email || '').toLowerCase() === e.toLowerCase()) && e.toLowerCase() !== String(c.contactEmail || '').toLowerCase())
+                .map(e => ({ name: e.split('@')[0], email: e, role: 'Controller', getsUpdates: true }));
+            if (add.length) { try { await handleUpdateSupplier(c.id, { contacts: [...existing, ...add] }); showToast(`${add.length} email(s) saved to ${c.name}.`); } catch { /* never block the send */ } }
+        }
         // Save a newly-typed commodity to the shared pick-list (consistent spelling).
         try {
             const cv = (f.commodity || '').trim();
@@ -217,7 +229,13 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuo
                         </label>
                     ))}
                 </div>
-                <input value={extraEmails} onChange={e => setExtraEmails(e.target.value)} placeholder="Add other emails (comma-separated)" className={`${input} mt-2`} />
+                <input value={extraEmails} onChange={e => setExtraEmails(e.target.value)} placeholder="Add other controller emails (comma-separated) — e.g. Botswana consolidator team" className={`${input} mt-2`} />
+                {extraEmails.trim() && carriers.filter(c => picked.has(c.id)).length === 1 && (
+                    <label className="flex items-center gap-2 mt-1.5 text-xs text-gray-300 cursor-pointer">
+                        <input type="checkbox" checked={saveToSubby} onChange={e => setSaveToSubby(e.target.checked)} className="h-3.5 w-3.5 rounded" />
+                        💾 Save these emails to <strong className="text-white">{carriers.find(c => picked.has(c.id))?.name}</strong>'s contacts for next time
+                    </label>
+                )}
                 <p className="text-[11px] text-gray-500 mt-1">🔒 Client name/contact/rate are included <strong>only</strong> for FBN internal recipients (<span className="text-gray-400">@fbn-transport.co.za</span>). Subcontractors never see any client detail.</p>
             </div>
 

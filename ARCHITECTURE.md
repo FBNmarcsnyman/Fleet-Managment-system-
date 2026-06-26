@@ -122,6 +122,17 @@ State machine: `lib/loadStatus.ts` — DIRECT vs DEPOT flow. Cargo verification 
 
 ---
 
+## Fuel/bowser sync — 2026-06-26 (latest)
+- **Vehicle fuel** now syncs from ONE master Google Sheet "Fleet Managment Data"
+  (id 1iTOj8GVbQV8Y3y9OqjW8RfyU7u4lxqY776BOxfJz978; DBN/JHB FILLINGS tabs) via edge fn
+  **`master-fuel-sync`** (Sheets API, header-detect cols, DD.MM=2026 dates) → `fuel_entries`,
+  dedup. Cron **`master-fuel-sync-6h`** REPLACED the old folder `fuel-sheet-sync-6h`.
+- **Bowser** gauges synced by **`bowser-sync`** (+ cron `bowser-sync-6h`) from the `.xls` bowser
+  ledger sheets (running balance → `bowsers.current_stock_liters`; drops→`bowser_refills`).
+  TODO: move bowser onto the master sheet (dip-column mapping) when `.xls` is retired.
+- Diagnostics: `sheet-inspect` (list tabs / dump a tab via Sheets API), `fuel-dump`.
+  See memory `fuel-module` for sheet IDs, tab gids, column maps, dip variance, and the build plan.
+
 ## Session additions — 2026-06-26 (later)
 - **New edge fns:** `track` (Pulsit proxy), `geofence-check` (cron), `cargo-details` (the public
   Complete-cargo-details page backend), `quote-proforma` v4. **New cron:** `geofence-check-10min`.

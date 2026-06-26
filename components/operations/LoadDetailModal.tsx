@@ -68,19 +68,35 @@ const inputCls = "w-full bg-gray-700 text-white p-2 rounded-md border border-gra
 // Edit state shared with the field component via context. F MUST live at module
 // scope (not inside the modal) — a component defined inside render is a new type
 // every render, so React remounts each input and you lose focus after one letter.
-const FieldCtx = React.createContext<{ editing: boolean; d: any; set: (k: string, v: any) => void }>({ editing: false, d: {}, set: () => {} });
+const FieldCtx = React.createContext<{ editing: boolean; d: any; set: (k: string, v: any) => void; onInlineSave?: (k: string, v: string) => void }>({ editing: false, d: {}, set: () => {} });
+// Keys treated as numbers when saved via inline click-to-edit.
+const NUMERIC_KEYS = new Set(['weightKg', 'quantity', 'volume', 'cargoValue', 'cubeM3', 'supplierRate', 'totalAmount']);
 
 // Field: shows text, or an input when editing. `opts` => a fixed select;
 // `list` => a free-type input WITH autocomplete suggestions (datalist) so the
 // usual client / transporter / commodity / packaging pick-lists stay available
 // while editing instead of forcing you to retype everything.
 const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: string; opts?: string[]; list?: string[]; address?: boolean; prose?: boolean }> = ({ label, k, value, type = 'text', opts, list, address, prose }) => {
-    const { editing, d, set } = React.useContext(FieldCtx);
+    const { editing, d, set, onInlineSave } = React.useContext(FieldCtx);
     const listId = k ? `f-list-${k}` : undefined;
+    // Click-to-edit a single field on the read view (no need to enter full Edit mode).
+    const [inline, setInline] = React.useState(false);
+    const [draft, setDraft] = React.useState('');
+    const canInline = !!k && !!onInlineSave && !editing && !prose && !address && !opts;
+    const startInline = () => { setDraft(value == null || value === '—' ? '' : String(value)); setInline(true); };
+    const commitInline = () => { setInline(false); onInlineSave?.(k!, draft); };
     return (
         <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}</p>
-            {editing && k ? (
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}{canInline && !inline && <span className="text-blue-400 normal-case font-bold ml-1">· tap to edit</span>}</p>
+            {!editing && inline ? (
+                <>
+                    <input autoFocus type={type} list={list && list.length ? listId : undefined} value={draft}
+                        onChange={e => setDraft(e.target.value)} onBlur={commitInline}
+                        onKeyDown={e => { if (e.key === 'Enter') commitInline(); if (e.key === 'Escape') setInline(false); }}
+                        className={inputCls} />
+                    {list && list.length ? <datalist id={listId}>{list.map(o => <option key={o} value={o} />)}</datalist> : null}
+                </>
+            ) : editing && k ? (
                 address ? (
                     // Google address autocomplete — picks up the company / place name
                     // and prepends it to the address (e.g. "NWE GREEN, 190 Tsessebe…").
@@ -96,7 +112,9 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
                     </>
                 )
             ) : (
-                <p className="text-sm text-gray-100">{value || value === 0 ? value : '—'}</p>
+                <p onClick={canInline ? startInline : undefined}
+                    className={`text-sm text-gray-100 ${canInline ? 'cursor-pointer hover:bg-gray-800/50 rounded px-1 -mx-1 transition' : ''}`}
+                    title={canInline ? 'Tap to edit' : undefined}>{value || value === 0 ? value : '—'}</p>
             )}
         </div>
     );
@@ -361,8 +379,17 @@ const LoadDetailModal: React.FC = () => {
     const margin = groupClient - groupCost;
     const marginPct = groupClient ? (margin / groupClient) * 100 : 0;
 
+    // Click-to-edit any field on the read view → saves that one field directly.
+    const onInlineSave = async (k: string, v: string) => {
+        const cur = (lc as any)[k];
+        const val = NUMERIC_KEYS.has(k) ? (parseFloat(String(v).replace(/[^\d.]/g, '')) || 0) : v.trim();
+        if (String(val) === String(cur ?? '')) return; // unchanged
+        const res = await handleUpdateLoadConfirmation(lc.id, { [k]: val } as any);
+        if (res && res.ok === false) showToast(`Could not save: ${res.error}`);
+    };
+
     return (
-        <FieldCtx.Provider value={{ editing, d, set }}>
+        <FieldCtx.Provider value={{ editing, d, set, onInlineSave }}>
         <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
             <div className="flex items-start justify-between">
                 <div>
@@ -376,7 +403,13 @@ const LoadDetailModal: React.FC = () => {
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    {!editing && <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">{lc.status}</span>}
+                    {!editing && (() => {
+                        const depot = lc.arrangingBranch || lc.collectionBranch || '';
+                        const dest = lc.destinationBranch || '';
+                        const optLabel = (s: string) => s === 'At Collection Depot' ? `At Collection Depot${depot ? ` — ${depot}` : ''}` : s === 'At Destination Depot' ? `At Destination Depot${dest ? ` — ${dest}` : ''}` : s;
+                        const setStatus = async (s: string) => { const res = await handleUpdateLoadConfirmation(lc.id, { status: s } as any); if (res && res.ok === false) showToast(`Could not update: ${res.error}`); };
+                        return <select value={lc.status} onChange={e => setStatus(e.target.value)} title="Change status" className="text-xs font-bold border border-slate-300 rounded-lg px-2 py-1 bg-white text-slate-700 hover:border-[#13294b] cursor-pointer">{STATUSES.map(s => <option key={s} value={s}>{optLabel(s)}</option>)}</select>;
+                    })()}
                     {!editing && nextStep(lc) && <button onClick={quickAdvance} disabled={advancing} title="Move this load to the next status" className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-50">{advancing ? '…' : `${nextStep(lc)!.label} →`}</button>}
                     {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">📄 View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>📷 Capture</button>}

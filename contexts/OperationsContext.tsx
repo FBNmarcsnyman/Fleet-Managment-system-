@@ -1127,6 +1127,38 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (updates.status === 'Delivered' && prev?.status !== 'Delivered' && !prev?.podPhoto && !updates.podPhoto) {
                     sendPodRequestEmail({ ...(prev || {}), ...updates, id });
                 }
+                // ARRIVED AT DEPOT → ask ops to complete the cargo details (waybill /
+                // weight / dims / cube / rate / condition + photos). No rate → also ping
+                // management. Plus a push notification. (Fires once, on the transition.)
+                if ((updates.status === 'At Collection Depot' || updates.status === 'At Destination Depot') && prev?.status !== updates.status) {
+                    const m: any = { ...(prev || {}), ...updates, id };
+                    const depot = m.arrangingBranch || m.collectionBranch || '';
+                    const miss: string[] = [];
+                    if (!String(m.loadRefNo || m.customerOrderNumber || '').trim() || String(m.loadRefNo || '').toUpperCase() === 'TBA') miss.push('Waybill / DI number');
+                    if (!m.weightKg) miss.push('Weight (kg)');
+                    if (!String(m.dimensions || '').trim()) miss.push('Dimensions');
+                    if (!m.cubeM3 && !m.volume) miss.push('Cube (m³)');
+                    if (!m.totalAmount) miss.push('Rate');
+                    miss.push('Confirm condition — damages at collection or all in good order (+ photos)');
+                    const base = baseUrl();
+                    const link = `${base}?track=${id}`;
+                    const html = brandedEmail(`<p><strong>Cargo arrived at the ${depot || ''} depot — please complete the details.</strong></p>
+                      <p>Load <strong>${m.loadConNumber}</strong> (${m.clientName || ''}) is in. Open it in the app and confirm / add:</p>
+                      <ul>${miss.map(x => `<li>${x}</li>`).join('')}</ul>
+                      ${emailButton(link, 'Open the load &rarr;', '#13294b')}
+                      <p style="color:#64748b;font-size:12px">Tip: on the load you can now <strong>tap any field to edit it</strong>. Photos &amp; damage notes stay on the FBN system — they are not sent to the client unless you choose to.</p>`);
+                    void invokeFn('send-email', { body: { to: opsEmail(depot), cc: [OPS_GENERAL], subject: `Complete cargo details - ${m.loadConNumber} at ${depot}`, html, fromName: 'FBN Control Centre' } });
+                    void directInvoke('send-push', { title: `Cargo in at ${depot} - complete details`, body: `${m.loadConNumber}: ${miss.length} item(s) to confirm`, url: `?track=${id}` });
+                    // No rate captured → ping management to enter it.
+                    if (!m.totalAmount) {
+                        const admins = (users || []).filter((u: any) => ['Admin', 'Super Admin'].includes(u.role) && u.isActive !== false).map((u: any) => u.email).filter(Boolean);
+                        if (admins.length) {
+                            const rhtml = brandedEmail(`<p><strong>Rate needed - ${m.loadConNumber}.</strong></p><p>${m.clientName || 'A load'} arrived at the ${depot} depot with <strong>no rate captured</strong>. Please enter the client rate.</p>${emailButton(link, 'Open the load &rarr;', '#13294b')}`);
+                            void invokeFn('send-email', { body: { to: admins.join(','), cc: [OPS_GENERAL], subject: `RATE NEEDED - ${m.loadConNumber} (${depot})`, html: rhtml, fromName: 'FBN Control Centre' } });
+                        }
+                        void directInvoke('send-push', { title: `Rate needed - ${m.loadConNumber}`, body: `No rate on ${m.clientName || 'load'} at ${depot}`, url: `?track=${id}` });
+                    }
+                }
                 // Auto-update the client as the load changes phase. A SPLIT waybill
                 // (several trucks on one order) gets ONE consolidated update listing
                 // every vehicle — re-sent on a phase change OR when a vehicle's reg/

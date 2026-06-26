@@ -2,6 +2,30 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-26]
+
+### Added
+- **Public subcontractor self-registration** at `/supplier-register` (also the emailed
+  `?invite=<token>` link and legacy `?portal=become-supplier`). A 5-step, no-login flow:
+  (1) company details, (2) per-vehicle fleet builder, (3) routes (9 predefined lanes +
+  per-lane load types) + cross-border country multi-select, (4) certifications upload with
+  expiry (GIT required, HAZCHEM, RTMS, COID, cross-border permits), (5) the FBN SLA shown
+  in a scrollable panel + full name / ID / position + acceptance checkbox.
+  `components/supplier/SupplierRegister.tsx`.
+- **`supplier-register` edge function** (verify_jwt=false): uploads each doc to the private
+  `supplier-applications` bucket, captures IP + timestamp **server-side**, generates the
+  **signed-agreement PDF** (pdf-lib) with the electronic-acceptance block, inserts a
+  `Pending` `supplier_applications` row (lands in the onboarding queue), and emails the
+  applicant a confirmation + admins a notification (CC loadcons@). Verified end-to-end live.
+- `supplier_applications` schema extended (registration_number, vat_number, years_operating,
+  vehicles, routes_detail, cross_border_countries, documents, agreement_* fields).
+
+### Changed
+- **Subcontractor SLA single-sourced** in `lib/subcontractorSla.ts` — now feeds the public
+  Terms page, the registration agreement step, and the acceptance PDF (no more drift).
+  **GIT minimum cover raised R800,000 → R1 500 000,00 per load**; added the **ECT Act 25 of
+  2002** electronic-acceptance clause. Company remains FBN Transport CC (Reg 1989/001182/23).
+
 ## [2026-06-25]
 
 ### Added

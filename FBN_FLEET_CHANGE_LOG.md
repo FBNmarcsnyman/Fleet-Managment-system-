@@ -1,8 +1,25 @@
 # FBN Fleet Management System — Change Log
-> Maintained by Marc Snyman | Last updated: 2026-06-22
+> Maintained by Marc Snyman | Last updated: 2026-06-26
 > Use this file at the start of every Claude Code session — paste it in with the instruction: "Read this change log and action the next PENDING item."
 
 ---
+
+## 2026-06-26 — Public subcontractor self-registration + R1.5m GIT SLA (DONE)
+- **NEW public registration** at `/supplier-register` (also `?invite=<token>` and legacy
+  `?portal=become-supplier`): a 5-step, no-login flow — company details → per-vehicle fleet
+  builder → routes (9 lanes + per-lane load types) + cross-border countries → certifications
+  upload with expiry (GIT required min R1.5m, HAZCHEM, RTMS, COID, cross-border permits) →
+  FBN SLA + full name/ID/position + acceptance checkbox.
+- **`supplier-register` edge fn** (public): uploads docs to the private `supplier-applications`
+  bucket, captures IP + timestamp server-side, generates the **signed-agreement PDF**, inserts
+  a `Pending` `supplier_applications` row (onboarding queue), emails applicant + admins.
+  Tested end-to-end on the live function.
+- **SLA single-sourced** in `lib/subcontractorSla.ts` (Terms page + registration + PDF):
+  **GIT minimum R800,000 → R1 500 000,00 per load** and added the **ECT Act 25 of 2002**
+  electronic-acceptance clause. Company stays FBN Transport CC (Reg 1989/001182/23).
+- **PENDING follow-up**: vetting view should render the new structured detail (vehicles/
+  routes/cross-border) + signed-URL links to docs + the agreement PDF; then gate routing/
+  quoting to approved carriers (see supplier-onboarding TODO).
 
 ## 2026-06-22 — LCL Status Report, Ops dashboards, FCL flow, transit broking, email/deploy fixes (DONE)
 - **DEPLOY ROOT-CAUSE FIXED**: Cloudflare deploy command was `wrangler versions upload`

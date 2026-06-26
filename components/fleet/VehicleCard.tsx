@@ -22,7 +22,13 @@ const getHealthColor = (score: number) => {
 };
 
 const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
-    const { fuelEntries = [], serviceStatuses = new Map(), handleUpdateVehicle, users = [] } = useVehicles();
+    const { fuelEntries = [], serviceStatuses = new Map(), handleUpdateVehicle, drivers = [] } = useVehicles();
+    // The driver is linked in the drivers table (drivers.assignedVehicleId === this vehicle).
+    // Reactive: re-linking a driver to another truck updates every card automatically.
+    const driverName = useMemo(() => {
+        const d = (drivers as any[]).find(x => x.assignedVehicleId === vehicle.id);
+        return d?.name || 'Unassigned';
+    }, [drivers, vehicle.id]);
     const { showModal, hideModal, showToast } = useUIState();
     const { jobCards = [], handleCreateJobCard } = useWorkshop();
 
@@ -102,7 +108,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs text-gray-400">
                     <div>
                         <div className="uppercase tracking-widest font-black mb-1 text-[10px] text-gray-500">Driver</div>
-                        <div className="text-sm text-gray-100">{vehicle.assignedDriverId ? (users.find(u => u.email === vehicle.assignedDriverId)?.name ?? vehicle.assignedDriverId) : 'Unassigned'}</div>
+                        <div className="text-sm text-gray-100">{driverName}</div>
                     </div>
                     <div>
                         <div className="uppercase tracking-widest font-black mb-1 text-[10px] text-gray-500">Make</div>

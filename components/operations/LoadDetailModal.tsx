@@ -457,20 +457,40 @@ const LoadDetailModal: React.FC = () => {
                     </div>
                 </Section>
                 {(() => {
-                    // Own FBN fleet (collection leg) vs a real subcontractor (broking /
-                    // outlying leg). Don't call an own-fleet truck a "Subcontractor".
-                    const ownFleet = !lc.supplierId && (lc.subcontractorName || '').toUpperCase() === 'FBN TRANSPORT';
+                    // In-network own truck (GP/KZN ↔ DBN/JHB) = FBN vehicle + driver, NO
+                    // subcontractor. Out-of-network end destination (CPT/PE/EL/Bloem…) = FBN
+                    // collects then forwards on with a subbie — shown only when the manual
+                    // "onward forwarding" toggle is on (or a real subbie is already attached).
+                    const hasSubbie = !!lc.supplierId || ((lc.subcontractorName || '').trim() !== '' && (lc.subcontractorName || '').toUpperCase() !== 'FBN TRANSPORT');
+                    const needsOnward = !!lc.onwardRequired || hasSubbie;
+                    const toggleOnward = async () => {
+                        const res = await handleUpdateLoadConfirmation(lc.id, { onwardRequired: !lc.onwardRequired } as any);
+                        if (res && res.ok === false) showToast(`Could not save: ${res.error}`);
+                    };
                     return (
-                        <Section title={ownFleet ? 'FBN Vehicle / Driver' : 'Subcontractor'} accent={ownFleet ? 'bg-emerald-500' : 'bg-amber-500'}>
-                            <div className="grid grid-cols-2 gap-3">
-                                <F label={ownFleet ? 'Fleet' : 'Carrier'} k="subcontractorName" value={lc.subcontractorName} list={transporterOpts} />
-                                <F label="For Attention" k="forAttention" value={lc.forAttention} />
-                                {!ownFleet && <F label="Email" k="subcontractorEmail" value={lc.subcontractorEmail} />}
-                                <F label="Driver" k="subcontractorDriverName" value={lc.subcontractorDriverName} />
-                                <F label="Driver Cell" k="subcontractorDriverCell" value={lc.subcontractorDriverCell} />
-                                <F label="Vehicle Reg" k="subcontractorVehicleReg" value={lc.subcontractorVehicleReg} />
-                                {!ownFleet && <F label="Transport Rate" k="supplierRate" type="number" value={rand(lc.supplierRate)} />}
-                            </div>
+                        <Section title={needsOnward ? 'Onward forwarding (subcontractor)' : 'FBN Vehicle / Driver'} accent={needsOnward ? 'bg-amber-500' : 'bg-emerald-500'}>
+                            <label className="flex items-start gap-2 mb-3 text-xs text-gray-400 cursor-pointer">
+                                <input type="checkbox" checked={!!lc.onwardRequired} onChange={toggleOnward} disabled={hasSubbie} className="mt-0.5 accent-amber-500" />
+                                <span>Onward forwarding needed — end destination is <strong>out-of-network</strong> (CPT / PE / EL / Bloemfontein…). FBN collects on its own truck, then a subbie takes it on (collects from us or we drop at the depot).</span>
+                            </label>
+                            {needsOnward ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <F label="Carrier" k="subcontractorName" value={lc.subcontractorName} list={transporterOpts} />
+                                    <F label="For Attention" k="forAttention" value={lc.forAttention} />
+                                    <F label="Email" k="subcontractorEmail" value={lc.subcontractorEmail} />
+                                    <F label="Driver" k="subcontractorDriverName" value={lc.subcontractorDriverName} />
+                                    <F label="Driver Cell" k="subcontractorDriverCell" value={lc.subcontractorDriverCell} />
+                                    <F label="Vehicle Reg" k="subcontractorVehicleReg" value={lc.subcontractorVehicleReg} />
+                                    <F label="Transport Rate" k="supplierRate" type="number" value={rand(lc.supplierRate)} />
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <F label="Fleet" k="subcontractorName" value={lc.subcontractorName || 'FBN TRANSPORT'} list={transporterOpts} />
+                                    <F label="Driver" k="subcontractorDriverName" value={lc.subcontractorDriverName} />
+                                    <F label="Driver Cell" k="subcontractorDriverCell" value={lc.subcontractorDriverCell} />
+                                    <F label="Vehicle Reg" k="subcontractorVehicleReg" value={lc.subcontractorVehicleReg} />
+                                </div>
+                            )}
                         </Section>
                     );
                 })()}

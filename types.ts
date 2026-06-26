@@ -587,6 +587,10 @@ export interface LoadConfirmation {
     // non-final-delivery legs that don't deliver to the end client).
     legRole?: string;
     podRequired?: boolean;
+    // Onward forwarding (manual toggle). OFF = FBN own truck end-to-end within GP/KZN
+    // (no subcontractor). ON = out-of-network end destination (CPT/PE/EL/Bloem…): FBN
+    // collects on its own truck then forwards on to the destination with a subbie.
+    onwardRequired?: boolean;
     // COD cargo hold: held pending payment; released (for delivery) once payment confirmed.
     codHold?: boolean;
     codPaidAt?: string;

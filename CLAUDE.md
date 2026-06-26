@@ -2,6 +2,29 @@
 
 Project instructions for Claude Code. Read this at the start of every session.
 
+## MANDATORY SESSION START (do this before writing a single line of code)
+
+1. **Read `ARCHITECTURE.md` in full.**
+2. **Read `PROJECT_BRIEF.md` in full.**
+3. **Confirm by saying:** `Architecture loaded - I can see [list what you found]`.
+4. **Never create anything new without first checking if it already exists in
+   `ARCHITECTURE.md`** (tables, lists, APIs, components).
+
+## MANDATORY BEFORE ANY NEW FEATURE
+
+1. Check `ARCHITECTURE.md` for existing related tables, lists, APIs, components.
+2. **Connect to existing systems — never duplicate.** (e.g. fleet/vehicles = `vehicles`,
+   drivers = `drivers`, API keys = `integration_settings`, email/WhatsApp = the
+   `send-email`/`send-whatsapp` edge fns.)
+3. Update `ARCHITECTURE.md` after building to reflect the change.
+
+## MANDATORY AFTER ANY UPDATE
+
+1. Update `ARCHITECTURE.md`.
+2. Update `PROJECT_BRIEF.md`.
+3. Update `ROADMAP.md`.
+4. Run end-of-session consolidation (see below).
+
 ## Capture flows & logic automatically (MANDATORY — do not wait to be asked)
 
 **The moment Marc defines a flow, rule, standard, or "way of doing/managing something"

@@ -815,6 +815,29 @@ export interface RfqRequest {
     quotes: CarrierQuote[];
 }
 
+// One verification/media record on a waybill's journey. Every checkpoint
+// (collection, depot goods-received, delivery, POD) writes one of these — the
+// spine of cargo verification. Photos are tagged to the stage for an easy timeline.
+export type WaybillStage = 'collection' | 'origin_depot_grn' | 'linehaul_load' | 'dest_depot_grn' | 'delivery' | 'pod' | 'other';
+export interface WaybillEventPhoto { url: string; caption?: string; at?: string; }
+export interface WaybillEvent {
+    id: string;
+    loadId: string;
+    loadConNumber?: string;
+    stage: WaybillStage;
+    waybillNo?: string;
+    packagesExpected?: number;
+    packagesActual?: number;
+    weightKg?: number;
+    condition?: 'ok' | 'damaged' | 'short' | 'over';
+    damageFlag?: boolean;
+    notes?: string;
+    photos?: WaybillEventPhoto[];
+    branch?: string;
+    createdByName?: string;
+    createdAt?: string;
+}
+
 export interface Manifest {
     id: string;
     manifestNumber: string;

@@ -5,6 +5,7 @@ import { supabase, invokeFn } from '../../lib/supabase';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import LoadStatusTimeline from './LoadStatusTimeline';
+import WaybillTimeline from './WaybillTimeline';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { nextStep } from '../../lib/loadStatus';
 import { usePickOptions } from '../../hooks/usePickOptions';
@@ -102,7 +103,15 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
 
 const LoadDetailModal: React.FC = () => {
     const { modal, showModal, showToast, hideModal } = useUIState();
-    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, quotes = [], clients = [], suppliers = [], loadConfirmations = [] } = useOperations() as any;
+    const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, handleGetWaybillEvents, quotes = [], clients = [], suppliers = [], loadConfirmations = [] } = useOperations() as any;
+    // Cargo-verification events for this waybill (fetched on open).
+    const [waybillEvents, setWaybillEvents] = useState<any[]>([]);
+    const loadWaybillEvents = React.useCallback(async () => {
+        if (!modal.payload?.loadCon?.id || !handleGetWaybillEvents) return;
+        const res = await handleGetWaybillEvents(modal.payload.loadCon.id);
+        if (res?.ok) setWaybillEvents(res.value || []);
+    }, [modal.payload?.loadCon?.id, handleGetWaybillEvents]);
+    React.useEffect(() => { loadWaybillEvents(); }, [loadWaybillEvents]);
     const commodityOpts = usePickOptions('commodity');
     const packagingOpts = usePickOptions('packaging');
     const clientNameOpts = React.useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
@@ -561,6 +570,15 @@ const LoadDetailModal: React.FC = () => {
                     </div>
                     <div className="mt-2"><F label="Instructions" k="specialInstructions" value={lc.specialInstructions} prose /></div>
                 </Section>
+                {!editing && (
+                    <Section title="Cargo Verification" accent="bg-teal-500">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-xs text-gray-400">Packages / weight / condition checked at each handoff, with photos. Damage stays on file.</p>
+                            <button onClick={() => showModal('captureWaybill', { loadCon: lc, onSaved: loadWaybillEvents })} className="shrink-0 text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white py-1.5 px-3 rounded-lg">＋ Log cargo check</button>
+                        </div>
+                        <WaybillTimeline events={waybillEvents} />
+                    </Section>
+                )}
             </div>
 
             {!editing && (

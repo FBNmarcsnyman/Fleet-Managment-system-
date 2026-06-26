@@ -675,6 +675,41 @@ export const mapManifest = (row: Tables['manifests']['Row'], ctx: MapperCtx): Ma
     trailerSize: (row as any).trailer_size ?? undefined,
 });
 
+// Waybill verification/media events (cargo-verification spine).
+export const mapWaybillEvent = (row: any): import('../types').WaybillEvent => ({
+    id: row.id,
+    loadId: row.load_id,
+    loadConNumber: row.load_con_number ?? undefined,
+    stage: row.stage,
+    waybillNo: row.waybill_no ?? undefined,
+    packagesExpected: row.packages_expected ?? undefined,
+    packagesActual: row.packages_actual ?? undefined,
+    weightKg: row.weight_kg ?? undefined,
+    condition: row.condition ?? undefined,
+    damageFlag: row.damage_flag ?? false,
+    notes: row.notes ?? undefined,
+    photos: Array.isArray(row.photos) ? row.photos : [],
+    branch: row.branch ?? undefined,
+    createdByName: row.created_by_name ?? undefined,
+    createdAt: row.created_at ?? undefined,
+});
+export const toWaybillEventInsert = (e: Partial<import('../types').WaybillEvent>, organizationId: string): any => ({
+    organization_id: organizationId,
+    load_id: e.loadId,
+    load_con_number: e.loadConNumber ?? null,
+    stage: e.stage,
+    waybill_no: e.waybillNo || null,
+    packages_expected: e.packagesExpected ?? null,
+    packages_actual: e.packagesActual ?? null,
+    weight_kg: e.weightKg ?? null,
+    condition: e.condition || null,
+    damage_flag: !!e.damageFlag,
+    notes: e.notes || null,
+    photos: e.photos || [],
+    branch: e.branch || null,
+    created_by_name: e.createdByName || null,
+});
+
 // -- trip_sheets → TripSheet -------------------------------------------------
 export const mapTripSheet = (row: Tables['trip_sheets']['Row'], ctx: MapperCtx): TripSheet => ({
     id: row.id,

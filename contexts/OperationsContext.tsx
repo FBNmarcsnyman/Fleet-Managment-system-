@@ -11,6 +11,7 @@ import {
     toChecklistSubmissionInsert, mapChecklistSubmission,
     toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
     mapManifest, mapTripSheet, mapSubcontractorInvite, FBN_ORGANIZATION_ID,
+    mapWaybillEvent, toWaybillEventInsert,
     mapRfqRequest, mapRfqRecipient, mapCarrierQuote, toRfqRequestInsert, toCarrierQuoteInsert,
 } from '../lib/mappers';
 
@@ -1350,6 +1351,24 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const { data } = await directSelect('manifests?select=*');
                 if (Array.isArray(data)) dispatch({ type: 'SET_MANIFESTS', payload: data.map((r: any) => mapManifest(r, { branchById })) });
                 return { ok: true };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+        // -- Cargo-verification waybill events (collection / depot GRN / delivery / POD) --
+        // Fetch all verification + photo events for one waybill (load), oldest first.
+        handleGetWaybillEvents: async (loadId: string) => {
+            try {
+                const { data, error } = await directSelect(`waybill_events?load_id=eq.${loadId}&order=created_at.asc`);
+                if (error) return { ok: false, error: error.message };
+                return { ok: true, value: (Array.isArray(data) ? data : []).map(mapWaybillEvent) };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+        // Record one verification event (packages/weight/condition/photos) at a checkpoint.
+        handleAddWaybillEvent: async (event: any) => {
+            try {
+                const row = toWaybillEventInsert(event, FBN_ORGANIZATION_ID);
+                const { data, error } = await directInsert('waybill_events', row);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not save the cargo check.' };
+                return { ok: true, value: mapWaybillEvent(Array.isArray(data) ? data[0] : data) };
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
         // Public "Join Carrier Network" submission. Persists to supplier_applications

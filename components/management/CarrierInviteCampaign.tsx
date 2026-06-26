@@ -8,11 +8,11 @@ import { UploadIcon } from '../icons/UploadIcon';
 import { format } from 'date-fns';
 
 const STATUS_STYLES: Record<string, string> = {
-    Pending: 'text-gray-300 bg-gray-700/60',
-    Invited: 'text-blue-300 bg-blue-900/40',
-    Applied: 'text-amber-300 bg-amber-900/40',
-    Vetted: 'text-emerald-300 bg-emerald-900/40',
-    Declined: 'text-red-300 bg-red-900/40',
+    Pending: 'text-slate-600 bg-slate-100',
+    Invited: 'text-blue-700 bg-blue-100',
+    Applied: 'text-amber-700 bg-amber-100',
+    Vetted: 'text-emerald-700 bg-emerald-100',
+    Declined: 'text-red-700 bg-red-100',
 };
 
 // Parse pasted text into { email, companyName } entries. Accepts one entry per
@@ -100,13 +100,13 @@ const CarrierInviteCampaign: React.FC = () => {
             {/* Funnel */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'On List', value: funnel.total, tone: 'text-white' },
-                    { label: 'Invited', value: funnel.invited, tone: 'text-blue-300' },
-                    { label: 'Applied', value: funnel.applied, tone: 'text-amber-300' },
-                    { label: 'Vetted', value: funnel.vetted, tone: 'text-emerald-300' },
+                    { label: 'On List', value: funnel.total, tone: 'text-slate-900' },
+                    { label: 'Invited', value: funnel.invited, tone: 'text-blue-600' },
+                    { label: 'Applied', value: funnel.applied, tone: 'text-amber-600' },
+                    { label: 'Vetted', value: funnel.vetted, tone: 'text-emerald-600' },
                 ].map(s => (
-                    <div key={s.label} className="bg-gray-800 p-5 rounded-xl border border-gray-700 shadow-xl">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{s.label}</p>
+                    <div key={s.label} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
                         <p className={`text-3xl font-black ${s.tone}`}>{s.value}</p>
                     </div>
                 ))}
@@ -114,27 +114,27 @@ const CarrierInviteCampaign: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Upload list */}
-                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-4">
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                     <div>
-                        <h3 className="text-lg font-black text-white">1. Upload transporter emails</h3>
-                        <p className="text-xs text-gray-500 mt-1">One per line. Optionally add a company after a comma — e.g. <span className="text-gray-400">ops@bluestar.co.za, Blue Star Logistics</span>. Paste from a spreadsheet or upload a CSV/TXT.</p>
+                        <h3 className="text-lg font-black text-slate-900">1. Upload transporter emails</h3>
+                        <p className="text-xs text-slate-500 mt-1">One per line. Optionally add a company after a comma — e.g. <span className="text-slate-700 font-semibold">ops@bluestar.co.za, Blue Star Logistics</span>. Paste from a spreadsheet or upload a CSV/TXT.</p>
                     </div>
                     <textarea
                         value={raw}
                         onChange={e => setRaw(e.target.value)}
                         rows={7}
                         placeholder={'ops@bluestar.co.za, Blue Star Logistics\ndispatch@roadrunner.co.za\n...'}
-                        className="w-full bg-gray-900 text-white p-3 rounded-xl border border-gray-700 focus:ring-2 focus:ring-brand-primary outline-none text-sm font-mono placeholder-gray-600"
+                        className="w-full bg-white text-slate-800 p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#f5b700] outline-none text-sm font-mono placeholder-slate-400"
                     />
                     <div className="flex items-center justify-between">
-                        <label className="flex items-center text-xs font-bold text-gray-400 hover:text-white cursor-pointer">
+                        <label className="flex items-center text-xs font-bold text-slate-500 hover:text-[#13294b] cursor-pointer">
                             <UploadIcon className="h-4 w-4 mr-2" /> Upload CSV / TXT
                             <input type="file" accept=".csv,.txt,text/csv,text/plain" onChange={handleFile} className="hidden" />
                         </label>
                         <button
                             onClick={handleAdd}
                             disabled={adding || !parsedCount}
-                            className="bg-brand-primary hover:bg-brand-secondary disabled:opacity-40 text-white font-black py-2.5 px-6 rounded-xl uppercase tracking-widest text-xs transition-all"
+                            className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-40 text-white font-black py-2.5 px-6 rounded-xl uppercase tracking-widest text-xs transition-all"
                         >
                             {adding ? 'Adding…' : `Add ${parsedCount || ''} to list`}
                         </button>
@@ -142,18 +142,18 @@ const CarrierInviteCampaign: React.FC = () => {
                 </div>
 
                 {/* Compose */}
-                <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl space-y-4">
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                     <div>
-                        <h3 className="text-lg font-black text-white">2. Compose the invite</h3>
-                        <p className="text-xs text-gray-500 mt-1">Sent through the FBN branded template (with the accept button). Use <span className="text-gray-400">{'{name}'}</span> and <span className="text-gray-400">{'{company}'}</span> to personalise.</p>
+                        <h3 className="text-lg font-black text-slate-900">2. Compose the invite</h3>
+                        <p className="text-xs text-slate-500 mt-1">Sent through the FBN branded template (with the accept button). Use <span className="text-slate-700 font-semibold">{'{name}'}</span> and <span className="text-slate-700 font-semibold">{'{company}'}</span> to personalise.</p>
                     </div>
                     <div>
-                        <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Subject</label>
-                        <input value={subject} onChange={e => setSubject(e.target.value)} className="w-full bg-gray-900 text-white p-3 rounded-xl border border-gray-700 focus:ring-2 focus:ring-brand-primary outline-none text-sm" />
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Subject</label>
+                        <input value={subject} onChange={e => setSubject(e.target.value)} className="w-full bg-white text-slate-800 p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#f5b700] outline-none text-sm" />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Message</label>
-                        <textarea value={intro} onChange={e => setIntro(e.target.value)} rows={7} className="w-full bg-gray-900 text-white p-3 rounded-xl border border-gray-700 focus:ring-2 focus:ring-brand-primary outline-none text-sm" />
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Message</label>
+                        <textarea value={intro} onChange={e => setIntro(e.target.value)} rows={7} className="w-full bg-white text-slate-800 p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#f5b700] outline-none text-sm" />
                     </div>
                     <button
                         onClick={() => send(pendingIds)}
@@ -167,9 +167,9 @@ const CarrierInviteCampaign: React.FC = () => {
             </div>
 
             {/* Recipient list */}
-            <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-2xl">
-                <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-900/60">
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Carrier list ({invites.length})</h3>
+            <div className="bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Carrier list ({invites.length})</h3>
                     {selected.size > 0 && (
                         <button onClick={() => send([...selected])} disabled={sending} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-black py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition-all">
                             Send to {selected.size} selected
@@ -177,38 +177,38 @@ const CarrierInviteCampaign: React.FC = () => {
                     )}
                 </div>
                 {invites.length === 0 ? (
-                    <div className="p-10 text-center text-gray-500 text-sm">No carriers yet. Paste a list above to get started.</div>
+                    <div className="p-10 text-center text-slate-400 text-sm">No carriers yet. Paste a list above to get started.</div>
                 ) : (
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-900/40 border-b border-gray-700">
+                        <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="p-3 w-10"><input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded bg-gray-900 border-gray-600" /></th>
-                                <th className="p-3 text-gray-400 uppercase text-[10px] font-black tracking-widest">Carrier</th>
-                                <th className="p-3 text-gray-400 uppercase text-[10px] font-black tracking-widest text-center">Status</th>
-                                <th className="p-3 text-gray-400 uppercase text-[10px] font-black tracking-widest text-center">Sends</th>
-                                <th className="p-3 text-gray-400 uppercase text-[10px] font-black tracking-widest text-right">Last Sent</th>
+                                <th className="p-3 w-10"><input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded border-slate-300" /></th>
+                                <th className="p-3 text-slate-500 uppercase text-[10px] font-black tracking-widest">Carrier</th>
+                                <th className="p-3 text-slate-500 uppercase text-[10px] font-black tracking-widest text-center">Status</th>
+                                <th className="p-3 text-slate-500 uppercase text-[10px] font-black tracking-widest text-center">Sends</th>
+                                <th className="p-3 text-slate-500 uppercase text-[10px] font-black tracking-widest text-right">Last Sent</th>
                                 <th className="p-3"></th>
                             </tr>
                         </thead>
                         <tbody>
                             {invites.map(inv => (
-                                <tr key={inv.id} className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
-                                    <td className="p-3"><input type="checkbox" checked={selected.has(inv.id)} onChange={() => toggle(inv.id)} className="rounded bg-gray-900 border-gray-600" /></td>
+                                <tr key={inv.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                    <td className="p-3"><input type="checkbox" checked={selected.has(inv.id)} onChange={() => toggle(inv.id)} className="rounded border-slate-300" /></td>
                                     <td className="p-3">
-                                        <p className="font-bold text-white">{inv.companyName || inv.email}</p>
-                                        {inv.companyName && <p className="text-xs text-gray-500">{inv.email}</p>}
+                                        <p className="font-bold text-slate-900">{inv.companyName || inv.email}</p>
+                                        {inv.companyName && <p className="text-xs text-slate-500">{inv.email}</p>}
                                     </td>
                                     <td className="p-3 text-center">
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[inv.status] || 'text-gray-300 bg-gray-700/60'}`}>
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${STATUS_STYLES[inv.status] || 'text-slate-600 bg-slate-100'}`}>
                                             {inv.status === 'Vetted' && <CheckCircleIcon className="h-3 w-3 mr-1" />}{inv.status}
                                         </span>
                                     </td>
-                                    <td className="p-3 text-center text-gray-400 font-bold">{inv.sentCount || 0}</td>
-                                    <td className="p-3 text-right text-gray-500 text-xs">{inv.lastSentAt ? format(new Date(inv.lastSentAt), 'dd MMM, HH:mm') : '—'}</td>
+                                    <td className="p-3 text-center text-slate-500 font-bold">{inv.sentCount || 0}</td>
+                                    <td className="p-3 text-right text-slate-400 text-xs">{inv.lastSentAt ? format(new Date(inv.lastSentAt), 'dd MMM, HH:mm') : '—'}</td>
                                     <td className="p-3 text-right whitespace-nowrap">
-                                        <button onClick={() => send([inv.id])} disabled={sending} className="text-[11px] font-black text-blue-400 hover:text-white uppercase tracking-wider mr-3">{inv.status === 'Pending' ? 'Send' : 'Resend'}</button>
+                                        <button onClick={() => send([inv.id])} disabled={sending} className="text-[11px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-wider mr-3">{inv.status === 'Pending' ? 'Send' : 'Resend'}</button>
                                         {inv.status !== 'Declined' && inv.status !== 'Vetted' && (
-                                            <button onClick={() => handleUpdateSubcontractorInvite(inv.id, { status: 'Declined' })} className="text-[11px] font-black text-gray-500 hover:text-red-400 uppercase tracking-wider">Decline</button>
+                                            <button onClick={() => handleUpdateSubcontractorInvite(inv.id, { status: 'Declined' })} className="text-[11px] font-black text-slate-400 hover:text-red-600 uppercase tracking-wider">Decline</button>
                                         )}
                                     </td>
                                 </tr>

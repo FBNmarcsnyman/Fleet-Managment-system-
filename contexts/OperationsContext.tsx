@@ -1498,7 +1498,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             opts?: { subject?: string; intro?: string; buttonLabel?: string },
         ): Promise<Result<{ sent: number; failed: number }>> => {
             try {
-                const base = (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '';
+                const origin = (typeof window !== 'undefined') ? window.location.origin : '';
                 const invites = (stateRef.current.subcontractorInvites || []).filter((i: SubcontractorInvite) => inviteIds.includes(i.id));
                 const subject = opts?.subject?.trim() || 'Partner with FBN Transport — join our carrier network';
                 let sent = 0; const failed: string[] = [];
@@ -1507,7 +1507,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const intro = (opts?.intro || DEFAULT_INVITE_INTRO)
                         .replace(/\{name\}/g, greeting)
                         .replace(/\{company\}/g, inv.companyName || 'your company');
-                    const link = `${base}?portal=become-supplier&invite=${inv.token}`;
+                    const link = `${origin}/supplier-register?invite=${inv.token}`;
                     const html = brandedEmail(`<p>Good day ${greeting},</p>${intro}
                       ${emailButton(link, opts?.buttonLabel?.trim() || 'Join the FBN carrier network &rarr;', '#16a34a')}
                       <p>We look forward to working with you.</p>

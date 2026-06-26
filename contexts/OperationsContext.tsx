@@ -1508,8 +1508,10 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         .replace(/\{name\}/g, greeting)
                         .replace(/\{company\}/g, inv.companyName || 'your company');
                     const link = `${origin}/supplier-register?invite=${inv.token}`;
+                    const portalUrl = `${origin}/?portal=supplier`;
                     const html = brandedEmail(`<p>Good day ${greeting},</p>${intro}
                       ${emailButton(link, opts?.buttonLabel?.trim() || 'Join the FBN carrier network &rarr;', '#16a34a')}
+                      <p style="font-size:13px;color:#64748b">If you have already registered, you can <a href="${portalUrl}" style="color:#13294b;font-weight:bold">log in here</a>. For assistance contact <a href="mailto:missioncontrol@fbn-transport.co.za" style="color:#13294b;font-weight:bold">missioncontrol@fbn-transport.co.za</a>.</p>
                       <p>We look forward to working with you.</p>
                       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
                     const { data, error } = await invokeFn('send-email', { body: { to: inv.email, subject, html, fromName: 'FBN Transport' } });

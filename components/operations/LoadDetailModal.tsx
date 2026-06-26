@@ -216,15 +216,33 @@ const LoadDetailModal: React.FC = () => {
         finally { setCodBusy(false); }
     };
 
-    // Click a rate card to set it (no need to enter Edit mode).
-    const quickRate = async (field: 'totalAmount' | 'supplierRate', label: string) => {
+    // Inline rate editing — click a rate card, it becomes an input in place (no pop-up).
+    const [rateEdit, setRateEdit] = useState<null | 'totalAmount' | 'supplierRate'>(null);
+    const [rateDraft, setRateDraft] = useState('');
+    const startRate = (field: 'totalAmount' | 'supplierRate') => {
         const cur = field === 'totalAmount' ? lc.totalAmount : lc.supplierRate;
-        const v = window.prompt(`${label} (R):`, cur != null ? String(cur) : '');
-        if (v === null) return;
-        const num = parseFloat(String(v).replace(/[^\d.]/g, '')) || 0;
+        setRateDraft(cur != null ? String(cur) : '');
+        setRateEdit(field);
+    };
+    const saveRate = async (field: 'totalAmount' | 'supplierRate') => {
+        setRateEdit(null);
+        const num = parseFloat(String(rateDraft).replace(/[^\d.]/g, '')) || 0;
+        const cur = field === 'totalAmount' ? lc.totalAmount : lc.supplierRate;
+        if (num === (cur || 0)) return; // unchanged — nothing to save
         const res = await handleUpdateLoadConfirmation(lc.id, { [field]: num } as any);
         if (res && res.ok === false) showToast(`Could not save: ${res.error}`);
     };
+    // The little inline number field used inside a rate card.
+    const RateInput: React.FC<{ field: 'totalAmount' | 'supplierRate' }> = ({ field }) => (
+        <div className="flex items-center gap-1 mt-0.5" onClick={e => e.stopPropagation()}>
+            <span className="text-sm text-gray-400">R</span>
+            <input autoFocus type="number" inputMode="decimal" value={rateDraft}
+                onChange={e => setRateDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveRate(field); if (e.key === 'Escape') setRateEdit(null); }}
+                onBlur={() => saveRate(field)}
+                className="w-28 bg-gray-800 border border-blue-400 rounded-lg px-2 py-1 text-lg font-black text-white focus:outline-none" />
+        </div>
+    );
 
     // One-tap status progression from the detail view (no need to enter Edit mode).
     const [advancing, setAdvancing] = useState(false);
@@ -379,8 +397,8 @@ const LoadDetailModal: React.FC = () => {
                     const isBrokered = isGrouped || !!lc.supplierId || !!(lc.subcontractorName || '').trim() || lc.isCollection === false;
                     return (
                 <div className={`grid ${isBrokered ? 'grid-cols-3' : 'grid-cols-1'} gap-3`}>
-                    <button type="button" onClick={() => quickRate('totalAmount', 'Client rate')} className="text-left bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-3 transition"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate{isGrouped ? ' (waybill)' : ''} <span className="text-blue-400 normal-case">· tap to edit</span></p><p className="text-lg font-black text-blue-300">{rand(groupClient)}</p></button>
-                    {isBrokered && <button type="button" onClick={() => !isGrouped && quickRate('supplierRate', 'Transport rate')} className="text-left bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-3 transition"><p className="text-[10px] font-bold text-gray-500 uppercase">{isGrouped ? `Transport cost (all ${groupTrucks.length})` : 'Transport Rate'}{!isGrouped ? ' · tap to edit' : ''}</p><p className="text-lg font-black text-amber-300">{rand(groupCost)}</p>{isGrouped && <p className="text-[10px] text-gray-500">this truck: {rand(lc.supplierRate)}</p>}</button>}
+                    <button type="button" onClick={() => rateEdit !== 'totalAmount' && startRate('totalAmount')} className="text-left bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-3 transition"><p className="text-[10px] font-bold text-gray-500 uppercase">Client Rate{isGrouped ? ' (waybill)' : ''} {rateEdit !== 'totalAmount' && <span className="text-blue-400 normal-case">· tap to edit</span>}</p>{rateEdit === 'totalAmount' ? <RateInput field="totalAmount" /> : <p className="text-lg font-black text-blue-300">{rand(groupClient)}</p>}</button>
+                    {isBrokered && <button type="button" onClick={() => !isGrouped && rateEdit !== 'supplierRate' && startRate('supplierRate')} className="text-left bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-3 transition"><p className="text-[10px] font-bold text-gray-500 uppercase">{isGrouped ? `Transport cost (all ${groupTrucks.length})` : 'Transport Rate'}{!isGrouped && rateEdit !== 'supplierRate' ? ' · tap to edit' : ''}</p>{rateEdit === 'supplierRate' && !isGrouped ? <RateInput field="supplierRate" /> : <><p className="text-lg font-black text-amber-300">{rand(groupCost)}</p>{isGrouped && <p className="text-[10px] text-gray-500">this truck: {rand(lc.supplierRate)}</p>}</>}</button>}
                     {isBrokered && <div className={`rounded-xl p-3 ${margin < 0 ? 'bg-red-950/40 ring-1 ring-red-500' : 'bg-gray-900/50'}`}><p className="text-[10px] font-bold text-gray-500 uppercase">Margin{isGrouped ? ' (waybill)' : ''}{margin < 0 ? ' ⚠ LOSS' : ''}</p><p className={`text-lg font-black ${margin < 0 ? 'text-red-400' : marginPct < 10 ? 'text-amber-400' : 'text-emerald-400'}`}>{rand(margin)} <span className="text-xs">({marginPct.toFixed(0)}%)</span></p></div>}
                 </div>
                     );

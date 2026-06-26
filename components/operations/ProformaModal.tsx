@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 
 const QUOTES_FROM = 'quotes@fbn-transport.co.za';
 const DEBTORS = 'fbndebtors@fbn-transport.co.za';
+const OPS = 'ops@fbn-transport.co.za';
 const money = (n: any) => `R ${Number(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Preview + edit a COD proforma before sending: confirm recipient, add extra CC, and
@@ -63,7 +64,7 @@ const ProformaModal: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div><span className={lbl}>To (client)</span><span className="font-semibold text-slate-800 break-all">{client?.contactEmail || '— no email on file —'}</span></div>
                     <div><span className={lbl}>From</span><span className="text-slate-700">{QUOTES_FROM}</span></div>
-                    <div><span className={lbl}>CC</span><span className="text-slate-700">{DEBTORS}{extraCc.trim() ? ' + extras' : ''}</span></div>
+                    <div><span className={lbl}>CC</span><span className="text-slate-700">{DEBTORS}, {OPS}{extraCc.trim() ? ' + extras' : ''}</span></div>
                 </div>
             </div>
 

@@ -776,6 +776,20 @@ export const mapSupplierApplication = (row: Tables['supplier_applications']['Row
     fleetList: urlToAttachment(row.fleet_list_url) ?? { name: '', type: '', data: '' },
     rateCard: urlToAttachment(row.rate_card_url) ?? { name: '', type: '', data: '' },
     insurance: urlToAttachment(row.insurance_url) ?? { name: '', type: '', data: '' },
+    // Self-registration (public /supplier-register) structured fields.
+    registrationNumber: (row as any).registration_number ?? undefined,
+    vatNumber: (row as any).vat_number ?? undefined,
+    yearsOperating: (row as any).years_operating != null ? String((row as any).years_operating) : undefined,
+    vehicles: Array.isArray((row as any).vehicles) ? (row as any).vehicles : undefined,
+    routesDetail: Array.isArray((row as any).routes_detail) ? (row as any).routes_detail : undefined,
+    crossBorderCountries: (row as any).cross_border_countries ?? undefined,
+    documents: Array.isArray((row as any).documents) ? (row as any).documents : undefined,
+    agreementFullName: (row as any).agreement_full_name ?? undefined,
+    agreementIdNumber: (row as any).agreement_id_number ?? undefined,
+    agreementPosition: (row as any).agreement_position ?? undefined,
+    agreementAcceptedAt: (row as any).agreement_accepted_at ?? undefined,
+    agreementIp: (row as any).agreement_ip ?? undefined,
+    agreementPdfUrl: (row as any).agreement_pdf_url ?? undefined,
 });
 
 // -- subcontractor_invites → SubcontractorInvite -----------------------------

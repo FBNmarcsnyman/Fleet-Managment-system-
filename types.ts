@@ -412,6 +412,32 @@ export interface SupplierApplication {
     fleetList: Attachment;
     rateCard: Attachment;
     insurance: Attachment;
+    // Self-registration (public /supplier-register) structured fields.
+    registrationNumber?: string;
+    vatNumber?: string;
+    yearsOperating?: string;
+    vehicles?: SupplierApplicationVehicle[];
+    routesDetail?: { route: string; loadTypes: string[] }[];
+    crossBorderCountries?: string[];
+    documents?: { type: string; path: string; expiry?: string | null }[];
+    agreementFullName?: string;
+    agreementIdNumber?: string;
+    agreementPosition?: string;
+    agreementAcceptedAt?: string;
+    agreementIp?: string;
+    agreementPdfUrl?: string;
+}
+
+export interface SupplierApplicationVehicle {
+    registration?: string;
+    vehicleType?: string;
+    payloadTonnes?: string;
+    bodyLengthM?: string;
+    hazmat?: boolean;
+    abnormal?: boolean;
+    trackerFitted?: boolean;
+    trackerProvider?: string;
+    mvlExpiry?: string;
 }
 
 // Carrier (subcontractor) invitation campaign. FBN uploads transporter emails,

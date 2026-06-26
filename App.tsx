@@ -14,7 +14,7 @@ import CompleteCargoDetails from './components/CompleteCargoDetails';
 import PublicLoad from './components/PublicLoad';
 import PublicTerms from './components/PublicTerms';
 import PublicRfqQuote from './components/PublicRfqQuote';
-import SupplierRegistrationPortal from './components/supplier/SupplierRegistrationPortal';
+import SupplierRegister from './components/supplier/SupplierRegister';
 
 
 import ManagementPortal from './components/ManagementPortal';
@@ -281,6 +281,13 @@ const App: React.FC = () => {
         return <PublicTerms />;
     }
 
+    // Public, no-login 5-step subcontractor registration: the /supplier-register
+    // page, the ?invite=<token> link we email to a carrier, and the legacy
+    // ?portal=become-supplier link all open the new flow.
+    if (window.location.pathname === '/supplier-register' || inviteToken || portal === 'become-supplier') {
+        return <SupplierRegister inviteToken={inviteToken} />;
+    }
+
     // Public, no-login carrier quote reply from the ?rfq=<token> link in the RFQ email.
     if (rfqToken) {
         return <PublicRfqQuote token={rfqToken} />;
@@ -356,7 +363,6 @@ const App: React.FC = () => {
     if (!currentUser) {
         if (portal === 'client') return <ClientLogin />;
         if (portal === 'supplier') return <SupplierLogin />;
-        if (portal === 'become-supplier') return <SupplierRegistrationPortal inviteToken={inviteToken} />;
         return <Login />;
     }
     

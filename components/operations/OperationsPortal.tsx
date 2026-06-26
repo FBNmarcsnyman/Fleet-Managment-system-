@@ -22,6 +22,7 @@ const PodSignOffBoard = lazy(() => import('./PodSignOffBoard'));
 const OperationsDay = lazy(() => import('./OperationsDay'));
 const OperationsManifests = lazy(() => import('./OperationsManifests'));
 const OperationsTripSheets = lazy(() => import('./OperationsTripSheets'));
+const LiveFleetMap = lazy(() => import('./LiveFleetMap'));
 
 
 const OperationsPortal: React.FC = () => {
@@ -72,6 +73,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'opsDay', label: 'Day', group: 'work' },
         { view: 'opsManifests', label: 'Manifests', group: 'work' },
         { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
+        { view: 'liveMap', label: '📍 Live Map', group: 'track' },
         { view: 'shipments', label: 'Shipments', group: 'work' },
         { view: 'imports', label: 'Imports', group: 'work' },
         { view: 'lclStatus', label: 'Status Report', group: 'work' },
@@ -135,6 +137,7 @@ const OperationsPortal: React.FC = () => {
             case 'opsDay': return <Suspense fallback={<div>Loading…</div>}><OperationsDay /></Suspense>;
             case 'opsManifests': return <Suspense fallback={<div>Loading…</div>}><OperationsManifests /></Suspense>;
             case 'opsTripSheets': return <Suspense fallback={<div>Loading…</div>}><OperationsTripSheets /></Suspense>;
+            case 'liveMap': return <Suspense fallback={<div>Loading…</div>}><LiveFleetMap loadConfirmations={loadConfirmations} users={users || []} vehicles={vehicles} /></Suspense>;
             case 'shipments': return <Suspense fallback={<div>Loading…</div>}><ShipmentsBoard /></Suspense>;
             case 'containers': return <Suspense fallback={<div>Loading…</div>}><ContainersView /></Suspense>;
             case 'imports': return <Suspense fallback={<div>Loading…</div>}><ImportsBoard /></Suspense>;

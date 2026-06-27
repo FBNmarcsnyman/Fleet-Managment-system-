@@ -2,6 +2,16 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-27]
+
+### Fixed
+- **Quote status now updates in the UI instantly (no reload).** Sending, archiving or
+  restoring a quote previously left the on-screen status/badge stale until a full page
+  reload. New `OperationsContext` handlers — `handleSetQuoteStatus` (optimistic dispatch +
+  status-only `directUpdate`, reverts on failure) and `patchQuoteLocal` (local-only update
+  after `quote-send` has already persisted) — wired into Send/Archive/Restore in
+  `QuotesView`. Archive toast now reports failures honestly.
+
 ## [2026-06-26] — Invitation broadcast
 
 ### Added / Changed

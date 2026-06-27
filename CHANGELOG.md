@@ -5,6 +5,9 @@ All notable changes to the FBN Fleet Management System. Newest first.
 ## [2026-06-27]
 
 ### Added
+- **COD automation.** A COD client's new load is now **held automatically** (`cod_hold`) — no
+  manual toggle — and accepting a COD client's quote **auto-opens the proforma** preview to send.
+  Completes the COD payment-gated-release flow (phases 1–4 were already built).
 - **Carrier routing — vetted-first steering.** Subbie-selection pickers now lead with
   vetted carriers and flag un-vetted ones (`lib/carrierEligibility.ts`). `AssignLoadConModal`
   gets a "Vetted only" toggle (default on) + a warning when an un-vetted carrier is chosen;

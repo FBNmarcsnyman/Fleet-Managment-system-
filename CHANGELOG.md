@@ -5,6 +5,13 @@ All notable changes to the FBN Fleet Management System. Newest first.
 ## [2026-06-27]
 
 ### Added
+- **Carrier routing — vetted-first steering.** Subbie-selection pickers now lead with
+  vetted carriers and flag un-vetted ones (`lib/carrierEligibility.ts`). `AssignLoadConModal`
+  gets a "Vetted only" toggle (default on) + a warning when an un-vetted carrier is chosen;
+  `OfferLoadModal` uses vetting as a tiebreak after its lane/type score; the quote subbie
+  rate picker and `RfqBoard` list vetted-first and flag the rest. Never hard-blocks (the
+  currently-assigned carrier always stays selectable). Gate is `isVetted` because
+  `complianceStatus` is unmaintained (0 carriers Compliant) and `regions` has no data yet.
 - **Quote line truck type.** Each quote line can now state the vehicle class its rate is for
   (Superlink 34t / Tri-Axle 28t / 15t / 12t / 8t / 5t / 2t / Tautliner / Flat Deck). Shows as a
   "Vehicle" column on the client quote and a sub-line on the printable PDF. (Rate-per-vehicle and

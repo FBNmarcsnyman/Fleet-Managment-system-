@@ -152,4 +152,22 @@ State machine: `lib/loadStatus.ts` — DIRECT vs DEPOT flow. Cargo verification 
 - **In progress (memory):** Delivery Run / Tripsheet v2 (Phase 1 done — ordered stops/reorder/urgent;
   Phases 2-4 pending: route optimise, driver run page, per-stop client ETA). Email control centre (spec only).
 
-_Companion deep-dives live in the `memory/` notes (depot-linehaul-process-spec, cargo-verification-journey-spec, vehicle-tracking-pulsit, fleet-structure, scheduled-jobs, comms-routing, etc.)._
+## Session additions — 2026-06-27
+- **Subcontractor onboarding (built 2026-06-26, recorded here):** public 5-step **`/supplier-register`**
+  (also `?invite=<token>` / legacy `?portal=become-supplier`) → edge fn **`supplier-register`**
+  (verify_jwt=false): uploads docs to the private **`supplier-applications`** bucket, captures IP+timestamp,
+  generates the **signed-agreement PDF**, inserts a Pending `supplier_applications` row, emails applicant+admins.
+  SLA single-sourced in **`lib/subcontractorSla.ts`** (Terms page + step 5 + PDF; GIT min R1.5m + ECT Act clause).
+  Vetting in **`SupplierApplicationDetailModal`** (company/fleet/routes/agreement + signed-URL doc viewing via
+  edge fn **`supplier-doc-url`**, verify_jwt=true, role-gated). Approve → `suppliers` row + auth login
+  (`admin-create-user`). Invitation broadcast = **`CarrierInviteCampaign`** (in `SubcontractorControlCenter`) →
+  funnel On List→Invited→Applied(on register)→Vetted(on approve).
+- **Carrier routing steering (2026-06-27):** **`lib/carrierEligibility.ts`** — subbie pickers lead with VETTED
+  carriers + flag un-vetted (AssignLoadConModal "Vetted only" toggle + warning; OfferLoadModal tiebreak;
+  CreateQuoteForm + RfqBoard). Soft steer, never a hard block. Gate = `suppliers.is_vetted` (complianceStatus is
+  unmaintained — 0 Compliant; `regions` empty so lane-routing infers from load history).
+- **Quotes:** line items carry **`truckType`** (in the items jsonb; `QUOTE_TRUCK_TYPES`) shown on the client
+  quote + PDF. Quote status changes are now OPTIMISTIC (`handleSetQuoteStatus`/`patchQuoteLocal`) so the list
+  updates without a reload.
+
+_Companion deep-dives live in the `memory/` notes (supplier-self-registration, supplier-onboarding-todo, depot-linehaul-process-spec, cargo-verification-journey-spec, vehicle-tracking-pulsit, fleet-structure, scheduled-jobs, comms-routing, etc.)._

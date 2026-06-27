@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useOperations } from '../../contexts/AppContexts';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useOperations, useUIState } from '../../contexts/AppContexts';
+import { uploadFile } from '../../lib/supabase';
 import { Supplier, RfqRequest, ComplianceDoc } from '../../types';
 
 // Subcontractor portal home. Pulls the carrier's own RFQs, active loads and
@@ -38,7 +39,8 @@ const toneDot: Record<string, string> = { green: 'bg-emerald-500', amber: 'bg-am
 const toneText: Record<string, string> = { green: 'text-emerald-300', amber: 'text-amber-300', red: 'text-red-300' };
 
 const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
-    const { loadConfirmations = [], rfqRequests = [] } = useOperations() as any;
+    const { loadConfirmations = [], rfqRequests = [], handleUpdateLoadConfirmation } = useOperations() as any;
+    const { showToast } = useUIState();
     const [now, setNow] = useState(() => Date.now());
     // Tick the countdowns once a second (cheap — this screen is small).
     useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
@@ -47,6 +49,29 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
 
     const myLoads = useMemo(() => (loadConfirmations || []).filter((l: any) => l.supplierId === sid), [loadConfirmations, sid]);
     const activeLoads = useMemo(() => myLoads.filter((l: any) => !l.archived && !TERMINAL.includes(l.status)), [myLoads]);
+    // Delivered loads still missing a POD — the carrier owes us the proof of delivery.
+    const outstandingPods = useMemo(() => myLoads.filter((l: any) => !l.podPhoto && l.status === 'Delivered'), [myLoads]);
+
+    // POD upload — same flow as My Loads (upload to driver-docs, mark POD Submitted / Awaiting Review).
+    const [uploadingId, setUploadingId] = useState<string | null>(null);
+    const fileRef = useRef<HTMLInputElement>(null);
+    const podForId = useRef<string | null>(null);
+    const startPodUpload = (id: string) => { podForId.current = id; fileRef.current?.click(); };
+    const onPodFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]; const id = podForId.current; e.target.value = '';
+        if (!file || !id) return;
+        setUploadingId(id);
+        try {
+            const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const up = await uploadFile('driver-docs', `pods/${id}_${Date.now()}_${safe}`, file);
+            if (up.error || !up.url) { showToast(`POD upload failed: ${up.error || 'unknown error'}`); return; }
+            const res = await handleUpdateLoadConfirmation(id, { podPhoto: { name: file.name, type: file.type, data: up.url }, status: 'POD Submitted', paymentStatus: 'Awaiting Review' });
+            if (res && res.ok === false) { showToast(`Could not save POD: ${res.error}`); return; }
+            showToast('POD submitted — thank you!');
+        } catch (err) {
+            showToast(`POD upload failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+        } finally { setUploadingId(null); podForId.current = null; }
+    };
 
     const openRfqs = useMemo(() => (rfqRequests as RfqRequest[])
         .filter(r => r.status === 'Open'
@@ -82,13 +107,38 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
             </div>
 
             {/* KPI row */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {kpi('Open RFQs', openRfqs.length, openRfqs.length ? 'awaiting your quote' : 'none right now', () => onNavigate('rfqs'), 'text-emerald-300')}
                 {kpi('Active loads', activeLoads.length, 'in progress', () => onNavigate('loads'), 'text-blue-300')}
+                {kpi('Outstanding PODs', outstandingPods.length, outstandingPods.length ? 'delivered — POD due' : 'all up to date', () => onNavigate('loads'), outstandingPods.length ? 'text-amber-300' : 'text-white')}
                 {kpi('Posted to network', 0, 'Load Board — coming soon', undefined, 'text-gray-500')}
                 {kpi('Compliance', <span className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${toneDot[overall]}`} />{overall === 'green' ? 'OK' : overall === 'amber' ? 'Check' : 'Action'}</span>, overall === 'red' ? 'needs attention' : overall === 'amber' ? 'expiring soon' : 'all valid', () => onNavigate('compliance'), toneText[overall])}
                 {kpi('Outstanding invoices', 0, 'Invoicing — coming soon', undefined, 'text-gray-500')}
             </div>
+
+            {/* Outstanding PODs — upload right here */}
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={onPodFile} />
+            {outstandingPods.length > 0 && (
+                <section className="bg-[#111827] border border-amber-500/20 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-black text-amber-300 uppercase tracking-widest">Outstanding PODs ({outstandingPods.length})</h2>
+                        <button onClick={() => onNavigate('loads')} className="text-xs font-bold text-brand-secondary hover:text-blue-300">My Loads →</button>
+                    </div>
+                    <div className="space-y-2">
+                        {outstandingPods.map((l: any) => (
+                            <div key={l.id} className="flex items-center justify-between gap-3 bg-white/5 rounded-xl p-3">
+                                <div className="min-w-0">
+                                    <p className="font-bold text-white text-sm truncate">{l.loadConNumber || l.loadRefNo || '—'}</p>
+                                    <p className="text-[11px] text-gray-500 truncate">{l.collectionPoint} → {l.deliveryPoint}{l.deliveryDate ? ` · delivered ${new Date(l.deliveryDate).toLocaleDateString('en-ZA')}` : ''}</p>
+                                </div>
+                                <button onClick={() => startPodUpload(l.id)} disabled={uploadingId === l.id} className="shrink-0 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-1.5 px-3 rounded-lg disabled:opacity-50">
+                                    {uploadingId === l.id ? 'Uploading…' : 'Upload POD'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* Open RFQs with countdown */}
             <section className="bg-[#111827] border border-white/5 rounded-2xl p-6">

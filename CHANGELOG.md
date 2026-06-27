@@ -4,6 +4,12 @@ All notable changes to the FBN Fleet Management System. Newest first.
 
 ## [2026-06-27]
 
+### Added
+- **Quote line truck type.** Each quote line can now state the vehicle class its rate is for
+  (Superlink 34t / Tri-Axle 28t / 15t / 12t / 8t / 5t / 2t / Tautliner / Flat Deck). Shows as a
+  "Vehicle" column on the client quote and a sub-line on the printable PDF. (Rate-per-vehicle and
+  the priced weight with live Rate/kg were already in the form.)
+
 ### Fixed
 - **Quote status now updates in the UI instantly (no reload).** Sending, archiving or
   restoring a quote previously left the on-screen status/badge stale until a full page

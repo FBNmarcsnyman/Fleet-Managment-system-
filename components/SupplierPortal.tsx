@@ -11,15 +11,17 @@ import SupplierDocuments from './supplier/SupplierDocuments';
 import SupplierProfile from './supplier/SupplierProfile';
 import SupplierFleetRates from './supplier/SupplierFleetRates';
 import SupplierRfqList from './supplier/SupplierRfqList';
+import SupplierDashboard from './supplier/SupplierDashboard';
 import { MailIcon } from './icons/MailIcon';
+import { DashboardIcon } from './icons/DashboardIcon';
 import { RfqRequest } from '../types';
 
-type SupplierView = 'loads' | 'rfqs' | 'compliance' | 'profile' | 'fleet_rates';
+type SupplierView = 'dashboard' | 'loads' | 'rfqs' | 'compliance' | 'profile' | 'fleet_rates';
 
 const SupplierPortal: React.FC = () => {
     const { currentUser, handleLogout, viewingSupplierAsAdmin, setViewSupplierAsAdmin } = useAuth();
     const { loadConfirmations, suppliers, rfqRequests = [] } = useOperations() as any;
-    const [activeView, setActiveView] = useState<SupplierView>('loads');
+    const [activeView, setActiveView] = useState<SupplierView>('dashboard');
 
     const user = viewingSupplierAsAdmin || currentUser;
     if (!user || !user.supplierId) return null;
@@ -33,6 +35,7 @@ const SupplierPortal: React.FC = () => {
         && !r.quotes.some(q => q.supplierId === user.supplierId)).length;
 
     const navItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon, badge: 0 },
         { id: 'loads', label: 'My Loads', icon: DocumentTextIcon, badge: 0 },
         { id: 'rfqs', label: 'Quote Requests', icon: MailIcon, badge: openRfqs },
         { id: 'compliance', label: 'Compliance Vault', icon: UsersIcon, badge: 0 },
@@ -42,12 +45,13 @@ const SupplierPortal: React.FC = () => {
 
     const renderContent = () => {
         switch (activeView) {
+            case 'dashboard': return <SupplierDashboard supplier={supplier} onNavigate={(v) => setActiveView(v as SupplierView)} />;
             case 'rfqs': return <SupplierRfqList supplier={supplier} />;
             case 'compliance': return <SupplierDocuments supplier={supplier} />;
             case 'fleet_rates': return <SupplierFleetRates supplier={supplier} />;
             case 'profile': return <SupplierProfile supplier={supplier} />;
-            case 'loads':
-            default: return <SupplierLoadList loadConfirmations={supplierLoads} />;
+            case 'loads': return <SupplierLoadList loadConfirmations={supplierLoads} />;
+            default: return <SupplierDashboard supplier={supplier} onNavigate={(v) => setActiveView(v as SupplierView)} />;
         }
     };
     

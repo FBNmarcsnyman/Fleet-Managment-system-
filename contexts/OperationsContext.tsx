@@ -1047,6 +1047,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     (row as any).is_primary = false;
                     (row as any).leg_role = childData.legRole || 'Truck';
                     (row as any).pod_required = childData.podRequired !== false;
+                    // COD: hold EVERY leg — no part of the load is released until payment.
+                    // Inherits the primary's hold (auto-set for COD clients at booking).
+                    if ((parent as any).codHold) (row as any).cod_hold = true;
                     const csid = a.supplierId || findSupplierId(a.subcontractorName);
                     if (csid) { (row as any).supplier_id = csid; (row as any).status = 'Driver Assigned'; }
                     else if (a.subcontractorName) (row as any).status = 'Driver Assigned';

@@ -12,6 +12,11 @@ All notable changes to the FBN Fleet Management System. Newest first.
   gains status progression (via the canonical state machine) and exception flagging
   (Delay/Breakdown/Short/Damage → waybill event + load flag). Super admin can view any carrier's
   portal via Users → Portal Logins → View Portal.
+- **Subcontractor portal — Phase 3 (Invoicing & Payments).** New `subcontractor_invoices` table +
+  RLS. Carriers invoice their POD'd loads (number/date/excl-VAT/VAT/total/PDF), track
+  Submitted→Approved/Queried→Paid, filter history, and print a statement of account. FBN accounts
+  review them under Management → Subcontractors → Invoices (approve / query / mark paid), with the
+  carrier emailed on each decision. Dashboard "Outstanding invoices" tile now live.
 - **RLS:** scoped `waybill_events` by role (migration `scope_waybill_events_rls_by_role`) — carriers
   only see/insert events for their own loads; staff keep full access.
 - **COD automation.** A COD client's new load is now **held automatically** (`cod_hold`) — no

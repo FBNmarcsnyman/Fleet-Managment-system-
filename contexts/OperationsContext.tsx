@@ -712,6 +712,31 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
+        // Change a quote's status — OPTIMISTIC + freeze-proof. Dispatches the new
+        // status immediately so the list/badge updates without a page reload, then
+        // persists via directUpdate (writing ONLY the status column, so a stale field
+        // can't fail the write); reverts the local state if the write fails. This is
+        // the fix for the "quote sent/archived still shows the old status until reload"
+        // bug — the previous path re-wrote the whole row and skipped the dispatch on error.
+        handleSetQuoteStatus: async (quote: Quote, status: Quote['status']): Promise<Result<Quote>> => {
+            const cur = (stateRef.current.quotes || []).find((q: Quote) => q.id === quote.id) || quote;
+            const updated: Quote = { ...cur, status };
+            dispatch({ type: 'UPDATE_QUOTE', payload: updated });
+            const { error } = await directUpdate('quotes', { id: quote.id }, { status });
+            if (error) { dispatch({ type: 'UPDATE_QUOTE', payload: cur }); console.error('[ops] setQuoteStatus failed:', error); return { ok: false, error: error.message }; }
+            return { ok: true, value: updated };
+        },
+        // Apply a quote change to LOCAL state only (no DB write). Use right after an
+        // edge function (e.g. quote-send) has ALREADY persisted the change, so the UI
+        // reflects it instantly without a redundant second write that could fail and
+        // leave the list stale until reload.
+        patchQuoteLocal: (quoteId: string, patch: Partial<Quote>): void => {
+            const cur = (stateRef.current.quotes || []).find((q: Quote) => q.id === quoteId);
+            if (cur) dispatch({ type: 'UPDATE_QUOTE', payload: { ...cur, ...patch } });
+        },
+        // NOTE: accept/reject are also called from the PUBLIC ClientQuoteView (?viewQuote=)
+        // where there may be no auth session, so these keep the anon supabase client
+        // (don't switch to the session-bound direct* helpers here).
         handleAcceptQuote: async (quote: Quote): Promise<Result<Quote>> => {
             try {
                 const { error } = await supabase

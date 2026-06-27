@@ -20,7 +20,7 @@ const QuotesView: React.FC<{
     onShowPdf: (quote: Quote, client: Client) => void;
 }> = ({ quotes = [], clients = [], suppliers = [], onShowPdf }) => {
     const { showModal, showToast } = useUIState();
-    const { loadConfirmations = [], handleCreateQuote, handleUpdateQuote, handleAddClient } = useOperations() as any;
+    const { loadConfirmations = [], handleCreateQuote, handleUpdateQuote, handleAddClient, handleSetQuoteStatus, patchQuoteLocal } = useOperations() as any;
     // Create a client inline from the quote form; returns the new Client or null.
     const onAddClient = async (input: any) => {
         const res = await handleAddClient(input);
@@ -48,16 +48,19 @@ const QuotesView: React.FC<{
         const ids = [...selected];
         if (!ids.length) return;
         if (!confirm(`Archive ${ids.length} quote(s)? They move to the "Archived" filter — not deleted, you can restore them.`)) return;
+        let ok = 0, failed = 0;
         for (const id of ids) {
             const q = quotes.find(x => x.id === id);
-            if (q) await handleUpdateQuote({ ...q, status: 'Archived' as QuoteStatus });
+            if (!q) continue;
+            const res = await handleSetQuoteStatus(q, 'Archived' as QuoteStatus);
+            res?.ok === false ? failed++ : ok++;
         }
         setSelected(new Set());
-        showToast(`Archived ${ids.length} quote(s).`);
+        showToast(failed ? `Archived ${ok}, ${failed} failed — please retry.` : `Archived ${ok} quote(s).`);
     };
 
     const restoreQuote = async (q: Quote) => {
-        await handleUpdateQuote({ ...q, status: 'Requested' as QuoteStatus });
+        await handleSetQuoteStatus(q, 'Requested' as QuoteStatus);
         showToast(`Restored ${q.quoteNumber}.`);
     };
 
@@ -123,8 +126,9 @@ const QuotesView: React.FC<{
             );
             const data = await resp.json();
             if (data.error) throw new Error(data.error);
-            // Reflect the new status in the UI immediately (no reload needed).
-            void handleUpdateQuote({ ...quote, status: 'Sent' as QuoteStatus, sentToClient: true } as any);
+            // quote-send already persisted status='Sent' server-side — just sync local
+            // state so the list/badge updates immediately (no redundant second write).
+            patchQuoteLocal(quote.id, { status: 'Sent' as QuoteStatus, sentToClient: true });
             showToast(`Quote ${quote.quoteNumber} sent to ${data.sent_to}`);
         } catch (e: any) {
             showToast(`Failed to send: ${e.message}`);

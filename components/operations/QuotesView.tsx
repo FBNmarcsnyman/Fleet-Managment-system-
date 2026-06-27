@@ -324,8 +324,16 @@ const QuotesView: React.FC<{
                         client={clients.find(c => c.id === quoteToAccept.clientId)!}
                         suppliers={suppliers}
                         onSuccess={() => {
+                            const acceptedQuote = quoteToAccept;
                             setQuoteToAccept(null);
                             showToast("Quote converted to Load Confirmation successfully.");
+                            // COD client → auto-raise the proforma (opens the preview/edit
+                            // modal so it can be checked & the client's VAT/billing captured
+                            // before sending). Cargo is held until payment per the COD flow.
+                            const cl = (clients as any[]).find(c => c.id === acceptedQuote.clientId);
+                            if (cl && cl.accountStatus === 'cod') {
+                                showModal('proforma', { quote: acceptedQuote, client: cl });
+                            }
                         }}
                         onCancel={() => setQuoteToAccept(null)}
                     />

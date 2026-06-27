@@ -878,6 +878,12 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (data.collectionRef) (row as any).collection_ref = data.collectionRef;
                 if (data.unpackDepot) (row as any).unpack_depot = data.unpackDepot;
                 if (data.importStage) (row as any).import_stage = data.importStage;
+                // COD auto-hold: a COD client's cargo is HELD by default — it must not be
+                // delivered until payment is received and released (cod-release lifts it).
+                // Only auto-set on a live (not back-dated/already-delivered) load.
+                if (!backDated && _client?.accountStatus === 'cod' && (row as any).cod_hold == null) {
+                    (row as any).cod_hold = true;
+                }
                 // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
                 const { data: inserted, error } = await directInsert('load_confirmations', row as any);
                 if (error || !inserted) {

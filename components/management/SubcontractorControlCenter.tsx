@@ -8,6 +8,7 @@ import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { ExclamationTriangleIcon } from '../icons/ExclamationTriangleIcon';
 import SupplierOnboardingView from '../operations/SupplierOnboardingView';
 import CarrierInviteCampaign from './CarrierInviteCampaign';
+import CarrierInvoicesReview from './CarrierInvoicesReview';
 import { format } from 'date-fns';
 
 const SubcontractorControlCenter: React.FC = () => {
@@ -44,7 +45,7 @@ const SubcontractorControlCenter: React.FC = () => {
         }
         showToast(`${unvetted.length} carrier(s) marked vetted.`);
     };
-    const [activeTab, setActiveTab] = useState<'network' | 'onboarding' | 'invite'>('network');
+    const [activeTab, setActiveTab] = useState<'network' | 'onboarding' | 'invite' | 'invoices'>('network');
 
     const transportSuppliers = useMemo(() => 
         (suppliers || []).filter(s => s.type === 'Transport')
@@ -106,6 +107,12 @@ const SubcontractorControlCenter: React.FC = () => {
                     >
                         Invite Carriers
                     </button>
+                    <button
+                        onClick={() => setActiveTab('invoices')}
+                        className={`text-lg font-bold pb-4 -mb-4 border-b-2 transition-all flex items-center ${activeTab === 'invoices' ? 'text-[#13294b] border-[#f5b700]' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                    >
+                        Invoices
+                    </button>
                 </div>
                 <button
                     onClick={handleCopyOnboardingLink}
@@ -115,7 +122,9 @@ const SubcontractorControlCenter: React.FC = () => {
                 </button>
             </div>
 
-            {activeTab === 'invite' ? (
+            {activeTab === 'invoices' ? (
+                <CarrierInvoicesReview />
+            ) : activeTab === 'invite' ? (
                 <CarrierInviteCampaign />
             ) : activeTab === 'network' ? (
                 <div className="bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">

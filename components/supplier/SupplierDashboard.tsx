@@ -39,7 +39,7 @@ const toneDot: Record<string, string> = { green: 'bg-emerald-500', amber: 'bg-am
 const toneText: Record<string, string> = { green: 'text-emerald-300', amber: 'text-amber-300', red: 'text-red-300' };
 
 const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
-    const { loadConfirmations = [], rfqRequests = [], handleUpdateLoadConfirmation } = useOperations() as any;
+    const { loadConfirmations = [], rfqRequests = [], subcontractorInvoices = [], handleUpdateLoadConfirmation } = useOperations() as any;
     const { showToast } = useUIState();
     const [now, setNow] = useState(() => Date.now());
     // Tick the countdowns once a second (cheap — this screen is small).
@@ -51,6 +51,8 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
     const activeLoads = useMemo(() => myLoads.filter((l: any) => !l.archived && !TERMINAL.includes(l.status)), [myLoads]);
     // Delivered loads still missing a POD — the carrier owes us the proof of delivery.
     const outstandingPods = useMemo(() => myLoads.filter((l: any) => !l.podPhoto && l.status === 'Delivered'), [myLoads]);
+    // Invoices not yet paid (Submitted / Approved / Queried).
+    const outstandingInvoices = useMemo(() => (subcontractorInvoices || []).filter((i: any) => i.supplierId === sid && i.status !== 'Paid'), [subcontractorInvoices, sid]);
 
     // POD upload — same flow as My Loads (upload to driver-docs, mark POD Submitted / Awaiting Review).
     const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -113,7 +115,7 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
                 {kpi('Outstanding PODs', outstandingPods.length, outstandingPods.length ? 'delivered — POD due' : 'all up to date', () => onNavigate('loads'), outstandingPods.length ? 'text-amber-300' : 'text-white')}
                 {kpi('Posted to network', 0, 'Load Board — coming soon', undefined, 'text-gray-500')}
                 {kpi('Compliance', <span className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${toneDot[overall]}`} />{overall === 'green' ? 'OK' : overall === 'amber' ? 'Check' : 'Action'}</span>, overall === 'red' ? 'needs attention' : overall === 'amber' ? 'expiring soon' : 'all valid', () => onNavigate('compliance'), toneText[overall])}
-                {kpi('Outstanding invoices', 0, 'Invoicing — coming soon', undefined, 'text-gray-500')}
+                {kpi('Outstanding invoices', outstandingInvoices.length, outstandingInvoices.length ? 'awaiting payment/approval' : 'all settled', () => onNavigate('invoicing'), outstandingInvoices.length ? 'text-amber-300' : 'text-white')}
             </div>
 
             {/* Outstanding PODs — upload right here */}

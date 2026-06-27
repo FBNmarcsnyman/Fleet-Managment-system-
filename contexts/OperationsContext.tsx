@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
+import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, SubcontractorInvoice, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
 import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
@@ -10,7 +10,7 @@ import {
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
     toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
-    mapManifest, mapTripSheet, mapSubcontractorInvite, FBN_ORGANIZATION_ID,
+    mapManifest, mapTripSheet, mapSubcontractorInvite, mapSubcontractorInvoice, toSubcontractorInvoiceInsert, FBN_ORGANIZATION_ID,
     mapWaybillEvent, toWaybillEventInsert,
     mapRfqRequest, mapRfqRecipient, mapCarrierQuote, toRfqRequestInsert, toCarrierQuoteInsert,
 } from '../lib/mappers';
@@ -312,6 +312,7 @@ const baseUrl = () => (typeof window !== 'undefined' ? `${window.location.origin
 
 // Branch ops mailboxes. Every ops notification also copies the general ops inbox.
 const OPS_GENERAL = 'ops@fbn-transport.co.za';
+const ACCOUNTS_EMAIL = 'fbndebtors@fbn-transport.co.za';
 const opsEmail = (branch?: string) => branch === 'FBN DBN' ? 'opsdbn@fbn-transport.co.za' : branch === 'FBN JHB' ? 'opsjhb@fbn-transport.co.za' : OPS_GENERAL;
 // Statuses before the inter-branch transfer (handled by the COLLECTING branch).
 const COLLECTION_PHASE = new Set(['Booked', 'Driver Assigned', 'At Collection Point', 'Loading', 'Collected', 'At Collection Depot']);
@@ -1455,6 +1456,60 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 const { data, error } = await directInsert('waybill_events', row);
                 if (error || !data) return { ok: false, error: error?.message || 'Could not save the cargo check.' };
                 return { ok: true, value: mapWaybillEvent(Array.isArray(data) ? data[0] : data) };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+
+        // --- Subcontractor invoicing -----------------------------------------
+        // Carrier raises an invoice against a completed (POD'd) load. Freeze-proof
+        // insert; notifies FBN accounts (debtors) to review.
+        handleCreateSupplierInvoice: async (payload: Partial<SubcontractorInvoice>): Promise<Result<SubcontractorInvoice>> => {
+            try {
+                const row = toSubcontractorInvoiceInsert({ ...payload, status: 'Submitted' }, FBN_ORG_ID);
+                const { data, error } = await directInsert('subcontractor_invoices', row);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not submit the invoice.' };
+                const inv = mapSubcontractorInvoice(Array.isArray(data) ? data[0] : data);
+                dispatch({ type: 'ADD_SUBCONTRACTOR_INVOICE', payload: inv });
+                const sup = (stateRef.current.suppliers || []).find((s: Supplier) => s.id === inv.supplierId);
+                const html = brandedEmail(`<p>A subcontractor has submitted an invoice for review.</p>
+                  <p><strong>${sup?.name || 'Carrier'}</strong><br>Invoice ${inv.invoiceNumber} dated ${inv.invoiceDate}${inv.loadConNumber ? `<br>Load ${inv.loadConNumber}` : ''}<br>Excl VAT R ${inv.amountExclVat.toLocaleString('en-ZA')} · VAT R ${inv.vatAmount.toLocaleString('en-ZA')} · <strong>Total R ${inv.total.toLocaleString('en-ZA')}</strong></p>
+                  <p>Open the carrier invoices review to approve, query or mark paid.</p>`);
+                void invokeFn('send-email', { body: { to: ACCOUNTS_EMAIL, cc: [OPS_GENERAL], subject: `Carrier invoice ${inv.invoiceNumber} — ${sup?.name || 'Carrier'}`, html, fromName: 'FBN Carrier Portal' } });
+                return { ok: true, value: inv };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+        // Accounts (or the carrier, while still editable) updates an invoice. Status
+        // changes (Approved / Queried / Paid) notify the carrier.
+        handleUpdateSupplierInvoice: async (id: string, updates: Partial<SubcontractorInvoice>): Promise<Result<SubcontractorInvoice>> => {
+            try {
+                const row: any = { updated_at: new Date().toISOString() };
+                if (updates.status !== undefined) row.status = updates.status;
+                if (updates.queryNote !== undefined) row.query_note = updates.queryNote ?? null;
+                if (updates.paymentDate !== undefined) row.payment_date = updates.paymentDate ?? null;
+                if (updates.paymentReference !== undefined) row.payment_reference = updates.paymentReference ?? null;
+                if (updates.invoiceNumber !== undefined) row.invoice_number = updates.invoiceNumber;
+                if (updates.invoiceDate !== undefined) row.invoice_date = updates.invoiceDate;
+                if (updates.amountExclVat !== undefined) row.amount_excl_vat = updates.amountExclVat;
+                if (updates.vatAmount !== undefined) row.vat_amount = updates.vatAmount;
+                if (updates.total !== undefined) row.total = updates.total;
+                if (updates.invoicePdfUrl !== undefined) row.invoice_pdf_url = updates.invoicePdfUrl ?? null;
+                const { data, error } = await directUpdate('subcontractor_invoices', { id }, row);
+                if (error) return { ok: false, error: error.message };
+                const cur = (stateRef.current.subcontractorInvoices || []).find((i: SubcontractorInvoice) => i.id === id);
+                const inv = data ? mapSubcontractorInvoice(Array.isArray(data) ? data[0] : data) : { ...(cur as SubcontractorInvoice), ...updates };
+                dispatch({ type: 'UPDATE_SUBCONTRACTOR_INVOICE', payload: inv });
+                // Notify the carrier on a status decision.
+                if (updates.status && cur && updates.status !== cur.status) {
+                    const sup = (stateRef.current.suppliers || []).find((s: Supplier) => s.id === inv.supplierId);
+                    const to = sup?.contactEmail;
+                    if (to) {
+                        const msg = updates.status === 'Approved' ? `Your invoice <strong>${inv.invoiceNumber}</strong> has been approved for payment.`
+                            : updates.status === 'Paid' ? `Your invoice <strong>${inv.invoiceNumber}</strong> has been paid${inv.paymentReference ? ` (ref ${inv.paymentReference})` : ''}${inv.paymentDate ? ` on ${inv.paymentDate}` : ''}.`
+                            : updates.status === 'Queried' ? `Your invoice <strong>${inv.invoiceNumber}</strong> has a query: ${inv.queryNote || 'please review and resubmit.'}`
+                            : `Your invoice <strong>${inv.invoiceNumber}</strong> status is now ${updates.status}.`;
+                        void invokeFn('send-email', { body: { to, subject: `FBN — invoice ${inv.invoiceNumber} ${updates.status}`, html: brandedEmail(`<p>Good day,</p><p>${msg}</p><p>Kind regards,<br>FBN Transport Accounts</p>`), fromName: 'FBN Transport' } });
+                    }
+                }
+                return { ok: true, value: inv };
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
         // Public "Join Carrier Network" submission. Persists to supplier_applications

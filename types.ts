@@ -428,6 +428,28 @@ export interface SupplierApplication {
     agreementPdfUrl?: string;
 }
 
+export type SubcontractorInvoiceStatus = 'Submitted' | 'Approved' | 'Queried' | 'Paid';
+
+export interface SubcontractorInvoice {
+    id: string;
+    supplierId: string;
+    loadId?: string;
+    loadConNumber?: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    amountExclVat: number;
+    vatAmount: number;
+    total: number;
+    invoicePdfUrl?: string;
+    status: SubcontractorInvoiceStatus;
+    queryNote?: string;
+    paymentDate?: string;
+    paymentReference?: string;
+    createdByName?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface SupplierApplicationVehicle {
     registration?: string;
     vehicleType?: string;

@@ -792,6 +792,42 @@ export const mapSupplierApplication = (row: Tables['supplier_applications']['Row
     agreementPdfUrl: (row as any).agreement_pdf_url ?? undefined,
 });
 
+// -- subcontractor_invoices → SubcontractorInvoice ---------------------------
+export const mapSubcontractorInvoice = (row: any): import('../types').SubcontractorInvoice => ({
+    id: row.id,
+    supplierId: row.supplier_id,
+    loadId: row.load_id ?? undefined,
+    loadConNumber: row.load_con_number ?? undefined,
+    invoiceNumber: row.invoice_number,
+    invoiceDate: row.invoice_date,
+    amountExclVat: Number(row.amount_excl_vat) || 0,
+    vatAmount: Number(row.vat_amount) || 0,
+    total: Number(row.total) || 0,
+    invoicePdfUrl: row.invoice_pdf_url ?? undefined,
+    status: row.status,
+    queryNote: row.query_note ?? undefined,
+    paymentDate: row.payment_date ?? undefined,
+    paymentReference: row.payment_reference ?? undefined,
+    createdByName: row.created_by_name ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+});
+
+export const toSubcontractorInvoiceInsert = (e: Partial<import('../types').SubcontractorInvoice>, organizationId: string): any => ({
+    organization_id: organizationId,
+    supplier_id: e.supplierId,
+    load_id: e.loadId ?? null,
+    load_con_number: e.loadConNumber ?? null,
+    invoice_number: e.invoiceNumber,
+    invoice_date: e.invoiceDate,
+    amount_excl_vat: e.amountExclVat ?? 0,
+    vat_amount: e.vatAmount ?? 0,
+    total: e.total ?? 0,
+    invoice_pdf_url: e.invoicePdfUrl ?? null,
+    status: e.status || 'Submitted',
+    created_by_name: e.createdByName ?? null,
+});
+
 // -- subcontractor_invites → SubcontractorInvite -----------------------------
 export const mapSubcontractorInvite = (row: any): SubcontractorInvite => ({
     id: row.id,

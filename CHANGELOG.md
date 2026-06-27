@@ -5,6 +5,15 @@ All notable changes to the FBN Fleet Management System. Newest first.
 ## [2026-06-27]
 
 ### Added
+- **Subcontractor portal — Phase 1 (Dashboard) + Phase 2 (RFQ board, My Loads).** Carrier portal
+  now opens on a **Dashboard** (open RFQs with live countdowns, active loads, outstanding PODs with
+  inline upload, compliance R/A/G, placeholders for invoices/load-board). **RFQ board** gains a live
+  deadline countdown, decline-with-reason, and a vehicle dropdown from the carrier's fleet. **My Loads**
+  gains status progression (via the canonical state machine) and exception flagging
+  (Delay/Breakdown/Short/Damage → waybill event + load flag). Super admin can view any carrier's
+  portal via Users → Portal Logins → View Portal.
+- **RLS:** scoped `waybill_events` by role (migration `scope_waybill_events_rls_by_role`) — carriers
+  only see/insert events for their own loads; staff keep full access.
 - **COD automation.** A COD client's new load is now **held automatically** (`cod_hold`) — no
   manual toggle — and accepting a COD client's quote **auto-opens the proforma** preview to send.
   Completes the COD payment-gated-release flow (phases 1–4 were already built).

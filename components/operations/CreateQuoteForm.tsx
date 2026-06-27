@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Quote, Client, Supplier, QuoteItem, QuoteLeg, SubcontractorQuote } from '../../types';
+import { eligibleCarriers, carrierOptionLabel } from '../../lib/carrierEligibility';
 import { addDays, format } from 'date-fns';
 import { PlusIcon } from '../icons/PlusIcon';
 import { TrashIcon } from '../icons/TrashIcon';
@@ -133,7 +134,8 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
         } finally { setAddingClient(false); }
     };
 
-    const transportSuppliers = suppliers.filter(s => s.type === 'Transport');
+    // Carrier rate picker steers to vetted carriers first (see lib/carrierEligibility).
+    const transportSuppliers = eligibleCarriers(suppliers as Supplier[]);
 
     // What the client actually asked us to move — surfaced read-only at the top
     // so the pricer can see weight / cubes / load type while keying the rate.
@@ -472,7 +474,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                                     <label className={labelClasses}>Carrier Name</label>
                                     <select value={sq.supplierId} onChange={e => handleSubQuoteChange(index, 'supplierId', e.target.value)} className={inputClasses}>
                                         <option value="">-- Choose Subbie --</option>
-                                        {transportSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        {transportSuppliers.map(s => <option key={s.id} value={s.id}>{carrierOptionLabel(s)}</option>)}
                                     </select>
                                 </div>
                                 <div className="col-span-4">

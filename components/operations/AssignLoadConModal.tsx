@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { LoadConfirmation, Vehicle, User, Supplier, Branch } from '../../types';
 import { useOperations, useUIState, useVehicles } from '../../contexts/AppContexts';
 import { ExclamationTriangleIcon } from '../icons/ExclamationTriangleIcon';
+import { eligibleCarriers, carrierOptionLabel, carrierWarning } from '../../lib/carrierEligibility';
 
 interface AssignLoadConModalProps {
     loadCon: LoadConfirmation;
@@ -72,15 +73,23 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
         if (linked && !driverId) setDriverId(linked.name);
     };
 
-    const transportSuppliers = useMemo(() => 
-        (suppliers || []).filter((s: Supplier) => s.type === 'Transport')
-    , [suppliers]);
+    // Carrier routing: steer to VETTED carriers first (see lib/carrierEligibility).
+    const [vettedOnly, setVettedOnly] = useState(true);
+    const transportSuppliers = useMemo(() => {
+        const list = eligibleCarriers((suppliers || []) as Supplier[], { vettedOnly });
+        // Always keep the currently-selected carrier visible, even if the filter would hide it.
+        if (supplierId && !list.some(s => s.id === supplierId)) {
+            const sel = (suppliers || []).find((s: Supplier) => s.id === supplierId);
+            if (sel) return [sel, ...list];
+        }
+        return list;
+    }, [suppliers, vettedOnly, supplierId]);
 
-    const selectedSupplier = useMemo(() => 
-        transportSuppliers.find((s: Supplier) => s.id === supplierId)
-    , [supplierId, transportSuppliers]);
+    const selectedSupplier = useMemo(() =>
+        (suppliers || []).find((s: Supplier) => s.id === supplierId)
+    , [supplierId, suppliers]);
 
-    const isNonCompliant = selectedSupplier?.complianceStatus !== 'Compliant';
+    const carrierWarn = carrierWarning(selectedSupplier);
 
     // Lane rate history: what we've paid carriers on this same lane before.
     const laneHistory = useMemo(() => {
@@ -148,7 +157,7 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                 driverId: undefined
             });
             if (res && res.ok === false) { showToast(`Could not assign: ${res.error}`); return; }
-            showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}.${isNonCompliant ? ' ⚠ Flagged — carrier not compliant.' : ' LoadCon ready to send.'}`);
+            showToast(`Load ${loadCon.loadConNumber} assigned to ${selectedSupplier?.name}.${selectedSupplier?.isVetted ? ' LoadCon ready to send.' : ' ⚠ Flagged — carrier not vetted.'}`);
             hideModal();
         } catch (err) {
             showToast(`Could not assign: ${err instanceof Error ? err.message : 'error'}`);
@@ -203,17 +212,21 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                 <form onSubmit={handleSubbieSubmit} className="space-y-6">
                     <div className="space-y-4">
                         <div>
-                            <label className={labelClasses}>Select Subcontractor</label>
+                            <div className="flex items-center justify-between mb-1.5 ml-1">
+                                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest">Select Subcontractor</label>
+                                <label className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 cursor-pointer normal-case tracking-normal">
+                                    <input type="checkbox" checked={vettedOnly} onChange={e => setVettedOnly(e.target.checked)} className="h-3 w-3" />
+                                    Vetted only
+                                </label>
+                            </div>
                             <select value={supplierId} onChange={e => setSupplierId(e.target.value)} required className={inputClasses}>
                                 <option value="" disabled>-- Select a carrier --</option>
-                                {transportSuppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.complianceStatus})</option>)}
+                                {transportSuppliers.map(s => <option key={s.id} value={s.id}>{carrierOptionLabel(s)}</option>)}
                             </select>
-                            {supplierId && isNonCompliant && (
+                            {carrierWarn && (
                                 <div className="mt-2 flex items-start gap-2 bg-amber-900/30 border border-amber-700/60 rounded-lg p-2.5">
                                     <ExclamationTriangleIcon className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                                    <p className="text-[11px] text-amber-300 font-semibold">
-                                        {selectedSupplier?.name} is <strong>{selectedSupplier?.complianceStatus}</strong>. You can still use them — the load will be flagged to management to chase paperwork.
-                                    </p>
+                                    <p className="text-[11px] text-amber-300 font-semibold">{carrierWarn}</p>
                                 </div>
                             )}
                         </div>

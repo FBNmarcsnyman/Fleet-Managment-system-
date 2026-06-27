@@ -60,9 +60,10 @@ const OfferLoadModal: React.FC = () => {
                 const reasons: string[] = [];
                 if (laneMatch) reasons.push(`runs ${from}↔${to}`);
                 if (typeMatch) reasons.push(lc.loadType || 'same truck');
-                return { id: s.id, name: s.name, email, score, reasons, ran: h ? h.lanes.size : 0, offered: alreadyOffered.has(email.toLowerCase()) };
+                return { id: s.id, name: s.name, email, score, reasons, ran: h ? h.lanes.size : 0, offered: alreadyOffered.has(email.toLowerCase()), vetted: !!s.isVetted };
             })
-            .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+            // Best lane/type match first, then vetted carriers ahead of un-vetted.
+            .sort((a, b) => b.score - a.score || (Number(b.vetted) - Number(a.vetted)) || a.name.localeCompare(b.name));
     }, [suppliers, loadConfirmations, lanePair, loadType, from, to]);
 
     const matched = carriers.filter(c => c.score > 0);
@@ -100,7 +101,7 @@ const OfferLoadModal: React.FC = () => {
                                 <tr key={c.id} className={`border-b border-slate-100 ${sel.has(c.id) ? 'bg-amber-50' : ''} ${!c.email ? 'opacity-50' : 'cursor-pointer hover:bg-amber-50/40'}`} onClick={() => c.email && toggle(c.id)}>
                                     <td className="py-2 pl-3 pr-2 w-8"><input type="checkbox" disabled={!c.email} checked={sel.has(c.id)} onChange={() => toggle(c.id)} onClick={e => e.stopPropagation()} className="h-4 w-4 accent-[#13294b]" /></td>
                                     <td className="py-2 px-2">
-                                        <div className="font-bold text-[#13294b]">{c.name}{c.offered && <span className="ml-2 text-[10px] font-bold text-emerald-600">✓ offered</span>}</div>
+                                        <div className="font-bold text-[#13294b]">{c.name}{c.offered && <span className="ml-2 text-[10px] font-bold text-emerald-600">✓ offered</span>}{!c.vetted && <span className="ml-2 text-[10px] font-bold text-amber-600">⚠ not vetted</span>}</div>
                                         <div className="text-[11px] text-slate-400">{c.email || 'no email on file'}</div>
                                     </td>
                                     <td className="py-2 px-2">

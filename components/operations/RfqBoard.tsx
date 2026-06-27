@@ -55,7 +55,10 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuo
     // Pre-fill from a quote when opened via "Request Transporter Rates" on a quote.
     React.useEffect(() => { if (prefillQuoteId) onQuote(prefillQuoteId); /* eslint-disable-next-line */ }, [prefillQuoteId]);
 
-    const carriers = useMemo(() => (suppliers || []).filter(s => s.type === 'Transport' && s.isActive !== false), [suppliers]);
+    // Active transport carriers, vetted ones listed first (lane filtering happens below).
+    const carriers = useMemo(() => (suppliers || [])
+        .filter(s => s.type === 'Transport' && s.isActive !== false)
+        .sort((a, b) => (Number(!!b.isVetted) - Number(!!a.isVetted)) || (a.name || '').localeCompare(b.name || '')), [suppliers]);
     const [picked, setPicked] = useState<Set<string>>(new Set());
     const [extraEmails, setExtraEmails] = useState('');
     const [saveToSubby, setSaveToSubby] = useState(true);
@@ -222,7 +225,7 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuo
                         <label key={c.id} className="flex items-center gap-3 p-2.5 hover:bg-gray-700/40 cursor-pointer">
                             <input type="checkbox" checked={picked.has(c.id)} onChange={() => toggle(c.id)} className="h-4 w-4 rounded" />
                             <span className="flex-grow min-w-0">
-                                <span className="text-sm text-white font-semibold">{c.name}</span>
+                                <span className="text-sm text-white font-semibold">{c.name}{!c.isVetted && <span className="ml-2 text-[10px] font-bold text-amber-400">⚠ not vetted</span>}</span>
                                 <span className="block text-[11px] text-gray-500 truncate">{[c.regions, (c.vehicleTypes || []).join(', ')].filter(Boolean).join(' · ') || c.contactEmail || 'no lane info'}</span>
                             </span>
                             {!c.contactEmail && <span className="text-[10px] text-amber-400 font-bold">no email</span>}

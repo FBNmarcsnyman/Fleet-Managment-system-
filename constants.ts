@@ -132,6 +132,20 @@ export const LOAD_SPECS = [
     'Refrigerated',
 ];
 
+// Truck types offered when pricing a quote line (rate is per one of these).
+// Payload labels match fleet-weight-overload-rules.
+export const QUOTE_TRUCK_TYPES = [
+    'Superlink (34t)',
+    'Tri-Axle (28t)',
+    '15t',
+    '12t',
+    '8t',
+    '5t',
+    '2t',
+    'Tautliner',
+    'Flat Deck',
+];
+
 export const NOTIFICATION_TRIGGERS = [
     { key: 'new_critical_job', label: 'New Critical Job Card Created' },
     { key: 'service_overdue', label: 'Vehicle Service Becomes Overdue' },

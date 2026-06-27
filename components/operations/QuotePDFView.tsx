@@ -87,7 +87,7 @@ const QuotePDFView: React.FC<QuotePDFViewProps> = ({ quote, client }) => {
                     <tbody className="bg-white">
                         {quote.items.map(item => (
                             <tr key={item.id} className="border-b border-gray-100">
-                                <td className="p-4 font-bold text-gray-800">{item.description}</td>
+                                <td className="p-4 font-bold text-gray-800">{item.description}{(item as any).truckType ? <span className="block text-[11px] font-normal text-gray-500">{(item as any).truckType}</span> : null}</td>
                                 <td className="p-4 text-center font-bold text-gray-600">{item.quantity}</td>
                                 <td className="p-4 text-right font-mono text-gray-600">R {item.rate.toFixed(2)}</td>
                                 <td className="p-4 text-right font-mono font-black text-gray-900">R {item.total.toFixed(2)}</td>

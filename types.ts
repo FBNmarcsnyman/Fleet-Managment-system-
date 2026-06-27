@@ -743,6 +743,7 @@ export interface QuoteItem {
     id: string;
     description: string;
     packagingType: string;
+    truckType?: string;    // vehicle type this line is priced for (Superlink 34t / Tri-axle 28t / …)
     quantity: number;
     rate: number;          // rate PER VEHICLE
     vehicles?: number;     // how many vehicles at this rate (default 1); total = rate × vehicles

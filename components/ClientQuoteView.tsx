@@ -66,6 +66,7 @@ const ClientQuoteView: React.FC<ClientQuoteViewProps> = ({ quote, client, onAcce
                         <thead className="bg-gray-200">
                             <tr>
                                 <th className="p-3">Description</th>
+                                <th className="p-3 text-center">Vehicle</th>
                                 <th className="p-3 text-center">Packaging</th>
                                 <th className="p-3 text-center">Qty</th>
                                 <th className="p-3 text-right">Weight (kg)</th>
@@ -78,6 +79,7 @@ const ClientQuoteView: React.FC<ClientQuoteViewProps> = ({ quote, client, onAcce
                             {quote.items.map(item => (
                                 <tr key={item.id} className="border-b">
                                     <td className="p-3 align-top">{item.description}</td>
+                                    <td className="p-3 text-center align-top">{(item as any).truckType || '-'}</td>
                                     <td className="p-3 text-center align-top">{item.packagingType}</td>
                                     <td className="p-3 text-center align-top">{item.quantity}</td>
                                     <td className="p-3 text-right font-mono align-top">{item.weight ? item.weight.toLocaleString() : '-'}</td>

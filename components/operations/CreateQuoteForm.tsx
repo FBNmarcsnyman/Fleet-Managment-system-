@@ -6,7 +6,7 @@ import { PlusIcon } from '../icons/PlusIcon';
 import { TrashIcon } from '../icons/TrashIcon';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { useUIState, useFleetData } from '../../contexts/AppContexts';
-import { LOAD_SPECS } from '../../constants';
+import { LOAD_SPECS, QUOTE_TRUCK_TYPES } from '../../constants';
 import { MapPinIcon } from '../icons/MapPinIcon';
 
 interface CreateQuoteFormProps {
@@ -245,7 +245,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
         item.total = (Number(item.rate) || 0) * (Number((item as any).vehicles) || 1);
         setQuote(prev => ({ ...prev, items: newItems }));
     };
-    const addItem = () => setQuote(prev => ({ ...prev, items: [...prev.items, { id: generateId(), description: '', packagingType: (packagingTypes?.[0] || 'Pallets'), quantity: 1, rate: 0, vehicles: 1, total: 0 }] }));
+    const addItem = () => setQuote(prev => ({ ...prev, items: [...prev.items, { id: generateId(), description: '', packagingType: (packagingTypes?.[0] || 'Pallets'), truckType: '', quantity: 1, rate: 0, vehicles: 1, total: 0 }] }));
     const removeItem = (index: number) => setQuote(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
     
     const handleSubmit = (e: React.FormEvent) => {
@@ -519,7 +519,14 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                     <div className="space-y-3">
                          {quote.items.map((item, index) => (
                              <div key={item.id} className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:gap-x-3 sm:items-end bg-gray-900/40 p-4 rounded-xl border border-gray-800">
-                                <div className="col-span-3"><label className={labelClasses}>Description</label><input type="text" value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} className={inputClasses} /></div>
+                                <div className="col-span-2"><label className={labelClasses}>Description</label><input type="text" value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} className={inputClasses} /></div>
+                                <div className="col-span-2">
+                                    <label className={labelClasses}>Truck Type</label>
+                                    <select value={(item as any).truckType || ''} onChange={e => handleItemChange(index, 'truckType' as any, e.target.value)} className={inputClasses}>
+                                        <option value="">-- type --</option>
+                                        {QUOTE_TRUCK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
                                 <div className="col-span-2">
                                     <label className={labelClasses}>Packaging</label>
                                     <select value={item.packagingType} onChange={e => handleItemChange(index, 'packagingType', e.target.value)} className={inputClasses}>
@@ -529,9 +536,12 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                                 <div className="col-span-1"><label className={labelClasses}>Qty</label><input type="number" min="0" value={item.quantity || ''} onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} className={inputClasses} /></div>
                                 <div className="col-span-2"><label className={labelClasses}>Rate / vehicle (R)</label><input type="number" min="0" step="0.01" placeholder="0.00" value={item.rate || ''} onChange={e => handleItemChange(index, 'rate', Number(e.target.value))} className={inputClasses} /></div>
                                 <div className="col-span-1"><label className={labelClasses}>Vehicles</label><input type="number" min="1" placeholder="1" value={(item as any).vehicles || ''} onChange={e => handleItemChange(index, 'vehicles' as any, Number(e.target.value))} className={inputClasses} /></div>
-                                <div className="col-span-2"><label className={labelClasses}>Total</label><div className="p-2 bg-gray-800 rounded-md border border-gray-700 text-sm font-mono text-green-400">R {item.total.toFixed(2)}</div></div>
-                                <div className="col-span-1 flex justify-end">
-                                    <button type="button" onClick={() => removeItem(index)} disabled={quote.items.length === 1} className="p-2 text-red-400/50 hover:text-red-400"><TrashIcon className="h-4 w-4"/></button>
+                                <div className="col-span-2">
+                                    <label className={labelClasses}>Total</label>
+                                    <div className="flex items-center gap-1">
+                                        <div className="flex-1 p-2 bg-gray-800 rounded-md border border-gray-700 text-sm font-mono text-green-400">R {item.total.toFixed(2)}</div>
+                                        <button type="button" onClick={() => removeItem(index)} disabled={quote.items.length === 1} className="p-2 text-red-400/50 hover:text-red-400 disabled:opacity-30"><TrashIcon className="h-4 w-4"/></button>
+                                    </div>
                                 </div>
                             </div>
                          ))}

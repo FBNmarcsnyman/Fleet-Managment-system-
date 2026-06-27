@@ -12,6 +12,11 @@ All notable changes to the FBN Fleet Management System. Newest first.
   gains status progression (via the canonical state machine) and exception flagging
   (Delay/Breakdown/Short/Damage → waybill event + load flag). Super admin can view any carrier's
   portal via Users → Portal Logins → View Portal.
+- **Subcontractor portal — Phase 4 (Load Board).** Carriers post loads needing cover (origin/dest/
+  date/cargo/vehicle/contact) → land Pending → FBN authorises (Management → Subcontractors → Load
+  Board) → visible to other approved carriers, who see enquiry contacts. Poster can mark filled or
+  withdraw; the poster is emailed on approve/decline. New `load_board_posts` table + RLS. Dashboard
+  "Posted to network" tile now live.
 - **Subcontractor portal — Phase 3 (Invoicing & Payments).** New `subcontractor_invoices` table +
   RLS. Carriers invoice their POD'd loads (number/date/excl-VAT/VAT/total/PDF), track
   Submitted→Approved/Queried→Paid, filter history, and print a statement of account. FBN accounts

@@ -792,6 +792,44 @@ export const mapSupplierApplication = (row: Tables['supplier_applications']['Row
     agreementPdfUrl: (row as any).agreement_pdf_url ?? undefined,
 });
 
+// -- load_board_posts → LoadBoardPost ----------------------------------------
+export const mapLoadBoardPost = (row: any): import('../types').LoadBoardPost => ({
+    id: row.id,
+    supplierId: row.supplier_id,
+    origin: row.origin,
+    destination: row.destination,
+    collectionDate: row.collection_date ?? undefined,
+    cargoDescription: row.cargo_description ?? undefined,
+    vehicleTypeNeeded: row.vehicle_type_needed ?? undefined,
+    loadType: row.load_type ?? undefined,
+    contactName: row.contact_name ?? undefined,
+    contactPhone: row.contact_phone ?? undefined,
+    contactEmail: row.contact_email ?? undefined,
+    status: row.status,
+    declineNote: row.decline_note ?? undefined,
+    approvedByName: row.approved_by_name ?? undefined,
+    approvedAt: row.approved_at ?? undefined,
+    postedByName: row.posted_by_name ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+});
+
+export const toLoadBoardPostInsert = (e: Partial<import('../types').LoadBoardPost>, organizationId: string): any => ({
+    organization_id: organizationId,
+    supplier_id: e.supplierId,
+    origin: e.origin,
+    destination: e.destination,
+    collection_date: e.collectionDate || null,
+    cargo_description: e.cargoDescription ?? null,
+    vehicle_type_needed: e.vehicleTypeNeeded ?? null,
+    load_type: e.loadType ?? null,
+    contact_name: e.contactName ?? null,
+    contact_phone: e.contactPhone ?? null,
+    contact_email: e.contactEmail ?? null,
+    status: e.status || 'Pending',
+    posted_by_name: e.postedByName ?? null,
+});
+
 // -- subcontractor_invoices → SubcontractorInvoice ---------------------------
 export const mapSubcontractorInvoice = (row: any): import('../types').SubcontractorInvoice => ({
     id: row.id,

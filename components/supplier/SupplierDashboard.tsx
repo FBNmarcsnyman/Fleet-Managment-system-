@@ -39,7 +39,7 @@ const toneDot: Record<string, string> = { green: 'bg-emerald-500', amber: 'bg-am
 const toneText: Record<string, string> = { green: 'text-emerald-300', amber: 'text-amber-300', red: 'text-red-300' };
 
 const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
-    const { loadConfirmations = [], rfqRequests = [], subcontractorInvoices = [], handleUpdateLoadConfirmation } = useOperations() as any;
+    const { loadConfirmations = [], rfqRequests = [], subcontractorInvoices = [], loadBoardPosts = [], handleUpdateLoadConfirmation } = useOperations() as any;
     const { showToast } = useUIState();
     const [now, setNow] = useState(() => Date.now());
     // Tick the countdowns once a second (cheap — this screen is small).
@@ -53,6 +53,8 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
     const outstandingPods = useMemo(() => myLoads.filter((l: any) => !l.podPhoto && l.status === 'Delivered'), [myLoads]);
     // Invoices not yet paid (Submitted / Approved / Queried).
     const outstandingInvoices = useMemo(() => (subcontractorInvoices || []).filter((i: any) => i.supplierId === sid && i.status !== 'Paid'), [subcontractorInvoices, sid]);
+    // Loads this carrier has posted to the network that are still live (Pending or Approved).
+    const myPostedLive = useMemo(() => (loadBoardPosts || []).filter((p: any) => p.supplierId === sid && (p.status === 'Pending' || p.status === 'Approved')), [loadBoardPosts, sid]);
 
     // POD upload — same flow as My Loads (upload to driver-docs, mark POD Submitted / Awaiting Review).
     const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -113,7 +115,7 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
                 {kpi('Open RFQs', openRfqs.length, openRfqs.length ? 'awaiting your quote' : 'none right now', () => onNavigate('rfqs'), 'text-emerald-300')}
                 {kpi('Active loads', activeLoads.length, 'in progress', () => onNavigate('loads'), 'text-blue-300')}
                 {kpi('Outstanding PODs', outstandingPods.length, outstandingPods.length ? 'delivered — POD due' : 'all up to date', () => onNavigate('loads'), outstandingPods.length ? 'text-amber-300' : 'text-white')}
-                {kpi('Posted to network', 0, 'Load Board — coming soon', undefined, 'text-gray-500')}
+                {kpi('Posted to network', myPostedLive.length, myPostedLive.length ? 'live on the board' : 'none posted', () => onNavigate('loadboard'), myPostedLive.length ? 'text-blue-300' : 'text-white')}
                 {kpi('Compliance', <span className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${toneDot[overall]}`} />{overall === 'green' ? 'OK' : overall === 'amber' ? 'Check' : 'Action'}</span>, overall === 'red' ? 'needs attention' : overall === 'amber' ? 'expiring soon' : 'all valid', () => onNavigate('compliance'), toneText[overall])}
                 {kpi('Outstanding invoices', outstandingInvoices.length, outstandingInvoices.length ? 'awaiting payment/approval' : 'all settled', () => onNavigate('invoicing'), outstandingInvoices.length ? 'text-amber-300' : 'text-white')}
             </div>

@@ -428,6 +428,29 @@ export interface SupplierApplication {
     agreementPdfUrl?: string;
 }
 
+export type LoadBoardStatus = 'Pending' | 'Approved' | 'Filled' | 'Withdrawn' | 'Declined';
+
+export interface LoadBoardPost {
+    id: string;
+    supplierId: string;
+    origin: string;
+    destination: string;
+    collectionDate?: string;
+    cargoDescription?: string;
+    vehicleTypeNeeded?: string;
+    loadType?: string;
+    contactName?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    status: LoadBoardStatus;
+    declineNote?: string;
+    approvedByName?: string;
+    approvedAt?: string;
+    postedByName?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export type SubcontractorInvoiceStatus = 'Submitted' | 'Approved' | 'Queried' | 'Paid';
 
 export interface SubcontractorInvoice {

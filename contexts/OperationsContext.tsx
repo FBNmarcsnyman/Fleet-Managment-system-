@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
-import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, SubcontractorInvoice, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
+import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, SubcontractorInvoice, LoadBoardPost, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
 import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
@@ -10,7 +10,7 @@ import {
     mapClient, mapSupplier, mapQuote, mapLoadConfirmation,
     toChecklistSubmissionInsert, mapChecklistSubmission,
     toJobCardInsert, mapJobCard, mapSupplierComplianceDoc,
-    mapManifest, mapTripSheet, mapSubcontractorInvite, mapSubcontractorInvoice, toSubcontractorInvoiceInsert, FBN_ORGANIZATION_ID,
+    mapManifest, mapTripSheet, mapSubcontractorInvite, mapSubcontractorInvoice, toSubcontractorInvoiceInsert, mapLoadBoardPost, toLoadBoardPostInsert, FBN_ORGANIZATION_ID,
     mapWaybillEvent, toWaybillEventInsert,
     mapRfqRequest, mapRfqRecipient, mapCarrierQuote, toRfqRequestInsert, toCarrierQuoteInsert,
 } from '../lib/mappers';
@@ -1510,6 +1510,58 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     }
                 }
                 return { ok: true, value: inv };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+
+        // --- Load board (carrier-posted loads needing cover) -----------------
+        // Carrier posts a load → lands Pending; FBN admin is notified to authorise.
+        handleCreateLoadBoardPost: async (payload: Partial<LoadBoardPost>): Promise<Result<LoadBoardPost>> => {
+            try {
+                const row = toLoadBoardPostInsert({ ...payload, status: 'Pending' }, FBN_ORG_ID);
+                const { data, error } = await directInsert('load_board_posts', row);
+                if (error || !data) return { ok: false, error: error?.message || 'Could not post the load.' };
+                const post = mapLoadBoardPost(Array.isArray(data) ? data[0] : data);
+                dispatch({ type: 'ADD_LOAD_BOARD_POST', payload: post });
+                const sup = (stateRef.current.suppliers || []).find((s: Supplier) => s.id === post.supplierId);
+                const html = brandedEmail(`<p>A carrier wants to post a load to the network board — it needs your authorisation before other carriers can see it.</p>
+                  <p><strong>${sup?.name || 'Carrier'}</strong><br>${post.origin} &rarr; ${post.destination}${post.collectionDate ? `<br>Collect ${post.collectionDate}` : ''}<br>${[post.vehicleTypeNeeded, post.loadType, post.cargoDescription].filter(Boolean).join(' · ')}</p>
+                  <p>Open Management &rarr; Subcontractors &rarr; Load Board to approve or decline.</p>`);
+                void invokeFn('send-email', { body: { to: OPS_GENERAL, subject: `Load board post awaiting approval — ${sup?.name || 'Carrier'}`, html, fromName: 'FBN Load Board' } });
+                return { ok: true, value: post };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+        // Approve / decline (staff) or fill / withdraw / edit (poster). Notifies the poster on a staff decision.
+        handleUpdateLoadBoardPost: async (id: string, updates: Partial<LoadBoardPost> & { approvedByName?: string }): Promise<Result<LoadBoardPost>> => {
+            try {
+                const row: any = { updated_at: new Date().toISOString() };
+                if (updates.status !== undefined) row.status = updates.status;
+                if (updates.declineNote !== undefined) row.decline_note = updates.declineNote ?? null;
+                if (updates.status === 'Approved') { row.approved_at = new Date().toISOString(); if (updates.approvedByName) row.approved_by_name = updates.approvedByName; }
+                if (updates.origin !== undefined) row.origin = updates.origin;
+                if (updates.destination !== undefined) row.destination = updates.destination;
+                if (updates.cargoDescription !== undefined) row.cargo_description = updates.cargoDescription ?? null;
+                if (updates.vehicleTypeNeeded !== undefined) row.vehicle_type_needed = updates.vehicleTypeNeeded ?? null;
+                if (updates.loadType !== undefined) row.load_type = updates.loadType ?? null;
+                if (updates.contactName !== undefined) row.contact_name = updates.contactName ?? null;
+                if (updates.contactPhone !== undefined) row.contact_phone = updates.contactPhone ?? null;
+                if (updates.contactEmail !== undefined) row.contact_email = updates.contactEmail ?? null;
+                if (updates.collectionDate !== undefined) row.collection_date = updates.collectionDate || null;
+                const { data, error } = await directUpdate('load_board_posts', { id }, row);
+                if (error) return { ok: false, error: error.message };
+                const cur = (stateRef.current.loadBoardPosts || []).find((p: LoadBoardPost) => p.id === id);
+                const post = data ? mapLoadBoardPost(Array.isArray(data) ? data[0] : data) : { ...(cur as LoadBoardPost), ...updates };
+                dispatch({ type: 'UPDATE_LOAD_BOARD_POST', payload: post });
+                if ((updates.status === 'Approved' || updates.status === 'Declined') && cur && updates.status !== cur.status) {
+                    const sup = (stateRef.current.suppliers || []).find((s: Supplier) => s.id === post.supplierId);
+                    const to = sup?.contactEmail;
+                    if (to) {
+                        const msg = updates.status === 'Approved'
+                            ? `Your load board post (${post.origin} → ${post.destination}) is now LIVE — other approved FBN carriers can see it.`
+                            : `Your load board post (${post.origin} → ${post.destination}) was not approved${post.declineNote ? `: ${post.declineNote}` : '.'}`;
+                        void invokeFn('send-email', { body: { to, subject: `FBN Load Board — post ${updates.status}`, html: brandedEmail(`<p>Good day,</p><p>${msg}</p><p>Kind regards,<br>FBN Transport</p>`), fromName: 'FBN Transport' } });
+                    }
+                }
+                return { ok: true, value: post };
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
         // Public "Join Carrier Network" submission. Persists to supplier_applications

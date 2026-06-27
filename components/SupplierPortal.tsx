@@ -13,11 +13,13 @@ import SupplierFleetRates from './supplier/SupplierFleetRates';
 import SupplierRfqList from './supplier/SupplierRfqList';
 import SupplierDashboard from './supplier/SupplierDashboard';
 import SupplierInvoices from './supplier/SupplierInvoices';
+import SupplierLoadBoard from './supplier/SupplierLoadBoard';
 import { MailIcon } from './icons/MailIcon';
 import { DashboardIcon } from './icons/DashboardIcon';
+import { ClipboardDocumentListIcon } from './icons/ClipboardDocumentListIcon';
 import { RfqRequest } from '../types';
 
-type SupplierView = 'dashboard' | 'loads' | 'rfqs' | 'invoicing' | 'compliance' | 'profile' | 'fleet_rates';
+type SupplierView = 'dashboard' | 'loads' | 'rfqs' | 'loadboard' | 'invoicing' | 'compliance' | 'profile' | 'fleet_rates';
 
 const SupplierPortal: React.FC = () => {
     const { currentUser, handleLogout, viewingSupplierAsAdmin, setViewSupplierAsAdmin } = useAuth();
@@ -39,6 +41,7 @@ const SupplierPortal: React.FC = () => {
         { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon, badge: 0 },
         { id: 'loads', label: 'My Loads', icon: DocumentTextIcon, badge: 0 },
         { id: 'rfqs', label: 'Quote Requests', icon: MailIcon, badge: openRfqs },
+        { id: 'loadboard', label: 'Load Board', icon: ClipboardDocumentListIcon, badge: 0 },
         { id: 'invoicing', label: 'Invoicing', icon: CurrencyDollarIcon, badge: 0 },
         { id: 'compliance', label: 'Compliance Vault', icon: UsersIcon, badge: 0 },
         { id: 'fleet_rates', label: 'Fleet & Rates', icon: TruckIcon, badge: 0 },
@@ -49,6 +52,7 @@ const SupplierPortal: React.FC = () => {
         switch (activeView) {
             case 'dashboard': return <SupplierDashboard supplier={supplier} onNavigate={(v) => setActiveView(v as SupplierView)} />;
             case 'rfqs': return <SupplierRfqList supplier={supplier} />;
+            case 'loadboard': return <SupplierLoadBoard supplier={supplier} />;
             case 'invoicing': return <SupplierInvoices supplier={supplier} />;
             case 'compliance': return <SupplierDocuments supplier={supplier} />;
             case 'fleet_rates': return <SupplierFleetRates supplier={supplier} />;

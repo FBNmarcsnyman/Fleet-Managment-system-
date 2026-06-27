@@ -9,6 +9,7 @@ import { ExclamationTriangleIcon } from '../icons/ExclamationTriangleIcon';
 import SupplierOnboardingView from '../operations/SupplierOnboardingView';
 import CarrierInviteCampaign from './CarrierInviteCampaign';
 import CarrierInvoicesReview from './CarrierInvoicesReview';
+import LoadBoardReview from './LoadBoardReview';
 import { format } from 'date-fns';
 
 const SubcontractorControlCenter: React.FC = () => {
@@ -45,7 +46,7 @@ const SubcontractorControlCenter: React.FC = () => {
         }
         showToast(`${unvetted.length} carrier(s) marked vetted.`);
     };
-    const [activeTab, setActiveTab] = useState<'network' | 'onboarding' | 'invite' | 'invoices'>('network');
+    const [activeTab, setActiveTab] = useState<'network' | 'onboarding' | 'invite' | 'invoices' | 'loadboard'>('network');
 
     const transportSuppliers = useMemo(() => 
         (suppliers || []).filter(s => s.type === 'Transport')
@@ -113,6 +114,12 @@ const SubcontractorControlCenter: React.FC = () => {
                     >
                         Invoices
                     </button>
+                    <button
+                        onClick={() => setActiveTab('loadboard')}
+                        className={`text-lg font-bold pb-4 -mb-4 border-b-2 transition-all flex items-center ${activeTab === 'loadboard' ? 'text-[#13294b] border-[#f5b700]' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                    >
+                        Load Board
+                    </button>
                 </div>
                 <button
                     onClick={handleCopyOnboardingLink}
@@ -122,7 +129,9 @@ const SubcontractorControlCenter: React.FC = () => {
                 </button>
             </div>
 
-            {activeTab === 'invoices' ? (
+            {activeTab === 'loadboard' ? (
+                <LoadBoardReview />
+            ) : activeTab === 'invoices' ? (
                 <CarrierInvoicesReview />
             ) : activeTab === 'invite' ? (
                 <CarrierInviteCampaign />

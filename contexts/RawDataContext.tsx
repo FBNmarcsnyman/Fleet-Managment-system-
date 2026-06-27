@@ -5,7 +5,7 @@ import {
   LoadConfirmation, Manifest, TripSheet, Client, Supplier, Quote, JobCard, ChecklistTemplate,
   ChecklistSubmission, Tire, TireInspection, Part, PurchaseRequest, PurchaseOrder, HRCase,
   PlannedService, Bowser, BowserRefill, FuelPriceRecord, Budget, Forecast, Notification, Message,
-  JobCardStatus, SupplierApplication, SubcontractorInvite, SubcontractorInvoice, IncidentReport, IncidentQuote, Branch, Route, VehicleComplianceDoc,
+  JobCardStatus, SupplierApplication, SubcontractorInvite, SubcontractorInvoice, LoadBoardPost, IncidentReport, IncidentQuote, Branch, Route, VehicleComplianceDoc,
   ComplianceDoc, Attachment, Driver, RfqRequest,
 } from '../types';
 import { COMMODITIES, PACKAGING_TYPES } from '../constants';
@@ -16,7 +16,7 @@ import {
   mapBudget, mapForecast, mapJobCard, mapChecklistTemplate, mapChecklistSubmission, mapTire,
   mapTireInspection, mapPart, mapPurchaseRequest, mapPurchaseOrder, mapHRCase, mapClient,
   mapSupplier, mapSupplierComplianceDoc, mapSupplierRateCard, mapQuote, mapLoadConfirmation,
-  mapManifest, mapTripSheet, mapIncidentReport, mapSupplierApplication, mapSubcontractorInvite, mapSubcontractorInvoice, mapNotification, mapMessage,
+  mapManifest, mapTripSheet, mapIncidentReport, mapSupplierApplication, mapSubcontractorInvite, mapSubcontractorInvoice, mapLoadBoardPost, mapNotification, mapMessage,
   mapRoute, mapVehicleComplianceDoc, mapDriver, mapRfqRequest, mapRfqRecipient, mapCarrierQuote,
 } from '../lib/mappers';
 
@@ -26,7 +26,7 @@ export interface AppState {
     users: User[];
     vehicles: Vehicle[]; fuelEntries: FuelEntry[]; serviceEntries: ServiceEntry[]; otherCosts: OtherCost[]; recurringCosts: RecurringCost[]; revenueEntries: RevenueEntry[]; serviceIntervals: ServiceInterval[]; plannedServices: PlannedService[]; fuelPriceRecords: FuelPriceRecord[]; bowsers: Bowser[]; bowserRefills: BowserRefill[]; budgets: Budget[]; forecasts: Forecast[];
     jobCards: JobCard[]; checklistTemplates: ChecklistTemplate[]; checklistSubmissions: ChecklistSubmission[]; tires: Tire[]; tireInspections: TireInspection[]; parts: Part[]; purchaseRequests: PurchaseRequest[]; purchaseOrders: PurchaseOrder[]; hrCases: HRCase[];
-    clients: Client[]; suppliers: Supplier[]; quotes: Quote[]; loadConfirmations: LoadConfirmation[]; manifests: Manifest[]; tripSheets: TripSheet[]; incidentReports: IncidentReport[]; supplierApplications: SupplierApplication[]; subcontractorInvites: SubcontractorInvite[]; subcontractorInvoices: SubcontractorInvoice[];
+    clients: Client[]; suppliers: Supplier[]; quotes: Quote[]; loadConfirmations: LoadConfirmation[]; manifests: Manifest[]; tripSheets: TripSheet[]; incidentReports: IncidentReport[]; supplierApplications: SupplierApplication[]; subcontractorInvites: SubcontractorInvite[]; subcontractorInvoices: SubcontractorInvoice[]; loadBoardPosts: LoadBoardPost[];
     rfqRequests: RfqRequest[];
     drivers: Driver[];
     notifications: Notification[];
@@ -45,7 +45,7 @@ const getEmptyState = (): AppState => ({
     bowserRefills: [], budgets: [], forecasts: [], jobCards: [], checklistTemplates: [],
     checklistSubmissions: [], tires: [], tireInspections: [], parts: [], purchaseRequests: [],
     purchaseOrders: [], hrCases: [], clients: [], suppliers: [], quotes: [], loadConfirmations: [],
-    manifests: [], tripSheets: [], incidentReports: [], supplierApplications: [], subcontractorInvites: [], subcontractorInvoices: [], rfqRequests: [], drivers: [], notifications: [],
+    manifests: [], tripSheets: [], incidentReports: [], supplierApplications: [], subcontractorInvites: [], subcontractorInvoices: [], loadBoardPosts: [], rfqRequests: [], drivers: [], notifications: [],
     messages: [], selectedVehicleId: null, commodities: COMMODITIES, packagingTypes: PACKAGING_TYPES,
     routes: [], vehicleComplianceDocs: [], branches: [],
 });
@@ -97,6 +97,9 @@ export type AppAction =
     | { type: 'SET_SUBCONTRACTOR_INVOICES', payload: SubcontractorInvoice[] }
     | { type: 'ADD_SUBCONTRACTOR_INVOICE', payload: SubcontractorInvoice }
     | { type: 'UPDATE_SUBCONTRACTOR_INVOICE', payload: SubcontractorInvoice }
+    | { type: 'SET_LOAD_BOARD_POSTS', payload: LoadBoardPost[] }
+    | { type: 'ADD_LOAD_BOARD_POST', payload: LoadBoardPost }
+    | { type: 'UPDATE_LOAD_BOARD_POST', payload: LoadBoardPost }
     | { type: 'UPDATE_SUBCONTRACTOR_INVITE', payload: SubcontractorInvite }
     | { type: 'SET_RFQ_REQUESTS', payload: RfqRequest[] }
     | { type: 'ADD_RFQ_REQUEST', payload: RfqRequest }
@@ -219,6 +222,9 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'SET_SUBCONTRACTOR_INVOICES': return { ...state, subcontractorInvoices: action.payload };
         case 'ADD_SUBCONTRACTOR_INVOICE': return { ...state, subcontractorInvoices: [action.payload, ...(state.subcontractorInvoices || [])] };
         case 'UPDATE_SUBCONTRACTOR_INVOICE': return { ...state, subcontractorInvoices: (state.subcontractorInvoices || []).map(i => i.id === action.payload.id ? action.payload : i) };
+        case 'SET_LOAD_BOARD_POSTS': return { ...state, loadBoardPosts: action.payload };
+        case 'ADD_LOAD_BOARD_POST': return { ...state, loadBoardPosts: [action.payload, ...(state.loadBoardPosts || [])] };
+        case 'UPDATE_LOAD_BOARD_POST': return { ...state, loadBoardPosts: (state.loadBoardPosts || []).map(i => i.id === action.payload.id ? action.payload : i) };
         case 'SET_RFQ_REQUESTS': return { ...state, rfqRequests: action.payload };
         case 'ADD_RFQ_REQUEST': return { ...state, rfqRequests: [action.payload, ...(state.rfqRequests || [])] };
         case 'UPDATE_RFQ_REQUEST': return { ...state, rfqRequests: (state.rfqRequests || []).map(r => r.id === action.payload.id ? action.payload : r) };
@@ -640,7 +646,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             supplierComplianceDocs, supplierRateCards, quotes, loadConfirmations,
             manifests, tripSheets, incidentReports, supplierApplications, notifications,
             messages, routes, vehicleComplianceDocs, drivers, subcontractorInvites,
-            rfqRequests, rfqRecipients, rfqCarrierQuotes, subcontractorInvoices,
+            rfqRequests, rfqRecipients, rfqCarrierQuotes, subcontractorInvoices, loadBoardPosts,
         ] = await Promise.all([
             // directSelect (plain fetch + stored token) instead of supabase.from():
             // the supabase-js client wedges on its auth lock so the whole hydrate
@@ -689,6 +695,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             directSelect('rfq_recipients?select=*'),
             directSelect('rfq_carrier_quotes?select=*'),
             directSelect('subcontractor_invoices?select=*'),
+            directSelect('load_board_posts?select=*'),
         ]);
         console.log('[hydrate] Promise.all settled (41 tables)');
 
@@ -740,6 +747,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         logIfError('drivers', (drivers as any).error);
         logIfError('subcontractor_invites', (subcontractorInvites as any).error);
         logIfError('subcontractor_invoices', (subcontractorInvoices as any).error);
+        logIfError('load_board_posts', (loadBoardPosts as any).error);
 
         // Build joins for nested data
         const mountHistoryByTire = new Map<string, NonNullable<typeof tireMountHistory.data>>();
@@ -799,6 +807,7 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
         if (supplierApplications.data) dispatch({ type: 'SET_SUPPLIER_APPLICATIONS', payload: supplierApplications.data.map(mapSupplierApplication) });
         if ((subcontractorInvites as any).data) dispatch({ type: 'SET_SUBCONTRACTOR_INVITES', payload: (subcontractorInvites as any).data.map(mapSubcontractorInvite) });
         if ((subcontractorInvoices as any).data) dispatch({ type: 'SET_SUBCONTRACTOR_INVOICES', payload: (subcontractorInvoices as any).data.map(mapSubcontractorInvoice) });
+        if ((loadBoardPosts as any).data) dispatch({ type: 'SET_LOAD_BOARD_POSTS', payload: (loadBoardPosts as any).data.map(mapLoadBoardPost) });
         if ((rfqRequests as any).data) {
             const recipientsByRfq: Record<string, ReturnType<typeof mapRfqRecipient>[]> = {};
             ((rfqRecipients as any).data || []).map(mapRfqRecipient).forEach((r: any) => { (recipientsByRfq[r.rfqRequestId] ||= []).push(r); });

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { GoogleGenAI, Type } from '@google/genai';
 
 // Public, no-login mobile inspection page (?checklist=<uuid>). Loads the vehicle +
 // template via inspection-load, walks driver → vehicle → trailers → checklist, uploads
@@ -34,7 +35,37 @@ const compress = (file: File): Promise<string> => new Promise((resolve) => {
 });
 
 interface Q { key: string; itemId: string; section: string; label: string; severity: string; photo: string | null; value?: string[]; failValues?: string[]; treadDepth?: boolean; criticalUnderMm?: number; position?: string; }
-type Ans = { status?: 'Pass' | 'Fail' | 'NA'; value?: string; treadMm?: string; remarks?: string; photoPath?: string };
+type TyreAI = { tread_estimate?: string; condition_issues?: string[]; overall_assessment?: string; confidence_level?: string; retread_detected?: boolean; notes?: string };
+type Ans = { status?: 'Pass' | 'Fail' | 'NA'; value?: string; treadMm?: string; remarks?: string; photoPath?: string; ai?: TyreAI; aiState?: 'running' | 'done' | 'failed' };
+
+const TYRE_PROMPT = 'You are a commercial vehicle tyre safety inspector with expertise in South African road transport regulations. Analyse this tyre photo and return ONLY a JSON object with no other text: tread_estimate (Good above 4mm / Marginal 2-4mm / Critical under 2mm), condition_issues (array of strings describing any cuts bulges sidewall damage uneven wear exposed cords), overall_assessment (Safe to operate / Monitor closely / Remove from service immediately), confidence_level (High / Medium / Low), retread_detected (true/false), notes (string).';
+
+// Analyse a tyre photo with Gemini (the app's existing AI key). Returns the JSON or null.
+const analyseTyre = async (dataUrl: string): Promise<TyreAI | null> => {
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    if (!apiKey) return null;
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const resp: any = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: dataUrl.split(',')[1] } }, { text: TYRE_PROMPT }] },
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: { type: Type.OBJECT, properties: {
+                    tread_estimate: { type: Type.STRING }, condition_issues: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    overall_assessment: { type: Type.STRING }, confidence_level: { type: Type.STRING },
+                    retread_detected: { type: Type.BOOLEAN }, notes: { type: Type.STRING },
+                } },
+            },
+        });
+        return JSON.parse((resp.text || '{}').trim());
+    } catch (e) { console.error('[tyre-ai]', e); return null; }
+};
+const aiCard = (ai: TyreAI) => {
+    const a = (ai.overall_assessment || '').toLowerCase();
+    const tone = /remove/.test(a) ? 'bg-red-50 border-red-300 text-red-800' : /monitor/.test(a) ? 'bg-orange-50 border-orange-300 text-orange-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800';
+    return { tone };
+};
 
 const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
     const [data, setData] = useState<any>(null);
@@ -94,17 +125,22 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
 
     const onPhoto = async (q: Q, file?: File) => {
         if (!file) return;
-        setAns(q.key, { remarks: answers[q.key]?.remarks });
         const b64 = await compress(file);
         const up = await post('inspection-upload', { base64: b64, vehicleId: vehicle.id, contentType: 'image/jpeg' });
         if (up?.path) setAns(q.key, { photoPath: up.path });
+        // Tyre items: run the AI tyre analysis and attach the result.
+        if (q.treadDepth) {
+            setAns(q.key, { aiState: 'running' });
+            const ai = await analyseTyre(b64);
+            setAns(q.key, ai ? { ai, aiState: 'done' } : { aiState: 'failed' });
+        }
     };
 
     const pdpDays = driver.pdpExpiry ? Math.ceil((new Date(driver.pdpExpiry).getTime() - Date.now()) / 86400000) : null;
 
     const submit = async () => {
         setSubmitting(true);
-        const results = questions.map(q => { const a = answers[q.key] || {}; return { itemId: q.itemId, label: q.label, section: q.section, severity: q.severity, position: q.position || null, status: a.status, value: a.value || null, treadMm: a.treadMm || null, remarks: a.remarks || null, photoPath: a.photoPath || null }; });
+        const results = questions.map(q => { const a = answers[q.key] || {}; return { itemId: q.itemId, label: q.label, section: q.section, severity: q.severity, position: q.position || null, status: a.status, value: a.value || null, treadMm: a.treadMm || null, remarks: a.remarks || null, photoPath: a.photoPath || null, ai: a.ai || null }; });
         const res = await post('submit-inspection', { vehicleId: vehicle.id, vehicleReg: vehicle.registration, vehicleType: vehicle.type, depot, templateId: template.id, templateName: template.name, driver: { ...driver, pdpExpiry: driver.pdpExpiry || null }, trailerIds, results });
         setSubmitting(false);
         if (res?.ok) { localStorage.removeItem(draftKey); setDone(res); } else setErr(res?.error || 'Submit failed.');
@@ -239,6 +275,14 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
                                                     {a.photoPath ? '✓ Photo added' : '📷 Add photo'}
                                                     <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => onPhoto(q, e.target.files?.[0])} />
                                                 </label>
+                                                {a.aiState === 'running' && <p className="text-xs text-slate-500">Analysing tyre…</p>}
+                                                {a.aiState === 'done' && a.ai && (() => { const c = aiCard(a.ai!); return (
+                                                    <div className={`rounded-xl border p-3 text-sm ${c.tone}`}>
+                                                        <p className="font-black">{a.ai!.overall_assessment}{a.ai!.retread_detected ? ' · ⚠ RETREAD DETECTED' : ''}</p>
+                                                        <p className="text-[12px] mt-0.5">Tread: {a.ai!.tread_estimate} · confidence {a.ai!.confidence_level}</p>
+                                                        {a.ai!.condition_issues && a.ai!.condition_issues.length > 0 && <p className="text-[12px] mt-0.5">{a.ai!.condition_issues.join('; ')}</p>}
+                                                    </div>
+                                                ); })()}
                                             </div>
                                         )}
                                     </div>

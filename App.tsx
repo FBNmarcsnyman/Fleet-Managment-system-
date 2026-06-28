@@ -18,6 +18,7 @@ import SupplierRegister from './components/supplier/SupplierRegister';
 import ClientRegister from './components/client/ClientRegister';
 import MobileInspection from './components/MobileInspection';
 import BreakdownTyre from './components/BreakdownTyre';
+import DriverHub from './components/DriverHub';
 
 
 import ManagementPortal from './components/ManagementPortal';
@@ -342,6 +343,10 @@ const App: React.FC = () => {
     // Public, no-login road breakdown tyre-change logging (Workshop Part 4).
     if (window.location.pathname === '/breakdown/tyre') {
         return <BreakdownTyre />;
+    }
+    // Public, no-login Driver Hub: one easy page for inspection / breakdown / incident / logs.
+    if (window.location.pathname === '/driver') {
+        return <DriverHub />;
     }
 
     if (checklistFlow && checklistFlow.step === 'form') {

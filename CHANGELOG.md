@@ -2,6 +2,21 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-28]
+
+### Fixed
+- **Date standard applied program-wide.** Every raw `<input type="date">` (which renders
+  yyyy/mm/dd) replaced with the house **DD/MM/YYYY DateField** across ~37 files — all supplier-portal
+  screens, operations/fleet/fuel/workshop/admin forms, and the LoadDetailModal inline field wrapper.
+  A PostToolUse guard hook now flags any new raw date input so it can't regress.
+
+### Added
+- **Subcontractor portal — Phase 5 (Documents reminders + Profile editing).** New
+  `cert-expiry-reminders` edge fn + daily cron emails the carrier and ops 30 days before and on cert
+  expiry; a GIT expiry flags the carrier and alerts admin to review RFQ access. The carrier **Profile**
+  is now editable (company/contacts/address/fleet/routes via the role-checked `supplier-self-update`
+  edge fn), with **change password** and a link to the agreement. **All 5 portal phases complete.**
+
 ## [2026-06-27]
 
 ### Added

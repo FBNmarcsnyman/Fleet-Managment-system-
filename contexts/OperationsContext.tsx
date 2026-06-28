@@ -1513,6 +1513,22 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
             } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
         },
 
+        // Carrier self-updates their own safe profile fields via the role-checked
+        // edge fn (suppliers RLS reserves writes for staff). Reflects locally on success.
+        handleSupplierSelfUpdate: async (fields: Record<string, any>): Promise<Result<void>> => {
+            try {
+                const { data, error } = await invokeFn('supplier-self-update', { body: { fields } });
+                if (error || (data as any)?.error) return { ok: false, error: error?.message || (data as any)?.error };
+                const s = (data as any)?.supplier;
+                if (s) dispatch({ type: 'UPDATE_SUPPLIER', payload: { id: s.id, updates: {
+                    name: s.name, address: s.address, contactPerson: s.contact_person, contactEmail: s.contact_email,
+                    contactPhone: s.contact_phone, controllerContact: s.controller_contact, accountsContact: s.accounts_contact,
+                    regions: s.regions, vehicleTypes: s.vehicle_types, trailerTypes: s.trailer_types,
+                } } });
+                return { ok: true };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
+
         // --- Load board (carrier-posted loads needing cover) -----------------
         // Carrier posts a load → lands Pending; FBN admin is notified to authorise.
         handleCreateLoadBoardPost: async (payload: Partial<LoadBoardPost>): Promise<Result<LoadBoardPost>> => {

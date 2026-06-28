@@ -265,21 +265,37 @@ export const mapChecklistTemplate = (row: Tables['checklist_templates']['Row']):
 });
 
 // -- checklist_submissions → ChecklistSubmission -----------------------------
-export const mapChecklistSubmission = (row: Tables['checklist_submissions']['Row']): ChecklistSubmission => ({
-    id: row.id,
-    templateId: row.template_id,
-    templateName: row.template_name,
-    vehicleId: row.vehicle_id,
-    userId: row.user_id,
-    userName: row.user_name,
-    date: row.date,
-    odometer: row.odometer ?? 0,
-    hours: row.hours ?? undefined,
-    results: (row.results as unknown as ChecklistItemResult[]) ?? [],
-    status: row.status,
-    reviewedBy: row.reviewed_by_id ?? undefined,
-    reviewedAt: row.reviewed_at ?? undefined,
-});
+export const mapChecklistSubmission = (row: Tables['checklist_submissions']['Row']): ChecklistSubmission => {
+    const r = row as any;
+    return {
+        id: row.id,
+        templateId: row.template_id,
+        templateName: row.template_name,
+        vehicleId: row.vehicle_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        date: row.date,
+        odometer: row.odometer ?? 0,
+        hours: row.hours ?? undefined,
+        results: (row.results as unknown as ChecklistItemResult[]) ?? [],
+        status: row.status,
+        reviewedBy: row.reviewed_by_id ?? undefined,
+        reviewedAt: row.reviewed_at ?? undefined,
+        // QR mobile-inspection fields.
+        result: r.result ?? undefined,
+        depot: r.depot ?? undefined,
+        reference: r.reference ?? undefined,
+        failedCritical: r.failed_critical ?? undefined,
+        failedUrgent: r.failed_urgent ?? undefined,
+        failedMinor: r.failed_minor ?? undefined,
+        driverIdNumber: r.driver_id_number ?? undefined,
+        licenceCode: r.licence_code ?? undefined,
+        pdpExpiry: r.pdp_expiry ?? undefined,
+        substituting: r.substituting ?? undefined,
+        trailerIds: r.trailer_ids ?? undefined,
+        submittedAt: r.submitted_at ?? undefined,
+    };
+};
 
 export const toChecklistSubmissionInsert = (s: {
     templateId: string;

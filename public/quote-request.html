@@ -42,10 +42,12 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
 }
 .svc-card:hover{border-color:#cbd5e1;background:#f1f5f9}
 .svc-card.sel{border-color:var(--navy);background:#eef2ff}
-.svc-icon{line-height:0;margin-bottom:8px;color:#64748b;transition:color .2s}
-.svc-icon svg{display:block;margin:0 auto}
-.svc-card:hover .svc-icon{color:var(--navy)}
-.svc-card.sel .svc-icon{color:var(--navy)}
+.svc-icon{width:60px;height:60px;border-radius:14px;background:var(--navy);border:2.5px solid var(--yellow);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:var(--yellow);
+  transition:transform .2s,box-shadow .2s}
+.svc-icon svg{display:block;width:32px;height:32px}
+.svc-card:hover .svc-icon{transform:translateY(-2px)}
+.svc-card.sel .svc-icon{box-shadow:0 0 0 4px rgba(245,183,0,0.3)}
 .svc-name{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--text)}
 .svc-desc{font-size:10px;color:var(--text3);margin-top:2px}
 .pill-group{display:flex;flex-wrap:wrap;gap:8px}

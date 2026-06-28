@@ -138,6 +138,7 @@ export type AppAction =
     | { type: 'UPDATE_JOB_CARD', payload: { id: string, updates: Partial<JobCard> } }
     | { type: 'UPDATE_JOB_CARD_STATUS', payload: { id: string, status: JobCardStatus } }
     | { type: 'ADD_CHECKLIST_SUBMISSION', payload: any }
+    | { type: 'UPDATE_CHECKLIST_SUBMISSION', payload: { id: string, updates: Partial<ChecklistSubmission> } }
     | { type: 'CREATE_QUOTE', payload: Quote }
     | { type: 'UPDATE_QUOTE', payload: Quote }
     | { type: 'CREATE_LOAD_CONFIRMATION', payload: LoadConfirmation }
@@ -198,6 +199,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_CHECKLIST_TEMPLATE': return { ...state, checklistTemplates: (state.checklistTemplates || []).map(t => t.id === action.payload.id ? action.payload : t) };
         case 'DELETE_CHECKLIST_TEMPLATE': return { ...state, checklistTemplates: (state.checklistTemplates || []).filter(t => t.id !== action.payload) };
         case 'SET_CHECKLIST_SUBMISSIONS': return { ...state, checklistSubmissions: action.payload };
+        case 'UPDATE_CHECKLIST_SUBMISSION': return { ...state, checklistSubmissions: (state.checklistSubmissions || []).map(s => s.id === action.payload.id ? { ...s, ...action.payload.updates } : s) };
         case 'SET_TIRES': return { ...state, tires: action.payload };
         case 'SET_TIRE_INSPECTIONS': return { ...state, tireInspections: action.payload };
         case 'SET_PARTS': return { ...state, parts: action.payload };

@@ -74,6 +74,21 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
         },
+        // -- Checklist review: mark a submitted inspection as Reviewed ---------
+        handleUpdateChecklistSubmission: async (id: string, updates: { status?: 'Submitted' | 'Reviewed'; reviewedBy?: string }): Promise<Result<void>> => {
+            try {
+                const patch: Record<string, unknown> = {};
+                if (updates.status) patch.status = updates.status;
+                if (updates.status === 'Reviewed') { patch.reviewed_by_id = updates.reviewedBy || null; patch.reviewed_at = new Date().toISOString(); }
+                const { error } = await runWrite(() => supabase.from('checklist_submissions').update(patch).eq('id', id));
+                if (error) { console.error('[workshop] updateChecklistSubmission failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_CHECKLIST_SUBMISSION', payload: { id, updates: { ...updates, reviewedAt: patch.reviewed_at as string | undefined } } });
+                return { ok: true };
+            } catch (err) {
+                console.error('[workshop] updateChecklistSubmission threw:', err);
+                return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+            }
+        },
         handleUpdateJobCardStatus: async (id: string, status: JobCardStatus): Promise<Result<void>> => {
             try {
                 const { error } = await supabase

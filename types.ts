@@ -292,17 +292,49 @@ export interface ChecklistSubmission {
     status: 'Submitted' | 'Reviewed';
     reviewedBy?: string;
     reviewedAt?: string;
+    // QR mobile-inspection fields (Workshop Parts 2/5).
+    result?: 'Roadworthy' | 'Requires Attention' | 'Grounded';
+    depot?: string;
+    reference?: string;
+    failedCritical?: number;
+    failedUrgent?: number;
+    failedMinor?: number;
+    driverIdNumber?: string;
+    licenceCode?: string;
+    pdpExpiry?: string;
+    substituting?: boolean;
+    trailerIds?: string[];
+    submittedAt?: string;
 }
 
 export interface ChecklistItemResult {
     itemId: string;
-    item: string;
-    status: 'Pass' | 'Needs Attention' | 'Fail';
-    notes: string;
+    item?: string;
+    status: 'Pass' | 'Needs Attention' | 'Fail' | 'NA';
+    notes?: string;
     attachment?: Attachment;
     createJobCard?: boolean;
     priority?: 'Low' | 'Medium' | 'High' | 'Critical';
-    severity?: 'Low' | 'Medium' | 'High' | 'Critical';
+    severity?: 'Low' | 'Medium' | 'High' | 'Critical' | 'Urgent' | 'Minor';
+    // QR mobile-inspection result fields.
+    label?: string;
+    section?: string;
+    position?: string;
+    value?: string;
+    treadMm?: string;
+    count?: string;
+    expiries?: string[];
+    remarks?: string;
+    photoPath?: string;
+    trailerName?: string;
+    ai?: {
+        tread_estimate?: string;
+        condition_issues?: string[];
+        overall_assessment?: string;
+        confidence_level?: string;
+        retread_detected?: boolean;
+        notes?: string;
+    };
 }
 
 export interface Attachment {

@@ -684,6 +684,22 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
 
         // -- Quotes -----------------------------------------------------------
+        // Logged-in client submits a quote request via the role-checked edge fn
+        // (clients can't insert quotes directly under RLS). Optimistically adds a
+        // 'Requested' quote so the client's "My Quotes" updates immediately.
+        handleClientQuoteRequest: async (fields: any): Promise<Result<{ reference: string }>> => {
+            try {
+                const { data, error } = await invokeFn('client-quote-request', { body: fields });
+                if (error || (data as any)?.error) return { ok: false, error: error?.message || (data as any)?.error };
+                const id = (data as any)?.id; const reference = (data as any)?.reference;
+                if (id) dispatch({ type: 'CREATE_QUOTE', payload: {
+                    id, quoteNumber: reference, status: 'Requested', date: new Date().toISOString().slice(0, 10),
+                    clientId: fields.clientId, commodity: fields.commodity, items: [], legs: [],
+                    totalAmount: 0, sentToClient: false, requestData: fields,
+                } as any });
+                return { ok: true, value: { reference } };
+            } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'error' }; }
+        },
         handleCreateQuote: async (quote: any): Promise<Result<Quote>> => {
             try {
                 const quoteNumber = `QU-${Date.now()}`;

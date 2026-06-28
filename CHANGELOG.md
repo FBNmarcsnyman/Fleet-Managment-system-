@@ -2,6 +2,20 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-28] — Client portal (Session 4)
+
+### Added
+- **Public client self-registration** at `/client-register` (company/reg/VAT/industry, contacts,
+  physical + billing address, preferred routes + cargo types, load sizes, marketing opt-ins) → pending
+  client → admin approves from the Clients tab (Pending filter + "Approve & create login") → welcome
+  email with login. New `client-register` edge fn; `clients` table extended.
+- **Logged-in client portal** (light brand theme): Dashboard (active loads / open quotes / outstanding
+  invoices), **Request a Quote** (full form incl. HAZMAT UN/class → new `client-quote-request` edge fn that
+  drops a Requested quote into the staff pipeline), **My Quotes** (status + accept/decline), **My Loads**
+  (timeline, vehicle/driver/contact, ETA, exceptions, POD download), and **Financial Documents** (invoices +
+  payment status, outstanding highlighted, statement print, remittance upload). RLS: clients see only their
+  own records.
+
 ## [2026-06-28]
 
 ### Changed

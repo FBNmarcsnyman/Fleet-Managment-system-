@@ -26,11 +26,26 @@ Carrier portal (`components/SupplierPortal.tsx`, light brand theme; super admin 
 
 **Cross-cutting (Session 3):** every date input converted to the DD/MM/YYYY `DateField` program-wide, enforced by a post-edit guard hook. Carrier portal restyled to the light brand theme.
 
-## Session 4 — Client portal 🔨 IN PROGRESS
-Public `/client-register` (no login) → pending client → admin approves from Clients tab → welcome email + login.
-Logged-in client portal: dashboard (active loads / open quote requests / recent invoices / request-quote),
-quote request form, My Loads (timeline / vehicle+driver / ETA / exceptions / POD download), Financial Documents
-(invoices / statements / remittance upload / credit notes). RLS: clients see only their own records (`auth_client_id()`).
+## Session 4 — Client portal ✅ LIVE
+Light-themed client portal (`components/ClientPortal.tsx`, navy sidebar + gold active; super admin views via
+Users → Portal Logins / ClientPortalAccessView; `auth_client_id()` RLS = clients see only their own records).
+- **Public `/client-register`** (no login, `components/client/ClientRegister.tsx`) → edge fn `client-register`
+  (inserts a PENDING client: registration_status='pending', cod + unvetted) → emails applicant + admins.
+  `clients` extended (registration_number, industry, billing_address, preferred_routes, cargo_types,
+  typical_load_sizes, marketing_email/whatsapp_optin, registration_status).
+- **Approve from Clients tab** (`ClientManagementView`: Pending filter + PENDING badge + "Approve & create
+  login") → `handleApproveClientRegistration` marks approved, creates the Client login (admin-create-user),
+  emails a branded welcome with credentials.
+- **Dashboard** (`ClientDashboard`): active loads / open quotes / outstanding invoices / total loads + panels.
+- **Request a Quote** (`ClientQuoteRequestForm`, address autocomplete + DateField + HAZMAT UN/class) → edge fn
+  `client-quote-request` (verify_jwt; resolves client from JWT; drops a 'Requested' quote into the staff Quotes
+  pipeline + notifies ops). **My Quotes** (`ClientQuotesView`): status list + accept/decline on Sent.
+- **My Loads** (`ClientJobCard`): status timeline, vehicle+driver+contact, controller ETA, ops exceptions,
+  POD download.
+- **Financial Documents** (`ClientFinancials`, lighter scope chosen): invoices from each load's invoice
+  number/date + payment status, outstanding highlighted, printable statement, remittance upload (emailed to
+  fbndebtors@). ⬜ Deferred: full client-invoice/statement/credit-note backend (build when FBN raises client
+  invoices in-app).
 
 **Existing client foundation (reuse, do NOT rebuild):** `ClientLogin` (`?portal=client`), `ClientPortal` shell,
 `ClientDashboardView` + `ClientJobCard` (My Shipments + POD modal), `ClientBookingForm` (basic quote request),

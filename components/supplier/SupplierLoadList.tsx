@@ -59,29 +59,29 @@ const ExceptionModal: React.FC<{ loadCon: LoadConfirmation; onClose: () => void 
         } finally { setSaving(false); }
     };
 
-    const cls = 'w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600';
+    const cls = 'w-full bg-white text-slate-800 p-2.5 rounded-md border border-slate-300';
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-1 text-white">Flag an exception</h2>
-            <p className="text-gray-400 mb-6 font-mono">{loadCon.loadConNumber}</p>
+            <h2 className="text-2xl font-bold mb-1 text-slate-900">Flag an exception</h2>
+            <p className="text-slate-500 mb-6 font-mono">{loadCon.loadConNumber}</p>
             <div className="space-y-3">
                 <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Type</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Type</label>
                     <select value={type} onChange={e => setType(e.target.value)} className={cls}>
                         {EXCEPTION_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">What happened?</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">What happened?</label>
                     <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder="Describe the issue…" className={cls} />
                 </div>
                 <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Photo (optional)</label>
-                    <input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} className="text-xs text-gray-300" />
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Photo (optional)</label>
+                    <input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} className="text-xs text-slate-600" />
                 </div>
             </div>
             <div className="flex justify-end space-x-3 mt-8">
-                <button onClick={onClose} className="bg-gray-600 py-2 px-4 rounded-lg text-white">Cancel</button>
+                <button onClick={onClose} className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 py-2 px-4 rounded-lg">Cancel</button>
                 <button onClick={submit} disabled={saving} className="bg-amber-600 hover:bg-amber-500 py-2 px-4 rounded-lg text-white disabled:opacity-50">{saving ? 'Sending…' : 'Flag exception'}</button>
             </div>
         </div>
@@ -109,18 +109,18 @@ const UpdateLoadModal: React.FC<{ loadCon: LoadConfirmation; onClose: () => void
         onClose();
     };
 
-    const cls = "w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600";
+    const cls = "w-full bg-white text-slate-800 p-2.5 rounded-md border border-slate-300";
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-1 text-white">Update Load Details</h2>
-            <p className="text-gray-400 mb-6 font-mono">{loadCon.loadConNumber}</p>
+            <h2 className="text-2xl font-bold mb-1 text-slate-900">Update Load Details</h2>
+            <p className="text-slate-500 mb-6 font-mono">{loadCon.loadConNumber}</p>
             <div className="space-y-3">
                 <input value={vehicleReg} onChange={e => setVehicleReg(e.target.value)} placeholder="Vehicle Registration" className={cls} />
                 <input value={driverName} onChange={e => setDriverName(e.target.value)} placeholder="Driver Name" className={cls} />
                 <input value={driverCell} onChange={e => setDriverCell(e.target.value)} placeholder="Driver Cell" className={cls} />
             </div>
             <div className="flex justify-end space-x-3 mt-8">
-                <button onClick={onClose} className="bg-gray-600 py-2 px-4 rounded-lg text-white">Cancel</button>
+                <button onClick={onClose} className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 py-2 px-4 rounded-lg">Cancel</button>
                 <button onClick={save} disabled={saving} className="bg-blue-600 py-2 px-4 rounded-lg text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save'}</button>
             </div>
         </div>
@@ -178,26 +178,26 @@ const SupplierLoadList: React.FC<SupplierLoadListProps> = ({ loadConfirmations }
 
     return (
         <>
-            <h1 className="text-2xl font-black text-white mb-1">My Loads</h1>
-            <p className="text-gray-400 text-sm mb-5">Confirm your driver details and submit the POD once delivered.</p>
+            <h1 className="text-2xl font-black text-slate-900 mb-1">My Loads</h1>
+            <p className="text-slate-500 text-sm mb-5">Confirm your driver details and submit the POD once delivered.</p>
             <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={onPodFile} />
             <div className="space-y-4">
                 {sorted.map(lc => (
-                    <div key={lc.id} className="bg-gray-800 p-4 rounded-lg">
+                    <div key={lc.id} className="bg-white border border-slate-200 shadow-sm p-4 rounded-lg">
                         <div className="flex justify-between items-start">
                             <div className="min-w-0">
-                                <p className="font-bold text-white truncate">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</p>
-                                <p className="text-sm text-gray-400 font-mono">{lc.loadConNumber}</p>
-                                {lc.collectionDate && <p className="text-xs text-gray-500 mt-0.5">Collect: {new Date(lc.collectionDate).toLocaleDateString('en-ZA')}</p>}
+                                <p className="font-bold text-slate-900 truncate">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</p>
+                                <p className="text-sm text-slate-500 font-mono">{lc.loadConNumber}</p>
+                                {lc.collectionDate && <p className="text-xs text-slate-400 mt-0.5">Collect: {new Date(lc.collectionDate).toLocaleDateString('en-ZA')}</p>}
                             </div>
                             <div className="text-right shrink-0 ml-3">
-                                <p className="font-mono text-lg text-green-400">{rand(lc.supplierRate)}</p>
-                                <p className="text-xs text-gray-500">{lc.status}</p>
-                                {lc.podPhoto && <p className="text-[11px] text-emerald-400 font-bold mt-0.5">POD received ✓</p>}
+                                <p className="font-mono text-lg text-emerald-600">{rand(lc.supplierRate)}</p>
+                                <p className="text-xs text-slate-400">{lc.status}</p>
+                                {lc.podPhoto && <p className="text-[11px] text-emerald-600 font-bold mt-0.5">POD received ✓</p>}
                             </div>
                         </div>
                         <div className="flex flex-wrap justify-end gap-2 mt-3">
-                            <button onClick={() => setExceptionLoad(lc)} className="text-xs font-semibold bg-amber-600/20 text-amber-300 hover:bg-amber-600 hover:text-white py-1.5 px-3 rounded-lg border border-amber-500/30">⚠ Flag exception</button>
+                            <button onClick={() => setExceptionLoad(lc)} className="text-xs font-semibold bg-amber-100 text-amber-700 hover:bg-amber-600 hover:text-white py-1.5 px-3 rounded-lg border border-amber-200">⚠ Flag exception</button>
                             <button onClick={() => setSelectedLoad(lc)} className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg">Update Details</button>
                             {(() => { const n = nextStep(lc); return n ? (
                                 <button onClick={() => advance(lc)} disabled={advancingId === lc.id} className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white py-1.5 px-3 rounded-lg disabled:opacity-50">
@@ -205,16 +205,16 @@ const SupplierLoadList: React.FC<SupplierLoadListProps> = ({ loadConfirmations }
                                 </button>
                             ) : null; })()}
                             {lc.podPhoto ? (
-                                <a href={lc.podPhoto.data} target="_blank" rel="noreferrer" className="text-xs font-semibold bg-gray-600 hover:bg-gray-500 text-white py-1.5 px-3 rounded-lg">View POD</a>
+                                <a href={lc.podPhoto.data} target="_blank" rel="noreferrer" className="text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 py-1.5 px-3 rounded-lg">View POD</a>
                             ) : (
-                                <button onClick={() => startPodUpload(lc.id)} disabled={uploadingId === lc.id} className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white py-1.5 px-3 rounded-lg disabled:opacity-50">
+                                <button onClick={() => startPodUpload(lc.id)} disabled={uploadingId === lc.id} className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white py-1.5 px-3 rounded-lg disabled:opacity-50">
                                     {uploadingId === lc.id ? 'Uploading…' : 'Submit POD'}
                                 </button>
                             )}
                         </div>
                     </div>
                 ))}
-                {sorted.length === 0 && <p className="text-center text-gray-500 py-16">No loads assigned to you yet.</p>}
+                {sorted.length === 0 && <p className="text-center text-slate-400 py-16">No loads assigned to you yet.</p>}
             </div>
             {selectedLoad && (
                 <Modal isOpen={!!selectedLoad} onClose={() => setSelectedLoad(null)}>

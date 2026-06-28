@@ -22,10 +22,10 @@ const daysUntil = (d?: string) => d ? Math.ceil((new Date(d).getTime() - Date.no
 
 const statusPill = (doc: ComplianceDoc) => {
     const days = daysUntil(doc.expiryDate);
-    if (doc.status === 'Expired' || (days !== null && days < 0)) return <span className="text-xs font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded">Expired</span>;
-    if (days !== null && days <= 30) return <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">Expires in {days}d</span>;
-    if (doc.status === 'Pending Review') return <span className="text-xs font-bold text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded">Pending review</span>;
-    return <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Valid</span>;
+    if (doc.status === 'Expired' || (days !== null && days < 0)) return <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded">Expired</span>;
+    if (days !== null && days <= 30) return <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded">Expires in {days}d</span>;
+    if (doc.status === 'Pending Review') return <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Pending review</span>;
+    return <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">Valid</span>;
 };
 
 const SupplierDocuments: React.FC<SupplierDocumentsProps> = ({ supplier }) => {
@@ -50,23 +50,23 @@ const SupplierDocuments: React.FC<SupplierDocumentsProps> = ({ supplier }) => {
     };
 
     return (
-        <div className="bg-gray-800 p-6 rounded-lg">
-            <h2 className="text-2xl font-bold text-white mb-1">Compliance Vault</h2>
-            <p className="text-sm text-gray-400 mb-6">Load your documents here. FBN gets a reminder before anything expires, and your loads keep flowing.</p>
+        <div className="bg-white border border-slate-200 shadow-sm p-6 rounded-lg">
+            <h2 className="text-2xl font-bold text-slate-900 mb-1">Compliance Vault</h2>
+            <p className="text-sm text-slate-500 mb-6">Load your documents here. FBN gets a reminder before anything expires, and your loads keep flowing.</p>
             <div className="space-y-3">
                 {REQUIRED.map(req => {
                     const docs = docsByType(req.type);
                     return (
-                        <div key={req.type} className="bg-gray-700/50 p-4 rounded-lg">
+                        <div key={req.type} className="bg-slate-50 p-4 rounded-lg">
                             <div className="flex flex-wrap justify-between items-center gap-3">
                                 <div className="flex items-center gap-3">
-                                    <span className="font-semibold text-white">{req.label}</span>
-                                    {docs.length > 0 ? statusPill(docs[docs.length - 1]) : <span className="text-xs text-gray-500">Not loaded yet</span>}
+                                    <span className="font-semibold text-slate-900">{req.label}</span>
+                                    {docs.length > 0 ? statusPill(docs[docs.length - 1]) : <span className="text-xs text-slate-400">Not loaded yet</span>}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {req.hasExpiry && (
                                         <div className="w-40"><DateField value={expiry[req.type] || ''} onChange={v => setExpiry(p => ({ ...p, [req.type]: v }))}
-                                            className="bg-gray-900 text-white text-xs p-2 rounded-md border border-gray-600 w-full" /></div>
+                                            className="bg-white text-slate-800 text-xs p-2 rounded-md border border-slate-300 w-full" /></div>
                                     )}
                                     <button type="button" disabled={busy === req.type} onClick={() => fileRefs.current[req.type]?.click()}
                                         className="cursor-pointer text-sm font-semibold text-white bg-brand-primary hover:bg-brand-secondary disabled:opacity-50 px-3 py-2 rounded-md flex items-center">
@@ -77,11 +77,11 @@ const SupplierDocuments: React.FC<SupplierDocumentsProps> = ({ supplier }) => {
                                 </div>
                             </div>
                             {docs.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-gray-600/50 space-y-1">
+                                <div className="mt-3 pt-3 border-t border-slate-200 space-y-1">
                                     {docs.map(d => (
                                         <div key={d.id} className="flex justify-between items-center text-xs">
-                                            <a href={d.attachment?.data || '#'} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline truncate max-w-[60%]">{d.attachment?.name || d.name}</a>
-                                            <span className="text-gray-400">{d.expiryDate ? `Expires ${new Date(d.expiryDate).toLocaleDateString('en-ZA')}` : 'No expiry'}</span>
+                                            <a href={d.attachment?.data || '#'} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate max-w-[60%]">{d.attachment?.name || d.name}</a>
+                                            <span className="text-slate-500">{d.expiryDate ? `Expires ${new Date(d.expiryDate).toLocaleDateString('en-ZA')}` : 'No expiry'}</span>
                                         </div>
                                     ))}
                                 </div>

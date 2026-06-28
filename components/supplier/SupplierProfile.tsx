@@ -3,9 +3,9 @@ import { Supplier } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { supabase } from '../../lib/supabase';
 
-const lbl = 'block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1';
-const inp = 'w-full bg-gray-700 text-white p-2.5 rounded-lg border border-gray-600 text-sm focus:ring-2 focus:ring-brand-secondary outline-none';
-const card = 'bg-gray-800/40 p-5 rounded-2xl border border-gray-700/50';
+const lbl = 'block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1';
+const inp = 'w-full bg-white text-slate-800 p-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-secondary outline-none';
+const card = 'bg-white p-5 rounded-2xl border border-slate-200 shadow-sm';
 
 const SupplierProfile: React.FC<{ supplier: Supplier }> = ({ supplier }) => {
     const { handleSupplierSelfUpdate } = useOperations() as any;
@@ -52,12 +52,12 @@ const SupplierProfile: React.FC<{ supplier: Supplier }> = ({ supplier }) => {
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-3xl font-black text-white tracking-tight">Company Profile</h2>
-                <p className="text-gray-500 mt-1">Keep your details, fleet and routes up to date.</p>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Company Profile</h2>
+                <p className="text-slate-400 mt-1">Keep your details, fleet and routes up to date.</p>
             </div>
 
             <div className={card}>
-                <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">Company & contacts</h3>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Company & contacts</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div><label className={lbl}>Company name</label><input value={f.name} onChange={e => set('name', e.target.value)} className={inp} /></div>
                     <div><label className={lbl}>Physical address</label><input value={f.address} onChange={e => set('address', e.target.value)} className={inp} /></div>
@@ -69,7 +69,7 @@ const SupplierProfile: React.FC<{ supplier: Supplier }> = ({ supplier }) => {
             </div>
 
             <div className={card}>
-                <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">Fleet & routes</h3>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Fleet & routes</h3>
                 <div className="grid grid-cols-1 gap-3">
                     <div><label className={lbl}>Vehicle types (comma-separated)</label><input value={f.vehicleTypes} onChange={e => set('vehicleTypes', e.target.value)} placeholder="Superlink, Tri-axle, 8t" className={inp} /></div>
                     <div><label className={lbl}>Trailer types (comma-separated)</label><input value={f.trailerTypes} onChange={e => set('trailerTypes', e.target.value)} placeholder="Tautliner, Flatdeck" className={inp} /></div>
@@ -82,7 +82,7 @@ const SupplierProfile: React.FC<{ supplier: Supplier }> = ({ supplier }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className={card}>
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">Change password</h3>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Change password</h3>
                     <div className="space-y-3">
                         <input type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="New password (min 8)" className={inp} />
                         <input type="password" value={pw2} onChange={e => setPw2(e.target.value)} placeholder="Confirm new password" className={inp} />
@@ -90,10 +90,10 @@ const SupplierProfile: React.FC<{ supplier: Supplier }> = ({ supplier }) => {
                     </div>
                 </div>
                 <div className={card}>
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">Agreement</h3>
-                    <p className="text-sm text-gray-400 mb-3">Your FBN Subcontractor Service Level Agreement.</p>
-                    <a href={agreementLink} target="_blank" rel="noreferrer" className="inline-block bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10 font-bold py-2.5 px-5 rounded-lg text-sm">View agreement</a>
-                    <p className="text-[11px] text-gray-500 mt-2">Your signed copy is on file with FBN — ask us if you need it sent.</p>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Agreement</h3>
+                    <p className="text-sm text-slate-500 mb-3">Your FBN Subcontractor Service Level Agreement.</p>
+                    <a href={agreementLink} target="_blank" rel="noreferrer" className="inline-block bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold py-2.5 px-5 rounded-lg text-sm">View agreement</a>
+                    <p className="text-[11px] text-slate-400 mt-2">Your signed copy is on file with FBN — ask us if you need it sent.</p>
                 </div>
             </div>
         </div>

@@ -7,14 +7,14 @@ import DateField from '../operations/DateField';
 
 const rand = (n?: number) => `R ${(Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('en-ZA') : '';
-const cls = 'w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm';
-const label = 'block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1';
+const cls = 'w-full bg-white text-slate-800 p-2.5 rounded-md border border-slate-300 text-sm';
+const label = 'block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1';
 
 const STATUS_STYLE: Record<string, string> = {
-    Submitted: 'bg-blue-500/15 text-blue-300',
-    Approved: 'bg-emerald-500/15 text-emerald-300',
-    Queried: 'bg-amber-500/15 text-amber-300',
-    Paid: 'bg-gray-500/20 text-gray-300',
+    Submitted: 'bg-blue-100 text-blue-700',
+    Approved: 'bg-emerald-100 text-emerald-700',
+    Queried: 'bg-amber-100 text-amber-700',
+    Paid: 'bg-slate-200 text-slate-600',
 };
 
 // Create an invoice against a completed (POD'd) load.
@@ -58,19 +58,19 @@ const CreateInvoiceModal: React.FC<{ supplier: Supplier; load: LoadConfirmation;
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-1 text-white">Create invoice</h2>
-            <p className="text-gray-400 mb-6 font-mono text-sm">{load.loadConNumber} · {load.collectionPoint} → {load.deliveryPoint}</p>
+            <h2 className="text-2xl font-bold mb-1 text-slate-900">Create invoice</h2>
+            <p className="text-slate-500 mb-6 font-mono text-sm">{load.loadConNumber} · {load.collectionPoint} → {load.deliveryPoint}</p>
             <div className="grid grid-cols-2 gap-3">
                 <div><label className={label}>Invoice number</label><input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className={cls} /></div>
                 <div><label className={label}>Invoice date</label><DateField value={invoiceDate} onChange={setInvoiceDate} className={cls} /></div>
                 <div><label className={label}>Amount excl VAT (R)</label><input type="number" value={excl} onChange={e => setExcl(e.target.value)} className={cls} /></div>
-                <div><label className={label}>VAT (R) <span className="text-gray-600 normal-case">— 15% default</span></label><input type="number" value={vat} onChange={e => setVat(e.target.value)} placeholder={String(Math.round(exclN * 0.15 * 100) / 100)} className={cls} /></div>
-                <div className="col-span-2"><label className={label}>Invoice PDF</label><input type="file" accept="application/pdf,image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="text-xs text-gray-300" /></div>
+                <div><label className={label}>VAT (R) <span className="text-slate-400 normal-case">— 15% default</span></label><input type="number" value={vat} onChange={e => setVat(e.target.value)} placeholder={String(Math.round(exclN * 0.15 * 100) / 100)} className={cls} /></div>
+                <div className="col-span-2"><label className={label}>Invoice PDF</label><input type="file" accept="application/pdf,image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="text-xs text-slate-600" /></div>
             </div>
-            <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-700">
-                <p className="text-sm text-gray-400">Total incl VAT: <span className="text-xl font-black text-green-400">{rand(total)}</span></p>
+            <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-200">
+                <p className="text-sm text-slate-500">Total incl VAT: <span className="text-xl font-black text-emerald-600">{rand(total)}</span></p>
                 <div className="flex gap-3">
-                    <button onClick={onClose} className="bg-gray-600 py-2 px-4 rounded-lg text-white text-sm">Cancel</button>
+                    <button onClick={onClose} className="bg-slate-200 text-slate-700 hover:bg-slate-300 py-2 px-4 rounded-lg text-sm">Cancel</button>
                     <button onClick={submit} disabled={saving} className="bg-emerald-600 hover:bg-emerald-500 py-2 px-5 rounded-lg text-white text-sm font-bold disabled:opacity-50">{saving ? 'Submitting…' : 'Submit invoice'}</button>
                 </div>
             </div>
@@ -112,21 +112,21 @@ const SupplierInvoices: React.FC<{ supplier: Supplier }> = ({ supplier }) => {
     return (
         <div>
             <div className="flex items-center justify-between mb-1">
-                <h2 className="text-3xl font-black text-white tracking-tight">Invoicing & Payments</h2>
-                <button onClick={printStatement} className="text-xs font-bold bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10 py-2 px-4 rounded-lg">⬇ Statement</button>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Invoicing & Payments</h2>
+                <button onClick={printStatement} className="text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 py-2 px-4 rounded-lg">⬇ Statement</button>
             </div>
-            <p className="text-gray-400 mb-6">Invoice a completed load, then track it through approval and payment.</p>
+            <p className="text-slate-500 mb-6">Invoice a completed load, then track it through approval and payment.</p>
 
             {/* Ready to invoice */}
             {invoiceable.length > 0 && (
-                <section className="bg-[#111827] border border-emerald-500/20 rounded-2xl p-5 mb-6">
-                    <h3 className="text-sm font-black text-emerald-300 uppercase tracking-widest mb-3">Ready to invoice ({invoiceable.length})</h3>
+                <section className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6">
+                    <h3 className="text-sm font-black text-emerald-700 uppercase tracking-widest mb-3">Ready to invoice ({invoiceable.length})</h3>
                     <div className="space-y-2">
                         {invoiceable.map(l => (
-                            <div key={l.id} className="flex items-center justify-between gap-3 bg-white/5 rounded-xl p-3">
+                            <div key={l.id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl p-3">
                                 <div className="min-w-0">
-                                    <p className="font-bold text-white text-sm truncate">{l.loadConNumber} · {rand(l.supplierRate)}</p>
-                                    <p className="text-[11px] text-gray-500 truncate">{l.collectionPoint} → {l.deliveryPoint}</p>
+                                    <p className="font-bold text-slate-900 text-sm truncate">{l.loadConNumber} · {rand(l.supplierRate)}</p>
+                                    <p className="text-[11px] text-slate-400 truncate">{l.collectionPoint} → {l.deliveryPoint}</p>
                                 </div>
                                 <button onClick={() => setCreateFor(l)} className="shrink-0 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-1.5 px-3 rounded-lg">Create invoice</button>
                             </div>
@@ -138,27 +138,27 @@ const SupplierInvoices: React.FC<{ supplier: Supplier }> = ({ supplier }) => {
             {/* History */}
             <div className="flex items-center gap-2 mb-3">
                 {(['all', 'Submitted', 'Approved', 'Queried', 'Paid'] as const).map(f => (
-                    <button key={f} onClick={() => setFilter(f)} className={`text-xs font-bold px-3 py-1.5 rounded-lg ${filter === f ? 'bg-brand-primary text-white' : 'bg-white/5 text-gray-400 hover:text-white'}`}>{f === 'all' ? 'All' : f}</button>
+                    <button key={f} onClick={() => setFilter(f)} className={`text-xs font-bold px-3 py-1.5 rounded-lg ${filter === f ? 'bg-brand-primary text-white' : 'bg-slate-50 text-slate-500 hover:text-slate-900'}`}>{f === 'all' ? 'All' : f}</button>
                 ))}
             </div>
             <div className="space-y-2">
                 {shown.map(i => (
-                    <div key={i.id} className="bg-[#111827] border border-white/5 rounded-xl p-4">
+                    <div key={i.id} className="bg-white border border-slate-200 rounded-xl p-4">
                         <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
-                                <p className="font-bold text-white text-sm">{i.invoiceNumber} <span className="text-gray-500 font-normal">· {fmt(i.invoiceDate)}{i.loadConNumber ? ` · ${i.loadConNumber}` : ''}</span></p>
-                                <p className="text-[11px] text-gray-500">Excl {rand(i.amountExclVat)} · VAT {rand(i.vatAmount)} · <span className="text-green-400 font-bold">{rand(i.total)}</span></p>
+                                <p className="font-bold text-slate-900 text-sm">{i.invoiceNumber} <span className="text-slate-400 font-normal">· {fmt(i.invoiceDate)}{i.loadConNumber ? ` · ${i.loadConNumber}` : ''}</span></p>
+                                <p className="text-[11px] text-slate-400">Excl {rand(i.amountExclVat)} · VAT {rand(i.vatAmount)} · <span className="text-emerald-600 font-bold">{rand(i.total)}</span></p>
                             </div>
                             <div className="text-right shrink-0">
                                 <span className={`text-[11px] font-black px-2.5 py-1 rounded-lg ${STATUS_STYLE[i.status]}`}>{i.status}</span>
-                                {i.invoicePdfUrl && <a href={i.invoicePdfUrl} target="_blank" rel="noreferrer" className="block text-[11px] text-brand-secondary hover:text-blue-300 mt-1">View PDF</a>}
+                                {i.invoicePdfUrl && <a href={i.invoicePdfUrl} target="_blank" rel="noreferrer" className="block text-[11px] text-blue-600 hover:text-blue-800 mt-1">View PDF</a>}
                             </div>
                         </div>
-                        {i.status === 'Queried' && i.queryNote && <p className="mt-2 text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2">Query: {i.queryNote}</p>}
-                        {i.status === 'Paid' && (i.paymentReference || i.paymentDate) && <p className="mt-2 text-[11px] text-gray-400">Paid {i.paymentDate ? fmt(i.paymentDate) : ''}{i.paymentReference ? ` · ref ${i.paymentReference}` : ''}</p>}
+                        {i.status === 'Queried' && i.queryNote && <p className="mt-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">Query: {i.queryNote}</p>}
+                        {i.status === 'Paid' && (i.paymentReference || i.paymentDate) && <p className="mt-2 text-[11px] text-slate-500">Paid {i.paymentDate ? fmt(i.paymentDate) : ''}{i.paymentReference ? ` · ref ${i.paymentReference}` : ''}</p>}
                     </div>
                 ))}
-                {shown.length === 0 && <p className="text-center text-gray-500 py-12">No invoices{filter !== 'all' ? ` with status ${filter}` : ' yet'}.</p>}
+                {shown.length === 0 && <p className="text-center text-slate-400 py-12">No invoices{filter !== 'all' ? ` with status ${filter}` : ' yet'}.</p>}
             </div>
 
             {createFor && (

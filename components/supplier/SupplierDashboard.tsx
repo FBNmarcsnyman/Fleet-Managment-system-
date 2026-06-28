@@ -36,7 +36,7 @@ const certState = (d: ComplianceDoc, now: number): { tone: 'green' | 'amber' | '
 };
 
 const toneDot: Record<string, string> = { green: 'bg-emerald-500', amber: 'bg-amber-400', red: 'bg-red-500' };
-const toneText: Record<string, string> = { green: 'text-emerald-300', amber: 'text-amber-300', red: 'text-red-300' };
+const toneText: Record<string, string> = { green: 'text-emerald-600', amber: 'text-amber-600', red: 'text-red-600' };
 
 const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
     const { loadConfirmations = [], rfqRequests = [], subcontractorInvoices = [], loadBoardPosts = [], handleUpdateLoadConfirmation } = useOperations() as any;
@@ -94,46 +94,46 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
     }, certRows.length ? 'green' : 'amber');
     const overall = !hasGit ? 'red' : worst;
 
-    const kpi = (label: string, value: React.ReactNode, sub: string, onClick?: () => void, accent = 'text-white') => (
+    const kpi = (label: string, value: React.ReactNode, sub: string, onClick?: () => void, accent = 'text-slate-900') => (
         <button onClick={onClick} disabled={!onClick}
-            className={`text-left bg-[#111827] border border-white/5 rounded-2xl p-5 ${onClick ? 'hover:border-brand-primary/40 transition-all' : 'opacity-90 cursor-default'}`}>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">{label}</p>
+            className={`text-left bg-white border border-slate-200 shadow-sm rounded-2xl p-5 ${onClick ? 'hover:border-brand-primary/40 transition-all' : 'opacity-90 cursor-default'}`}>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
             <p className={`text-3xl font-black ${accent}`}>{value}</p>
-            <p className="text-[11px] text-gray-500 mt-1">{sub}</p>
+            <p className="text-[11px] text-slate-400 mt-1">{sub}</p>
         </button>
     );
 
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-black text-white tracking-tight">Welcome, {supplier.name}</h1>
-                <p className="text-gray-500 text-sm mt-1">Your carrier dashboard — RFQs, loads and compliance at a glance.</p>
+                <h1 className="text-3xl font-black text-slate-900 tracking-tight">Welcome, {supplier.name}</h1>
+                <p className="text-slate-400 text-sm mt-1">Your carrier dashboard — RFQs, loads and compliance at a glance.</p>
             </div>
 
             {/* KPI row */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {kpi('Open RFQs', openRfqs.length, openRfqs.length ? 'awaiting your quote' : 'none right now', () => onNavigate('rfqs'), 'text-emerald-300')}
-                {kpi('Active loads', activeLoads.length, 'in progress', () => onNavigate('loads'), 'text-blue-300')}
-                {kpi('Outstanding PODs', outstandingPods.length, outstandingPods.length ? 'delivered — POD due' : 'all up to date', () => onNavigate('loads'), outstandingPods.length ? 'text-amber-300' : 'text-white')}
-                {kpi('Posted to network', myPostedLive.length, myPostedLive.length ? 'live on the board' : 'none posted', () => onNavigate('loadboard'), myPostedLive.length ? 'text-blue-300' : 'text-white')}
+                {kpi('Open RFQs', openRfqs.length, openRfqs.length ? 'awaiting your quote' : 'none right now', () => onNavigate('rfqs'), 'text-emerald-600')}
+                {kpi('Active loads', activeLoads.length, 'in progress', () => onNavigate('loads'), 'text-blue-600')}
+                {kpi('Outstanding PODs', outstandingPods.length, outstandingPods.length ? 'delivered — POD due' : 'all up to date', () => onNavigate('loads'), outstandingPods.length ? 'text-amber-600' : 'text-slate-900')}
+                {kpi('Posted to network', myPostedLive.length, myPostedLive.length ? 'live on the board' : 'none posted', () => onNavigate('loadboard'), myPostedLive.length ? 'text-blue-600' : 'text-slate-900')}
                 {kpi('Compliance', <span className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${toneDot[overall]}`} />{overall === 'green' ? 'OK' : overall === 'amber' ? 'Check' : 'Action'}</span>, overall === 'red' ? 'needs attention' : overall === 'amber' ? 'expiring soon' : 'all valid', () => onNavigate('compliance'), toneText[overall])}
-                {kpi('Outstanding invoices', outstandingInvoices.length, outstandingInvoices.length ? 'awaiting payment/approval' : 'all settled', () => onNavigate('invoicing'), outstandingInvoices.length ? 'text-amber-300' : 'text-white')}
+                {kpi('Outstanding invoices', outstandingInvoices.length, outstandingInvoices.length ? 'awaiting payment/approval' : 'all settled', () => onNavigate('invoicing'), outstandingInvoices.length ? 'text-amber-600' : 'text-slate-900')}
             </div>
 
             {/* Outstanding PODs — upload right here */}
             <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={onPodFile} />
             {outstandingPods.length > 0 && (
-                <section className="bg-[#111827] border border-amber-500/20 rounded-2xl p-6">
+                <section className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-black text-amber-300 uppercase tracking-widest">Outstanding PODs ({outstandingPods.length})</h2>
-                        <button onClick={() => onNavigate('loads')} className="text-xs font-bold text-brand-secondary hover:text-blue-300">My Loads →</button>
+                        <h2 className="text-sm font-black text-amber-700 uppercase tracking-widest">Outstanding PODs ({outstandingPods.length})</h2>
+                        <button onClick={() => onNavigate('loads')} className="text-xs font-bold text-blue-600 hover:text-blue-800">My Loads →</button>
                     </div>
                     <div className="space-y-2">
                         {outstandingPods.map((l: any) => (
-                            <div key={l.id} className="flex items-center justify-between gap-3 bg-white/5 rounded-xl p-3">
+                            <div key={l.id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl p-3">
                                 <div className="min-w-0">
-                                    <p className="font-bold text-white text-sm truncate">{l.loadConNumber || l.loadRefNo || '—'}</p>
-                                    <p className="text-[11px] text-gray-500 truncate">{l.collectionPoint} → {l.deliveryPoint}{l.deliveryDate ? ` · delivered ${new Date(l.deliveryDate).toLocaleDateString('en-ZA')}` : ''}</p>
+                                    <p className="font-bold text-slate-900 text-sm truncate">{l.loadConNumber || l.loadRefNo || '—'}</p>
+                                    <p className="text-[11px] text-slate-400 truncate">{l.collectionPoint} → {l.deliveryPoint}{l.deliveryDate ? ` · delivered ${new Date(l.deliveryDate).toLocaleDateString('en-ZA')}` : ''}</p>
                                 </div>
                                 <button onClick={() => startPodUpload(l.id)} disabled={uploadingId === l.id} className="shrink-0 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-1.5 px-3 rounded-lg disabled:opacity-50">
                                     {uploadingId === l.id ? 'Uploading…' : 'Upload POD'}
@@ -145,24 +145,24 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
             )}
 
             {/* Open RFQs with countdown */}
-            <section className="bg-[#111827] border border-white/5 rounded-2xl p-6">
+            <section className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-sm font-black text-white uppercase tracking-widest">Open RFQs awaiting your quote</h2>
-                    {openRfqs.length > 0 && <button onClick={() => onNavigate('rfqs')} className="text-xs font-bold text-brand-secondary hover:text-blue-300">Go to RFQ board →</button>}
+                    <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Open RFQs awaiting your quote</h2>
+                    {openRfqs.length > 0 && <button onClick={() => onNavigate('rfqs')} className="text-xs font-bold text-blue-600 hover:text-blue-800">Go to RFQ board →</button>}
                 </div>
                 {openRfqs.length === 0 ? (
-                    <p className="text-sm text-gray-500 py-6 text-center">No open RFQs awaiting your quote.</p>
+                    <p className="text-sm text-slate-400 py-6 text-center">No open RFQs awaiting your quote.</p>
                 ) : (
                     <div className="space-y-2">
                         {openRfqs.slice(0, 6).map(r => {
                             const cd = fmtCountdown(r.closesAt, now);
                             return (
-                                <button key={r.id} onClick={() => onNavigate('rfqs')} className="w-full text-left flex items-center justify-between gap-3 bg-white/5 hover:bg-white/10 rounded-xl p-3 transition-all">
+                                <button key={r.id} onClick={() => onNavigate('rfqs')} className="w-full text-left flex items-center justify-between gap-3 bg-slate-50 hover:bg-slate-100 rounded-xl p-3 transition-all">
                                     <div className="min-w-0">
-                                        <p className="font-bold text-white text-sm truncate">{r.origin} → {r.destination}</p>
-                                        <p className="text-[11px] text-gray-500 truncate">{[r.loadType, r.commodity, r.weightKg ? `${r.weightKg.toLocaleString()}kg` : '', r.collectionDate ? `collect ${new Date(r.collectionDate).toLocaleDateString('en-ZA')}` : ''].filter(Boolean).join(' · ')}</p>
+                                        <p className="font-bold text-slate-900 text-sm truncate">{r.origin} → {r.destination}</p>
+                                        <p className="text-[11px] text-slate-400 truncate">{[r.loadType, r.commodity, r.weightKg ? `${r.weightKg.toLocaleString()}kg` : '', r.collectionDate ? `collect ${new Date(r.collectionDate).toLocaleDateString('en-ZA')}` : ''].filter(Boolean).join(' · ')}</p>
                                     </div>
-                                    <span className={`shrink-0 text-xs font-black px-2.5 py-1 rounded-lg ${cd.over ? 'bg-gray-700 text-gray-400' : cd.urgent ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
+                                    <span className={`shrink-0 text-xs font-black px-2.5 py-1 rounded-lg ${cd.over ? 'bg-slate-200 text-slate-600' : cd.urgent ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                         {cd.over ? 'closed' : `⏳ ${cd.text}`}
                                     </span>
                                 </button>
@@ -174,22 +174,22 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Active loads */}
-                <section className="bg-[#111827] border border-white/5 rounded-2xl p-6">
+                <section className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-black text-white uppercase tracking-widest">Active loads</h2>
-                        <button onClick={() => onNavigate('loads')} className="text-xs font-bold text-brand-secondary hover:text-blue-300">All loads →</button>
+                        <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Active loads</h2>
+                        <button onClick={() => onNavigate('loads')} className="text-xs font-bold text-blue-600 hover:text-blue-800">All loads →</button>
                     </div>
                     {activeLoads.length === 0 ? (
-                        <p className="text-sm text-gray-500 py-6 text-center">No active loads right now.</p>
+                        <p className="text-sm text-slate-400 py-6 text-center">No active loads right now.</p>
                     ) : (
                         <div className="space-y-2">
                             {activeLoads.slice(0, 6).map((l: any) => (
-                                <button key={l.id} onClick={() => onNavigate('loads')} className="w-full text-left flex items-center justify-between gap-3 bg-white/5 hover:bg-white/10 rounded-xl p-3 transition-all">
+                                <button key={l.id} onClick={() => onNavigate('loads')} className="w-full text-left flex items-center justify-between gap-3 bg-slate-50 hover:bg-slate-100 rounded-xl p-3 transition-all">
                                     <div className="min-w-0">
-                                        <p className="font-bold text-white text-sm truncate">{l.loadConNumber || l.loadRefNo || '—'}</p>
-                                        <p className="text-[11px] text-gray-500 truncate">{l.collectionPoint} → {l.deliveryPoint}</p>
+                                        <p className="font-bold text-slate-900 text-sm truncate">{l.loadConNumber || l.loadRefNo || '—'}</p>
+                                        <p className="text-[11px] text-slate-400 truncate">{l.collectionPoint} → {l.deliveryPoint}</p>
                                     </div>
-                                    <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300">{l.status}</span>
+                                    <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700">{l.status}</span>
                                 </button>
                             ))}
                         </div>
@@ -197,26 +197,26 @@ const SupplierDashboard: React.FC<Props> = ({ supplier, onNavigate }) => {
                 </section>
 
                 {/* Compliance */}
-                <section className="bg-[#111827] border border-white/5 rounded-2xl p-6">
+                <section className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-black text-white uppercase tracking-widest">Compliance certificates</h2>
-                        <button onClick={() => onNavigate('compliance')} className="text-xs font-bold text-brand-secondary hover:text-blue-300">Manage →</button>
+                        <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Compliance certificates</h2>
+                        <button onClick={() => onNavigate('compliance')} className="text-xs font-bold text-blue-600 hover:text-blue-800">Manage →</button>
                     </div>
                     {!hasGit && (
-                        <div className="mb-3 flex items-center gap-2 bg-red-500/15 border border-red-500/30 rounded-lg p-2.5">
+                        <div className="mb-3 flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-2.5">
                             <span className="w-2 h-2 rounded-full bg-red-500" />
-                            <p className="text-[11px] text-red-300 font-bold">No GIT certificate on file — required to receive RFQs.</p>
+                            <p className="text-[11px] text-red-700 font-bold">No GIT certificate on file — required to receive RFQs.</p>
                         </div>
                     )}
                     {certRows.length === 0 ? (
-                        <p className="text-sm text-gray-500 py-6 text-center">No certificates uploaded yet.</p>
+                        <p className="text-sm text-slate-400 py-6 text-center">No certificates uploaded yet.</p>
                     ) : (
                         <div className="space-y-2">
                             {certRows.map(({ doc, st }) => (
-                                <div key={doc.id} className="flex items-center justify-between gap-3 bg-white/5 rounded-xl p-3">
+                                <div key={doc.id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl p-3">
                                     <div className="flex items-center gap-2.5 min-w-0">
                                         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${toneDot[st.tone]}`} />
-                                        <span className="font-bold text-white text-sm truncate">{doc.type}</span>
+                                        <span className="font-bold text-slate-900 text-sm truncate">{doc.type}</span>
                                     </div>
                                     <span className={`shrink-0 text-[11px] font-bold ${toneText[st.tone]}`}>{st.label}</span>
                                 </div>

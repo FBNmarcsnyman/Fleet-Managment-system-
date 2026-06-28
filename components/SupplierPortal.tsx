@@ -63,50 +63,43 @@ const SupplierPortal: React.FC = () => {
     };
     
     return (
-        <div className="min-h-screen bg-[#0a0f1a] text-gray-100 flex overflow-hidden">
-            {/* Modern Sidebar */}
-            <aside className="w-72 bg-[#111827] border-r border-white/5 flex flex-col shadow-2xl">
-                 <div className="p-8 border-b border-white/5">
+        <div className="min-h-screen bg-slate-100 text-slate-800 flex overflow-hidden">
+            {/* Brand navy sidebar */}
+            <aside className="w-72 bg-[#13294b] border-r border-[#1d3a66] flex flex-col shadow-2xl">
+                 <div className="p-8 border-b border-white/10">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40">
-                             <TruckIcon className="h-6 w-6 text-white" />
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: '#f5b700' }}>
+                             <TruckIcon className="h-6 w-6 text-[#13294b]" />
                         </div>
                         <h2 className="text-xl font-black text-white tracking-tighter">CarrierPortal</h2>
                     </div>
-                    <div className="bg-white/5 p-3 rounded-xl">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Carrier</p>
+                    <div className="bg-white/10 p-3 rounded-xl">
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Carrier</p>
                         <p className="text-sm font-bold text-white truncate">{supplier.name}</p>
                     </div>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
                     {navItems.map(item => (
-                        <button 
+                        <button
                             key={item.id}
-                            onClick={() => setActiveView(item.id as SupplierView)} 
-                            className={`flex items-center w-full p-3.5 rounded-xl text-sm font-bold transition-all ${activeView === item.id ? 'bg-brand-primary text-white shadow-lg shadow-blue-900/30' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                            onClick={() => setActiveView(item.id as SupplierView)}
+                            className={`flex items-center w-full p-3.5 rounded-xl text-sm font-bold transition-all ${activeView === item.id ? 'bg-[#f5b700] text-[#13294b] shadow-lg' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
                         >
                             <item.icon className="h-5 w-5 mr-3" />
                             <span className="flex-grow text-left">{item.label}</span>
-                            {item.badge > 0 && <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">{item.badge}</span>}
+                            {item.badge > 0 && <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-black ${activeView === item.id ? 'bg-[#13294b] text-white' : 'bg-emerald-500 text-white'}`}>{item.badge}</span>}
                         </button>
                     ))}
                 </nav>
 
-                <div className="p-6 border-t border-white/5 space-y-4">
-                    <div className="bg-emerald-900/10 border border-emerald-500/20 p-4 rounded-xl">
-                        <div className="flex justify-between items-center mb-1">
-                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Compliance Status</p>
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-                        </div>
-                        <p className="text-sm font-bold text-emerald-200">Fully Compliant</p>
-                    </div>
+                <div className="p-6 border-t border-white/10">
                     {viewingSupplierAsAdmin ? (
                         <button onClick={() => setViewSupplierAsAdmin(null)} className="w-full flex items-center justify-center p-3 rounded-xl text-sm font-bold text-yellow-300 bg-yellow-900/30 hover:bg-yellow-800/40 transition-all border border-yellow-500/20">
                             ← Return to Admin View
                         </button>
                     ) : (
-                        <button onClick={handleLogout} className="w-full flex items-center justify-center p-3 rounded-xl text-sm font-bold text-red-400 hover:bg-red-500/10 transition-all border border-red-500/10">
+                        <button onClick={handleLogout} className="w-full flex items-center justify-center p-3 rounded-xl text-sm font-bold text-red-300 hover:bg-red-500/20 transition-all border border-red-400/20">
                             Logout Session
                         </button>
                     )}
@@ -114,7 +107,7 @@ const SupplierPortal: React.FC = () => {
             </aside>
 
             {/* Content Area */}
-            <main className="flex-1 overflow-y-auto bg-[#0a0f1a] relative">
+            <main className="flex-1 overflow-y-auto bg-slate-100 relative">
                 <div className="p-10 max-w-6xl mx-auto">
                     {renderContent()}
                 </div>

@@ -9,9 +9,11 @@ import ClientDashboard from './client/ClientDashboard';
 import ClientQuoteRequestForm from './client/ClientQuoteRequestForm';
 import ClientQuotesView from './client/ClientQuotesView';
 import ClientFinancials from './client/ClientFinancials';
+import ClientShipments from './client/ClientShipments';
 import ClientDashboardView from './ClientDashboardView';
+import { ClipboardDocumentListIcon } from './icons/ClipboardDocumentListIcon';
 
-type ClientView = 'dashboard' | 'request' | 'quotes' | 'loads' | 'financial';
+type ClientView = 'dashboard' | 'request' | 'quotes' | 'loads' | 'shipments' | 'financial';
 
 const ClientPortal: React.FC = () => {
     const { currentUser, handleLogout, viewingClientAsAdmin, setViewClientAsAdmin } = useAuth();
@@ -29,6 +31,7 @@ const ClientPortal: React.FC = () => {
         { id: 'request', label: 'Request a Quote', icon: PlusIcon },
         { id: 'quotes', label: 'My Quotes', icon: MailIcon },
         { id: 'loads', label: 'My Loads', icon: TruckIcon },
+        { id: 'shipments', label: 'Shipments & Tracking', icon: ClipboardDocumentListIcon },
         { id: 'financial', label: 'Financial Documents', icon: CurrencyDollarIcon },
     ];
 
@@ -37,6 +40,7 @@ const ClientPortal: React.FC = () => {
             case 'request': return <ClientQuoteRequestForm clientId={user.clientId} onDone={() => setActiveView('quotes')} />;
             case 'quotes': return <ClientQuotesView clientId={user.clientId} onRequest={() => setActiveView('request')} />;
             case 'loads': return <ClientDashboardView loadConfirmations={userLoads} />;
+            case 'shipments': return <ClientShipments clientId={user.clientId} />;
             case 'financial': return <ClientFinancials clientId={user.clientId} />;
             case 'dashboard':
             default: return <ClientDashboard clientId={user.clientId} clientName={clientName} onNavigate={(v) => setActiveView(v as ClientView)} />;

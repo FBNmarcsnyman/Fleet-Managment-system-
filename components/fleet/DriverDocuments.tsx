@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { directSelect, directInsert, invokeFn } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import { useUIState } from '../../contexts/AppContexts';
+import DateField from '../operations/DateField';
 
 // Driver documents — files into the FBN CONTROL CENTER drive under
 // Drivers/<name>/<Category>/ and records a driver_documents row. Mirrors the
@@ -74,7 +75,7 @@ const DriverDocuments: React.FC = () => {
                 <div><label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">Type</label>
                     <select value={upType} onChange={e => setUpType(e.target.value)} className={inp}>{DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
                 <div><label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">Expiry (optional)</label>
-                    <input type="date" value={upExpiry} onChange={e => setUpExpiry(e.target.value)} className={inp} /></div>
+                    <DateField value={upExpiry} onChange={v => setUpExpiry(v)} className={inp} /></div>
                 <div className="col-span-2"><label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">File (PDF or photo)</label>
                     <input type="file" accept="image/*,application/pdf" onChange={e => setUpFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-300 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-blue-600 file:text-white file:font-semibold" /></div>
                 <div className="col-span-2 flex justify-end"><button onClick={handleUpload} disabled={uploading || !upFile} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-lg text-sm">{uploading ? 'Uploading…' : 'Upload to Drive'}</button></div>

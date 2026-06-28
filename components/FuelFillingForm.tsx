@@ -6,6 +6,7 @@ import { TableIcon } from './icons/TableIcon';
 import { LinkIcon } from './icons/LinkIcon';
 import { RefreshIcon } from './icons/RefreshIcon';
 import { useVehicles } from '../contexts/AppContexts';
+import DateField from './operations/DateField';
 
 interface FuelFillingFormProps {
     vehicles: Vehicle[];
@@ -209,7 +210,7 @@ const FuelFillingForm: React.FC<FuelFillingFormProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                 <div>
                                     <label htmlFor="date" className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Date</label>
-                                    <input id="date" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary" />
+                                    <DateField value={date} onChange={setDate} className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary" />
                                 </div>
                                 <div>
                                     <label htmlFor="odometer" className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Odometer (km)</label>

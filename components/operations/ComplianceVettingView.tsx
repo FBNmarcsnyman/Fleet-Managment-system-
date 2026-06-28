@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Supplier, ComplianceDoc } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
+import DateField from './DateField';
 
 const DOC_TYPES: { type: ComplianceDoc['type']; label: string }[] = [
     { type: 'COY_REG', label: 'Company Registration (CIPC)' },
@@ -86,7 +87,7 @@ const ComplianceVettingView: React.FC = () => {
                             {DOC_TYPES.map(t => <option key={t.type} value={t.type}>{t.label}</option>)}
                         </select></div>
                     <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1">Expiry (optional)</label>
-                        <input type="date" value={expiry} onChange={e => setExpiry(e.target.value)} className={input} /></div>
+                        <DateField value={expiry} onChange={v => setExpiry(v)} className={input} /></div>
                     <button onClick={() => fileRef.current?.click()} disabled={!supplierId || busy} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-lg text-sm">{busy ? 'Uploading…' : 'Upload (Valid)'}</button>
                     <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={onFile} />
                 </div>

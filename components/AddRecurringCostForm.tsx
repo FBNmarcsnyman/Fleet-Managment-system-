@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { RecurringCost } from '../types';
 import { DEFAULT_COST_CATEGORIES } from '../constants';
+import DateField from './operations/DateField';
 
 interface AddRecurringCostFormProps {
     onSubmit: (cost: Omit<RecurringCost, 'id' | 'vehicleId'>) => void;
@@ -49,7 +50,7 @@ const AddRecurringCostForm: React.FC<AddRecurringCostFormProps> = ({ onSubmit, o
                     <option value="monthly">Monthly</option>
                     <option value="annually">Annually</option>
                 </select>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inputClasses} />
+                <DateField value={startDate} onChange={setStartDate} className={inputClasses} />
             </div>
             <div className="flex justify-end space-x-4 mt-8">
                 <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>

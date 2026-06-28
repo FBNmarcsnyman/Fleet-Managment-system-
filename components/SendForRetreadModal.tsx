@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Tire } from '../types';
+import DateField from './operations/DateField';
 
 interface SendForRetreadModalProps {
     tire: Tire;
@@ -22,7 +23,7 @@ const SendForRetreadModal: React.FC<SendForRetreadModalProps> = ({ tire, onSend,
             <p className="text-gray-400 mb-6 font-mono">{tire.serialNumber}</p>
             <div className="space-y-4">
                 <input type="text" placeholder="Retread Vendor" value={vendor} onChange={e => setVendor(e.target.value)} required className="w-full bg-gray-700 p-3 rounded-md" />
-                <input type="date" value={expectedReturn} onChange={e => setExpectedReturn(e.target.value)} required className="w-full bg-gray-700 p-3 rounded-md" />
+                <DateField value={expectedReturn} onChange={setExpectedReturn} className="w-full bg-gray-700 p-3 rounded-md" />
             </div>
             <div className="flex justify-end space-x-4 mt-8">
                 <button type="button" onClick={onCancel} className="bg-gray-600 py-2 px-4 rounded-lg">Cancel</button>

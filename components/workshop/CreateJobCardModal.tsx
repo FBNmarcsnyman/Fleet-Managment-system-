@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { JobCard, JobCardType } from '../../types';
 import { useVehicles, useWorkshop, useUIState } from '../../contexts/AppContexts';
 import { UploadIcon } from '../icons/UploadIcon';
+import DateField from '../operations/DateField';
 
 interface CreateJobCardModalProps {
     vehicleId?: string; // Optional pre-selected vehicle
@@ -89,11 +90,11 @@ const CreateJobCardModal: React.FC<CreateJobCardModalProps> = ({ vehicleId: pres
                  <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Proposed Start Date (Optional)</label>
-                        <input type="date" value={proposedStartDate} onChange={e => setProposedStartDate(e.target.value)} className={inputClasses} />
+                        <DateField value={proposedStartDate} onChange={setProposedStartDate} className={inputClasses} />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-1">Proposed End Date (Optional)</label>
-                        <input type="date" value={proposedEndDate} onChange={e => setProposedEndDate(e.target.value)} className={inputClasses} />
+                        <DateField value={proposedEndDate} onChange={setProposedEndDate} className={inputClasses} />
                     </div>
                 </div>
                 <div>

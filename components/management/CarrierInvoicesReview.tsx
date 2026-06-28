@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { SubcontractorInvoice, Supplier } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import Modal from '../Modal';
+import DateField from '../operations/DateField';
 
 const rand = (n?: number) => `R ${(Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('en-ZA') : '';
@@ -96,7 +97,7 @@ const CarrierInvoicesReview: React.FC = () => {
                             <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="What needs fixing? (emailed to the carrier)" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" />
                         ) : (
                             <div className="grid grid-cols-2 gap-3">
-                                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Payment date</label><input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" /></div>
+                                <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Payment date</label><DateField value={payDate} onChange={setPayDate} className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" /></div>
                                 <div><label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Reference</label><input value={payRef} onChange={e => setPayRef(e.target.value)} placeholder="EFT ref" className="w-full border border-slate-300 rounded-lg p-2.5 text-sm" /></div>
                             </div>
                         )}

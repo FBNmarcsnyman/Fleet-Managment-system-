@@ -3,6 +3,7 @@ import { Supplier, SubcontractorInvoice, LoadConfirmation } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { uploadFile } from '../../lib/supabase';
 import Modal from '../Modal';
+import DateField from '../operations/DateField';
 
 const rand = (n?: number) => `R ${(Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('en-ZA') : '';
@@ -61,7 +62,7 @@ const CreateInvoiceModal: React.FC<{ supplier: Supplier; load: LoadConfirmation;
             <p className="text-gray-400 mb-6 font-mono text-sm">{load.loadConNumber} · {load.collectionPoint} → {load.deliveryPoint}</p>
             <div className="grid grid-cols-2 gap-3">
                 <div><label className={label}>Invoice number</label><input value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className={cls} /></div>
-                <div><label className={label}>Invoice date</label><input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className={cls} /></div>
+                <div><label className={label}>Invoice date</label><DateField value={invoiceDate} onChange={setInvoiceDate} className={cls} /></div>
                 <div><label className={label}>Amount excl VAT (R)</label><input type="number" value={excl} onChange={e => setExcl(e.target.value)} className={cls} /></div>
                 <div><label className={label}>VAT (R) <span className="text-gray-600 normal-case">— 15% default</span></label><input type="number" value={vat} onChange={e => setVat(e.target.value)} placeholder={String(Math.round(exclN * 0.15 * 100) / 100)} className={cls} /></div>
                 <div className="col-span-2"><label className={label}>Invoice PDF</label><input type="file" accept="application/pdf,image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="text-xs text-gray-300" /></div>

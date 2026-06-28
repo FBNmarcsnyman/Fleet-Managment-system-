@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUIState, useAuth } from '../contexts/AppContexts';
 import { directSelect, directInsert, uploadFile } from '../lib/supabase';
+import DateField from './operations/DateField';
 
 // Compliance & Documents hub.
 //
@@ -264,12 +265,12 @@ const ComplianceHub: React.FC = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Expiry date</label>
-                                    <input type="date" value={expiry} onChange={e => setExpiry(e.target.value)}
+                                    <DateField value={expiry} onChange={setExpiry}
                                         className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" />
                                 </div>
                                 <div>
                                     <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Issue date (optional)</label>
-                                    <input type="date" value={issue} onChange={e => setIssue(e.target.value)}
+                                    <DateField value={issue} onChange={setIssue}
                                         className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" />
                                 </div>
                             </div>

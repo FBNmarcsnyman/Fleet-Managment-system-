@@ -3,6 +3,7 @@ import { IncidentReport, IncidentReportType, AtFaultParty, Attachment } from '..
 import { UploadIcon } from './icons/UploadIcon';
 import { XIcon } from './icons/XIcon';
 import { PlusIcon } from './icons/PlusIcon';
+import DateField from './operations/DateField';
 
 interface AddIncidentFormProps {
     vehicleId: string;
@@ -101,7 +102,7 @@ const AddIncidentForm: React.FC<AddIncidentFormProps> = ({ vehicleId, userId, on
             <h2 className="text-2xl font-bold mb-6 text-white">Report New Incident</h2>
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClasses} />
+                    <DateField value={date} onChange={setDate} className={inputClasses} />
                      <div>
                         {!isAddingType ? (
                             <div className="flex items-center space-x-2">

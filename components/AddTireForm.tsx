@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Tire } from '../types';
+import DateField from './operations/DateField';
 
 interface AddTireFormProps {
     onSubmit: (tire: Omit<Tire, 'id' | 'status' | 'assignedVehicleId' | 'assignedPosition' | 'mountHistory'>) => void;
@@ -39,7 +40,7 @@ const AddTireForm: React.FC<AddTireFormProps> = ({ onSubmit, onCancel }) => {
                     <option value="New">New</option>
                     <option value="Retread">Retread</option>
                 </select>
-                <input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} className={inputClasses} />
+                <DateField value={purchaseDate} onChange={setPurchaseDate} className={inputClasses} />
                 <input type="number" placeholder="Purchase Price (R)" value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} required step="0.01" className={inputClasses} />
             </div>
             <div className="flex justify-end space-x-4 mt-8">

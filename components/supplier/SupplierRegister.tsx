@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SLA_CLAUSES, SLA_INTRO, SLA_GIT_MIN } from '../../lib/subcontractorSla';
+import DateField from '../operations/DateField';
 
 // Public, no-login 5-step subcontractor registration (/supplier-register and the
 // ?invite=<token> link). Posts to the `supplier-register` edge fn which uploads
@@ -148,7 +149,7 @@ const SupplierRegister: React.FC<{ inviteToken?: string | null }> = ({ inviteTok
                                         <div><label className={lbl}>Type</label><select value={v.vehicleType} onChange={e => setV(i, 'vehicleType', e.target.value)} className={inp}>{VEHICLE_TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
                                         <div><label className={lbl}>Payload (t)</label><input type="number" value={v.payloadTonnes} onChange={e => setV(i, 'payloadTonnes', e.target.value)} className={inp} /></div>
                                         <div><label className={lbl}>Body length (m)</label><input type="number" value={v.bodyLengthM} onChange={e => setV(i, 'bodyLengthM', e.target.value)} className={inp} /></div>
-                                        <div><label className={lbl}>MVL expiry</label><input type="date" value={v.mvlExpiry} onChange={e => setV(i, 'mvlExpiry', e.target.value)} className={inp} /></div>
+                                        <div><label className={lbl}>MVL expiry</label><DateField value={v.mvlExpiry} onChange={val => setV(i, 'mvlExpiry', val)} className={inp} /></div>
                                         <div><label className={lbl}>Tracker provider</label><input value={v.trackerProvider} onChange={e => setV(i, 'trackerProvider', e.target.value)} className={inp} placeholder="if fitted" /></div>
                                         <div className="col-span-2 flex flex-wrap items-end gap-2 pb-0.5">
                                             <label className="flex items-center gap-1.5 text-xs font-bold text-slate-600"><input type="checkbox" checked={v.hazmat} onChange={e => setV(i, 'hazmat', e.target.checked)} /> Hazmat</label>
@@ -196,7 +197,7 @@ const SupplierRegister: React.FC<{ inviteToken?: string | null }> = ({ inviteTok
                                         {ct.note && <div className="text-[11px] text-slate-500">{ct.note}</div>}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <input type="date" title="Expiry date" value={docs[ct.key]?.expiry || ''} onChange={e => setDoc(ct.key, { expiry: e.target.value })} className="border border-slate-300 rounded-lg px-2 py-2 text-xs" />
+                                        <div className="w-36"><DateField value={docs[ct.key]?.expiry || ''} onChange={val => setDoc(ct.key, { expiry: val })} className="w-full border border-slate-300 rounded-lg px-2 py-2 text-xs" /></div>
                                         <label className={`text-xs font-bold py-2 px-3 rounded-lg cursor-pointer ${docs[ct.key]?.file ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-[#13294b] text-white'}`}>
                                             {docs[ct.key]?.file ? '✓ ' + docs[ct.key].file!.name.slice(0, 18) : 'Upload'}
                                             <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => setDoc(ct.key, { file: e.target.files?.[0] || null })} />

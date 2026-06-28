@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { FuelPriceRecord } from '../types';
+import DateField from './operations/DateField';
 
 interface FuelPriceManagementProps {
     prices: FuelPriceRecord[];
@@ -41,13 +42,7 @@ const FuelPriceManagement: React.FC<FuelPriceManagementProps> = ({ prices, onSet
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-1">For Date</label>
-                            <input
-                                id="startDate"
-                                type="date"
-                                value={startDate}
-                                onChange={e => setStartDate(e.target.value)}
-                                className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary"
-                            />
+                            <DateField value={startDate} onChange={setStartDate} className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary" />
                         </div>
                         <div>
                             <label htmlFor="price" className="block text-sm font-medium text-gray-300 mb-1">Price per Liter (R)</label>

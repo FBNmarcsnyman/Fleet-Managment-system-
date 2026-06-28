@@ -3,6 +3,7 @@ import { Vehicle, FuelEntry } from '../../types';
 import { useVehicles } from '../../contexts/AppContexts';
 import { PlusIcon } from '../icons/PlusIcon';
 import { TrashIcon } from '../icons/TrashIcon';
+import DateField from '../operations/DateField';
 
 interface Props {
     vehicle: Vehicle;
@@ -121,7 +122,7 @@ const VehicleFuelLog: React.FC<Props> = ({ vehicle, fuelEntries }) => {
 
     const DraftRow: React.FC<{ onSave: () => void }> = ({ onSave }) => (
         <tr className="bg-gray-700/40">
-            <td className="p-2"><input type="date" value={draft.date} onChange={e => setDraft({ ...draft, date: e.target.value })} className={inputCls} /></td>
+            <td className="p-2"><DateField value={draft.date} onChange={v => setDraft({ ...draft, date: v })} className={inputCls} /></td>
             <td className="p-2"><input type="number" step="1" placeholder="km" value={draft.odometer} onChange={e => setDraft({ ...draft, odometer: e.target.value })} className={inputCls} /></td>
             <td className="p-2"><input type="number" step="0.01" placeholder="L" value={draft.liters} onChange={e => setDraft({ ...draft, liters: e.target.value })} className={inputCls} /></td>
             <td className="p-2"><input type="number" step="1" placeholder="optional" value={draft.tripDistance} onChange={e => setDraft({ ...draft, tripDistance: e.target.value })} className={inputCls} /></td>

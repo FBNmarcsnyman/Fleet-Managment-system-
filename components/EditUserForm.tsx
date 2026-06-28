@@ -3,6 +3,7 @@ import { User, Role, Branch } from '../types';
 import { BRANCHES } from '../constants';
 import { useCommonData } from '../contexts/AppContexts';
 import { directUpdate } from '../lib/supabase';
+import DateField from './operations/DateField';
 
 const ACCESS_MODULES: { key: string; label: string }[] = [
     { key: 'access_management', label: 'Management' },
@@ -102,8 +103,8 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onClose }) => {
                     <>
                         <input type="text" placeholder="Licence Number" value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} className={inputCls} />
                         <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-sm text-gray-300 mb-1">Licence Expiry</label><input type="date" value={licenseExpiry} onChange={e => setLicenseExpiry(e.target.value)} className={inputCls} /></div>
-                            <div><label className="block text-sm text-gray-300 mb-1">PDP Expiry</label><input type="date" value={pdpExpiry} onChange={e => setPdpExpiry(e.target.value)} className={inputCls} /></div>
+                            <div><label className="block text-sm text-gray-300 mb-1">Licence Expiry</label><DateField value={licenseExpiry} onChange={setLicenseExpiry} className={inputCls} /></div>
+                            <div><label className="block text-sm text-gray-300 mb-1">PDP Expiry</label><DateField value={pdpExpiry} onChange={setPdpExpiry} className={inputCls} /></div>
                         </div>
                     </>
                 )}

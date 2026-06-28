@@ -5,6 +5,7 @@ import { BRANCHES } from '../../constants';
 import { uploadFile } from '../../lib/supabase';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
 import { SparklesIcon } from '../icons/SparklesIcon';
+import DateField from '../operations/DateField';
 
 // Bound any promise so a stalled network call can't hang the UI forever.
 const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> =>
@@ -207,8 +208,8 @@ const AddDriverForm: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                     <div><label className={labelCls}>Licence Code</label><input value={licenceCode} onChange={e => setLicenceCode(e.target.value)} className={inputCls} placeholder="e.g. EC" /></div>
-                    <div><label className={labelCls}>Licence Expiry</label><input type="date" value={licenceExpiry} onChange={e => setLicenceExpiry(e.target.value)} className={inputCls} /></div>
-                    <div><label className={labelCls}>PDP Expiry</label><input type="date" value={pdpExpiry} onChange={e => setPdpExpiry(e.target.value)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Licence Expiry</label><DateField value={licenceExpiry} onChange={v => setLicenceExpiry(v)} className={inputCls} /></div>
+                    <div><label className={labelCls}>PDP Expiry</label><DateField value={pdpExpiry} onChange={v => setPdpExpiry(v)} className={inputCls} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div><label className={labelCls}>Assigned Vehicle</label>

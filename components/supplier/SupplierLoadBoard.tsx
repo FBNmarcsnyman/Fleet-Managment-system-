@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Supplier, LoadBoardPost } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import Modal from '../Modal';
+import DateField from '../operations/DateField';
 
 const fmt = (d?: string) => d ? new Date(d).toLocaleDateString('en-ZA') : '';
 const cls = 'w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm';
@@ -41,7 +42,7 @@ const PostModal: React.FC<{ supplier: Supplier; onClose: () => void }> = ({ supp
             <div className="grid grid-cols-2 gap-3">
                 <div><label className={label}>Origin *</label><input value={f.origin} onChange={e => set('origin', e.target.value)} className={cls} /></div>
                 <div><label className={label}>Destination *</label><input value={f.destination} onChange={e => set('destination', e.target.value)} className={cls} /></div>
-                <div><label className={label}>Collection date</label><input type="date" value={f.collectionDate} onChange={e => set('collectionDate', e.target.value)} className={cls} /></div>
+                <div><label className={label}>Collection date</label><DateField value={f.collectionDate} onChange={v => set('collectionDate', v)} className={cls} /></div>
                 <div><label className={label}>Vehicle type needed</label><input value={f.vehicleTypeNeeded} onChange={e => set('vehicleTypeNeeded', e.target.value)} placeholder="e.g. Tri-axle" className={cls} /></div>
                 <div><label className={label}>Load type</label><input value={f.loadType} onChange={e => set('loadType', e.target.value)} placeholder="Full / Part / Pallets" className={cls} /></div>
                 <div className="col-span-2"><label className={label}>Cargo description</label><input value={f.cargoDescription} onChange={e => set('cargoDescription', e.target.value)} className={cls} /></div>

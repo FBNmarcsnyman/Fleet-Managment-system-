@@ -4,6 +4,7 @@ import { LoadConfirmation, Vehicle, User, Supplier, Branch } from '../../types';
 import { useOperations, useUIState, useVehicles } from '../../contexts/AppContexts';
 import { ExclamationTriangleIcon } from '../icons/ExclamationTriangleIcon';
 import { eligibleCarriers, carrierOptionLabel, carrierWarning } from '../../lib/carrierEligibility';
+import DateField from './DateField';
 
 interface AssignLoadConModalProps {
     loadCon: LoadConfirmation;
@@ -201,7 +202,7 @@ const AssignLoadConModal: React.FC<AssignLoadConModalProps> = ({ loadCon, onCanc
                     </div>
                     <div>
                         <label className={labelClasses}>Scheduled Collection Date</label>
-                        <input type="date" value={collectionDate} onChange={e => setCollectionDate(e.target.value)} required className={inputClasses} />
+                        <DateField value={collectionDate} onChange={v => setCollectionDate(v)} className={inputClasses} />
                     </div>
                     <div className="flex justify-end space-x-3 mt-8 pt-4 border-t border-gray-700">
                         <button type="button" onClick={onCancel} className="px-6 py-2 text-sm font-bold text-gray-500 hover:text-white transition-colors">Cancel</button>

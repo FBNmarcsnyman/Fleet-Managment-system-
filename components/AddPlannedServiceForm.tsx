@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PlannedService, Vehicle } from '../types';
+import DateField from './operations/DateField';
 
 interface AddPlannedServiceFormProps {
     vehicles: Vehicle[];
@@ -36,11 +37,11 @@ const AddPlannedServiceForm: React.FC<AddPlannedServiceFormProps> = ({ vehicles,
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm text-gray-400 mb-1">Start Date</label>
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inputClasses} />
+                        <DateField value={startDate} onChange={setStartDate} className={inputClasses} />
                     </div>
                     <div>
                         <label className="block text-sm text-gray-400 mb-1">End Date</label>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inputClasses} />
+                        <DateField value={endDate} onChange={setEndDate} className={inputClasses} />
                     </div>
                 </div>
             </div>

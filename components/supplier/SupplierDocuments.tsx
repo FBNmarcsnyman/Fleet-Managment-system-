@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Supplier, ComplianceDoc } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { UploadIcon } from '../icons/UploadIcon';
+import DateField from '../operations/DateField';
 
 interface SupplierDocumentsProps {
     supplier: Supplier;
@@ -64,8 +65,8 @@ const SupplierDocuments: React.FC<SupplierDocumentsProps> = ({ supplier }) => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {req.hasExpiry && (
-                                        <input type="date" value={expiry[req.type] || ''} onChange={ev => setExpiry(p => ({ ...p, [req.type]: ev.target.value }))}
-                                            title="Expiry date (optional)" className="bg-gray-900 text-white text-xs p-2 rounded-md border border-gray-600" />
+                                        <div className="w-40"><DateField value={expiry[req.type] || ''} onChange={v => setExpiry(p => ({ ...p, [req.type]: v }))}
+                                            className="bg-gray-900 text-white text-xs p-2 rounded-md border border-gray-600 w-full" /></div>
                                     )}
                                     <button type="button" disabled={busy === req.type} onClick={() => fileRefs.current[req.type]?.click()}
                                         className="cursor-pointer text-sm font-semibold text-white bg-brand-primary hover:bg-brand-secondary disabled:opacity-50 px-3 py-2 rounded-md flex items-center">

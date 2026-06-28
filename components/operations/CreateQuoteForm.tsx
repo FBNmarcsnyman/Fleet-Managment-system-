@@ -6,6 +6,7 @@ import { addDays, format } from 'date-fns';
 import { PlusIcon } from '../icons/PlusIcon';
 import { TrashIcon } from '../icons/TrashIcon';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
+import DateField from './DateField';
 import { useUIState, useFleetData } from '../../contexts/AppContexts';
 import { LOAD_SPECS, QUOTE_TRUCK_TYPES } from '../../constants';
 import { MapPinIcon } from '../icons/MapPinIcon';
@@ -328,8 +329,8 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                             </div>
                         )}
                     </div>
-                    <div><label className={labelClasses}>Quote Date</label><input type="date" value={quote.date} onChange={e => handleFieldChange('date', e.target.value)} className={inputClasses} /></div>
-                    <div><label className={labelClasses}>Expiry Date</label><input type="date" value={quote.expiryDate} onChange={e => handleFieldChange('expiryDate', e.target.value)} className={inputClasses} /></div>
+                    <div><label className={labelClasses}>Quote Date</label><DateField value={quote.date} onChange={v => handleFieldChange('date', v)} className={inputClasses} /></div>
+                    <div><label className={labelClasses}>Expiry Date</label><DateField value={quote.expiryDate} onChange={v => handleFieldChange('expiryDate', v)} className={inputClasses} /></div>
                     <div>
                         <label className={labelClasses}>Load Specification</label>
                         <select value={quote.loadSpec} onChange={e => { setSpecTouched(true); handleFieldChange('loadSpec', e.target.value); }} className={inputClasses}>

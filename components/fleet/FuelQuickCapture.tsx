@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useVehicles, useUIState } from '../../contexts/AppContexts';
+import DateField from '../operations/DateField';
 
 // Fast inline fillings capture: pick a branch (LM first, then DBN, JHB), the
 // branch's vehicles come up in a list with their odometer ready, type litres +
@@ -77,7 +78,7 @@ const FuelQuickCapture: React.FC = () => {
                     <div className="flex flex-wrap items-end gap-2 mb-3">
                         <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Branch</label>
                             <select value={branch} onChange={e => setBranch(e.target.value)} className={inp}>{BRANCH_OPTS.map(b => <option key={b.v} value={b.v}>{b.label}</option>)}</select></div>
-                        <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className={inp} /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Date</label><DateField value={date} onChange={v => setDate(v)} className={inp} /></div>
                         <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Time</label><input type="time" value={time} onChange={e => setTime(e.target.value)} className={inp} /></div>
                         <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Filled by</label><input value={filledBy} onChange={e => setFilledBy(e.target.value)} placeholder="who filled" className={inp} /></div>
                         <button onClick={saveAll} disabled={busy || !entered.length} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black px-5 py-2 rounded-lg text-sm uppercase tracking-wider">{busy ? 'Saving…' : `Save ${entered.length || ''} filling${entered.length === 1 ? '' : 's'}`}</button>

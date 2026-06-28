@@ -4,6 +4,7 @@ import { directInvoke, directSelect, directUpdate } from '../../lib/supabase';
 import FuelQuickCapture from './FuelQuickCapture';
 import FuelReconciliation from './FuelReconciliation';
 import { Bowser, BowserRefill, FuelEntry, FuelPriceRecord, Vehicle, VehiclePerformanceStats } from '../../types';
+import DateField from '../operations/DateField';
 
 const rand = (n: number) => 'R ' + (Math.round(n * 100) / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const L = (n: number) => Math.round(n).toLocaleString('en-ZA') + ' L';
@@ -198,7 +199,7 @@ const FuelDashboard: React.FC = () => {
                         <select value={rfBowser} onChange={e => setRfBowser(e.target.value)} className={inp}>
                             <option value="">Bowser…</option>{bowsers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
-                        <input type="date" value={rfDate} onChange={e => setRfDate(e.target.value)} className={inp} />
+                        <DateField value={rfDate} onChange={v => setRfDate(v)} className={inp} />
                         <input value={rfLiters} onChange={e => setRfLiters(e.target.value)} placeholder="Litres" type="number" className={inp} />
                         <input value={rfCost} onChange={e => setRfCost(e.target.value)} placeholder="Cost/L (ex VAT)" type="number" step="0.01" className={inp} />
                         <input value={rfSupplier} onChange={e => setRfSupplier(e.target.value)} placeholder="Supplier" className={inp} />

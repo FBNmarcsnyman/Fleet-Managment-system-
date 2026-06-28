@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LoadConfirmation, Client, Quote } from '../../types';
 import { useUIState, useFleetData, useOperations } from '../../contexts/AppContexts';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
+import DateField from './DateField';
 import { LOAD_SPECS } from '../../constants';
 
 interface CreateBookingFormProps {
@@ -140,7 +141,7 @@ const CreateBookingForm: React.FC<CreateBookingFormProps> = ({ clients, onSubmit
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className={labelClasses}>Collection Date</label>
-                            <input type="date" value={collectionDate} onChange={e => setCollectionDate(e.target.value)} className={inputClasses} required />
+                            <DateField value={collectionDate} onChange={v => setCollectionDate(v)} className={inputClasses} />
                         </div>
                         <div>
                             <label className={labelClasses}>Collection Time</label>
@@ -152,7 +153,7 @@ const CreateBookingForm: React.FC<CreateBookingFormProps> = ({ clients, onSubmit
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className={labelClasses}>Delivery Date</label>
-                            <input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} className={inputClasses} />
+                            <DateField value={deliveryDate} onChange={v => setDeliveryDate(v)} className={inputClasses} />
                         </div>
                         <div>
                             <label className={labelClasses}>Delivery Time</label>

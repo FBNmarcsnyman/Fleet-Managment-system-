@@ -11,6 +11,7 @@ import { EditIcon } from './icons/EditIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { useUIState, useVehicles } from '../contexts/AppContexts';
 import { format } from 'date-fns';
+import DateField from './operations/DateField';
 
 interface FuelManagementProps {
     vehicles: Vehicle[];
@@ -134,7 +135,7 @@ const BowserManagement: React.FC<{
                         </div>
                         <div>
                             <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 ml-1">Refill Date</label>
-                            <input type="date" value={refDate} onChange={e => setRefDate(e.target.value)} className="w-full bg-gray-700 p-2 rounded-md" />
+                            <DateField value={refDate} onChange={setRefDate} className="w-full bg-gray-700 p-2 rounded-md" />
                         </div>
                         <div>
                             <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 ml-1">Reference No.</label>
@@ -184,7 +185,7 @@ const BowserManagement: React.FC<{
                                     <tr key={refill.id} className="border-b border-gray-700/50 hover:bg-gray-700/30 group">
                                         <td className="p-3 text-gray-300 font-mono">
                                             {isEditing ? (
-                                                <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="bg-gray-900 text-white p-1 rounded border border-blue-500 w-32" />
+                                                <DateField value={editDate} onChange={setEditDate} className="bg-gray-900 text-white p-1 rounded border border-blue-500 w-32" />
                                             ) : (
                                                 format(new Date(refill.date), 'dd MMM yy')
                                             )}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Role, Branch } from '../types';
 import { BRANCHES } from '../constants';
+import DateField from './operations/DateField';
 
 interface AddUserFormProps {
     onSubmit: (user: Omit<User, 'permissions' | 'assignedVehicleIds' | 'clientId' | 'supplierId'>) => void | Promise<any>;
@@ -96,11 +97,11 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onSubmit, onCancel }) => {
                          <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label htmlFor="licenseExpiry" className="block text-sm font-medium text-gray-300 mb-1">License Expiry</label>
-                                <input id="licenseExpiry" type="date" value={licenseExpiry} onChange={e => setLicenseExpiry(e.target.value)} className={inputClasses} />
+                                <DateField value={licenseExpiry} onChange={setLicenseExpiry} className={inputClasses} />
                             </div>
                             <div>
                                 <label htmlFor="pdpExpiry" className="block text-sm font-medium text-gray-300 mb-1">PDP Expiry</label>
-                                <input id="pdpExpiry" type="date" value={pdpExpiry} onChange={e => setPdpExpiry(e.target.value)} className={inputClasses} />
+                                <DateField value={pdpExpiry} onChange={setPdpExpiry} className={inputClasses} />
                             </div>
                         </div>
                     </>

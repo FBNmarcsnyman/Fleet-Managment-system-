@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { RevenueEntry } from '../types';
+import DateField from './operations/DateField';
 
 interface AddRevenueFormProps {
     onSubmit: (revenue: Omit<RevenueEntry, 'id' | 'vehicleId'>) => void;
@@ -30,7 +31,7 @@ const AddRevenueForm: React.FC<AddRevenueFormProps> = ({ onSubmit, onCancel }) =
         <form onSubmit={handleSubmit}>
             <h2 className="text-2xl font-bold mb-6 text-white">Add Revenue Entry</h2>
             <div className="space-y-4">
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClasses} />
+                <DateField value={date} onChange={setDate} className={inputClasses} />
                 <input type="text" placeholder="Description (e.g., Load LCN-001)" value={description} onChange={e => setDescription(e.target.value)} className={inputClasses} />
                 <input type="number" placeholder="Amount (R)" value={amount} onChange={e => setAmount(e.target.value)} step="0.01" className={inputClasses} />
             </div>

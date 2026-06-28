@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TireInspection } from '../types';
+import DateField from './operations/DateField';
 
 interface AddTireInspectionFormProps {
     tireId: string;
@@ -31,7 +32,7 @@ const AddTireInspectionForm: React.FC<AddTireInspectionFormProps> = ({ tireId, o
         <form onSubmit={handleSubmit}>
             <h2 className="text-2xl font-bold mb-6 text-white">New Tire Inspection</h2>
             <div className="space-y-4">
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClasses} />
+                <DateField value={date} onChange={setDate} className={inputClasses} />
                 <input type="number" placeholder="Vehicle Odometer" value={vehicleOdometer} onChange={e => setVehicleOdometer(e.target.value)} required className={inputClasses} />
                 <input type="number" placeholder="Tread Depth (mm)" value={treadDepth} onChange={e => setTreadDepth(e.target.value)} required step="0.1" className={inputClasses} />
                 <input type="number" placeholder="Pressure (PSI)" value={pressure} onChange={e => setPressure(e.target.value)} required className={inputClasses} />

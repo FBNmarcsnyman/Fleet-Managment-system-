@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ServiceEntry } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
+import DateField from './operations/DateField';
 
 interface AddServiceEntryFormProps {
     onSubmit: (entry: Omit<ServiceEntry, 'id' | 'vehicleId'>) => void;
@@ -58,7 +59,7 @@ const AddServiceEntryForm: React.FC<AddServiceEntryFormProps> = ({ onSubmit, onC
         <form onSubmit={handleSubmit}>
             <h2 className="text-2xl font-bold mb-6 text-white">Add Service Record</h2>
             <div className="space-y-4">
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClasses} />
+                <DateField value={date} onChange={setDate} className={inputClasses} />
                 <div className="grid grid-cols-2 gap-4">
                     <input type="number" placeholder="Odometer at Service" value={odometer} onChange={e => setOdometer(e.target.value)} className={inputClasses} />
                     <input type="number" placeholder="Hours at Service" value={hours} onChange={e => setHours(e.target.value)} className={inputClasses} />

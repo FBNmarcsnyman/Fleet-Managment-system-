@@ -11,6 +11,7 @@ import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { nextStep } from '../../lib/loadStatus';
 import { usePickOptions } from '../../hooks/usePickOptions';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
+import DateField from './DateField';
 
 const rand = (n?: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmt = (d?: string) => {
@@ -83,17 +84,21 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
     const [inline, setInline] = React.useState(false);
     const [draft, setDraft] = React.useState('');
     const canInline = !!k && !!onInlineSave && !editing && !prose && !address && !opts;
-    const startInline = () => { setDraft(value == null || value === '—' ? '' : String(value)); setInline(true); };
+    // Seed the inline draft: for dates use the raw ISO value off the record (so the
+    // DD/MM/YYYY DateField round-trips correctly), otherwise the displayed value.
+    const startInline = () => { setDraft(type === 'date' ? (d[k!] ?? '') : (value == null || value === '—' ? '' : String(value))); setInline(true); };
     const commitInline = () => { setInline(false); onInlineSave?.(k!, draft); };
     return (
         <div>
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{label}{canInline && !inline && <span className="text-blue-400 normal-case font-bold ml-1">· tap to edit</span>}</p>
             {!editing && inline ? (
                 <>
-                    <input autoFocus type={type} list={list && list.length ? listId : undefined} value={draft}
-                        onChange={e => setDraft(e.target.value)} onBlur={commitInline}
-                        onKeyDown={e => { if (e.key === 'Enter') commitInline(); if (e.key === 'Escape') setInline(false); }}
-                        className={inputCls} />
+                    {type === 'date'
+                        ? <DateField value={draft} onChange={v => { setInline(false); onInlineSave?.(k!, v); }} className={inputCls} />
+                        : <input autoFocus type={type} list={list && list.length ? listId : undefined} value={draft}
+                            onChange={e => setDraft(e.target.value)} onBlur={commitInline}
+                            onKeyDown={e => { if (e.key === 'Enter') commitInline(); if (e.key === 'Escape') setInline(false); }}
+                            className={inputCls} />}
                     {list && list.length ? <datalist id={listId}>{list.map(o => <option key={o} value={o} />)}</datalist> : null}
                 </>
             ) : editing && k ? (
@@ -107,7 +112,9 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
                     <>
                         {prose
                             ? <textarea rows={2} spellCheck value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={`${inputCls} normal-case`} style={{ textTransform: 'none' }} />
-                            : <input type={type} list={list && list.length ? listId : undefined} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />}
+                            : type === 'date'
+                                ? <DateField value={d[k] ?? ''} onChange={v => set(k, v)} className={inputCls} />
+                                : <input type={type} list={list && list.length ? listId : undefined} value={d[k] ?? ''} onChange={e => set(k, e.target.value)} className={inputCls} />}
                         {list && list.length ? <datalist id={listId}>{list.map(o => <option key={o} value={o} />)}</datalist> : null}
                     </>
                 )
@@ -444,7 +451,7 @@ const LoadDetailModal: React.FC = () => {
                                 <p className="text-xs text-slate-600">At {lc.transitDepot} depot for <strong className={dwellH >= 48 ? 'text-rose-600' : 'text-slate-800'}>{dwellH}h</strong>{dwellH >= 48 ? ' — chase the line-haul' : ''}. Add to the <strong>{finalRegion} line-haul manifest</strong> for the inter-depot transfer, then deliver locally on arrival.</p>
                                 <div className="flex flex-wrap items-end gap-2">
                                     <label className="text-[11px] font-bold text-slate-500 uppercase">Planned delivery date
-                                        <input type="date" value={onwardDate} onChange={e => setOnwardDate(e.target.value)} className="block bg-white border border-slate-300 rounded-md p-1.5 text-sm text-slate-700" /></label>
+                                        <DateField value={onwardDate} onChange={v => setOnwardDate(v)} className="block bg-white border border-slate-300 rounded-md p-1.5 text-sm text-slate-700" /></label>
                                     <input type="time" value={onwardTime} onChange={e => setOnwardTime(e.target.value)} className="bg-white border border-slate-300 rounded-md p-1.5 text-sm text-slate-700" />
                                     <button onClick={() => handleUpdateLoadConfirmation(lc.id, { onwardPlannedDate: onwardDate || undefined, onwardPlannedTime: onwardTime || undefined } as any).then((r: any) => showToast(r?.ok === false ? `Could not save: ${r.error}` : 'Plan saved.'))}
                                         className="bg-[#13294b] text-white font-bold py-1.5 px-3 rounded-md text-sm">Save plan</button>

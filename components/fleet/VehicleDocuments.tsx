@@ -3,6 +3,7 @@ import { directSelect, directUpdate, directInsert, invokeFn } from '../../lib/su
 import { extractFromDocument, LICENCE_DISC_PROMPT, LICENCE_DISC_SCHEMA, base64ToFile } from '../../lib/docScan';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import { useUIState } from '../../contexts/AppContexts';
+import DateField from '../operations/DateField';
 
 const DOC_TYPES: [string, string][] = [
     ['LICENSE_DISC', 'Licence Disc'], ['LOGBOOK', 'Logbook'], ['FIRE_PERMIT', 'Fire Permit'], ['INSURANCE', 'Insurance'],
@@ -135,7 +136,7 @@ const VehicleDocuments: React.FC<{ vehicleId: string; vehicleName?: string; regi
                             {DOC_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select></div>
                     <div><label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">Expiry date (optional)</label>
-                        <input type="date" value={upExpiry} onChange={e => setUpExpiry(e.target.value)} className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" /></div>
+                        <DateField value={upExpiry} onChange={v => setUpExpiry(v)} className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" /></div>
                     <div className="md:col-span-2"><label className="block text-[11px] font-bold text-gray-400 uppercase mb-1">File (PDF or photo)</label>
                         <input type="file" accept="image/*,application/pdf" onChange={e => setUpFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-300 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-blue-600 file:text-white file:font-semibold" /></div>
                     <div className="md:col-span-2 flex items-center justify-between gap-3">

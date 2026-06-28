@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { STATUS_LABEL, statusChip } from '../../lib/loadStatus';
+import DateField from './DateField';
 
 // Pick a transporter (subcontractor) → see every LoadCon given to them, filter by
 // date range + free-text search. Totals the buy rate for the period — handy for
@@ -65,10 +66,10 @@ const TransporterLoadCons: React.FC = () => {
                     <datalist id="transporterList">{transporters.map(t => <option key={t as string} value={t as string} />)}</datalist>
                 </label>
                 <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">From
-                    <input type="date" value={from} onChange={e => setFrom(e.target.value)} className={inp} />
+                    <DateField value={from} onChange={v => setFrom(v)} className={inp} />
                 </label>
                 <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">To
-                    <input type="date" value={to} onChange={e => setTo(e.target.value)} className={inp} />
+                    <DateField value={to} onChange={v => setTo(v)} className={inp} />
                 </label>
                 <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider flex-1 min-w-[160px]">Search
                     <input value={q} onChange={e => setQ(e.target.value)} className={`${inp} w-full`} placeholder="load no, waybill, client, route…" />

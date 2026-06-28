@@ -6,6 +6,7 @@ import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { usePickOptions } from '../../hooks/usePickOptions';
 import DocScanButton from '../shared/DocScanButton';
 import { BULK_DOC_PROMPT, BULK_DOC_SCHEMA } from '../../lib/docScan';
+import DateField from './DateField';
 
 // Import/export unpack depots we collect groupage from.
 const DEPOTS = ['ZACPAK', 'CHC', 'ICS', 'IWS', 'SACD'];
@@ -121,7 +122,7 @@ const BulkCollectionForm: React.FC = () => {
             <div className="grid grid-cols-3 gap-3 mb-4">
                 <div><label className={lbl}>Unpack depot</label><input list="depots" value={depot} onChange={e => setDepot(e.target.value.toUpperCase())} className={inp} /><datalist id="depots">{DEPOTS.map(d => <option key={d} value={d} />)}</datalist></div>
                 <div><label className={lbl}>Collecting branch</label><select value={collBranch} onChange={e => setCollBranch(e.target.value as Branch)} className={inp}>{AREAS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}</select></div>
-                <div><label className={lbl}>Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className={inp} /></div>
+                <div><label className={lbl}>Date</label><DateField value={date} onChange={v => setDate(v)} className={inp} /></div>
             </div>
 
             <div className="max-h-[46vh] overflow-y-auto pr-1">

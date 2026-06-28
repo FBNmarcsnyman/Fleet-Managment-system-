@@ -4,6 +4,7 @@ import { directInsert, directUpdate } from '../../lib/supabase';
 import { usePickOptions } from '../../hooks/usePickOptions';
 import DocScanButton from '../shared/DocScanButton';
 import { CONTAINER_DOC_PROMPT, CONTAINER_DOC_SCHEMA } from '../../lib/docScan';
+import DateField from './DateField';
 
 const SIZES = ['20FT', '40FT', '45FT', 'REEFER 20FT', 'REEFER 40FT', 'FLAT RACK', 'OPEN TOP'];
 const BRANCHES = ['FBN DBN', 'FBN JHB', 'FBN CPT'];
@@ -91,10 +92,10 @@ const LogContainerModal: React.FC = () => {
                 <div><label className={lbl}>Plan</label><select value={f.plan || ''} onChange={e => set('plan', e.target.value)} className={inp}><option value="unpack">Unpack at depot</option><option value="full_delivery">Full delivery</option></select></div>
                 <div><label className={lbl}>Vessel</label><input value={f.vessel_name || ''} onChange={e => set('vessel_name', e.target.value)} className={inp} /></div>
                 <div><label className={lbl}>Shipping line</label><input value={f.shipping_line || ''} onChange={e => set('shipping_line', e.target.value)} className={inp} /></div>
-                <div><label className={lbl}>ETA to port</label><input type="date" value={f.eta_port || ''} onChange={e => set('eta_port', e.target.value)} className={inp} /></div>
+                <div><label className={lbl}>ETA to port</label><DateField value={f.eta_port || ''} onChange={v => set('eta_port', v)} className={inp} /></div>
                 <div><label className={lbl}>Status</label><select value={f.status || 'At Sea'} onChange={e => set('status', e.target.value)} className={inp}>{CONTAINER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                 <div><label className={lbl}>Empty turn-in area</label><select value={f.turn_in_area || ''} onChange={e => set('turn_in_area', e.target.value)} className={inp}><option value="">—</option>{BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}</select></div>
-                <div><label className={lbl}>Turn-in by date</label><input type="date" value={f.turn_in_date || ''} onChange={e => set('turn_in_date', e.target.value)} className={inp} /></div>
+                <div><label className={lbl}>Turn-in by date</label><DateField value={f.turn_in_date || ''} onChange={v => set('turn_in_date', v)} className={inp} /></div>
                 <div className="col-span-2 md:col-span-3"><label className={lbl}>Notes</label><textarea value={f.notes || ''} onChange={e => set('notes', e.target.value)} rows={2} className={inp} /></div>
             </div>
 
@@ -106,23 +107,23 @@ const LogContainerModal: React.FC = () => {
                         <select value={f.route_plan || ''} onChange={e => set('route_plan', e.target.value)} className={inp}>
                             <option value="">—</option>{ROUTE_PLANS.map(r => <option key={r.v} value={r.v}>{r.label}</option>)}
                         </select></div>
-                    <div><label className={lbl}>Collected from port</label><input type="date" value={f.collected_date || ''} onChange={e => set('collected_date', e.target.value)} className={inp} /></div>
+                    <div><label className={lbl}>Collected from port</label><DateField value={f.collected_date || ''} onChange={v => set('collected_date', v)} className={inp} /></div>
                     <div><label className={lbl}>Haulier (FBN / subbie)</label><input value={f.haulier || ''} onChange={e => set('haulier', e.target.value)} className={inp} placeholder="FBN or transporter" /></div>
                     <div><label className={lbl}>Consol ref (re-load group)</label><input value={f.consol_ref || ''} onChange={e => set('consol_ref', e.target.value)} className={inp} placeholder="groups boxes unpacked together" /></div>
 
                     {f.route_plan === 'storage' && <>
                         <div><label className={lbl}>Storage depot</label><input value={f.storage_depot || ''} onChange={e => set('storage_depot', e.target.value)} className={inp} placeholder="who's holding it" /></div>
-                        <div><label className={lbl}>Stored in (date)</label><input type="date" value={f.storage_in_date || ''} onChange={e => set('storage_in_date', e.target.value)} className={inp} /></div>
-                        <div><label className={lbl}>Uplifted out (date)</label><input type="date" value={f.storage_out_date || ''} onChange={e => set('storage_out_date', e.target.value)} className={inp} /></div>
+                        <div><label className={lbl}>Stored in (date)</label><DateField value={f.storage_in_date || ''} onChange={v => set('storage_in_date', v)} className={inp} /></div>
+                        <div><label className={lbl}>Uplifted out (date)</label><DateField value={f.storage_out_date || ''} onChange={v => set('storage_out_date', v)} className={inp} /></div>
                     </>}
 
                     {(f.route_plan === 'yard_unpack' || f.route_plan === 'supplier_unpack' || !f.route_plan) && <>
                         <div><label className={lbl}>Unpack location</label><input value={f.unpack_location || ''} onChange={e => set('unpack_location', e.target.value)} className={inp} placeholder="FBN yard / supplier site" /></div>
                         <div><label className={lbl}>Unpacked by</label><input value={f.unpack_by || ''} onChange={e => set('unpack_by', e.target.value)} className={inp} placeholder="e.g. APEX WAREHOUSE" /></div>
-                        <div><label className={lbl}>Unpack date</label><input type="date" value={f.unpack_date || ''} onChange={e => set('unpack_date', e.target.value)} className={inp} /></div>
+                        <div><label className={lbl}>Unpack date</label><DateField value={f.unpack_date || ''} onChange={v => set('unpack_date', v)} className={inp} /></div>
                     </>}
 
-                    <div><label className={lbl}>Empty turn-in actual</label><input type="date" value={f.turn_in_date_actual || ''} onChange={e => set('turn_in_date_actual', e.target.value)} className={inp} /></div>
+                    <div><label className={lbl}>Empty turn-in actual</label><DateField value={f.turn_in_date_actual || ''} onChange={v => set('turn_in_date_actual', v)} className={inp} /></div>
                 </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">

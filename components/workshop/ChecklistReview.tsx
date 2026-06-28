@@ -116,7 +116,7 @@ const ChecklistReview: React.FC<ChecklistReviewProps> = ({
                                 return (
                                     <div key={result.itemId} className="bg-gray-700/50 p-3 rounded-md">
                                         <div className="flex items-center justify-between">
-                                            <div className="flex items-center">{renderStatusIcon(result.status)}<span className="font-medium text-white">{result.item}</span></div>
+                                            <div className="flex items-center">{renderStatusIcon(result.status === 'NA' ? 'Pass' : result.status)}<span className="font-medium text-white">{result.item || result.label}</span></div>
                                             {result.attachment && <a href={result.attachment.data} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white"><PaperClipIcon className="h-5 w-5"/></a>}
                                         </div>
                                         {result.status !== 'Pass' && (

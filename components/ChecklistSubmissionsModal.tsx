@@ -100,8 +100,8 @@ const ChecklistSubmissionsModal: React.FC<ChecklistSubmissionsModalProps> = ({ i
                                         <div key={result.itemId} className={`p-3 rounded-md transition-all ${isHighlighted ? 'bg-yellow-900/50 ring-2 ring-yellow-500' : 'bg-gray-700/50'}`}>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center">
-                                                    {renderStatusIcon(result.status)}
-                                                    <span className="font-medium text-white">{result.item}</span>
+                                                    {renderStatusIcon(result.status === 'NA' ? 'Pass' : result.status)}
+                                                    <span className="font-medium text-white">{result.item || result.label}</span>
                                                 </div>
                                                 {result.attachment && (
                                                     <a href={result.attachment.data} target="_blank" rel="noopener noreferrer" title={`View: ${result.attachment.name}`} className="text-gray-400 hover:text-white">

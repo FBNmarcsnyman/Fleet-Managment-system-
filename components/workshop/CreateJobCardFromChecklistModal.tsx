@@ -10,8 +10,10 @@ interface CreateJobCardFromChecklistModalProps {
 }
 
 const CreateJobCardFromChecklistModal: React.FC<CreateJobCardFromChecklistModalProps> = ({ item, vehicle, submissionId, onSubmit, onClose }) => {
-    const [priority, setPriority] = useState<JobCard['priority']>(item.priority || (item.status === 'Fail' ? 'High' : 'Medium'));
-    const [severity, setSeverity] = useState<JobCard['severity']>(item.severity || (item.status === 'Fail' ? 'High' : 'Medium'));
+    // The QR inspection uses Critical/Urgent/Minor; map to the job-card priority scale.
+    const toJcLevel = (s?: string): JobCard['severity'] => s === 'Critical' ? 'Critical' : s === 'Urgent' || s === 'High' ? 'High' : s === 'Minor' || s === 'Low' ? 'Low' : 'Medium';
+    const [priority, setPriority] = useState<JobCard['priority']>(item.priority ? toJcLevel(item.priority) : (item.status === 'Fail' ? 'High' : 'Medium'));
+    const [severity, setSeverity] = useState<JobCard['severity']>(item.severity ? toJcLevel(item.severity) : (item.status === 'Fail' ? 'High' : 'Medium'));
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

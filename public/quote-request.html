@@ -42,7 +42,10 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
 }
 .svc-card:hover{border-color:#cbd5e1;background:#f1f5f9}
 .svc-card.sel{border-color:var(--navy);background:#eef2ff}
-.svc-icon{font-size:22px;margin-bottom:4px}
+.svc-icon{line-height:0;margin-bottom:8px;color:#64748b;transition:color .2s}
+.svc-icon svg{display:block;margin:0 auto}
+.svc-card:hover .svc-icon{color:var(--navy)}
+.svc-card.sel .svc-icon{color:var(--navy)}
 .svc-name{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--text)}
 .svc-desc{font-size:10px;color:var(--text3);margin-top:2px}
 .pill-group{display:flex;flex-wrap:wrap;gap:8px}
@@ -139,17 +142,46 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
           <label>What are you looking to move?<span class="req">*</span></label>
           <div class="svc-grid" id="cargo-cards" style="grid-template-columns:repeat(3,1fr)">
             <div class="svc-card" data-type="Small Parcels" onclick="selCargoType(this)">
-              <div class="svc-icon">📦</div>
+              <div class="svc-icon">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                  <path d="M3.27 6.96 12 12.01l8.73-5.05"/>
+                  <path d="M12 22.08V12"/>
+                </svg>
+              </div>
               <div class="svc-name">Small Parcels</div>
               <div class="svc-desc">Cartons / boxes</div>
             </div>
             <div class="svc-card" data-type="Part Load" onclick="selCargoType(this)">
-              <div class="svc-icon">📐</div>
+              <div class="svc-icon">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/>
+                  <path d="m7 16.5-4.74-2.85"/>
+                  <path d="m7 16.5 5-3"/>
+                  <path d="M7 16.5v5.17"/>
+                  <path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/>
+                  <path d="m17 16.5-5-3"/>
+                  <path d="m17 16.5 4.74-2.85"/>
+                  <path d="M17 16.5v5.17"/>
+                  <path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/>
+                  <path d="M12 8 7.26 5.15"/>
+                  <path d="m12 8 4.74-2.85"/>
+                  <path d="M12 13.5V8"/>
+                </svg>
+              </div>
               <div class="svc-name">Part Load</div>
               <div class="svc-desc">Share a truck</div>
             </div>
             <div class="svc-card" data-type="Full Load" onclick="selCargoType(this)">
-              <div class="svc-icon">🚛</div>
+              <div class="svc-icon">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                  <path d="M15 18H9"/>
+                  <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                  <circle cx="17" cy="18" r="2"/>
+                  <circle cx="7" cy="18" r="2"/>
+                </svg>
+              </div>
               <div class="svc-name">Full Load</div>
               <div class="svc-desc">Dedicated / consol</div>
             </div>

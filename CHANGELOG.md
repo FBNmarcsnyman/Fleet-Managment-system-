@@ -2,6 +2,23 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-28] — Workshop module (Parts 1–4)
+
+### Added
+- **Checklist templates (Part 1):** structured items (section, photo rule, value options + fail values,
+  severity, tyre per-wheel/tread-depth, Loadmaster-only) across Horse/Rigid/Trailer/Forklift, linked to
+  vehicle types; fully editable in Checklist Management; `lib/vehicleChecklist.ts` classifier.
+- **QR → mobile inspection (Part 2):** no-login `?checklist=<uuid>` flow — driver ID (PDP warnings) →
+  vehicle confirm + substitution → trailer select → structured checklist (Pass/Fail/N-A, value, tyre tread +
+  photo, autosave) → submit (Roadworthy/Requires Attention/Grounded + reference). Edge fns inspection-load /
+  inspection-upload (private `inspections` bucket) / submit-inspection.
+- **Tyre AI (Part 3):** tyre photos analysed (Gemini) → coloured assessment + retread detection; retread on a
+  Loadmaster or Horse steering axle auto-escalates to Critical.
+- **Breakdown logging (Part 4):** public `/breakdown/tyre` — log a roadside tyre change (photos, location,
+  replacement) → flags the vehicle, notifies the depot workshop + ops; resolve restores status.
+- (Parts 5–12 — notifications, review tab, job cards, parts, suppliers, service planner, tyre mgmt — pending.)
+
+
 ## [2026-06-28] — Client portal (Session 4)
 
 ### Added

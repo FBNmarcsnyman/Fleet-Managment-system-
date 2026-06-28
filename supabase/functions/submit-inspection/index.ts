@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
     const row = {
       organization_id: ORG, template_id: p.templateId || null, template_name: p.templateName || null,
       vehicle_id: p.vehicleId, user_name: driver.name || null, date: new Date().toISOString().slice(0, 10),
-      odometer: p.odometer ?? null, hours: p.hours ?? null, results, status: "Completed",
+      odometer: p.odometer ?? null, hours: p.hours ?? null, results, status: "Submitted",
       reference, depot: p.depot || null, result, driver_id_number: driver.idNumber || null,
       licence_code: driver.licenceCode || null, pdp_expiry: driver.pdpExpiry || null, substituting: !!driver.substituting,
       trailer_ids: Array.isArray(p.trailerIds) ? p.trailerIds : [],

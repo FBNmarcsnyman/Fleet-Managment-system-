@@ -207,18 +207,20 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
         // -- Checklist Templates ---------------------------------------------
-        handleAddChecklistTemplate: async (template: { name: string; items: any[] }): Promise<Result<void>> => {
+        handleAddChecklistTemplate: async (template: { name: string; items: any[]; vehicleTypes?: string[] }): Promise<Result<void>> => {
             try {
-                const row = { organization_id: FBN_ORG_ID, name: template.name, items: template.items as any, is_active: true };
-                const { data, error } = await runWrite(() => supabase.from('checklist_templates').insert(row).select().single());
+                const row = { organization_id: FBN_ORG_ID, name: template.name, items: template.items as any, vehicle_types: template.vehicleTypes ?? [], is_active: true };
+                const { data, error } = await runWrite(() => supabase.from('checklist_templates').insert(row as any).select().single());
                 if (error || !data) { console.error('[workshop] addChecklistTemplate failed:', error); return { ok: false, error: error?.message || 'Could not save template.' }; }
                 dispatch({ type: 'ADD_CHECKLIST_TEMPLATE', payload: mapChecklistTemplate(data) });
                 return { ok: true };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
-        handleUpdateChecklistTemplate: async (template: { id: string; name: string; items: any[] }): Promise<Result<void>> => {
+        handleUpdateChecklistTemplate: async (template: { id: string; name: string; items: any[]; vehicleTypes?: string[] }): Promise<Result<void>> => {
             try {
-                const { data, error } = await runWrite(() => supabase.from('checklist_templates').update({ name: template.name, items: template.items as any }).eq('id', template.id).select().single());
+                const patch: any = { name: template.name, items: template.items as any };
+                if (template.vehicleTypes !== undefined) patch.vehicle_types = template.vehicleTypes;
+                const { data, error } = await runWrite(() => supabase.from('checklist_templates').update(patch as any).eq('id', template.id).select().single());
                 if (error || !data) { console.error('[workshop] updateChecklistTemplate failed:', error); return { ok: false, error: error?.message || 'Could not update template.' }; }
                 dispatch({ type: 'UPDATE_CHECKLIST_TEMPLATE', payload: mapChecklistTemplate(data) });
                 return { ok: true };

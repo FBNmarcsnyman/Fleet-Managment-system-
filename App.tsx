@@ -17,6 +17,7 @@ import PublicRfqQuote from './components/PublicRfqQuote';
 import SupplierRegister from './components/supplier/SupplierRegister';
 import ClientRegister from './components/client/ClientRegister';
 import MobileInspection from './components/MobileInspection';
+import BreakdownTyre from './components/BreakdownTyre';
 
 
 import ManagementPortal from './components/ManagementPortal';
@@ -337,6 +338,10 @@ const App: React.FC = () => {
     // flow (Workshop Part 2). Self-contained: loads the vehicle + template via edge fns.
     if (checklistVehicleId) {
         return <MobileInspection uuid={checklistVehicleId} />;
+    }
+    // Public, no-login road breakdown tyre-change logging (Workshop Part 4).
+    if (window.location.pathname === '/breakdown/tyre') {
+        return <BreakdownTyre />;
     }
 
     if (checklistFlow && checklistFlow.step === 'form') {

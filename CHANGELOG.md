@@ -4,6 +4,11 @@ All notable changes to the FBN Fleet Management System. Newest first.
 
 ## [2026-06-28]
 
+### Changed
+- **Subcontractor (Carrier) Portal restyled to the light brand theme** — navy sidebar + gold active
+  tab, white cards on slate, navy/emerald/slate buttons, light status pills, across every portal
+  screen and modal. (Was dark; now matches the rest of the app.)
+
 ### Fixed
 - **Date standard applied program-wide.** Every raw `<input type="date">` (which renders
   yyyy/mm/dd) replaced with the house **DD/MM/YYYY DateField** across ~37 files — all supplier-portal

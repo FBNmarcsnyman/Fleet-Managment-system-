@@ -16,6 +16,7 @@ import PublicTerms from './components/PublicTerms';
 import PublicRfqQuote from './components/PublicRfqQuote';
 import SupplierRegister from './components/supplier/SupplierRegister';
 import ClientRegister from './components/client/ClientRegister';
+import MobileInspection from './components/MobileInspection';
 
 
 import ManagementPortal from './components/ManagementPortal';
@@ -332,16 +333,10 @@ const App: React.FC = () => {
         return <div className="text-center p-8 text-red-400">Quote not found or invalid link.</div>;
     }
     
-    // Scan a vehicle/trailer QR (any device, no login needed): identify the
-    // driver, then run the daily checklist across the whole rig.
-    if (checklistVehicleId && !checklistFlow) {
-        const vehicle = (vehicles || []).find((v: any) => v.id === checklistVehicleId);
-        if (vehicle) {
-            return <DriverChecklistAuth vehicle={vehicle} users={users} drivers={drivers} onAuthenticated={(user) => {
-                showToast(`Hi ${user.name} — let's run the checklist.`);
-                setChecklistFlow({ step: 'form', user, vehicle });
-            }} />;
-        }
+    // Scan a vehicle/trailer QR (any device, no login needed) → the mobile inspection
+    // flow (Workshop Part 2). Self-contained: loads the vehicle + template via edge fns.
+    if (checklistVehicleId) {
+        return <MobileInspection uuid={checklistVehicleId} />;
     }
 
     if (checklistFlow && checklistFlow.step === 'form') {

@@ -2,6 +2,35 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-28] — Workshop Parts 5–8/11 + inspection refinements + Driver Hub
+
+### Added
+- **Driver Hub (`/driver`, no-login):** one mobile page per driver — pick your vehicle once (remembered),
+  then tiles for Vehicle inspection / Report a breakdown / **Report an incident** (new: type, GPS location,
+  third-party, photos → `incident_reports` + emails ops & workshop) / **My logs** (recent inspections,
+  breakdowns, incidents). New `driver-hub` edge fn (meta/logs/incident).
+- **Workshop Part 5:** failed inspection → auto job card + grounding gate (Grounded → vehicle Off the road,
+  removed from all dispatch pickers) + workshop email; retread escalation.
+- **Workshop Part 6:** Checklist Review screen (light theme) — submitted inspections with result/severity/
+  driver/photos via signed URLs (`inspection-doc-url`), Mark-as-Reviewed persists.
+- **Workshop Part 7:** Job Card board → light-theme **list** (not kanban); one job card per inspection holding
+  all defects as resolvable line items; resolve each → Complete & close → vehicle back on road.
+- **Workshop Part 8:** Parts & Inventory procurement chain wired + persists — create request → manager
+  Authorise/Reject (role-gated) → Raise PO → Receive Goods → stock up; part assignment decrements stock.
+- **Workshop Part 11:** tyre operations now persist (add/mount/dismount/scrap/send-retread/receive/inspect →
+  `tires`/`tire_mount_history`/`tire_inspections`); CPK bug fixed; TireManagement + 7 modals → light theme.
+
+### Changed
+- **Inspection flow v2/v3:** reorder (vehicle+assigned → driver → trailers → checklist); licence-photo scan
+  (Gemini OCR); per-type trailer selection (superlink auto-pair / triaxle / skeleton, can't proceed without reg);
+  flatbed trailer checklist; tyres grouped per axle-end (tread + rim photos), horse/rigid 6 positions (drive
+  axles split L/R); triangles = number + good/damaged; fire-extinguisher per-unit photos; **plain-English
+  outcomes** ("DO NOT DRIVE — book into workshop"); AI Triage model → gemini-3-flash-preview.
+
+### Fixed
+- Inspection save (checklist_submissions.user_id made nullable for no-login); trailers not loading
+  (removed non-existent is_active filter in inspection-load).
+
 ## [2026-06-28] — Workshop module (Parts 1–4)
 
 ### Added

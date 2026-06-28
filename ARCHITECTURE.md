@@ -195,3 +195,15 @@ State machine: `lib/loadStatus.ts` — DIRECT vs DEPOT flow. Cargo verification 
   is the lighter version for now). See `PORTAL_BUILD_SESSIONS.md`.
 
 _Companion deep-dives live in the `memory/` notes (subcontractor-portal, client-portal, supplier-self-registration, supplier-onboarding-todo, depot-linehaul-process-spec, cargo-verification-journey-spec, vehicle-tracking-pulsit, fleet-structure, scheduled-jobs, comms-routing, etc.)._
+
+## Workshop module + Driver Hub (2026-06-28/29 session)
+- **Edge functions added:** `inspection-load`, `inspection-upload`, `submit-inspection`, `inspection-doc-url`,
+  `breakdown-tyre`, `driver-hub` (all verify_jwt=false except inspection-doc-url which is JWT-gated for staff signed URLs).
+- **Private Storage bucket:** `inspections` (inspection + incident photos; staff view via `inspection-doc-url` signed URLs).
+- **Driver Hub:** public `/driver` (`components/DriverHub.tsx`) — no-login vehicle-keyed page: inspection / breakdown /
+  incident / logs. Incidents → `incident_reports`.
+- **Workshop:** QR inspection (`MobileInspection.tsx`), Checklist Review + Management, Job Card list + detail (defects),
+  Parts & Inventory procurement (request→authorise→PO→receive), Tyre Management (lifecycle persists). Job cards now
+  ONE per inspection (job_cards.defects jsonb). checklist_submissions.user_id nullable for no-login.
+- **DB columns added:** job_cards.defects; (tyre/inspection tables already existed). Templates carry per-item flags
+  (help/quantity/expiryPerUnit/spotPhoto/treadOptional/failValues).

@@ -244,3 +244,11 @@
 |---|---|
 | 2026-06-17 | Actioned CHG-001 (role save hang → fixed via directInvoke) and CHG-002 (ETA date+time picker). Logged the full build run's completed items. CHG-003/003b and the WhatsApp side of CHG-004 are blocked on a WhatsApp Business sender; CHG-005 blocked on a Google Maps key. Roadmap = `FBN_PROGRAM_PLAN.md`; project logic = `.claude/skills/fbn-fleet/`. |
 | 2026-06-17 | Initial change log created. 4 items logged (CHG-001 to CHG-004). |
+
+## 2026-06-28/29 — Workshop Parts 5–8/11, inspection v2/v3, Driver Hub
+- Inspection refinements (reorder, licence scan, per-type trailers, flatbed checklist, axle-end tyres,
+  triangles count, fire-ext per-unit photos, plain-English outcomes). Fixed save (user_id nullable) + trailers.
+- Part 5 notifications + auto job-cards + grounding gate; Part 6 Checklist Review; Part 7 job-card list (one per
+  inspection, defects); Part 8 procurement (request→authorise→PO→receive); Part 11 tyre ops persist + light theme.
+- Driver Hub at /driver (no-login): inspection / breakdown / incident / logs. New driver-hub edge fn.
+- NEXT: custom domain control.fbn-transport.co.za (memory custom-domain-plan); Tyre People portal; Parts 9/10/12.

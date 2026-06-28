@@ -305,3 +305,13 @@ PHASES 6–10 ONLY START AFTER PHASE 5 IS LIVE AND STABLE.
 - [ ] **Auto-trigger** — auto-set COD hold + auto-raise proforma at COD load creation; auto in/out-of-network.
 - [ ] **Waybill photos to Drive/Storage** (currently data-URLs in jsonb).
 - [ ] Carried over: FCL unpack→floor→split; access approval gate; LCL daily client status emails.
+
+## Workshop / Driver — next session (2026-06-29+)
+- [ ] **Custom domain** — put the app on `control.fbn-transport.co.za` (see memory `custom-domain-plan`); DNS at
+  Hetzner, protect Google email + root website; Option B (delegate just the subdomain) recommended. Draft the
+  one-page step list for whoever manages the domain.
+- [ ] **Workshop Part 11b** — Tyre People external supplier portal (retreader sees tyres sent + marks received).
+- [ ] **Workshop Part 9/10/12** — supplier metrics; Service Planner "create planned service" UI; industry-standards
+  enforcement (Reg 246 / SANS 1395 / RTMS / cross-border).
+- [ ] **Driver Hub extras** — printable `/driver` QR poster for cabs; general (non-tyre) breakdown option.
+- [ ] **Optional** — per-driver login (Driver Hub Option B).

@@ -37,9 +37,10 @@ const WorkshopPortal: React.FC = () => {
         handleReceiveGoods, 
         handleClockInOut, 
         handleAssignPartFromInventory, 
-        handleAddChecklistTemplate, 
-        handleUpdateChecklistTemplate, 
-        handleDeleteChecklistTemplate 
+        handleAddChecklistTemplate,
+        handleUpdateChecklistTemplate,
+        handleDeleteChecklistTemplate,
+        handleUpdateChecklistSubmission
     } = useWorkshop();
     const { serviceStatuses, vehicles = [], serviceIntervals = [], handleUpdateVehicleStatus } = useVehicles();
     const { suppliers = [] } = useOperations();
@@ -91,7 +92,7 @@ const WorkshopPortal: React.FC = () => {
             case 'servicePlanner':
                 return <ServicePlanner vehicles={vehicles} serviceStatuses={serviceStatuses} serviceIntervals={serviceIntervals} jobCards={jobCards} onCreateJobCard={handleCreateJobCard} />;
             case 'checklistReview':
-                return <ChecklistReview currentUser={currentUser!} submissions={checklistSubmissions} jobCards={jobCards} vehicles={vehicles} onUpdateSubmission={() => {}} onCreateJobCard={handleCreateJobCard} />;
+                return <ChecklistReview currentUser={currentUser!} submissions={checklistSubmissions} jobCards={jobCards} vehicles={vehicles} onUpdateSubmission={(s: any) => handleUpdateChecklistSubmission?.(s.id, { status: s.status, reviewedBy: currentUser?.id })} onCreateJobCard={handleCreateJobCard} />;
             case 'checklistManagement':
                 return <ChecklistManagement 
                             templates={checklistTemplates}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Tire } from '../types';
 
 interface ReceiveRetreadModalProps {
@@ -15,11 +15,11 @@ const ReceiveRetreadModal: React.FC<ReceiveRetreadModalProps> = ({ tire, onRecei
 
     return (
         <form onSubmit={handleSubmit}>
-            <h2 className="text-2xl font-bold mb-4 text-white">Receive Retreaded Tire</h2>
-            <p className="text-gray-400 mb-6">Confirm receipt of tire <strong className="font-mono">{tire.serialNumber}</strong> from the retreader. This will return it to 'In Storage' status.</p>
-            <div className="flex justify-end space-x-4 mt-8">
-                <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">Confirm Receipt</button>
+            <h2 className="text-2xl font-black mb-4 text-[#13294b]">Receive Retreaded Tyre</h2>
+            <p className="text-slate-500 mb-6">Confirm receipt of tyre <strong className="font-mono">{tire.serialNumber}</strong> from the retreader. This returns it to 'In Storage' (type Retread).</p>
+            <div className="flex justify-end space-x-3 mt-8">
+                <button type="button" onClick={onCancel} className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold py-2 px-4 rounded-lg">Cancel</button>
+                <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg">Confirm receipt</button>
             </div>
         </form>
     );

@@ -22,12 +22,12 @@ const MountTireModal: React.FC<MountTireModalProps> = ({ tire, vehicles, onMount
         onMount(tire.id, vehicleId, position, parseFloat(odometer));
     };
     
-    const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";
+    const inputClasses = "w-full bg-white text-slate-800 p-3 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#f5b700]";
 
     return (
         <form onSubmit={handleSubmit}>
-            <h2 className="text-2xl font-bold mb-4 text-white">Mount Tire</h2>
-            <p className="text-gray-400 mb-6">Tire S/N: <strong className="font-mono">{tire.serialNumber}</strong></p>
+            <h2 className="text-2xl font-black mb-4 text-[#13294b]">Mount Tyre</h2>
+            <p className="text-slate-500 mb-6">Tyre S/N: <strong className="font-mono">{tire.serialNumber}</strong></p>
             <div className="space-y-4">
                 <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} required className={inputClasses}>
                     <option value="" disabled>-- Select Vehicle --</option>
@@ -37,8 +37,8 @@ const MountTireModal: React.FC<MountTireModalProps> = ({ tire, vehicles, onMount
                 <input type="number" placeholder="Current Vehicle Odometer" value={odometer} onChange={e => setOdometer(e.target.value)} required className={inputClasses} />
             </div>
             <div className="flex justify-end space-x-4 mt-8">
-                <button type="button" onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
-                <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Mount Tire</button>
+                <button type="button" onClick={onCancel} className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold py-2 px-4 rounded-lg">Cancel</button>
+                <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg">Mount Tyre</button>
             </div>
         </form>
     );

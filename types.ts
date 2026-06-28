@@ -251,13 +251,31 @@ export interface BowserRefill {
 export interface ChecklistItemTemplate {
     id: string;
     label: string;
-    requiresPhotoOnFail: boolean;
+    requiresPhotoOnFail?: boolean;          // legacy flag (kept for back-compat)
+    // Workshop module (Part 1) structured fields:
+    section?: string;                        // grouping header on the inspection
+    photo?: 'always' | 'onFail' | null;      // photo requirement
+    value?: string[];                        // value options (turns the item into a value selector)
+    failValues?: string[];                   // which value options count as a failure
+    severity?: 'Critical' | 'Urgent' | 'Minor';
+    treadDepth?: boolean;                     // capture tyre tread depth (mm)
+    criticalUnderMm?: number;                 // tread below this = Critical (SANS 1395 = 1.6)
+    perWheel?: boolean;                       // repeat the item per wheel position
+    wheelPositions?: string[];
+    loadmasterOnly?: boolean;                 // only shown for Loadmaster vehicles
+    regulation?: string;                      // e.g. "Reg 246"
+    crossBorder?: boolean;                    // only shown for cross-border-capable vehicles
 }
+
+// A vehicle's checklist class (drives template selection).
+export type VehicleChecklistType = 'Horse' | 'Loadmaster' | 'Rigid' | 'Trailer' | 'Forklift' | 'Light';
 
 export interface ChecklistTemplate {
     id: string;
     name: string;
     items: ChecklistItemTemplate[];
+    vehicleTypes?: string[];                  // links this template to vehicle types
+    isActive?: boolean;
 }
 
 export interface ChecklistSubmission {

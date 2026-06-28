@@ -260,6 +260,8 @@ export const mapChecklistTemplate = (row: Tables['checklist_templates']['Row']):
     id: row.id,
     name: row.name,
     items: (row.items as unknown as ChecklistItemTemplate[]) ?? [],
+    vehicleTypes: ((row as any).vehicle_types as string[]) ?? [],
+    isActive: (row as any).is_active ?? true,
 });
 
 // -- checklist_submissions → ChecklistSubmission -----------------------------

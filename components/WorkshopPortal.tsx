@@ -40,7 +40,9 @@ const WorkshopPortal: React.FC = () => {
         handleAddChecklistTemplate,
         handleUpdateChecklistTemplate,
         handleDeleteChecklistTemplate,
-        handleUpdateChecklistSubmission
+        handleUpdateChecklistSubmission,
+        handleSetPurchaseRequestStatus,
+        handleCreatePurchaseOrder
     } = useWorkshop();
     const { serviceStatuses, vehicles = [], serviceIntervals = [], handleUpdateVehicleStatus } = useVehicles();
     const { suppliers = [] } = useOperations();
@@ -133,6 +135,10 @@ const WorkshopPortal: React.FC = () => {
                     onAssignPartToVehicle={handleAssignPartFromInventory}
                     onAddPart={handleActualAddPart}
                     onReceiveGoods={handleReceiveGoods}
+                    currentUser={currentUser!}
+                    onApprove={(id: string) => handleSetPurchaseRequestStatus?.(id, 'Approved')}
+                    onReject={(id: string) => handleSetPurchaseRequestStatus?.(id, 'Rejected')}
+                    onRaisePo={(req: any) => handleCreatePurchaseOrder?.(req)}
                 />;
             case 'suppliers':
                 return <WorkshopSupplierManagementView />;

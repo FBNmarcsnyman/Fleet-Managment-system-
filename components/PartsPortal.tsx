@@ -21,29 +21,24 @@ const GoodsReceivingView: React.FC<{
 
     return (
         <div>
-            <h3 className="text-xl font-bold text-white mb-4">Awaiting Delivery</h3>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            <h3 className="text-xl font-black text-[#13294b] mb-4">Awaiting Delivery</h3>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
                 {orderedPOs.length > 0 ? orderedPOs.map(po => (
-                    <div key={po.id} className="bg-gray-700/50 p-4 rounded-lg">
+                    <div key={po.id} className="bg-white border border-slate-200 rounded-xl p-4">
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="font-bold text-white font-mono">{po.poNumber}</p>
-                                <p className="text-sm text-gray-400">Supplier: {supplierMap.get(po.supplierId || '') || 'N/A'}</p>
-                                <p className="text-xs text-gray-500">Ordered: {format(new Date(po.orderDate), 'dd MMM yyyy')}</p>
+                                <p className="font-bold text-[#13294b] font-mono">{po.poNumber}</p>
+                                <p className="text-sm text-slate-500">Supplier: {supplierMap.get(po.supplierId || '') || 'N/A'}</p>
+                                <p className="text-xs text-slate-400">Ordered: {format(new Date(po.orderDate), 'dd MMM yyyy')}</p>
                             </div>
                             <div className="text-right">
-                                <p className="font-semibold font-mono text-lg">R {po.totalCost.toFixed(2)}</p>
-                                <button
-                                    onClick={() => onReceiveGoods(po)}
-                                    className="mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm"
-                                >
-                                    Receive Goods
-                                </button>
+                                <p className="font-bold font-mono text-lg text-slate-800">R {po.totalCost.toFixed(2)}</p>
+                                <button onClick={() => onReceiveGoods(po)} className="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Receive Goods</button>
                             </div>
                         </div>
                     </div>
                 )) : (
-                    <p className="text-center text-gray-500 py-10">No outstanding purchase orders.</p>
+                    <p className="text-center text-slate-400 py-10">No outstanding purchase orders.</p>
                 )}
             </div>
         </div>
@@ -63,6 +58,10 @@ interface PartsPortalProps {
     onAssignPartToVehicle: (vehicleId: string, partId: string, quantity: number, jobCardId?: string) => void;
     onAddPart: (part: Omit<Part, 'id'>) => void;
     onReceiveGoods: (order: PurchaseOrder) => void;
+    currentUser?: User;
+    onApprove?: (id: string) => void;
+    onReject?: (id: string) => void;
+    onRaisePo?: (req: PurchaseRequest) => void;
 }
 
 const PartsPortal: React.FC<PartsPortalProps> = (props) => {
@@ -74,7 +73,7 @@ const PartsPortal: React.FC<PartsPortalProps> = (props) => {
     const TabButton = ({ view, label }: { view: 'inventory' | 'requests' | 'orders', label: string }) => (
         <button
             onClick={() => setActiveView(view)}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeView === view ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+            className={`px-4 py-2 text-sm font-bold rounded-md transition-colors ${activeView === view ? 'bg-white text-[#13294b] shadow-sm' : 'text-slate-500 hover:bg-white/60'}`}
         >
             {label}
         </button>
@@ -99,7 +98,7 @@ const PartsPortal: React.FC<PartsPortalProps> = (props) => {
     return (
         <>
             <div className="mb-6">
-                <div className="bg-gray-900/50 p-1 rounded-lg flex space-x-1 max-w-md">
+                <div className="bg-slate-100 p-1 rounded-lg flex space-x-1 max-w-md">
                     <TabButton view="inventory" label="Inventory" />
                     <TabButton view="requests" label="Purchase Requests" />
                     <TabButton view="orders" label="Purchase Orders" />
@@ -117,7 +116,11 @@ const PartsPortal: React.FC<PartsPortalProps> = (props) => {
                     purchaseRequests={props.purchaseRequests}
                     parts={props.parts}
                     users={props.users}
+                    currentUser={props.currentUser}
                     onOpenCreateModal={() => setIsCreateModalOpen(true)}
+                    onApprove={props.onApprove}
+                    onReject={props.onReject}
+                    onRaisePo={props.onRaisePo}
                 />
             ) : (
                 <GoodsReceivingView 

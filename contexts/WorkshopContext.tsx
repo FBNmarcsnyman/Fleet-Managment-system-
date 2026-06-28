@@ -136,6 +136,43 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
             }
         },
 
+        // -- Purchase authorisation + part assignment (Part 8) ----------------
+        handleSetPurchaseRequestStatus: async (id: string, status: PurchaseRequest['status']): Promise<Result<void>> => {
+            try {
+                const { error } = await runWrite(() => supabase.from('purchase_requests').update({ status }).eq('id', id));
+                if (error) { console.error('[workshop] setPurchaseRequestStatus failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_PURCHASE_REQUEST', payload: { id, updates: { status } } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        // Issue a part out of stock to a vehicle (and optionally onto a job card).
+        handleAssignPartFromInventory: async (vehicleId: string, partId: string, quantity: number, jobCardId?: string): Promise<Result<void>> => {
+            try {
+                const cur = stateRef.current;
+                const part = (cur.parts || []).find((p: any) => p.id === partId);
+                if (!part) return { ok: false, error: 'Part not found.' };
+                if ((part.quantityInStock || 0) < quantity) return { ok: false, error: 'Not enough stock.' };
+                const newQty = (part.quantityInStock || 0) - quantity;
+                const { error } = await runWrite(() => supabase.from('parts').update({ quantity_in_stock: newQty }).eq('id', partId));
+                if (error) { console.error('[workshop] assignPart stock update failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_PART', payload: { id: partId, updates: { quantityInStock: newQty } } });
+                if (jobCardId) {
+                    const jc = (cur.jobCards || []).find((j: any) => j.id === jobCardId);
+                    if (jc) {
+                        const partsUsed = [...(jc.partsUsed || []), { partId, quantity, unitCost: part.cost || 0 }];
+                        const { error: jErr } = await supabase.from('job_cards').update({ parts_used: partsUsed as any }).eq('id', jobCardId);
+                        if (jErr) console.error('[workshop] assignPart job card update failed:', jErr);
+                        else dispatch({ type: 'UPDATE_JOB_CARD', payload: { id: jobCardId, updates: { partsUsed } } });
+                    }
+                }
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleAssignPartToJob: async (jobCardId: string, partId: string, quantity: number): Promise<Result<void>> => {
+            const jc = (stateRef.current.jobCards || []).find((j: any) => j.id === jobCardId);
+            return (handlers as any).handleAssignPartFromInventory(jc?.vehicleId || '', partId, quantity, jobCardId);
+        },
+
         // -- Tires ------------------------------------------------------------
         handleUpdateTire: async (tire: Tire): Promise<Result<Tire>> => {
             try {

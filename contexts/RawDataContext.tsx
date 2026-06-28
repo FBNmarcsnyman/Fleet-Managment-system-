@@ -163,6 +163,8 @@ export type AppAction =
     | { type: 'ADD_PART', payload: Part }
     | { type: 'CREATE_PURCHASE_REQUEST', payload: PurchaseRequest }
     | { type: 'CREATE_PURCHASE_ORDER', payload: PurchaseRequest | { persisted: PurchaseOrder } }
+    | { type: 'UPDATE_PURCHASE_REQUEST', payload: { id: string, updates: Partial<PurchaseRequest> } }
+    | { type: 'UPDATE_PART', payload: { id: string, updates: Partial<Part> } }
     | { type: 'RECEIVE_GOODS', payload: PurchaseOrder }
     | { type: 'UPDATE_TIRE', payload: Tire }
     | { type: 'ADD_HR_CASE', payload: HRCase }
@@ -459,6 +461,8 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
             const newPurchaseOrder: PurchaseOrder = { id: generateId(), poNumber: `PO-${Date.now().toString().slice(-6)}`, purchaseRequestId: request.id, supplierId: supplierId, orderDate: new Date().toISOString(), items: [{ partId: request.partId, quantity: request.quantity, unitCost }], totalCost: totalCost, status: 'Ordered' };
             return { ...state, purchaseOrders: [...(state.purchaseOrders || []), newPurchaseOrder], purchaseRequests: (state.purchaseRequests || []).map(r => r.id === request.id ? { ...r, status: 'Ordered' } : r) };
         }
+        case 'UPDATE_PURCHASE_REQUEST': return { ...state, purchaseRequests: (state.purchaseRequests || []).map(r => r.id === action.payload.id ? { ...r, ...action.payload.updates } : r) };
+        case 'UPDATE_PART': return { ...state, parts: (state.parts || []).map(p => p.id === action.payload.id ? { ...p, ...action.payload.updates } : p) };
         case 'RECEIVE_GOODS': return { ...state, purchaseOrders: (state.purchaseOrders || []).map(po => po.id === action.payload.id ? {...po, status: 'Received'} : po), parts: (state.parts || []).map(p => { const i = action.payload.items.find((i: any) => i.partId === p.id); return i ? { ...p, quantityInStock: p.quantityInStock + i.quantity } : p; }) };
         case 'UPDATE_TIRE': return {...state, tires: (state.tires || []).map(t => t.id === action.payload.id ? action.payload : t) };
         // Push 5: management writes

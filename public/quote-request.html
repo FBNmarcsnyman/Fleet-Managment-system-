@@ -45,6 +45,13 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
 .svc-icon{font-size:22px;margin-bottom:4px}
 .svc-name{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--text)}
 .svc-desc{font-size:10px;color:var(--text3);margin-top:2px}
+.pill-group{display:flex;flex-wrap:wrap;gap:8px}
+.pill{background:var(--bg);border:2px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--text);user-select:none;transition:all .2s}
+.pill:hover{border-color:#cbd5e1;background:#f1f5f9}
+.pill.sel{border-color:var(--navy);background:#eef2ff;color:var(--navy)}
+.cargo-panel{display:none;margin-top:14px}
+.cargo-panel.open{display:block}
 .cb-row{display:flex;align-items:center;gap:8px;padding:10px 0}
 .cb-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy)}
 .cb-row label{font-size:14px;color:var(--text);cursor:pointer}
@@ -125,6 +132,113 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
             <label>Area To — suburb / town<span class="req">*</span></label>
             <input type="text" id="rq-del-area" placeholder="e.g. Kempton Park, JHB">
           </div>
+        </div>
+
+        <!-- What are you moving? — clickable cards that reveal the right follow-up questions -->
+        <div class="field" style="margin-top:16px">
+          <label>What are you looking to move?<span class="req">*</span></label>
+          <div class="svc-grid" id="cargo-cards" style="grid-template-columns:repeat(3,1fr)">
+            <div class="svc-card" data-type="Small Parcels" onclick="selCargoType(this)">
+              <div class="svc-icon">📦</div>
+              <div class="svc-name">Small Parcels</div>
+              <div class="svc-desc">Cartons / boxes</div>
+            </div>
+            <div class="svc-card" data-type="Part Load" onclick="selCargoType(this)">
+              <div class="svc-icon">📐</div>
+              <div class="svc-name">Part Load</div>
+              <div class="svc-desc">Share a truck</div>
+            </div>
+            <div class="svc-card" data-type="Full Load" onclick="selCargoType(this)">
+              <div class="svc-icon">🚛</div>
+              <div class="svc-name">Full Load</div>
+              <div class="svc-desc">Dedicated / consol</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Small parcels -->
+        <div class="cargo-panel" id="cp-small">
+          <div class="grid grid-2">
+            <div class="field">
+              <label>Number of Cartons</label>
+              <input type="text" id="rq-cartons" placeholder="e.g. 25">
+            </div>
+            <div class="field">
+              <label>Approx Size per Carton</label>
+              <input type="text" id="rq-carton-size" placeholder="e.g. 40 x 30 x 30 cm">
+            </div>
+          </div>
+        </div>
+
+        <!-- Part load -->
+        <div class="cargo-panel" id="cp-part">
+          <div class="field">
+            <label>Space Required</label>
+            <div class="pill-group">
+              <div class="pill" data-val="1m" onclick="pickOption(this,'deck')">1m</div>
+              <div class="pill" data-val="3m" onclick="pickOption(this,'deck')">3m</div>
+              <div class="pill" data-val="6m deck" onclick="pickOption(this,'deck')">6m deck</div>
+              <div class="pill" data-val="12m deck" onclick="pickOption(this,'deck')">12m deck</div>
+            </div>
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label>Trailer Type</label>
+            <div class="pill-group">
+              <div class="pill" data-val="Tautliner" onclick="pickOption(this,'trailer')">Tautliner</div>
+              <div class="pill" data-val="Flatbed" onclick="pickOption(this,'trailer')">Flatbed</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Full load -->
+        <div class="cargo-panel" id="cp-full">
+          <div class="field">
+            <label>Dedicated or Consol?</label>
+            <div class="pill-group">
+              <div class="pill" data-val="Dedicated" onclick="pickOption(this,'mode')">Dedicated truck</div>
+              <div class="pill" data-val="Consol" onclick="pickOption(this,'mode')">Consol (shared deck)</div>
+            </div>
+          </div>
+          <div class="field cargo-panel" id="cp-full-ded">
+            <label>Truck Size Required</label>
+            <div class="pill-group">
+              <div class="pill" data-val="1t" onclick="pickOption(this,'truck')">1t</div>
+              <div class="pill" data-val="2t" onclick="pickOption(this,'truck')">2t</div>
+              <div class="pill" data-val="5t" onclick="pickOption(this,'truck')">5t</div>
+              <div class="pill" data-val="8t" onclick="pickOption(this,'truck')">8t</div>
+              <div class="pill" data-val="12t" onclick="pickOption(this,'truck')">12t</div>
+              <div class="pill" data-val="15t" onclick="pickOption(this,'truck')">15t</div>
+              <div class="pill" data-val="Triaxle" onclick="pickOption(this,'truck')">Triaxle</div>
+              <div class="pill" data-val="Superlink" onclick="pickOption(this,'truck')">Superlink</div>
+            </div>
+          </div>
+          <div class="field cargo-panel" id="cp-full-consol">
+            <label>Deck Space Required</label>
+            <div class="pill-group">
+              <div class="pill" data-val="1m" onclick="pickOption(this,'deck')">1m</div>
+              <div class="pill" data-val="3m" onclick="pickOption(this,'deck')">3m</div>
+              <div class="pill" data-val="6m deck" onclick="pickOption(this,'deck')">6m deck</div>
+              <div class="pill" data-val="12m deck" onclick="pickOption(this,'deck')">12m deck</div>
+            </div>
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label>Trailer Type</label>
+            <div class="pill-group">
+              <div class="pill" data-val="Tautliner" onclick="pickOption(this,'trailer')">Tautliner</div>
+              <div class="pill" data-val="Flatbed" onclick="pickOption(this,'trailer')">Flatbed</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Approx weight — shown once a cargo type is chosen -->
+        <div class="cargo-panel" id="cp-weight">
+          <div class="field">
+            <label>Approximate Total Weight (kg)</label>
+            <input type="text" id="rq-weight" placeholder="e.g. 8000">
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:16px">
           <div class="field">
             <label>Commodity / Cargo Description<span class="req">*</span></label>
             <input type="text" id="rq-commodity" placeholder="e.g. Cleaning chemicals, palletised">
@@ -144,26 +258,6 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
             <div class="field">
               <label>Number of Packages / Pallets</label>
               <input type="text" id="rq-packages" placeholder="e.g. 10 pallets or 25 cartons">
-            </div>
-            <div class="field">
-              <label>Load Type</label>
-              <select id="rq-loadtype">
-                <option value="">Select...</option>
-                <option value="Pallets">Pallets</option>
-                <option value="Cartons">Cartons</option>
-                <option value="Loose cargo">Loose cargo</option>
-                <option value="Containerised">Containerised</option>
-                <option value="Bulk">Bulk</option>
-                <option value="6m Truck">6m Truck</option>
-                <option value="12m Truck">12m Truck</option>
-                <option value="Superlink">Superlink</option>
-                <option value="Abnormal / oversized">Abnormal / oversized</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Total Weight (kg)</label>
-              <input type="text" id="rq-weight" placeholder="e.g. 8000">
             </div>
           </div>
           <div class="cb-row">
@@ -243,6 +337,40 @@ function selSvc(el) {
   selectedSvc = el.dataset.svc;
 }
 
+// --- "What are you looking to move?" picker --------------------------------
+// cargo.type drives which follow-up panel shows; the rest are the picked pills.
+const cargo = { type: '', deck: '', truck: '', mode: '', trailer: '' };
+
+function selCargoType(el) {
+  document.querySelectorAll('#cargo-cards .svc-card').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  cargo.type = el.dataset.type;
+  // Reset dependent answers when the type changes.
+  cargo.deck = cargo.truck = cargo.mode = cargo.trailer = '';
+  document.querySelectorAll('.pill.sel').forEach(p => p.classList.remove('sel'));
+  ['cp-small', 'cp-part', 'cp-full', 'cp-full-ded', 'cp-full-consol'].forEach(id =>
+    document.getElementById(id).classList.remove('open'));
+  if (cargo.type === 'Small Parcels') document.getElementById('cp-small').classList.add('open');
+  if (cargo.type === 'Part Load') document.getElementById('cp-part').classList.add('open');
+  if (cargo.type === 'Full Load') document.getElementById('cp-full').classList.add('open');
+  document.getElementById('cp-weight').classList.add('open');
+  postHeight();
+}
+
+function pickOption(el, key) {
+  var group = el.parentElement;
+  group.querySelectorAll('.pill').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+  cargo[key] = el.dataset.val;
+  if (key === 'mode') {
+    var ded = cargo.mode === 'Dedicated';
+    document.getElementById('cp-full-ded').classList.toggle('open', ded);
+    document.getElementById('cp-full-consol').classList.toggle('open', !ded);
+    if (ded) cargo.deck = ''; else cargo.truck = '';   // clear the other branch
+    postHeight();
+  }
+}
+
 function showError(msg) {
   const el = document.getElementById('error-msg');
   el.textContent = msg;
@@ -265,7 +393,13 @@ async function submitQuote() {
   if (!phone) { showError('Please enter your phone number.'); return; }
   if (!colArea) { showError('Please enter the collection area / town.'); return; }
   if (!delArea) { showError('Please enter the delivery area / town.'); return; }
+  if (!cargo.type) { showError('Please tell us what you are looking to move.'); return; }
   if (!commodity) { showError('Please describe your cargo.'); return; }
+
+  // Build a readable load-type summary from the picker (e.g.
+  // "Full Load — Dedicated — 12t — Tautliner").
+  var ltParts = [cargo.type, cargo.mode, cargo.truck, cargo.deck, cargo.trailer].filter(Boolean);
+  var loadTypeStr = ltParts.join(' — ');
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true;
@@ -284,7 +418,15 @@ async function submitQuote() {
     delivery_area: delArea,
     commodity: commodity,
     packages: document.getElementById('rq-packages').value.trim(),
-    load_type: document.getElementById('rq-loadtype').value,
+    load_type: loadTypeStr,
+    // Detailed picker answers (also kept individually for the portal).
+    cargo_type: cargo.type,
+    full_load_mode: cargo.mode,
+    truck_size: cargo.truck,
+    deck_space: cargo.deck,
+    trailer_type: cargo.trailer,
+    carton_count: document.getElementById('rq-cartons').value.trim(),
+    carton_size: document.getElementById('rq-carton-size').value.trim(),
     total_weight: document.getElementById('rq-weight').value.trim(),
     hazardous: document.getElementById('rq-hazardous').checked,
     loading_date: dateToIso(document.getElementById('rq-date').value),
@@ -327,6 +469,10 @@ function resetForm() {
   document.getElementById('rq-hazardous').checked = false;
   document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('sel'));
   selectedSvc = '';
+  // Reset the cargo picker (state, pills, and revealed panels).
+  cargo.type = cargo.deck = cargo.truck = cargo.mode = cargo.trailer = '';
+  document.querySelectorAll('.pill.sel').forEach(p => p.classList.remove('sel'));
+  document.querySelectorAll('.cargo-panel.open').forEach(p => p.classList.remove('open'));
   document.getElementById('submit-btn').disabled = false;
   document.getElementById('submit-btn').textContent = 'Submit Quote Request →';
   window.scrollTo({ top: 0 });

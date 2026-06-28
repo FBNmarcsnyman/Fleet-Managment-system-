@@ -35,7 +35,6 @@ const FleetPortal: React.FC = () => {
         { view: 'admin', label: 'Asset Admin' },
         { view: 'drivers', label: 'Drivers' },
         { view: 'maintenance', label: 'Maintenance' },
-        { view: 'checklists', label: 'Checklists' },
         { view: 'fleetMap', label: 'Live Map' },
         { view: 'routePlanner', label: 'Route Planner' },
         { view: 'operationsLog', label: 'Operations Log' },

@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { ChecklistSubmission, ChecklistItemResult, Vehicle, User, JobCard, Branch } from '../../types';
 import { format, formatDistanceToNow } from 'date-fns';
-import { invokeFn } from '../../lib/supabase';
 import CreateJobCardFromChecklistModal from './CreateJobCardFromChecklistModal';
+import InspectionPhoto from './InspectionPhoto';
 import Modal from '../Modal';
 
 interface ChecklistReviewProps {
@@ -13,22 +13,6 @@ interface ChecklistReviewProps {
     onUpdateSubmission: (submission: ChecklistSubmission) => void;
     onCreateJobCard: (jobCard: Omit<JobCard, 'id'>) => void;
 }
-
-// Lazy signed-URL thumbnail for a private inspection photo (path = "inspections/...").
-const InspectionPhoto: React.FC<{ path: string; label?: string }> = ({ path, label }) => {
-    const [url, setUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [failed, setFailed] = useState(false);
-    const load = async () => {
-        if (url || loading) return;
-        setLoading(true);
-        try { const { data, error } = await invokeFn('inspection-doc-url', { body: { path } }); if (error || !data?.url) setFailed(true); else setUrl(data.url); }
-        catch { setFailed(true); } finally { setLoading(false); }
-    };
-    if (failed) return <span className="text-xs text-slate-400">photo unavailable</span>;
-    if (url) return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={label || 'photo'} className="h-20 w-20 object-cover rounded-lg border border-slate-200" /></a>;
-    return <button onClick={load} className="h-20 w-20 rounded-lg border border-dashed border-slate-300 text-[11px] font-bold text-slate-500 hover:bg-slate-50">{loading ? '…' : `📷 ${label || 'View'}`}</button>;
-};
 
 const resultBadge = (r?: string) => r === 'Roadworthy' ? 'bg-emerald-100 text-emerald-700' : r === 'Grounded' ? 'bg-red-100 text-red-700' : r === 'Requires Attention' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
 const statusChip = (s?: string) => s === 'Pass' ? 'bg-emerald-100 text-emerald-700' : s === 'Fail' ? 'bg-red-100 text-red-700' : s === 'Needs Attention' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500';
@@ -127,7 +111,7 @@ const ChecklistReview: React.FC<ChecklistReviewProps> = ({ currentUser, submissi
                                     <h4 className="text-xs font-black text-[#13294b] uppercase tracking-widest mt-3 mb-1">{g.section}</h4>
                                     <div className="space-y-2">
                                         {g.items.map((r, i) => {
-                                            const jobCardExists = (jobCards || []).some(jc => jc.submissionId === sub.id && jc.checklistItemId === r.itemId);
+                                            const jobCardExists = (jobCards || []).some(jc => jc.submissionId === sub.id);
                                             const units = (r as any).units as { expiry?: string; gaugePath?: string; labelPath?: string }[] | undefined;
                                             return (
                                                 <div key={`${r.itemId}-${i}`} className={`rounded-xl border p-3 ${isFail(r) ? 'border-red-200 bg-red-50/40' : 'border-slate-200'}`}>
@@ -151,7 +135,7 @@ const ChecklistReview: React.FC<ChecklistReviewProps> = ({ currentUser, submissi
                                                     </div>
                                                     {isFail(r) && (
                                                         <div className="mt-2">
-                                                            {jobCardExists ? <span className="text-xs font-bold text-emerald-700 bg-emerald-100 py-1 px-2 rounded-full">Job card created</span>
+                                                            {jobCardExists ? <span className="text-xs font-bold text-emerald-700 bg-emerald-100 py-1 px-2 rounded-full">In job card</span>
                                                                 : <button onClick={() => setJobCardModalItem({ item: { ...r, item: labelOf(r) }, vehicleId: sub.vehicleId })} className="text-xs font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-1.5 px-3 rounded-lg">Create job card</button>}
                                                         </div>
                                                     )}

@@ -58,9 +58,9 @@ const AITriageModal: React.FC = () => {
         `;
 
         try {
-            // Fix: Changed model to 'gemini-3-pro-preview' for complex reasoning/triage task
+            // Use the flash model (the pro model isn't on the free tier → 429 quota error).
             const response: GenerateContentResponse = await ai.models.generateContent({
-                model: 'gemini-3-pro-preview',
+                model: 'gemini-3-flash-preview',
                 contents: prompt,
                 config: {
                     responseMimeType: "application/json",

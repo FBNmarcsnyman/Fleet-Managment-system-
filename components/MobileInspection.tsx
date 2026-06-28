@@ -100,10 +100,10 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
             if (it.spotPhoto) { const k = `${prefix}${it.id}`; if (!spotSet.has(k) && Math.random() < 0.5) spotSet.add(k); spot = spotSet.has(k); }
             const common = { itemId: it.id, section, label: it.label, severity: it.severity || 'Minor', value: it.value, failValues: it.failValues, treadDepth: it.treadDepth, spotPhoto: spot, help: it.help, trailerId: trailer?.id, trailerName: trailer?.name };
             if (it.perWheel && Array.isArray(it.wheelPositions) && it.wheelPositions.length) {
-                it.wheelPositions.forEach((pos: string) => out.push({ ...common, kind: 'wheel', key: `${prefix}${it.id}::${pos}`, position: pos, photo: 'always' }));
+                it.wheelPositions.forEach((pos: string) => out.push({ ...common, kind: 'wheel', key: `${prefix}${it.id}::${pos}`, position: pos, photo: it.photo || 'always' }));
             } else if (it.expiryPerUnit) {
                 out.push({ ...common, kind: 'extinguisher', key: `${prefix}${it.id}`, photo: 'always' });
-            } else if (it.quantity && (!it.value || !it.value.length)) {
+            } else if (it.quantity) {
                 out.push({ ...common, kind: 'quantity', key: `${prefix}${it.id}`, photo: spot ? 'always' : (it.photo || null) });
             } else {
                 out.push({ ...common, kind: 'normal', key: `${prefix}${it.id}`, photo: spot ? 'always' : (it.photo || null) });
@@ -132,10 +132,10 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
 
     const isFault = (f: Field, a: Ans) => a.status === 'Fail' || !!(f.value && a.value && (f.failValues || []).includes(a.value));
     const fieldDone = (f: Field, a: Ans): boolean => {
-        if (f.kind === 'wheel') return (a.status === 'Pass' || a.status === 'Fail') && !!a.photoPath && (a.status !== 'Fail' || !!a.remarks);
+        if (f.kind === 'wheel') { if (a.status !== 'Pass' && a.status !== 'Fail') return false; if (a.status === 'Fail') return !!a.remarks && !!a.photoPath; return f.photo === 'always' ? !!a.photoPath : true; }
         if (f.kind === 'extinguisher') { const n = parseInt(a.count || '0', 10) || 0; if (n <= 0) return false; const u = a.units || []; for (let i = 0; i < Math.min(n, 6); i++) { if (!u[i]?.expiry || !u[i]?.gaugePath || !u[i]?.labelPath) return false; } return true; }
+        if (f.kind === 'quantity') { if (!a.count) return false; if (f.value && f.value.length) { if (!a.value) return false; if (isFault(f, a)) return !!a.remarks && !!a.photoPath; } return true; }
         if (f.value && f.value.length) { if (!a.value) return false; if (isFault(f, a)) return !!a.remarks && !!a.photoPath; return true; }
-        if (f.kind === 'quantity') return !!a.count;
         if (!a.status) return false;
         if (a.status === 'Fail') return !!a.remarks && !!a.photoPath;
         if (f.photo === 'always') return !!a.photoPath;
@@ -183,7 +183,8 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
                 <div className="text-5xl mb-2">{done.result === 'Roadworthy' ? '✅' : done.result === 'Grounded' ? '⛔' : '⚠️'}</div>
                 <h1 className="text-2xl font-black text-[#13294b]">Inspection submitted</h1>
                 <p className="text-slate-600 mt-1">Reference <strong>{done.reference}</strong></p>
-                <p className={`mt-3 inline-block px-3 py-1 rounded-lg font-bold ${done.result === 'Roadworthy' ? 'bg-emerald-100 text-emerald-700' : done.result === 'Grounded' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{done.result}</p>
+                <p className={`mt-3 inline-block px-3 py-1 rounded-lg font-bold ${done.result === 'Roadworthy' ? 'bg-emerald-100 text-emerald-700' : done.result === 'Grounded' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{done.resultLabel || done.result}</p>
+                {done.instruction && <p className={`mt-3 text-sm font-bold rounded-lg p-3 ${done.result === 'Grounded' ? 'bg-red-50 text-red-700' : done.result === 'Requires Attention' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{done.instruction}</p>}
                 {done.failedItems?.length > 0 && <div className="mt-4 text-left"><p className="text-xs font-bold text-slate-500 uppercase mb-1">Failed ({done.failedItems.length})</p><ul className="text-sm text-slate-700 space-y-1">{done.failedItems.map((f: any, i: number) => <li key={i}>• <strong>{f.severity}</strong> — {f.label}{f.position ? ` (${f.position})` : ''}</li>)}</ul></div>}
             </div>
         </div>
@@ -304,7 +305,7 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
                                                 <div key={w.key} id={`q-${w.key}`} className="border-t border-slate-100 pt-2 first:border-0 first:pt-0">
                                                     <p className="text-sm font-bold text-slate-700 flex items-center gap-2"><span className="flex-1">{w.label.replace(/\s*\(photo.*$/i, '')}</span>{w.help && <button onClick={() => setHelpFor({ label: w.label, help: w.help! })} className="shrink-0 w-6 h-6 rounded-full bg-slate-200 text-slate-600 font-black text-sm">i</button>}</p>
                                                     {PassFail(w.key, a, false)}
-                                                    <div className="mt-2">{PhotoBtn('Photo', !!a.photoPath, f => onPhoto(w, f))}</div>
+                                                    {(w.photo === 'always' || a.status === 'Fail') && <div className="mt-2">{PhotoBtn('Photo', !!a.photoPath, f => onPhoto(w, f))}</div>}
                                                     {w.treadDepth && <input type="number" inputMode="decimal" value={a.treadMm || ''} onChange={e => setAns(w.key, { treadMm: e.target.value })} placeholder="Tread mm (optional)" className={inp + ' mt-2'} />}
                                                     {a.aiState === 'running' && <p className="text-xs text-slate-500 mt-1">Analysing tyre…</p>}
                                                     {a.aiState === 'done' && a.ai && <div className={`rounded-xl border p-2 text-sm mt-2 ${aiTone(a.ai)}`}><p className="font-black">{a.ai.overall_assessment}{a.ai.retread_detected ? ' · ⚠ RETREAD' : ''}</p><p className="text-[12px]">Tread: {a.ai.tread_estimate} · {a.ai.confidence_level}</p>{a.ai.condition_issues?.length ? <p className="text-[12px]">{a.ai.condition_issues.join('; ')}</p> : null}</div>}
@@ -329,10 +330,13 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
                                                     </div>
                                                 ); })}
                                             </>
+                                        ) : f.kind === 'quantity' ? (
+                                            <>
+                                                <input type="number" inputMode="numeric" value={a.count || ''} onChange={e => setAns(f.key, { count: e.target.value })} placeholder="How many?" className={inp} />
+                                                {f.value && f.value.length > 0 && <div className="flex flex-wrap gap-2 mt-2">{f.value.map(v => <button key={v} onClick={() => setAns(f.key, { value: v })} className={`px-3 py-2 rounded-lg text-sm font-bold border ${a.value === v ? ((f.failValues || []).includes(v) ? 'bg-red-600 text-white border-red-600' : 'bg-emerald-600 text-white border-emerald-600') : 'bg-white border-slate-300 text-slate-600'}`}>{v}</button>)}</div>}
+                                            </>
                                         ) : f.value && f.value.length ? (
                                             <div className="flex flex-wrap gap-2 mt-1">{f.value.map(v => <button key={v} onClick={() => setAns(f.key, { value: v })} className={`px-3 py-2 rounded-lg text-sm font-bold border ${a.value === v ? ((f.failValues || []).includes(v) ? 'bg-red-600 text-white border-red-600' : 'bg-[#13294b] text-white border-[#13294b]') : 'bg-white border-slate-300 text-slate-600'}`}>{v}</button>)}</div>
-                                        ) : f.kind === 'quantity' ? (
-                                            <input type="number" inputMode="numeric" value={a.count || ''} onChange={e => setAns(f.key, { count: e.target.value })} placeholder="How many?" className={inp} />
                                         ) : (
                                             PassFail(f.key, a, true)
                                         )}

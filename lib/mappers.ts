@@ -253,6 +253,7 @@ export const mapJobCard = (row: Tables['job_cards']['Row']): JobCard => ({
     partsUsed: (row.parts_used as JobCard['partsUsed']) ?? undefined,
     proposedStartDate: row.proposed_start_date ?? undefined,
     proposedEndDate: row.proposed_end_date ?? undefined,
+    defects: ((row as any).defects as JobCard['defects']) ?? undefined,
 });
 
 // -- checklist_templates → ChecklistTemplate ---------------------------------
@@ -1456,7 +1457,8 @@ export const toJobCardInsert = (jc: Omit<JobCard, 'id'>): Tables['job_cards']['I
     parts_used: (jc.partsUsed ?? null) as unknown as Tables['job_cards']['Insert']['parts_used'],
     proposed_start_date: jc.proposedStartDate ?? null,
     proposed_end_date: jc.proposedEndDate ?? null,
-});
+    defects: (jc.defects ?? null) as any,
+} as any);
 
 export const toJobCardUpdate = (updates: Partial<JobCard>): Tables['job_cards']['Update'] => {
     const row: Tables['job_cards']['Update'] = {};
@@ -1473,6 +1475,7 @@ export const toJobCardUpdate = (updates: Partial<JobCard>): Tables['job_cards'][
     if (updates.partsUsed !== undefined) row.parts_used = updates.partsUsed as unknown as Tables['job_cards']['Update']['parts_used'];
     if (updates.proposedStartDate !== undefined) row.proposed_start_date = updates.proposedStartDate ?? null;
     if (updates.proposedEndDate !== undefined) row.proposed_end_date = updates.proposedEndDate ?? null;
+    if (updates.defects !== undefined) (row as any).defects = updates.defects;
     return row;
 };
 

@@ -376,6 +376,20 @@ export interface JobCard {
     partsUsed?: { partId: string, quantity: number, unitCost: number }[];
     proposedStartDate?: string;
     proposedEndDate?: string;
+    // One job card per inspection holds all its defects as resolvable line items.
+    defects?: JobCardDefect[];
+}
+
+export interface JobCardDefect {
+    itemId?: string;
+    label: string;
+    section?: string;
+    severity?: string;
+    position?: string;
+    remarks?: string;
+    photoPath?: string;
+    trailerName?: string;
+    resolved?: boolean;
 }
 
 export interface ComplianceDoc {

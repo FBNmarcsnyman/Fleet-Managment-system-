@@ -60,13 +60,6 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
 .cb-row{display:flex;align-items:center;gap:8px;padding:10px 0}
 .cb-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy)}
 .cb-row label{font-size:14px;color:var(--text);cursor:pointer}
-.more-toggle{display:inline-flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;
-  font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--navy);
-  text-transform:uppercase;letter-spacing:0.5px;padding:6px 0;margin-bottom:8px}
-.more-toggle .plus{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
-  border-radius:50%;background:var(--navy);color:#fff;font-size:16px;line-height:1;font-weight:700}
-.more-panel{display:none}
-.more-panel.open{display:block}
 .submit-btn{
   width:100%;padding:14px;border:none;border-radius:8px;
   background:var(--green);color:var(--white);
@@ -84,6 +77,22 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
 .success .ref-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin:20px auto;max-width:300px;font-family:'Barlow Condensed',sans-serif;font-size:18px;color:var(--navy);letter-spacing:1px}
 .footer{text-align:center;padding:20px 0;font-size:11px;color:var(--text3)}
 .footer strong{color:var(--text2)}
+/* --- Mobile tuning --- */
+@media(max-width:520px){
+  .wrap{padding:0 12px 32px}
+  .hdr{padding:18px 18px}
+  .body{padding:24px 16px 28px}
+  /* keep the 3 cargo choices in one compact row */
+  #cargo-cards{grid-template-columns:repeat(3,1fr);gap:6px}
+  .svc-card{padding:12px 4px}
+  .svc-icon{width:48px;height:48px;border-radius:12px;border-width:2px;margin-bottom:6px}
+  .svc-icon svg{width:26px;height:26px}
+  .svc-name{font-size:12px;line-height:1.15}
+  .svc-desc{font-size:9px}
+  /* 16px inputs stop iOS Safari zooming in on focus */
+  .field input,.field select,.field textarea{font-size:16px}
+  .pill{padding:10px 14px}
+}
 </style>
 </head>
 <body>
@@ -142,7 +151,7 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
         <!-- What are you moving? — clickable cards that reveal the right follow-up questions -->
         <div class="field" style="margin-top:16px">
           <label>What are you looking to move?<span class="req">*</span></label>
-          <div class="svc-grid" id="cargo-cards" style="grid-template-columns:repeat(3,1fr)">
+          <div class="svc-grid" id="cargo-cards">
             <div class="svc-card" data-type="Small Parcels" onclick="selCargoType(this)">
               <div class="svc-icon">
                 <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -283,29 +292,17 @@ body{font-family:'Barlow',sans-serif;background:transparent;color:var(--text);pa
           </div>
         </div>
 
-        <button type="button" class="more-toggle" id="more-toggle" onclick="toggleMore()">
-          <span class="plus" id="more-plus">+</span> Add more details (optional)
-        </button>
-
-        <div class="more-panel" id="more-panel">
-          <div class="grid grid-2">
-            <div class="field">
-              <label>Number of Packages / Pallets</label>
-              <input type="text" id="rq-packages" placeholder="e.g. 10 pallets or 25 cartons">
-            </div>
-          </div>
-          <div class="cb-row">
-            <input type="checkbox" id="rq-hazardous">
-            <label for="rq-hazardous">Hazardous / dangerous goods (DG)</label>
-          </div>
-          <div class="cb-row">
-            <input type="checkbox" id="rq-xborder">
-            <label for="rq-xborder">This is a cross-border shipment</label>
-          </div>
-          <div class="field" style="margin-top:8px">
-            <label>Additional Notes / Special Requirements</label>
-            <textarea id="rq-notes" placeholder="e.g. Requires tail-lift, forklift on site, collection window 08:00-12:00, temperature controlled..."></textarea>
-          </div>
+        <div class="cb-row" style="margin-top:12px">
+          <input type="checkbox" id="rq-hazardous">
+          <label for="rq-hazardous">Hazardous / dangerous goods (DG)</label>
+        </div>
+        <div class="cb-row">
+          <input type="checkbox" id="rq-xborder">
+          <label for="rq-xborder">This is a cross-border shipment</label>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>Additional Notes / Special Requirements</label>
+          <textarea id="rq-notes" placeholder="e.g. Requires tail-lift, forklift on site, collection window 08:00-12:00, temperature controlled..."></textarea>
         </div>
       </div>
 
@@ -347,13 +344,6 @@ function maskDate(el) {
 function dateToIso(s) {
   var m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
-}
-
-function toggleMore() {
-  var panel = document.getElementById('more-panel');
-  var open = panel.classList.toggle('open');
-  document.getElementById('more-plus').textContent = open ? '−' : '+';
-  postHeight();
 }
 
 // If embedded in an iframe, tell the parent our true content height so the
@@ -451,7 +441,6 @@ async function submitQuote() {
     collection_area: colArea,
     delivery_area: delArea,
     commodity: commodity,
-    packages: document.getElementById('rq-packages').value.trim(),
     load_type: loadTypeStr,
     // Detailed picker answers (also kept individually for the portal).
     cargo_type: cargo.type,

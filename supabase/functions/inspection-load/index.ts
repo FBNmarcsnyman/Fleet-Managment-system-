@@ -38,9 +38,13 @@ Deno.serve(async (req) => {
     if (type === "Horse" || type === "Loadmaster") { const tt = await rest(`checklist_templates?vehicle_types=cs.{Trailer}&is_active=eq.true&select=*&limit=1`); trailerTemplate = tt?.[0] || null; }
     const drv = await rest(`drivers?assigned_vehicle_id=eq.${v.id}&select=name,cell,pdp_expiry&limit=1`);
     const assignedDriver = drv?.[0] || null;
-    const trailerRows = await rest(`vehicles?select=id,name,registration,weight_category&is_active=eq.true&order=name.asc`);
-    const trailers = (trailerRows || []).filter((t) => vtype(t.weight_category, t.name) === "Trailer").map((t) => ({ id: t.id, name: t.name, registration: t.registration || "" }));
+    // All trailers (vehicles has no is_active column; just exclude Sold), with type/size/link
+    // so the client can drive the per-type selection (superlink pairing, triaxle single, etc.).
+    const trailerRows = await rest(`vehicles?select=id,name,registration,weight_category,linked_vehicle_id,branch_id,status&order=name.asc`);
+    const trailers = (trailerRows || [])
+      .filter((t) => vtype(t.weight_category, t.name) === "Trailer" && t.status !== "Sold")
+      .map((t) => ({ id: t.id, name: t.name, registration: t.registration || "", weightCategory: t.weight_category || "", linkedVehicleId: t.linked_vehicle_id || null, depot: depotMap[t.branch_id] ? (/JHB|JOHAN/i.test(depotMap[t.branch_id]) ? "JHB" : /DBN|DURBAN/i.test(depotMap[t.branch_id]) ? "DBN" : depotMap[t.branch_id]) : "" }));
     const last = await rest(`checklist_submissions?vehicle_id=eq.${v.id}&select=date,result,created_at&order=created_at.desc&limit=1`);
-    return json({ ok: true, vehicle: { id: v.id, name: v.name, registration: v.registration || v.reg || "", type, depot, status: v.status || "", crossBorder: !!v.cross_border, linkedVehicleId: v.linked_vehicle_id || null }, template, trailerTemplate, trailers, assignedDriver, lastInspection: last?.[0] || null });
+    return json({ ok: true, vehicle: { id: v.id, name: v.name, registration: v.registration || v.reg || "", type, depot, branchId: v.branch_id || null, status: v.status || "", crossBorder: !!v.cross_border, linkedVehicleId: v.linked_vehicle_id || null }, template, trailerTemplate, trailers, assignedDriver, lastInspection: last?.[0] || null });
   } catch (e) { console.error("[inspection-load]", e); return json({ error: String(e?.message || e) }, 500); }
 });

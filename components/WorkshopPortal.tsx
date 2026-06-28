@@ -42,7 +42,13 @@ const WorkshopPortal: React.FC = () => {
         handleDeleteChecklistTemplate,
         handleUpdateChecklistSubmission,
         handleSetPurchaseRequestStatus,
-        handleCreatePurchaseOrder
+        handleCreatePurchaseOrder,
+        handleAddTire,
+        handleMountTire,
+        handleDismountTire,
+        handleScrapTire,
+        handleSendForRetread,
+        handleReceiveRetread
     } = useWorkshop();
     const { serviceStatuses, vehicles = [], serviceIntervals = [], handleUpdateVehicleStatus } = useVehicles();
     const { suppliers = [] } = useOperations();
@@ -107,21 +113,23 @@ const WorkshopPortal: React.FC = () => {
                             onDeleteTemplate={handleDeleteChecklistTemplate}
                             onPreviewTemplate={handlePreviewTemplate}
                         />;
-            case 'tireManagement':
-                return <TireManagement 
-                    tires={tires} 
+            case 'tireManagement': {
+                const tireById = (id: string) => (tires || []).find((t: any) => t.id === id);
+                return <TireManagement
+                    tires={tires}
                     tireInspections={tireInspections}
                     vehicles={vehicles}
                     users={users}
                     hrCases={hrCases}
-                    onAddTire={() => {}}
+                    onAddTire={() => showModal('addTire', { onSubmit: async (t: any) => { await handleAddTire?.(t); hideModal(); }, onCancel: hideModal })}
                     onUpdateTire={handleUpdateTire}
-                    onAddInspection={() => {}}
-                    onOpenMountTireModal={() => {}}
-                    onOpenReceiveRetreadModal={() => {}}
-                    onOpenScrapTireModal={() => {}}
-                    onOpenSendForRetreadModal={() => {}}
+                    onAddInspection={(tireId: string) => showModal('addTireInspection', { tireId, onSubmit: async (insp: any) => { await handleAddTireInspection?.(tireId, insp); hideModal(); }, onCancel: hideModal })}
+                    onOpenMountTireModal={(tireId: string) => showModal('mountTire', { tire: tireById(tireId), vehicles, onMount: async (tId: string, vId: string, pos: string, odo: number) => { await handleMountTire?.(tId, vId, pos, odo); hideModal(); }, onCancel: hideModal })}
+                    onOpenReceiveRetreadModal={(tireId: string) => showModal('receiveRetread', { tire: tireById(tireId), onReceive: async (tId: string) => { await handleReceiveRetread?.(tId); hideModal(); }, onCancel: hideModal })}
+                    onOpenScrapTireModal={(tireId: string) => showModal('scrapTire', { tire: tireById(tireId), onScrap: async (tId: string, reason: string, cost: number) => { await handleScrapTire?.(tId, reason, cost); hideModal(); }, onCancel: hideModal })}
+                    onOpenSendForRetreadModal={(tireId: string) => showModal('sendForRetread', { tire: tireById(tireId), onSend: async (tId: string, vendor: string, ret: string) => { await handleSendForRetread?.(tId, vendor, ret); hideModal(); }, onCancel: hideModal })}
                 />;
+            }
             case 'parts':
                 return <PartsPortal 
                     parts={parts} 

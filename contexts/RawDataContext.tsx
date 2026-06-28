@@ -76,6 +76,7 @@ export type AppAction =
     | { type: 'SET_CHECKLIST_SUBMISSIONS', payload: ChecklistSubmission[] }
     | { type: 'SET_TIRES', payload: Tire[] }
     | { type: 'SET_TIRE_INSPECTIONS', payload: TireInspection[] }
+    | { type: 'ADD_TIRE_INSPECTION', payload: TireInspection }
     | { type: 'SET_PARTS', payload: Part[] }
     | { type: 'SET_PURCHASE_REQUESTS', payload: PurchaseRequest[] }
     | { type: 'SET_PURCHASE_ORDERS', payload: PurchaseOrder[] }
@@ -167,6 +168,7 @@ export type AppAction =
     | { type: 'UPDATE_PART', payload: { id: string, updates: Partial<Part> } }
     | { type: 'RECEIVE_GOODS', payload: PurchaseOrder }
     | { type: 'UPDATE_TIRE', payload: Tire }
+    | { type: 'ADD_TIRE', payload: Tire }
     | { type: 'ADD_HR_CASE', payload: HRCase }
     | { type: 'UPDATE_HR_CASE', payload: HRCase }
     | { type: 'ADD_PLANNED_SERVICE', payload: PlannedService }
@@ -204,6 +206,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_CHECKLIST_SUBMISSION': return { ...state, checklistSubmissions: (state.checklistSubmissions || []).map(s => s.id === action.payload.id ? { ...s, ...action.payload.updates } : s) };
         case 'SET_TIRES': return { ...state, tires: action.payload };
         case 'SET_TIRE_INSPECTIONS': return { ...state, tireInspections: action.payload };
+        case 'ADD_TIRE_INSPECTION': return { ...state, tireInspections: [action.payload, ...(state.tireInspections || [])] };
         case 'SET_PARTS': return { ...state, parts: action.payload };
         case 'SET_PURCHASE_REQUESTS': return { ...state, purchaseRequests: action.payload };
         case 'SET_PURCHASE_ORDERS': return { ...state, purchaseOrders: action.payload };
@@ -465,6 +468,7 @@ export const dataReducer = (state: AppState, action: AppAction): AppState => {
         case 'UPDATE_PART': return { ...state, parts: (state.parts || []).map(p => p.id === action.payload.id ? { ...p, ...action.payload.updates } : p) };
         case 'RECEIVE_GOODS': return { ...state, purchaseOrders: (state.purchaseOrders || []).map(po => po.id === action.payload.id ? {...po, status: 'Received'} : po), parts: (state.parts || []).map(p => { const i = action.payload.items.find((i: any) => i.partId === p.id); return i ? { ...p, quantityInStock: p.quantityInStock + i.quantity } : p; }) };
         case 'UPDATE_TIRE': return {...state, tires: (state.tires || []).map(t => t.id === action.payload.id ? action.payload : t) };
+        case 'ADD_TIRE': return { ...state, tires: [action.payload, ...(state.tires || [])] };
         // Push 5: management writes
         case 'ADD_BUDGET': return { ...state, budgets: [...(state.budgets || []), action.payload] };
         case 'ADD_FORECAST': return { ...state, forecasts: [...(state.forecasts || []), action.payload] };

@@ -299,8 +299,8 @@ const InventoryView: React.FC<InventoryViewProps> = ({ tires, onOpenMountTireMod
     const tiresWithCalculations = useMemo(() => {
         return tires.map(tire => {
             const totalDistance = tire.mountHistory.reduce((total, h) => {
-                if (h.dismountOdometer && h.mountOdometer) {
-                    return total + (h.dismountOdometer - h.mountOdometer);
+                if (h.removedOdometer && h.mountedOdometer) {
+                    return total + (h.removedOdometer - h.mountedOdometer);
                 }
                 return total;
             }, 0);

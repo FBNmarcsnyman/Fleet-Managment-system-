@@ -7,7 +7,7 @@ import { supabase, runWrite } from '../lib/supabase';
 import {
     toJobCardInsert, toJobCardUpdate, toPartInsert, toPurchaseRequestInsert, toTireUpdate,
     toPlannedServiceInsert, toPurchaseOrderInsert,
-    mapJobCard, mapPart, mapPurchaseRequest, mapPlannedService, mapPurchaseOrder, mapChecklistTemplate,
+    mapJobCard, mapPart, mapPurchaseRequest, mapPlannedService, mapPurchaseOrder, mapChecklistTemplate, mapTireInspection, mapTire,
 } from '../lib/mappers';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
@@ -186,6 +186,86 @@ export const WorkshopDataProvider: React.FC<{ children: ReactNode }> = ({ childr
                 console.error('[workshop] updateTire threw:', err);
                 return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
             }
+        },
+
+        // -- Tyre lifecycle operations (Part 11) ------------------------------
+        handleAddTire: async (tire: { serialNumber: string; brand: string; size: string; type: 'New' | 'Retread'; purchaseDate: string; purchasePrice: number; retreadDetails?: any }): Promise<Result<void>> => {
+            try {
+                const row = { organization_id: FBN_ORG_ID, serial_number: tire.serialNumber, brand: tire.brand, size: tire.size, type: tire.type, purchase_date: tire.purchaseDate, purchase_price: tire.purchasePrice, status: 'In Storage', retread_details: tire.retreadDetails ?? null };
+                const { data, error } = await runWrite(() => supabase.from('tires').insert(row as any).select().single());
+                if (error || !data) { console.error('[workshop] addTire failed:', error); return { ok: false, error: error?.message || 'Could not add tyre.' }; }
+                dispatch({ type: 'ADD_TIRE', payload: mapTire(data, new Map()) });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleMountTire: async (tireId: string, vehicleId: string, position: string, odometer: number): Promise<Result<void>> => {
+            try {
+                const tire = (stateRef.current.tires || []).find((t: any) => t.id === tireId);
+                if (!tire) return { ok: false, error: 'Tire not found.' };
+                const today = new Date().toISOString().slice(0, 10);
+                const { error: hErr } = await runWrite(() => supabase.from('tire_mount_history').insert({ tire_id: tireId, vehicle_id: vehicleId, position, mounted_date: today, mounted_odometer: odometer } as any));
+                if (hErr) { console.error('[workshop] mountTire history failed:', hErr); return { ok: false, error: hErr.message }; }
+                const { error } = await supabase.from('tires').update({ status: 'Mounted', assigned_vehicle_id: vehicleId, assigned_position: position }).eq('id', tireId);
+                if (error) { console.error('[workshop] mountTire failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_TIRE', payload: { ...tire, status: 'Mounted', assignedVehicleId: vehicleId, assignedPosition: position, mountHistory: [...(tire.mountHistory || []), { vehicleId, position, mountedDate: today, mountedOdometer: odometer }] } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleDismountTire: async (tireId: string, odometer: number): Promise<Result<void>> => {
+            try {
+                const tire = (stateRef.current.tires || []).find((t: any) => t.id === tireId);
+                if (!tire) return { ok: false, error: 'Tire not found.' };
+                const today = new Date().toISOString().slice(0, 10);
+                await supabase.from('tire_mount_history').update({ removed_date: today, removed_odometer: odometer }).eq('tire_id', tireId).is('removed_date', null);
+                const { error } = await supabase.from('tires').update({ status: 'In Storage', assigned_vehicle_id: null, assigned_position: null }).eq('id', tireId);
+                if (error) { console.error('[workshop] dismountTire failed:', error); return { ok: false, error: error.message }; }
+                const mh = [...(tire.mountHistory || [])];
+                for (let i = mh.length - 1; i >= 0; i--) { if (!mh[i].removedDate) { mh[i] = { ...mh[i], removedDate: today, removedOdometer: odometer }; break; } }
+                dispatch({ type: 'UPDATE_TIRE', payload: { ...tire, status: 'In Storage', assignedVehicleId: undefined, assignedPosition: undefined, mountHistory: mh } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleScrapTire: async (tireId: string, reason: string, _costToRecover: number): Promise<Result<void>> => {
+            try {
+                const tire = (stateRef.current.tires || []).find((t: any) => t.id === tireId);
+                if (!tire) return { ok: false, error: 'Tire not found.' };
+                const retread = { ...(tire.retreadDetails || {}), scrapReason: reason, scrapDate: new Date().toISOString().slice(0, 10) };
+                const { error } = await runWrite(() => supabase.from('tires').update({ status: 'Scrapped', retread_details: retread as any }).eq('id', tireId));
+                if (error) { console.error('[workshop] scrapTire failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_TIRE', payload: { ...tire, status: 'Scrapped', retreadDetails: retread } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleSendForRetread: async (tireId: string, vendor: string, expectedReturn: string): Promise<Result<void>> => {
+            try {
+                const tire = (stateRef.current.tires || []).find((t: any) => t.id === tireId);
+                if (!tire) return { ok: false, error: 'Tire not found.' };
+                const retread = { vendor, expectedReturnDate: expectedReturn, sentDate: new Date().toISOString().slice(0, 10) };
+                const { error } = await runWrite(() => supabase.from('tires').update({ status: 'Out for Retread', retread_details: retread as any }).eq('id', tireId));
+                if (error) { console.error('[workshop] sendForRetread failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_TIRE', payload: { ...tire, status: 'Out for Retread', retreadDetails: retread } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleReceiveRetread: async (tireId: string): Promise<Result<void>> => {
+            try {
+                const tire = (stateRef.current.tires || []).find((t: any) => t.id === tireId);
+                if (!tire) return { ok: false, error: 'Tire not found.' };
+                const retread = { ...(tire.retreadDetails || {}), receivedDate: new Date().toISOString().slice(0, 10) };
+                const { error } = await runWrite(() => supabase.from('tires').update({ status: 'In Storage', type: 'Retread', retread_details: retread as any }).eq('id', tireId));
+                if (error) { console.error('[workshop] receiveRetread failed:', error); return { ok: false, error: error.message }; }
+                dispatch({ type: 'UPDATE_TIRE', payload: { ...tire, status: 'In Storage', type: 'Retread', retreadDetails: retread } });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
+        handleAddTireInspection: async (tireId: string, inspection: { date: string; vehicleOdometer: number; treadDepth: number; pressure: number; notes?: string }): Promise<Result<void>> => {
+            try {
+                const row = { organization_id: FBN_ORG_ID, tire_id: tireId, date: inspection.date, vehicle_odometer: inspection.vehicleOdometer, tread_depth_mm: inspection.treadDepth, pressure_psi: inspection.pressure, notes: inspection.notes || null };
+                const { data, error } = await runWrite(() => supabase.from('tire_inspections').insert(row as any).select().single());
+                if (error || !data) { console.error('[workshop] addTireInspection failed:', error); return { ok: false, error: error?.message || 'Could not save inspection.' }; }
+                dispatch({ type: 'ADD_TIRE_INSPECTION', payload: mapTireInspection(data) });
+                return { ok: true };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
 
         // -- Planned Services -------------------------------------------------

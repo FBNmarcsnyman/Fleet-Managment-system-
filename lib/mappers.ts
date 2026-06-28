@@ -420,6 +420,15 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     vetted: (row as any).vetted ?? true,
     vatNo: (row as any).vat_no ?? undefined,
     invoiceDetails: (row as any).invoice_details ?? undefined,
+    registrationNumber: (row as any).registration_number ?? undefined,
+    industry: (row as any).industry ?? undefined,
+    billingAddress: (row as any).billing_address ?? undefined,
+    preferredRoutes: (row as any).preferred_routes ?? undefined,
+    cargoTypes: (row as any).cargo_types ?? undefined,
+    typicalLoadSizes: (row as any).typical_load_sizes ?? undefined,
+    marketingEmailOptin: (row as any).marketing_email_optin ?? undefined,
+    marketingWhatsappOptin: (row as any).marketing_whatsapp_optin ?? undefined,
+    registrationStatus: (row as any).registration_status ?? 'approved',
 });
 
 // -- drivers → Driver ---------------------------------------------------------
@@ -1074,6 +1083,15 @@ export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] 
     if ((u as any).vetted !== undefined) (row as any).vetted = (u as any).vetted;
     if ((u as any).vatNo !== undefined) (row as any).vat_no = (u as any).vatNo ?? null;
     if ((u as any).invoiceDetails !== undefined) (row as any).invoice_details = (u as any).invoiceDetails ?? null;
+    if ((u as any).registrationStatus !== undefined) (row as any).registration_status = (u as any).registrationStatus;
+    if ((u as any).industry !== undefined) (row as any).industry = (u as any).industry ?? null;
+    if ((u as any).billingAddress !== undefined) (row as any).billing_address = (u as any).billingAddress ?? null;
+    if ((u as any).registrationNumber !== undefined) (row as any).registration_number = (u as any).registrationNumber ?? null;
+    if ((u as any).preferredRoutes !== undefined) (row as any).preferred_routes = (u as any).preferredRoutes ?? [];
+    if ((u as any).cargoTypes !== undefined) (row as any).cargo_types = (u as any).cargoTypes ?? [];
+    if ((u as any).typicalLoadSizes !== undefined) (row as any).typical_load_sizes = (u as any).typicalLoadSizes ?? null;
+    if ((u as any).marketingEmailOptin !== undefined) (row as any).marketing_email_optin = (u as any).marketingEmailOptin;
+    if ((u as any).marketingWhatsappOptin !== undefined) (row as any).marketing_whatsapp_optin = (u as any).marketingWhatsappOptin;
     return row;
 };
 

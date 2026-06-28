@@ -537,6 +537,16 @@ export interface Client {
     vetted?: boolean;
     vatNo?: string;
     invoiceDetails?: string;
+    // Client self-registration (public /client-register) fields.
+    registrationNumber?: string;
+    industry?: string;
+    billingAddress?: string;
+    preferredRoutes?: string[];
+    cargoTypes?: string[];
+    typicalLoadSizes?: string;
+    marketingEmailOptin?: boolean;
+    marketingWhatsappOptin?: boolean;
+    registrationStatus?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface LoadConfirmation {

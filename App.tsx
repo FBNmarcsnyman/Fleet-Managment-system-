@@ -15,6 +15,7 @@ import PublicLoad from './components/PublicLoad';
 import PublicTerms from './components/PublicTerms';
 import PublicRfqQuote from './components/PublicRfqQuote';
 import SupplierRegister from './components/supplier/SupplierRegister';
+import ClientRegister from './components/client/ClientRegister';
 
 
 import ManagementPortal from './components/ManagementPortal';
@@ -286,6 +287,12 @@ const App: React.FC = () => {
     // ?portal=become-supplier link all open the new flow.
     if (window.location.pathname === '/supplier-register' || inviteToken || portal === 'become-supplier') {
         return <SupplierRegister inviteToken={inviteToken} />;
+    }
+
+    // Public, no-login client self-registration: /client-register (and the legacy
+    // ?portal=become-client link) open the registration form.
+    if (window.location.pathname === '/client-register' || portal === 'become-client') {
+        return <ClientRegister />;
     }
 
     // Public, no-login carrier quote reply from the ?rfq=<token> link in the RFQ email.

@@ -1742,6 +1742,36 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 return { ok: true, value: { tempPassword } };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
         },
+        // Approve a self-registered client: mark approved, then create their portal
+        // login (role Client) and email a branded welcome with the credentials.
+        handleApproveClientRegistration: async (client: Client): Promise<Result<{ tempPassword?: string }>> => {
+            try {
+                const email = (client.contactEmail || '').trim();
+                if (!email) return { ok: false, error: 'No email address on file for this client.' };
+                const upd = await directUpdate('clients', { id: client.id }, { registration_status: 'approved' } as any);
+                if (upd.error) return { ok: false, error: upd.error.message };
+                dispatch({ type: 'UPDATE_CLIENT', payload: { id: client.id, updates: { registrationStatus: 'approved' } as any } });
+                const name = client.contactPerson || client.name;
+                const { data, error } = await directInvoke('admin-create-user', { name, email, role: 'Client', clientId: client.id, assignedBranches: [] });
+                if (error) return { ok: false, error: error.message };
+                if ((data as any)?.error) return { ok: false, error: (data as any).error };
+                const tempPassword = (data as any)?.tempPassword;
+                dispatch({ type: 'ADD_USER', payload: { name, email, role: 'Client', assignedBranches: [], assignedVehicleIds: [], isActive: true } });
+                if (tempPassword) {
+                    const base = (typeof window !== 'undefined') ? `${window.location.origin}${window.location.pathname}` : '';
+                    const link = `${base}?portal=client`;
+                    const cred = (label: string, val: string) => `<tr><td style="padding:4px 14px 4px 0;color:#13294b;font-size:13px;font-weight:700">${label}</td><td style="padding:4px 0;color:#13294b;font-size:13px;font-weight:700">${val}</td></tr>`;
+                    const html = brandedEmail(`<p>Good day ${name},</p>
+                      <p><strong>Welcome to FBN Transport — your account has been approved.</strong> You can now log in to the FBN Client Portal to request quotes, track your loads, and view your invoices.</p>
+                      <table style="border-collapse:collapse;margin:10px 0 4px;background:#f8fafc;border:1px solid #e6ebf1;border-radius:8px;padding:6px">${cred('Username', email)}${cred('Temporary password', tempPassword)}</table>
+                      ${emailButton(link, 'Log in to the client portal &rarr;', '#16a34a')}
+                      <p>For your security, please change your password after your first login.</p>
+                      <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
+                    await invokeFn('send-email', { body: { to: email, subject: 'Your FBN Client Portal login', html, fromName: 'FBN Transport' } });
+                }
+                return { ok: true, value: { tempPassword } };
+            } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }
+        },
         // Approve/reject a carrier application. On approval, persist the status and
         // create the live Supplier record (so it appears in the Active Network and
         // can be invited to log in), and advance any matching invite to Vetted.

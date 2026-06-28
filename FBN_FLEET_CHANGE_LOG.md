@@ -1,8 +1,23 @@
 # FBN Fleet Management System — Change Log
-> Maintained by Marc Snyman | Last updated: 2026-06-26
+> Maintained by Marc Snyman | Last updated: 2026-06-28
 > Use this file at the start of every Claude Code session — paste it in with the instruction: "Read this change log and action the next PENDING item."
 
 ---
+
+## 2026-06-27/28 — Portals (Sessions 1-4) + date standard (DONE)
+- **Subcontractor portal (Sessions 1-3, LIVE):** public `/supplier-register` (5-step + signed-agreement PDF,
+  R1.5m GIT SLA) → vetting → invitation broadcast funnel → full carrier portal (Dashboard, RFQ board, My Loads
+  with status+exceptions, Invoicing, Load Board, Documents reminders + Profile). Light brand theme. See
+  `PORTAL_BUILD_SESSIONS.md` + memory `subcontractor-portal`.
+- **Client portal (Session 4, LIVE):** public `/client-register` → approve from Clients tab → welcome login;
+  portal = Dashboard, Request a Quote (feeds the staff Quotes pipeline), My Quotes, My Loads
+  (timeline/vehicle/driver/ETA/exceptions/POD download), Shipments & Tracking (containers + LCL), Financial
+  Documents (invoices + remittance upload). Per-client RLS; scoped containers/lcl_shipments. Memory `client-portal`.
+- **Date standard:** all date inputs now the DD/MM/YYYY DateField program-wide; guard hook prevents regressions.
+- **Also (earlier in the run):** quote stale-status fix, quote line truck-type, carrier routing steering, COD
+  automation (auto-hold + auto-proforma + split-leg hold).
+- **PENDING / next:** checklists (awaiting Marc's plan); full CRM quoting dashboard + client marketing + subbie-RFQ
+  integration (to scope); full client-invoice/statement/credit-note backend (deferred).
 
 ## 2026-06-26 — Public subcontractor self-registration + R1.5m GIT SLA (DONE)
 - **NEW public registration** at `/supplier-register` (also `?invite=<token>` and legacy

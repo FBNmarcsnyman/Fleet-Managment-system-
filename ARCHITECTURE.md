@@ -170,4 +170,28 @@ State machine: `lib/loadStatus.ts` — DIRECT vs DEPOT flow. Cargo verification 
   quote + PDF. Quote status changes are now OPTIMISTIC (`handleSetQuoteStatus`/`patchQuoteLocal`) so the list
   updates without a reload.
 
-_Companion deep-dives live in the `memory/` notes (supplier-self-registration, supplier-onboarding-todo, depot-linehaul-process-spec, cargo-verification-journey-spec, vehicle-tracking-pulsit, fleet-structure, scheduled-jobs, comms-routing, etc.)._
+## Session additions — 2026-06-28 (portals)
+- **Subcontractor portal (Session 3) — all 5 phases LIVE** (`components/SupplierPortal.tsx`, light theme; super
+  admin views via Users → Portal Logins): Dashboard, RFQ board, My Loads (status via `nextStep` + exceptions →
+  `waybill_events`), Invoicing (**`subcontractor_invoices`** table + `CarrierInvoicesReview`), Load Board
+  (**`load_board_posts`** table + `LoadBoardReview`), Documents reminders (cron `cert-expiry-reminders-daily` +
+  edge fn; GIT expiry flags carrier) + Profile editing (edge fn `supplier-self-update`). Carrier routing steer =
+  `lib/carrierEligibility.ts`. New edge fns: `supplier-register`, `supplier-doc-url`, `supplier-self-update`,
+  `cert-expiry-reminders`. RLS scoped: `waybill_events` by role.
+- **Client portal (Session 4) — LIVE** (`components/ClientPortal.tsx` + `components/client/*`, light theme):
+  public **`/client-register`** → edge fn `client-register` (PENDING client) → approve in Clients tab
+  (`ClientManagementView`) → welcome login (`handleApproveClientRegistration` + admin-create-user). Tabs:
+  Dashboard, Request a Quote (edge fn **`client-quote-request`** → Requested quote in the staff pipeline),
+  My Quotes, My Loads (`ClientJobCard`: timeline/vehicle/driver/ETA/exceptions/POD download),
+  **Shipments & Tracking** (`ClientShipments`: containers + lcl_shipments, `directSelect`), Financial Documents
+  (`ClientFinancials`: invoices from loads + remittance upload). `clients` table extended (registration_number,
+  industry, billing_address, preferred_routes, cargo_types, typical_load_sizes, marketing_*_optin,
+  registration_status). RLS: `auth_client_id()` on clients/quotes/load_confirmations; **scoped `containers` +
+  `lcl_shipments`** to client_id (were org-wide).
+- **Date standard:** every `<input type="date">` → DD/MM/YYYY `DateField` program-wide; enforced by
+  `.claude/hooks/post-edit-guard.sh`.
+- **Pending / future (Marc):** checklists (awaiting his plan); full CRM quoting dashboard + client marketing +
+  subbie-RFQ integration (to scope); full client-invoice/statement/credit-note backend (deferred — Financial Docs
+  is the lighter version for now). See `PORTAL_BUILD_SESSIONS.md`.
+
+_Companion deep-dives live in the `memory/` notes (subcontractor-portal, client-portal, supplier-self-registration, supplier-onboarding-todo, depot-linehaul-process-spec, cargo-verification-journey-spec, vehicle-tracking-pulsit, fleet-structure, scheduled-jobs, comms-routing, etc.)._

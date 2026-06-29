@@ -6,6 +6,7 @@ import { supabase, directInvoke, invokeFn } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
+import DateField from './DateField';
 import { sendOrderToClient, sendLoadConToSupplier } from '../../lib/loadEmails';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
@@ -26,6 +27,8 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
 }) => {
     const { showModal, showToast } = useUIState();
     const [filter, setFilter] = useState<'All' | 'To Send' | 'Sent' | 'Awaiting POD' | 'History'>('All');
+    // Optional "created on" date filter — see what was captured today or on a chosen day.
+    const [createdDate, setCreatedDate] = useState('');
     // Click a column header to sort by it; click again to flip direction.
     type SortKey = 'number' | 'supplier' | 'date' | 'route' | 'status' | 'sent' | 'pod';
     const [sortKey, setSortKey] = useState<SortKey>('date');
@@ -57,6 +60,11 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
             // transporter name (older / quick-captured loads never linked an id).
             .filter(lc => (lc.supplierId && supplierMap.has(lc.supplierId)) || (lc.subcontractorName && lc.subcontractorName.trim()))
             .filter(lc => {
+                // Created-on filter (by capture date) — applies across every status filter.
+                if (createdDate) {
+                    const ca = (lc as any).createdAt || (lc as any).created_at;
+                    if (!ca || new Date(ca).toISOString().slice(0, 10) !== createdDate) return false;
+                }
                 // "Invoiced" = completed/imported history — kept out of the active
                 // board (you only send current loads); see it under History.
                 if (filter === 'History') return lc.status === 'Invoiced';
@@ -71,7 +79,7 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 const c = av < bv ? -1 : av > bv ? 1 : 0;
                 return sortDir === 'asc' ? c : -c;
             });
-    }, [loadConfirmations, filter, supplierMap, sortKey, sortDir]);
+    }, [loadConfirmations, filter, createdDate, supplierMap, sortKey, sortDir]);
 
     const [requesting, setRequesting] = useState<string | null>(null);
     const [sendingLc, setSendingLc] = useState<string | null>(null);
@@ -235,7 +243,13 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         <div className="bg-white border border-slate-200 p-6 rounded-lg shadow-sm">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-slate-900">Subcontractor Loads</h3>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Created</span>
+                        <button onClick={() => setCreatedDate(new Date().toISOString().slice(0, 10))} className={`text-xs font-bold px-2.5 py-1.5 rounded-md ${createdDate === new Date().toISOString().slice(0, 10) ? 'bg-[#13294b] text-white' : 'bg-slate-100 text-slate-600'}`}>Today</button>
+                        <div className="w-36"><DateField value={createdDate} onChange={setCreatedDate} /></div>
+                        {createdDate && <button onClick={() => setCreatedDate('')} title="Clear" className="text-xs font-bold text-slate-400 hover:text-slate-700 px-1">✕</button>}
+                    </div>
                     <select value={filter} onChange={e => setFilter(e.target.value as any)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300">
                         <option value="All">All active</option>
                         <option value="To Send">To send (email confirmation)</option>

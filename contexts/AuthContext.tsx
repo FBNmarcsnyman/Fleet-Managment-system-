@@ -25,6 +25,8 @@ interface AuthContextType extends AuthState {
   updateNavPreferences: (prefs: User['navigationPreferences']) => void;
   resetPassword: (email: string) => Promise<LoginResult>;
   isAuthReady: boolean;
+  // Admin-set, server-stored tabs hidden per role (Super/Admin see everything).
+  roleHiddenTabs: Record<string, string[]>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -110,6 +112,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const onChange = () => load();
         window.addEventListener('role-permissions-changed', onChange);
         return () => { active = false; window.removeEventListener('role-permissions-changed', onChange); };
+    }, []);
+    // Admin-set tabs hidden per role (server-stored). Super/Admin always see everything.
+    const [roleHiddenTabs, setRoleHiddenTabs] = useState<Record<string, string[]>>({});
+    useEffect(() => {
+        let active = true;
+        const load = async () => {
+            const { data } = await directSelect('role_tab_visibility?select=role,hidden');
+            if (active && Array.isArray(data)) {
+                const map: Record<string, string[]> = {};
+                data.forEach((r: any) => { map[r.role] = Array.isArray(r.hidden) ? r.hidden : []; });
+                setRoleHiddenTabs(map);
+            }
+        };
+        load();
+        const onChange = () => load();
+        window.addEventListener('role-tabs-changed', onChange);
+        return () => { active = false; window.removeEventListener('role-tabs-changed', onChange); };
     }, []);
     // Distinguishes "user clicked Logout" (intentional) from "session expired
     // in the background" (implicit). The latter happens after Marc leaves the
@@ -388,7 +407,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateNavPreferences,
         resetPassword,
         isAuthReady,
-    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, setViewSupplierAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady]);
+        roleHiddenTabs,
+    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, setViewSupplierAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady, roleHiddenTabs]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -1,6 +1,7 @@
 
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useUIState, useOperations, useVehicles, useAuth } from '../../contexts/AppContexts';
+import { supabase, runWrite } from '../../lib/supabase';
 import LoadBoard from './LoadBoard';
 import DocumentSettingsView from './DocumentSettingsView';
 
@@ -33,7 +34,7 @@ const OperationsPortal: React.FC = () => {
         handleCreateManifest, handleCreateTripSheet,
     } = useOperations() as any;
     const { vehicles = [] } = (useVehicles() as any) || {};
-    const { hasPermission, currentUser } = useAuth();
+    const { hasPermission, currentUser, roleHiddenTabs } = useAuth();
     // LoadCons-only operators: Broking limited to Load Board / LoadCons /
     // Deliveries-POD, and Operations limited to Dashboard / Day / Shipments /
     // Daily Overview. (They're pinned to their own floor by branch.)
@@ -87,7 +88,12 @@ const OperationsPortal: React.FC = () => {
     const navItems = restricted
         ? (isOps ? RESTRICTED_OPS : RESTRICTED_BROKING)
         : (isOps ? OPS_TABS : BROKING_TABS);
-    const activeTab = navItems.some(t => t.view === operationsSubView) ? operationsSubView : navItems[0].view;
+    // Admin-set, server-stored tabs hidden for this role (Admins/Super Admins see all).
+    const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isSuperAdmin = currentUser?.role === 'Super Admin';
+    const roleHidden: string[] = isAdminRole ? [] : (roleHiddenTabs?.[currentUser?.role as string] || []);
+    const visibleNav = navItems.filter(t => !roleHidden.includes(t.view));
+    const activeTab = visibleNav.some(t => t.view === operationsSubView) ? operationsSubView : (visibleNav[0]?.view || navItems[0].view);
 
     // Customisable tab strip — each user can hide tabs they don't use and reorder
     // them; saved per user + area (localStorage). Keeps the strip uncluttered
@@ -108,7 +114,17 @@ const OperationsPortal: React.FC = () => {
         if (ia === -1 && ib === -1) return 0; if (ia === -1) return 1; if (ib === -1) return -1; return ia - ib;
     });
     const baseOrder = orderedTabs.map(t => t.view);
-    const stripTabs = customise ? orderedTabs : orderedTabs.filter(t => !hiddenTabs.includes(t.view));
+    const stripTabs = customise ? orderedTabs : orderedTabs.filter(t => !hiddenTabs.includes(t.view) && !roleHidden.includes(t.view));
+    // Super-Admin team control: hide/show a tab for everyone in a role (server-stored).
+    const [adminRole, setAdminRole] = useState('Ops');
+    const setRoleTab = async (role: string, view: string, hide: boolean) => {
+        const cur = roleHiddenTabs?.[role] || [];
+        const next = hide ? Array.from(new Set([...cur, view])) : cur.filter(v => v !== view);
+        const { error } = await runWrite(() => (supabase.from as any)('role_tab_visibility').upsert({ role, hidden: next, updated_at: new Date().toISOString() }, { onConflict: 'role' }));
+        if (error) { showToast(`Could not save: ${error.message}`); return; }
+        window.dispatchEvent(new Event('role-tabs-changed'));
+        showToast(`${hide ? 'Hid' : 'Restored'} "${view}" for ${role}`);
+    };
     const moveTab = (view: string, dir: number) => { const arr = [...baseOrder]; const i = arr.indexOf(view), j = i + dir; if (i < 0 || j < 0 || j >= arr.length) return;[arr[i], arr[j]] = [arr[j], arr[i]]; savePrefs(hiddenTabs, arr); };
     const toggleHide = (view: string) => savePrefs(hiddenTabs.includes(view) ? hiddenTabs.filter(v => v !== view) : [...hiddenTabs, view], baseOrder);
 
@@ -215,6 +231,28 @@ const OperationsPortal: React.FC = () => {
                     )}
                 </div>
             </div>
+            {customise && isSuperAdmin && (
+                <div className="mb-5 bg-white border border-slate-200 rounded-xl p-4">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <span className="text-xs font-black text-[#13294b] uppercase tracking-wider">Team tab access</span>
+                        <select value={adminRole} onChange={e => setAdminRole(e.target.value)} className="text-sm border border-slate-300 rounded-lg px-2 py-1">
+                            {['Ops', 'Staff', 'Manager', 'Workshop Manager'].map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                        <span className="text-[11px] text-slate-400">Click a tab to hide/show it for everyone in this role (you always see all).</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {navItems.map(t => {
+                            const hidden = (roleHiddenTabs?.[adminRole] || []).includes(t.view);
+                            return (
+                                <button key={t.view} onClick={() => setRoleTab(adminRole, t.view, !hidden)}
+                                    className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${hidden ? 'bg-slate-100 text-slate-400 border-slate-200 line-through' : 'bg-emerald-50 text-emerald-700 border-emerald-300'}`}>
+                                    {hidden ? '✕ ' : '✓ '}{t.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
             {renderView()}
         </div>
     );

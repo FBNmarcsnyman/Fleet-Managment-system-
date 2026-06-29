@@ -34,7 +34,7 @@ const OperationsPortal: React.FC = () => {
         handleCreateManifest, handleCreateTripSheet,
     } = useOperations() as any;
     const { vehicles = [] } = (useVehicles() as any) || {};
-    const { hasPermission, currentUser, roleHiddenTabs } = useAuth();
+    const { hasPermission, currentUser, roleHiddenTabs, myHiddenTabs } = useAuth();
     // LoadCons-only operators: Broking limited to Load Board / LoadCons /
     // Deliveries-POD, and Operations limited to Dashboard / Day / Shipments /
     // Daily Overview. (They're pinned to their own floor by branch.)
@@ -91,7 +91,7 @@ const OperationsPortal: React.FC = () => {
     // Admin-set, server-stored tabs hidden for this role (Admins/Super Admins see all).
     const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
     const isSuperAdmin = currentUser?.role === 'Super Admin';
-    const roleHidden: string[] = isAdminRole ? [] : (roleHiddenTabs?.[currentUser?.role as string] || []);
+    const roleHidden: string[] = isAdminRole ? [] : (myHiddenTabs || []);
     const visibleNav = navItems.filter(t => !roleHidden.includes(t.view));
     const activeTab = visibleNav.some(t => t.view === operationsSubView) ? operationsSubView : (visibleNav[0]?.view || navItems[0].view);
 
@@ -115,15 +115,16 @@ const OperationsPortal: React.FC = () => {
     });
     const baseOrder = orderedTabs.map(t => t.view);
     const stripTabs = customise ? orderedTabs : orderedTabs.filter(t => !hiddenTabs.includes(t.view) && !roleHidden.includes(t.view));
-    // Super-Admin team control: hide/show a tab for everyone in a role (server-stored).
+    // Super-Admin team control: hide/show a tab for a role (optionally a specific depot).
     const [adminRole, setAdminRole] = useState('Ops');
-    const setRoleTab = async (role: string, view: string, hide: boolean) => {
-        const cur = roleHiddenTabs?.[role] || [];
+    const [adminBranch, setAdminBranch] = useState(''); // '' = whole role; else DBN/JHB/CPT
+    const setRoleTab = async (role: string, branch: string, view: string, hide: boolean) => {
+        const cur = roleHiddenTabs?.[`${role}|${branch}`] || [];
         const next = hide ? Array.from(new Set([...cur, view])) : cur.filter(v => v !== view);
-        const { error } = await runWrite(() => (supabase.from as any)('role_tab_visibility').upsert({ role, hidden: next, updated_at: new Date().toISOString() }, { onConflict: 'role' }));
+        const { error } = await runWrite(() => (supabase.from as any)('role_tab_visibility').upsert({ role, branch, hidden: next, updated_at: new Date().toISOString() }, { onConflict: 'role,branch' }));
         if (error) { showToast(`Could not save: ${error.message}`); return; }
         window.dispatchEvent(new Event('role-tabs-changed'));
-        showToast(`${hide ? 'Hid' : 'Restored'} "${view}" for ${role}`);
+        showToast(`${hide ? 'Hid' : 'Restored'} "${view}" for ${role}${branch ? ` (${branch})` : ''}`);
     };
     const moveTab = (view: string, dir: number) => { const arr = [...baseOrder]; const i = arr.indexOf(view), j = i + dir; if (i < 0 || j < 0 || j >= arr.length) return;[arr[i], arr[j]] = [arr[j], arr[i]]; savePrefs(hiddenTabs, arr); };
     const toggleHide = (view: string) => savePrefs(hiddenTabs.includes(view) ? hiddenTabs.filter(v => v !== view) : [...hiddenTabs, view], baseOrder);
@@ -238,13 +239,19 @@ const OperationsPortal: React.FC = () => {
                         <select value={adminRole} onChange={e => setAdminRole(e.target.value)} className="text-sm border border-slate-300 rounded-lg px-2 py-1">
                             {['Ops', 'Staff', 'Manager', 'Workshop Manager'].map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
-                        <span className="text-[11px] text-slate-400">Click a tab to hide/show it for everyone in this role (you always see all).</span>
+                        <select value={adminBranch} onChange={e => setAdminBranch(e.target.value)} className="text-sm border border-slate-300 rounded-lg px-2 py-1" title="Apply to the whole role, or just one depot">
+                            <option value="">All depots</option>
+                            <option value="DBN">DBN only</option>
+                            <option value="JHB">JHB only</option>
+                            <option value="CPT">CPT only</option>
+                        </select>
+                        <span className="text-[11px] text-slate-400">Click a tab to hide/show it for {adminRole}{adminBranch ? ` · ${adminBranch}` : ' (all depots)'} — you always see all.</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {navItems.map(t => {
-                            const hidden = (roleHiddenTabs?.[adminRole] || []).includes(t.view);
+                            const hidden = (roleHiddenTabs?.[`${adminRole}|${adminBranch}`] || []).includes(t.view);
                             return (
-                                <button key={t.view} onClick={() => setRoleTab(adminRole, t.view, !hidden)}
+                                <button key={t.view} onClick={() => setRoleTab(adminRole, adminBranch, t.view, !hidden)}
                                     className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${hidden ? 'bg-slate-100 text-slate-400 border-slate-200 line-through' : 'bg-emerald-50 text-emerald-700 border-emerald-300'}`}>
                                     {hidden ? '✕ ' : '✓ '}{t.label}
                                 </button>

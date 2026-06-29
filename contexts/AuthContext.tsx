@@ -25,8 +25,10 @@ interface AuthContextType extends AuthState {
   updateNavPreferences: (prefs: User['navigationPreferences']) => void;
   resetPassword: (email: string) => Promise<LoginResult>;
   isAuthReady: boolean;
-  // Admin-set, server-stored tabs hidden per role (Super/Admin see everything).
+  // Admin-set tabs hidden, keyed `${role}|${branch}` (branch ''=whole role). For the editor.
   roleHiddenTabs: Record<string, string[]>;
+  // The current user's effective hidden tabs (role baseline ∪ their depot). For filtering.
+  myHiddenTabs: string[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -113,15 +115,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         window.addEventListener('role-permissions-changed', onChange);
         return () => { active = false; window.removeEventListener('role-permissions-changed', onChange); };
     }, []);
-    // Admin-set tabs hidden per role (server-stored). Super/Admin always see everything.
+    // Admin-set tabs hidden per role + branch (server-stored). Keyed `${role}|${branch}`
+    // where branch '' = whole role, 'DBN'/'JHB'/'CPT' = that depot. Super/Admin see all.
     const [roleHiddenTabs, setRoleHiddenTabs] = useState<Record<string, string[]>>({});
     useEffect(() => {
         let active = true;
         const load = async () => {
-            const { data } = await directSelect('role_tab_visibility?select=role,hidden');
+            const { data } = await directSelect('role_tab_visibility?select=role,branch,hidden');
             if (active && Array.isArray(data)) {
                 const map: Record<string, string[]> = {};
-                data.forEach((r: any) => { map[r.role] = Array.isArray(r.hidden) ? r.hidden : []; });
+                data.forEach((r: any) => { map[`${r.role}|${r.branch || ''}`] = Array.isArray(r.hidden) ? r.hidden : []; });
                 setRoleHiddenTabs(map);
             }
         };
@@ -130,6 +133,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         window.addEventListener('role-tabs-changed', onChange);
         return () => { active = false; window.removeEventListener('role-tabs-changed', onChange); };
     }, []);
+    // The current user's effective hidden tabs: role baseline (branch '') ∪ their depot's set.
+    const myHiddenTabs = useMemo(() => {
+        const u = state.currentUser;
+        if (!u || ['Admin', 'Super Admin'].includes(u.role as string)) return [] as string[];
+        const code = (u.assignedBranches || []).map(b => /DBN|DURBAN/i.test(b) ? 'DBN' : /JHB|JOHAN/i.test(b) ? 'JHB' : /CPT|CAPE/i.test(b) ? 'CPT' : '').find(Boolean) || '';
+        return Array.from(new Set([...(roleHiddenTabs[`${u.role}|`] || []), ...(code ? (roleHiddenTabs[`${u.role}|${code}`] || []) : [])]));
+    }, [roleHiddenTabs, state.currentUser]);
     // Distinguishes "user clicked Logout" (intentional) from "session expired
     // in the background" (implicit). The latter happens after Marc leaves the
     // tab idle for an hour+; the supabase-js client and the JS tab context
@@ -408,7 +418,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         resetPassword,
         isAuthReady,
         roleHiddenTabs,
-    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, setViewSupplierAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady, roleHiddenTabs]);
+        myHiddenTabs,
+    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, setViewSupplierAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady, roleHiddenTabs, myHiddenTabs]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

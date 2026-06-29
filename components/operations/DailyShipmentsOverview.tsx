@@ -65,7 +65,8 @@ const DailyShipmentsOverview: React.FC = () => {
             atPort: active.filter(c => c.status === 'Arrived Port' || c.status === 'Available').length,
             atDepot: active.filter(c => c.status === 'At Depot' || c.status === 'Collected' || c.status === 'Unpacked').length,
             empty: active.filter(c => c.status === 'Empty').length,
-            etaToday: containers.filter(c => dOnly(c.eta_port) === today),
+            // Active containers arriving today, one row per container (drop history dupes).
+            etaToday: Array.from(new Map(active.filter(c => dOnly(c.eta_port) === today).map(c => [c.container_no, c])).values()),
             active: active.length,
         };
     }, [containers, today]);
@@ -164,8 +165,16 @@ const DailyShipmentsOverview: React.FC = () => {
                 </div>
                 {ctr.etaToday.length > 0 && (
                     <div className="mt-2 bg-white border border-slate-200 rounded-xl p-3">
-                        <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">Arriving port today</p>
-                        <p className="text-sm text-slate-700">{ctr.etaToday.map(c => `${c.container_no}${c.client_name ? ` · ${c.client_name}` : ''}`).slice(0, 12).join('  ·  ')}</p>
+                        <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2">Arriving port today ({ctr.etaToday.length})</p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {ctr.etaToday.slice(0, 30).map((c: any) => (
+                                <span key={c.container_no} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px]">
+                                    <span className="font-mono font-bold text-[#13294b]">{c.container_no}</span>
+                                    {c.client_name && <span className="text-slate-500">{c.client_name}</span>}
+                                </span>
+                            ))}
+                            {ctr.etaToday.length > 30 && <span className="text-[11px] text-slate-400 self-center">+{ctr.etaToday.length - 30} more</span>}
+                        </div>
                     </div>
                 )}
             </div>

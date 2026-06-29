@@ -264,3 +264,9 @@
   now matches the sheet exactly (At Depot 27 + At Port 13 = 40). LCL importer already upserts on
   dedupe_key (0 dupes) — no change needed.
 - OPTIONAL (pending Marc OK): ~19k duplicate Delivered history rows could be de-duped to reclaim storage.
+
+## 2026-06-29 — Load/data integrity audit + fixes (Broking/Ops streamline prep)
+Audit (load-audit agent): system fundamentally healthy — no dup loads, no stuck loads, no COD holds; the "19k overdue" was just delivered history.
+Fixed (data): 2 Delivered-no-date loads (FBN-2026-06-0010/0012 → delivery_date = marked-delivered date); supplier_id backfilled on 21 brokered loads (matched carriers); 6 junk arranging_branch rows (ARRANGING BRANCH / ':-:') → null; container eta_port year-0202 garbage → null; 86 old LCL date-as-status rows → is_history. Hardened import-fcl-sheet parseDate (reject year <2015/>2035, v6).
+OPERATIONAL (Marc, not code): chase 7 outstanding PODs (PUMA worst — FBN-2026-06-0001, 10d); assign agent/bill-to to 13 unbilled LCL rows (from "ALL OTHER CLIENTS"/SAMC sheets); call ZACPAK re 2 stale IFF containers (MEDU2560619 23d past ETA); 46 brokered loads still unlinked (carriers MERIDIAN/TORAY/MACHT ONE/LIGHTNING not in suppliers — add them).
+TODO (code, small): LCL importer set agent for "ALL OTHER CLIENTS"/SAMC sheets (Bug A); loadcon importer branch whitelist to skip header rows (Bug D).

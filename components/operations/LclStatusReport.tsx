@@ -74,14 +74,20 @@ const LclStatusReport: React.FC = () => {
     const [q, setQ] = useState('');
     const [selIds, setSelIds] = useState<Set<string>>(new Set());
     const [bulkBusy, setBulkBusy] = useState(false);
+    const [bulkAgent, setBulkAgent] = useState('');
     const toggleSel = (id: string) => setSelIds(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
     const bulkApply = async (patch: Record<string, any>) => {
         if (!selIds.size) return;
         setBulkBusy(true);
         // app_locked: once you act on a shipment here it's app-managed — the daily
         // sheet sync will leave it alone (won't overwrite your change).
-        for (const id of selIds) { try { await directUpdate('lcl_shipments', { id }, { ...patch, app_locked: true }); } catch { /* keep going */ } }
+        let ok = 0, fail = 0, lastErr = '';
+        for (const id of selIds) {
+            const res = await directUpdate('lcl_shipments', { id }, { ...patch, app_locked: true });
+            if ((res as any)?.error) { fail++; lastErr = (res as any).error.message || 'error'; } else ok++;
+        }
         setBulkBusy(false); setSelIds(new Set()); fetchRows();
+        showToast(fail ? `Updated ${ok}, ${fail} failed: ${lastErr}` : `Updated ${ok} shipment${ok !== 1 ? 's' : ''}.`);
     };
 
     const fetchRows = async () => {
@@ -258,6 +264,10 @@ const LclStatusReport: React.FC = () => {
                     <button disabled={bulkBusy} onClick={() => bulkApply({ status: 'UNPACKED', unpack_date: todayIso() })} className="bg-amber-500 hover:bg-amber-400 text-[#13294b] font-bold text-xs px-3 py-1.5 rounded-md disabled:opacity-50">Mark unpacked (today)</button>
                     <button disabled={bulkBusy} onClick={() => bulkApply({ status: 'COLLECTED / ON ROUTE', uplift_date: todayIso() })} className="bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs px-3 py-1.5 rounded-md disabled:opacity-50">Mark collected (today)</button>
                     <button disabled={bulkBusy} onClick={() => bulkApply({ status: 'DELIVERED', delivered_client_date: todayIso(), is_history: true })} className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs px-3 py-1.5 rounded-md disabled:opacity-50">Mark delivered</button>
+                    <span className="w-px h-5 bg-white/20" />
+                    <input value={bulkAgent} onChange={e => setBulkAgent(e.target.value.toUpperCase())} list="lclBulkAgents" placeholder="Agent / bill-to" className="bg-white text-slate-800 text-xs rounded-md px-2 py-1.5 w-40" />
+                    <datalist id="lclBulkAgents">{agents.filter(a => a !== 'All').map(a => <option key={a} value={a} />)}</datalist>
+                    <button disabled={bulkBusy || !bulkAgent.trim()} onClick={() => { bulkApply({ agent: bulkAgent.trim() }); setBulkAgent(''); }} className="bg-[#f5b700] hover:brightness-95 text-[#13294b] font-bold text-xs px-3 py-1.5 rounded-md disabled:opacity-50">Set agent</button>
                     <button disabled={bulkBusy} onClick={() => setSelIds(new Set())} className="text-blue-200 hover:text-white font-bold text-xs px-3 py-1.5">Clear</button>
                     {bulkBusy && <span className="text-xs text-blue-200">Updating…</span>}
                 </div>

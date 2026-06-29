@@ -252,3 +252,15 @@
   inspection, defects); Part 8 procurement (request→authorise→PO→receive); Part 11 tyre ops persist + light theme.
 - Driver Hub at /driver (no-login): inspection / breakdown / incident / logs. New driver-hub edge fn.
 - NEXT: custom domain control.fbn-transport.co.za (memory custom-domain-plan); Tyre People portal; Parts 9/10/12.
+
+## 2026-06-29 — FCL container sync fix (duplicate "At Port" ghosts)
+- Root cause: import-fcl-sheet keyed dedupe on container+client+vessel+NOTES (status), so each
+  status change INSERTED a new row instead of updating → containers piled up at "Arrived Port"
+  (showed 232; real ~13). Also re-imported the COMPLETED SHIPMENTS tab daily → 19k+ Delivered dupes.
+- Fix: importer now syncs ONLY the active 'UNPACKS & FCL' tab — upserts each shipment by
+  container+client+vessel (status change updates in place), and CLOSES (Delivered) active rows that
+  dropped off the sheet (guarded vs short reads). No longer re-imports completed history.
+- Cleanup: removed 381 + 73 active ghost/dupe rows; left 19k Delivered history untouched. Active board
+  now matches the sheet exactly (At Depot 27 + At Port 13 = 40). LCL importer already upserts on
+  dedupe_key (0 dupes) — no change needed.
+- OPTIONAL (pending Marc OK): ~19k duplicate Delivered history rows could be de-duped to reclaim storage.

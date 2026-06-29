@@ -2,6 +2,8 @@ import React from 'react';
 import { Contact } from '../../types';
 import { PlusIcon } from '../icons/PlusIcon';
 
+const ROLE_OPTIONS = ['Controller', 'Ops', 'Manager', 'Accounts', 'Sales', 'POD / Documents', 'Director', 'Other'];
+
 // Manage the list of named people at a client / subcontractor. Each row is a
 // person + email + (optional) phone, so the Transport Order form can offer them
 // as a "Contact Person" dropdown and auto-fill the email.
@@ -63,7 +65,10 @@ const ContactsEditor: React.FC<{
                 <div key={i} className="space-y-1.5 bg-gray-900/30 rounded-lg p-2">
                     <div className="grid grid-cols-12 gap-2 items-center">
                         <input className={`${inputCls} col-span-3`} placeholder="Name" value={c.name} onChange={e => update(i, 'name', e.target.value)} />
-                        <input className={`${inputCls} col-span-2`} placeholder="Role" list="contactRoles" value={c.role || ''} onChange={e => update(i, 'role', e.target.value)} />
+                        <select className={`${inputCls} col-span-2`} value={c.role || ''} onChange={e => update(i, 'role', e.target.value)}>
+                            <option value="">Role…</option>
+                            {[...(c.role && !ROLE_OPTIONS.includes(c.role) ? [c.role] : []), ...ROLE_OPTIONS].map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
                         <input className={`${inputCls} col-span-4`} type="email" placeholder="Email" value={c.email || ''} onChange={e => update(i, 'email', e.target.value)} />
                         <input className={`${inputCls} col-span-2`} placeholder="Phone" value={c.phone || ''} onChange={e => update(i, 'phone', e.target.value)} />
                         <button type="button" onClick={() => remove(i)} title="Remove" className="col-span-1 text-gray-500 hover:text-red-400 text-lg font-bold">×</button>
@@ -80,7 +85,6 @@ const ContactsEditor: React.FC<{
                     </div>
                 </div>
             ))}
-            <datalist id="contactRoles"><option value="Controller" /><option value="Accounts" /><option value="Ops" /><option value="POD / Documents" /><option value="Other" /></datalist>
         </div>
     );
 };

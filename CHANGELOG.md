@@ -2,6 +2,33 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-29] — Operations hardening: containers, tab access, fuel, data audit
+
+### Added
+- **Branch-aware tab access** — Super Admin can hide/show tabs per role AND per depot
+  (Ops · DBN vs Ops · JHB) from Operations → Customise → Team tab access; server-stored
+  (`role_tab_visibility` role+branch); Ops defaulted to hide Driver Chats/Doc Settings/Containers.
+- **Containers branch-scoped** (DBN/JHB) + **mirror the FCL sheet's exact status wording**
+  (`sheet_status`) with simple buckets kept for the count cards.
+- **Users "Last active" column** (admin-user-activity edge fn → auth last_sign_in_at).
+- **Deliveries/POD "last requested + by who"** stamp for follow-up monitoring.
+- **LoadCons "Created" date filter** (Today + any date).
+- **Asset List cards/list toggle** (+ superlink pairing / "not paired" flag in list view).
+- **Fuel** — date-picker on fillings + "Last fill per vehicle" (spot data gaps).
+- **QR labels** — Trucks-only / Trailers-only filter.
+- **LCL Status Report** — bulk "Set agent" + surfaced save errors.
+
+### Fixed
+- **FCL container sync** — importer was keying on status text → duplicate "ghosts"
+  (board showed 232 at port; real ~13). Rewritten to upsert the active tab + close on-leave,
+  no history re-import; cleaned 454 ghost rows; hardened the date parser (reject yr <2015/>2035).
+- **Containers board loaded only 4** — no-ETA active rows were buried past the 5000 cap; now
+  fetches active in full. Same fix on the Ops dashboard widget.
+- **Add User** "duplicate key" — admin-create-user now upserts (the auth trigger pre-creates the profile).
+- **Clients contact Role** — flaky datalist → proper dropdown.
+- **Data audit cleanup** — 2 delivered-no-date loads, 21+12 supplier_id backfills + 13 created/linked
+  carriers (only own-fleet left), 6 junk branch rows, container yr-0202 dates, 86 stale LCL date-as-status → history.
+
 ## [2026-06-28] — Workshop Parts 5–8/11 + inspection refinements + Driver Hub
 
 ### Added

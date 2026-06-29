@@ -315,3 +315,12 @@ PHASES 6–10 ONLY START AFTER PHASE 5 IS LIVE AND STABLE.
   enforcement (Reg 246 / SANS 1395 / RTMS / cross-border).
 - [ ] **Driver Hub extras** — printable `/driver` QR poster for cabs; general (non-tyre) breakdown option.
 - [ ] **Optional** — per-driver login (Driver Hub Option B).
+
+## Next session (2026-06-29 close) — prioritised
+- [ ] **Custom domain** — register `fbncontrolcentre.co.za` (new domain, no Xneelo touch) → point at Cloudflare worker → attach Custom Domain. Steps in memory `custom-domain-plan`. (Marc: register + nameservers; I wire it.)
+- [ ] **Recipient picker** — on Collection/Order/LoadCon create: multi-select the company's contacts (with roles + send-flags) + add-new-inline that persists to the company; flows into the load's email recipients; keep client↔subbie separation.
+- [ ] **Central Tab Access** — extend per-role/branch tab hiding to ALL sections (Workshop/Fleet/Quotes/Clients), one admin screen, namespaced keys.
+- [ ] **Broking/Ops streamline (audit steps 2-3)** — group tabs DO/TRACK/REVIEW; merge duplicates (By Transporter, PODs vs Deliveries/POD, Dashboard); one create path; verify status state-machine + client/subbie email separation.
+- [ ] **Small importer fixes** — LCL "ALL OTHER CLIENTS"/SAMC sheets set agent (needs Marc's bill-to); loadcon importer branch whitelist.
+- [ ] **Operational (Marc)** — chase 7 PODs (PUMA worst); assign agent on remaining unbilled LCL; call ZACPAK re 2 stale IFF containers.
+- [ ] Carried: Tyre People portal; Workshop 9/10/12; Driver Hub QR poster; per-driver login.

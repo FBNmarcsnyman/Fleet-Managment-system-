@@ -53,7 +53,8 @@ const DailyShipmentsOverview: React.FC = () => {
     const [containers, setContainers] = useState<any[]>([]);
     useEffect(() => {
         let alive = true;
-        directSelect('containers?select=container_no,client_name,vessel_name,eta_port,status,branch,turn_in_area,turn_in_date&order=eta_port.desc.nullslast&limit=5000')
+        // Active only (many have no ETA — an ETA-ordered query buried them past the cap).
+        directSelect('containers?select=container_no,client_name,vessel_name,eta_port,status,branch,turn_in_area,turn_in_date&status=not.in.(Delivered,%22Turned%20In%22)&order=eta_port.desc.nullslast&limit=5000')
             .then(({ data }) => { if (alive && Array.isArray(data)) setContainers(data); });
         return () => { alive = false; };
     }, []);

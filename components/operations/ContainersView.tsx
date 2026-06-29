@@ -38,10 +38,15 @@ const ContainersView: React.FC = () => {
 
     const load = async () => {
         setLoading(true);
-        // Order most-recent ETA first and lift the cap so active (recent) containers
-        // aren't buried behind years of delivered history (2,000+ rows).
-        const { data } = await directSelect('containers?select=*&order=eta_port.desc.nullslast,created_at.desc&limit=5000');
-        setRows(Array.isArray(data) ? data : []);
+        // Fetch ALL active containers separately (many have no ETA, so an ETA-ordered
+        // single query buried them behind years of delivered history past the row cap).
+        // Plus a capped slice of recent completed history for the "All" tab.
+        const [act, hist] = await Promise.all([
+            directSelect('containers?select=*&status=not.in.(Delivered,%22Turned%20In%22)&order=eta_port.desc.nullslast&limit=5000'),
+            directSelect('containers?select=*&status=in.(Delivered,%22Turned%20In%22)&order=created_at.desc&limit=2000'),
+        ]);
+        const rows = [...(Array.isArray(act.data) ? act.data : []), ...(Array.isArray(hist.data) ? hist.data : [])];
+        setRows(rows);
         setLoading(false);
     };
     useEffect(() => {

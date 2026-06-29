@@ -612,6 +612,8 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     podAnalysis: (row.pod_analysis as unknown as LoadConfirmation['podAnalysis']) ?? undefined,
     deliveryArea: row.delivery_area ?? undefined,
     sentToSupplierDate: row.sent_to_supplier_date ?? undefined,
+    podRequestedAt: (row as any).pod_requested_at ?? undefined,
+    podRequestedBy: (row as any).pod_requested_by ?? undefined,
     subcontractorVehicleReg: row.subcontractor_vehicle_reg ?? undefined,
     subcontractorDriverName: row.subcontractor_driver_name ?? undefined,
     subcontractorDriverCell: row.subcontractor_driver_cell ?? undefined,
@@ -1573,6 +1575,8 @@ export const toLoadConfirmationUpdate = (
     if (updates.notes !== undefined) row.notes = updates.notes as unknown as Tables['load_confirmations']['Update']['notes'];
     if (updates.deliveryArea !== undefined) row.delivery_area = updates.deliveryArea ?? null;
     if (updates.sentToSupplierDate !== undefined) row.sent_to_supplier_date = orNull(updates.sentToSupplierDate);
+    if (updates.podRequestedAt !== undefined) (row as any).pod_requested_at = orNull(updates.podRequestedAt);
+    if (updates.podRequestedBy !== undefined) (row as any).pod_requested_by = orNull(updates.podRequestedBy);
     if (updates.subcontractorVehicleReg !== undefined) row.subcontractor_vehicle_reg = updates.subcontractorVehicleReg ?? null;
     if (updates.subcontractorDriverName !== undefined) row.subcontractor_driver_name = updates.subcontractorDriverName ?? null;
     if ((updates as any).clientRequestStatus !== undefined) (row as any).client_request_status = (updates as any).clientRequestStatus ?? null;

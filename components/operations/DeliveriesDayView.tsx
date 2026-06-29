@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
-import { useOperations, useUIState } from '../../contexts/AppContexts';
+import { useOperations, useUIState, useAuth } from '../../contexts/AppContexts';
+import { formatDistanceToNow } from 'date-fns';
 import { invokeFn } from '../../lib/supabase';
 
 // Delivered / POD — a day-by-day checklist instead of one giant column. Loads are
@@ -12,6 +13,7 @@ const podOut = (lc: LoadConfirmation) => lc.status === 'Delivered' && !(lc as an
 const DeliveriesDayView: React.FC = () => {
     const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation } = useOperations() as any;
     const { showModal, showToast } = useUIState();
+    const { currentUser } = useAuth();
     const [reqBusy, setReqBusy] = useState<string | null>(null);
     const [scope, setScope] = useState<'week' | 'all' | 'podout'>('week');
     const [q, setQ] = useState('');
@@ -69,7 +71,10 @@ const DeliveriesDayView: React.FC = () => {
         try {
             const { data, error } = await invokeFn('send-email', { body: { to, cc: ['loadcons@fbn-transport.co.za', ...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean)], subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
             if (error || (data as any)?.error) showToast(`Could not send: ${(data as any)?.error || error?.message}`);
-            else showToast(`POD request emailed to ${to}.`);
+            else {
+                showToast(`POD request emailed to ${to}.`);
+                handleUpdateLoadConfirmation(lc.id, { podRequestedAt: new Date().toISOString(), podRequestedBy: currentUser?.name || currentUser?.email || 'Staff' });
+            }
         } catch (e) { showToast(`Could not send: ${e instanceof Error ? e.message : 'error'}`); }
         finally { setReqBusy(null); }
     };
@@ -125,6 +130,11 @@ const DeliveriesDayView: React.FC = () => {
                                                     {transporterOf(l) && <span className="text-[11px] text-slate-500 truncate hidden md:inline">· {transporterOf(l)}</span>}
                                                 </button>
                                                 <span className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded uppercase ${out ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{out ? 'POD due' : 'POD in'}</span>
+                                                {(l as any).podRequestedAt && (
+                                                    <span className="shrink-0 text-[10px] text-slate-500 hidden md:inline" title={`Last POD request: ${new Date((l as any).podRequestedAt).toLocaleString('en-ZA')}${(l as any).podRequestedBy ? ` — by ${(l as any).podRequestedBy}` : ''}`}>
+                                                        ⟳ {formatDistanceToNow(new Date((l as any).podRequestedAt), { addSuffix: true })}{(l as any).podRequestedBy ? ` · ${(l as any).podRequestedBy}` : ''}
+                                                    </span>
+                                                )}
                                                 {out && (l as any).subcontractorName && <button onClick={() => requestPod(l)} disabled={reqBusy === l.id} title="Email the subcontractor to upload the signed POD" className="shrink-0 text-[11px] font-bold bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white py-1 px-2.5 rounded-lg">{reqBusy === l.id ? '…' : '✉ Request POD'}</button>}
                                                 {out && <button onClick={() => getPod(l)} title="Upload the POD yourself" className="shrink-0 text-[11px] font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-1 px-2.5 rounded-lg">Get POD</button>}
                                             </div>

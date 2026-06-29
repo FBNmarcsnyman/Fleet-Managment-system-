@@ -652,6 +652,8 @@ export interface LoadConfirmation {
     podAnalysis?: PodAnalysisResult;
     deliveryArea?: string;
     sentToSupplierDate?: string;
+    podRequestedAt?: string;
+    podRequestedBy?: string;
     subcontractorVehicleReg?: string;
     subcontractorDriverName?: string;
     subcontractorDriverCell?: string;

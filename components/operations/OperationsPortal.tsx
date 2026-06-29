@@ -4,6 +4,10 @@ import { useUIState, useOperations, useVehicles, useAuth } from '../../contexts/
 import LoadBoard from './LoadBoard';
 import DocumentSettingsView from './DocumentSettingsView';
 
+// Tab strip is grouped by what you're doing: Overview (KPIs) · Do (operate) · Track
+// (snapshots) · Review (reports/config). Labels shown as dividers between groups.
+const GROUP_LABEL: Record<string, string> = { dashboard: 'Overview', work: 'Do', track: 'Track', reports: 'Review' };
+
 const SubcontractorLoadsView = lazy(() => import('./SubcontractorLoadsView'));
 const WhatsAppChatsView = lazy(() => import('./WhatsAppChatsView'));
 const ShipmentsBoard = lazy(() => import('./ShipmentsBoard'));
@@ -173,10 +177,15 @@ const OperationsPortal: React.FC = () => {
                         {isOps ? 'Operations' : 'Broking'}
                     </span>
                 <div className="flex items-center gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl">
-                    {stripTabs.map(item => {
+                    {stripTabs.map((item, idx) => {
                         const isHidden = hiddenTabs.includes(item.view);
+                        const grp = (item as any).group;
+                        const prevGrp = idx > 0 ? (stripTabs[idx - 1] as any).group : null;
+                        const showDiv = !customise && idx > 0 && grp && grp !== prevGrp;
                         return (
-                            <div key={item.view} className={`flex items-center rounded-lg ${customise ? 'border border-dashed border-slate-300 pr-1' : ''}`}>
+                            <React.Fragment key={item.view}>
+                            {showDiv && <span className="shrink-0 self-center ml-1 pl-2 border-l border-slate-300 text-[9px] font-black uppercase tracking-widest text-slate-400">{GROUP_LABEL[grp] || ''}</span>}
+                            <div className={`flex items-center rounded-lg ${customise ? 'border border-dashed border-slate-300 pr-1' : ''}`}>
                                 <button onClick={() => { if (!customise) handleOperationsSubViewChange(item.view as any); }}
                                     className={`px-3.5 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition ${activeTab === item.view && !customise ? 'bg-[#13294b] text-white shadow' : isHidden ? 'text-slate-400 line-through' : 'text-slate-600 hover:bg-white'}`}>
                                     {item.label}
@@ -189,6 +198,7 @@ const OperationsPortal: React.FC = () => {
                                     </span>
                                 )}
                             </div>
+                            </React.Fragment>
                         );
                     })}
                     <button onClick={() => setCustomise(c => !c)} title="Show/hide & reorder your tabs" className={`ml-1 px-2.5 py-2 text-xs font-bold rounded-lg whitespace-nowrap ${customise ? 'bg-[#f5b700] text-[#13294b]' : 'text-slate-500 hover:bg-white'}`}>{customise ? 'Done' : '⚙ Customise'}</button>

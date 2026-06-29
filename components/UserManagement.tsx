@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCommonData } from '../contexts/AppContexts';
+import { directInvoke } from '../lib/supabase';
+import { formatDistanceToNow } from 'date-fns';
 import Modal from './Modal';
 import AddUserForm from './AddUserForm';
 import EditUserForm from './EditUserForm';
@@ -31,6 +33,18 @@ const UserManagement: React.FC = () => {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [preset, setPreset] = useState('loadcons');
     const [applying, setApplying] = useState(false);
+    // Last sign-in per user id (from auth.users via the admin-gated edge fn).
+    const [lastActive, setLastActive] = useState<Record<string, string | null>>({});
+    useEffect(() => {
+        (async () => {
+            const { data } = await directInvoke('admin-user-activity', {});
+            if (data?.ok && Array.isArray(data.activity)) {
+                const m: Record<string, string | null> = {};
+                data.activity.forEach((a: any) => { if (a.id) m[a.id] = a.lastSignInAt; });
+                setLastActive(m);
+            }
+        })();
+    }, []);
     const staffUsers = (users || []).filter((u: User) => !EXTERNAL_ROLES.includes(u.role as string));
 
     const handleSubmitNewUser = async (user: Omit<User, 'permissions' | 'assignedVehicleIds'>) => {
@@ -102,6 +116,7 @@ const UserManagement: React.FC = () => {
                             <th className="p-4 text-gray-300">Role</th>
                             <th className="p-4 text-gray-300">Access</th>
                             <th className="p-4 text-gray-300">Assigned Branches</th>
+                            <th className="p-4 text-gray-300">Last active</th>
                             <th className="p-4 text-gray-300">Status</th>
                             <th className="p-4 text-gray-300 text-right">Actions</th>
                         </tr>
@@ -115,6 +130,7 @@ const UserManagement: React.FC = () => {
                                 <td className="p-4"><span className="px-2 py-1 text-xs font-semibold bg-blue-900/50 text-blue-300 rounded-full">{user.role}</span></td>
                                 <td className="p-4 text-gray-400 text-xs">{(user.permissions || []).includes('access_loadcons') ? 'LoadCons operator' : (user.permissions || []).length ? (user.permissions || []).join(', ') : 'Role default'}</td>
                                 <td className="p-4 text-gray-400">{user.assignedBranches.join(', ')}</td>
+                                <td className="p-4 text-gray-400 text-xs">{lastActive[(user as any).id] ? formatDistanceToNow(new Date(lastActive[(user as any).id]!), { addSuffix: true }) : 'Never'}</td>
                                 <td className="p-4">
                                     {(user as any).isActive === false
                                         ? <span className="text-xs font-semibold text-gray-500">Inactive</span>

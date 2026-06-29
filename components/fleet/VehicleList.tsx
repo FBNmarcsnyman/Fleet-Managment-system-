@@ -86,6 +86,7 @@ const VehicleList: React.FC = () => {
     const [layout, setLayout] = useState<'cards' | 'list'>(() => (localStorage.getItem('fleet_layout') as 'cards' | 'list') || 'cards');
     const setLayoutPref = (l: 'cards' | 'list') => { setLayout(l); try { localStorage.setItem('fleet_layout', l); } catch { /* */ } };
     const driverByVehicle = useMemo(() => { const m = new Map<string, string>(); (drivers as any[]).forEach(d => { if (d.assignedVehicleId) m.set(d.assignedVehicleId, d.name); }); return m; }, [drivers]);
+    const vehicleById = useMemo(() => new Map((vehicles as Vehicle[]).map(v => [v.id, v])), [vehicles]);
 
     const groupedVehicles = useMemo(() => {
         const activeVehicles: Vehicle[] = (vehicles || []).filter((v: Vehicle) => v.status !== 'Sold');
@@ -322,18 +323,29 @@ const VehicleList: React.FC = () => {
                                 <div className="overflow-x-auto bg-white border border-slate-200 rounded-xl">
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50 text-slate-500"><tr className="border-b border-slate-200">
-                                            <th className="p-3">Registration</th><th className="p-3">Name</th><th className="p-3">Category</th><th className="p-3">Driver</th><th className="p-3">Branch</th>
+                                            <th className="p-3">Registration</th><th className="p-3">Name</th><th className="p-3">Category</th><th className="p-3">Pair</th><th className="p-3">Driver</th><th className="p-3">Branch</th>
                                         </tr></thead>
                                         <tbody>
-                                            {vehiclesInGroup.map(vehicle => (
-                                                <tr key={vehicle.id} onClick={() => handleSelectVehicle(vehicle.id)} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
-                                                    <td className="p-3 font-bold text-[#13294b]">{vehicle.registration || '—'}</td>
-                                                    <td className="p-3 text-slate-700">{vehicle.name}</td>
-                                                    <td className="p-3 text-slate-500">{vehicle.weightCategory || '—'}</td>
-                                                    <td className="p-3 text-slate-700">{driverByVehicle.get(vehicle.id) || '—'}</td>
-                                                    <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
-                                                </tr>
-                                            ))}
+                                            {vehiclesInGroup.map(vehicle => {
+                                                const isSuperlink = /superlink/i.test(String(vehicle.weightCategory || ''));
+                                                const partner = (vehicle as any).linkedVehicleId ? vehicleById.get((vehicle as any).linkedVehicleId) : null;
+                                                return (
+                                                    <tr key={vehicle.id} onClick={() => handleSelectVehicle(vehicle.id)} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                                                        <td className="p-3 font-bold text-[#13294b]">{vehicle.registration || '—'}</td>
+                                                        <td className="p-3 text-slate-700">{vehicle.name}</td>
+                                                        <td className="p-3 text-slate-500">{vehicle.weightCategory || '—'}</td>
+                                                        <td className="p-3">
+                                                            {isSuperlink
+                                                                ? (partner
+                                                                    ? <span className="text-emerald-700 font-bold">↔ {partner.registration || partner.name}</span>
+                                                                    : <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full text-xs">⚠ Not paired</span>)
+                                                                : <span className="text-slate-300">—</span>}
+                                                        </td>
+                                                        <td className="p-3 text-slate-700">{driverByVehicle.get(vehicle.id) || '—'}</td>
+                                                        <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

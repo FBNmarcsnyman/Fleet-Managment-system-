@@ -6,6 +6,7 @@ import Modal from './Modal';
 import AddUserForm from './AddUserForm';
 import EditUserForm from './EditUserForm';
 import RoleAccessMatrix from './RoleAccessMatrix';
+import RoleTabAccess from './RoleTabAccess';
 import PortalLoginsView from './PortalLoginsView';
 import { PlusIcon } from './icons/PlusIcon';
 import { User } from '../types';
@@ -146,6 +147,8 @@ const UserManagement: React.FC = () => {
             </div>
 
             <RoleAccessMatrix />
+
+            <RoleTabAccess />
 
             <Modal isOpen={isAddUserModalOpen} onClose={() => setIsAddUserModalOpen(false)}>
                 <AddUserForm onSubmit={handleSubmitNewUser} onCancel={() => setIsAddUserModalOpen(false)} />

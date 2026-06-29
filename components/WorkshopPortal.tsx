@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useWorkshop, useUIState, useAuth, useVehicles, useOperations } from '../contexts/AppContexts';
 import JobCardPortal from './JobCardPortal';
 import ServicePlanner from './workshop/ServicePlanner';
@@ -13,7 +13,7 @@ import ChecklistManagement from './ChecklistManagement';
 type WorkshopView = 'jobCards' | 'servicePlanner' | 'checklistReview' | 'checklistManagement' | 'tireManagement' | 'parts' | 'suppliers';
 
 const WorkshopPortal: React.FC = () => {
-    const { currentUser } = useAuth();
+    const { currentUser, myHiddenTabs } = useAuth();
     const { workshopSubView, handleWorkshopSubViewChange, showModal, hideModal } = useUIState();
     const { 
         users = [], 
@@ -62,6 +62,14 @@ const WorkshopPortal: React.FC = () => {
         { view: 'parts', label: 'Parts & Inventory' },
         { view: 'suppliers', label: 'Suppliers' },
     ];
+    // Hide tabs an admin has switched off for this role (Users → Tab Access). Admins see all.
+    const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const visibleNav = navItems.filter(t => isAdminRole || !(myHiddenTabs || []).includes(`workshop:${t.view}`));
+    useEffect(() => {
+        if (!isAdminRole && (myHiddenTabs || []).includes(`workshop:${workshopSubView}`) && visibleNav[0]) {
+            handleWorkshopSubViewChange(visibleNav[0].view);
+        }
+    }, [workshopSubView, myHiddenTabs]); // eslint-disable-line
 
     const openCreateJobCardModal = () => {
         showModal('createJobCard', {
@@ -173,9 +181,9 @@ const WorkshopPortal: React.FC = () => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center space-x-2 overflow-x-auto">
-                    {navItems.map(item => (
-                        <button 
-                            key={item.view} 
+                    {visibleNav.map(item => (
+                        <button
+                            key={item.view}
                             onClick={() => handleWorkshopSubViewChange(item.view)}
                             className={`px-4 py-2 text-sm font-semibold rounded-md whitespace-nowrap ${workshopSubView === item.view ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-gray-700'}`}
                         >

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 // Fix: Added missing import for XLSX to handle Google Sheets data synchronization
 import * as XLSX from 'xlsx';
-import { useUIState, useVehicles, useOperations } from '../contexts/AppContexts';
+import { useUIState, useVehicles, useOperations, useAuth } from '../contexts/AppContexts';
 import VehicleList from './fleet/VehicleList';
 import LiveFleetMap from './operations/LiveFleetMap';
 import RoutePlanner from './RoutePlanner';
@@ -20,6 +20,7 @@ type FleetView = 'dashboard' | 'vehicles' | 'admin' | 'drivers' | 'fuel' | 'fuel
 
 const FleetPortal: React.FC = () => {
     const { fleetSubView, handleFleetSubViewChange, showModal, showToast, hideModal } = useUIState();
+    const { currentUser, myHiddenTabs } = useAuth();
     const { vehicles, fuelPriceRecords, bowsers, bowserRefills, handleAddFuelEntry, handleSetFuelPrice, handleAddBowserRefill, handleAddBowser, handleBulkAddFuelEntries } = useVehicles();
     const { users = [], loadConfirmations = [] } = useOperations();
     
@@ -39,6 +40,14 @@ const FleetPortal: React.FC = () => {
         { view: 'routePlanner', label: 'Route Planner' },
         { view: 'operationsLog', label: 'Operations Log' },
     ];
+    // Hide tabs an admin has switched off for this role (Users → Tab Access). Admins see all.
+    const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const visibleNav = navItems.filter(t => isAdminRole || !(myHiddenTabs || []).includes(`fleet:${t.view}`));
+    useEffect(() => {
+        if (!isAdminRole && (myHiddenTabs || []).includes(`fleet:${fleetSubView}`) && visibleNav[0]) {
+            handleFleetSubViewChange(visibleNav[0].view as any);
+        }
+    }, [fleetSubView, myHiddenTabs]); // eslint-disable-line
 
     const onAddBowser = () => {
         showModal('addBowser', {
@@ -206,10 +215,10 @@ const FleetPortal: React.FC = () => {
     return (
         <div>
             <div className="flex items-center space-x-1 mb-6 overflow-x-auto no-scrollbar">
-                {navItems.map(item => (
-                     <button 
-                        key={item.view} 
-                        onClick={() => handleFleetSubViewChange(item.view)} 
+                {visibleNav.map(item => (
+                     <button
+                        key={item.view}
+                        onClick={() => handleFleetSubViewChange(item.view)}
                         className={`px-4 py-2 text-sm font-semibold rounded-md whitespace-nowrap transition-all ${fleetSubView === item.view ? 'bg-brand-primary text-white shadow-lg shadow-blue-900/40' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
                         {item.label}
                     </button>

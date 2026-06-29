@@ -9,7 +9,7 @@ const branchCode = (b?: string) => /DBN|DURBAN/i.test(b || '') ? 'DBN' : /JHB|JO
 interface Container {
     id: string; container_no: string; seal_no: string; size: string; weight: number;
     commodity: string; client_name: string; client_ref: string; vessel_name: string;
-    shipping_line: string; eta_port: string; plan: string; status: string; branch: string;
+    shipping_line: string; eta_port: string; plan: string; status: string; sheet_status?: string; branch: string;
     turn_in_area: string; turn_in_date: string; notes: string;
     route_plan?: string; unpack_location?: string; unpack_by?: string; storage_depot?: string; consol_ref?: string;
 }
@@ -118,6 +118,7 @@ const ContainersView: React.FC = () => {
         </div>
     );
     const chip = (active: boolean) => `px-3 py-1.5 text-xs font-bold rounded-md ${active ? 'bg-[#13294b] text-white' : 'text-slate-600 hover:bg-white'}`;
+    const statusTone = (s: string) => s === 'Arrived Port' ? 'bg-amber-100 text-amber-700' : s === 'At Sea' ? 'bg-blue-100 text-blue-700' : (s === 'At Depot' || s === 'Collected') ? 'bg-teal-100 text-teal-700' : s === 'Empty' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600';
 
     const renderRow = (c: Container) => (
         <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
@@ -126,7 +127,11 @@ const ContainersView: React.FC = () => {
             <td className="p-2">{c.vessel_name || '—'}<div className="text-[11px] text-slate-400">ETA {fmt(c.eta_port)}</div></td>
             <td className="p-2 text-xs">{c.route_plan ? ROUTE_LABEL[c.route_plan] || c.route_plan : (c.plan === 'full_delivery' ? 'Full delivery' : 'Unpack')}{(c.unpack_by || c.storage_depot) ? <div className="text-[10px] text-slate-400">{c.unpack_by || c.storage_depot}</div> : null}</td>
             <td className="p-2 text-xs">{c.branch || '—'}</td>
-            <td className="p-2"><select value={c.status} onChange={e => setStatus(c, e.target.value)} className="bg-white border border-slate-300 rounded-md p-1 text-xs">{CONTAINER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
+            <td className="p-2">
+                {c.sheet_status
+                    ? <span className={`inline-block text-[11px] font-bold px-2 py-1 rounded-md ${statusTone(c.status)}`} title={`Stage: ${c.status} · mirrors the FCL sheet`}>{c.sheet_status}</span>
+                    : <select value={c.status} onChange={e => setStatus(c, e.target.value)} className="bg-white border border-slate-300 rounded-md p-1 text-xs">{CONTAINER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select>}
+            </td>
             <td className="p-2 text-xs">{c.turn_in_area || '—'}{c.turn_in_date ? <div className="text-[11px] text-slate-400">by {fmt(c.turn_in_date)}</div> : null}</td>
             <td className="p-2 text-right whitespace-nowrap">
                 <button onClick={() => del(c)} title="Delete" className="text-slate-400 hover:text-red-500">×</button>

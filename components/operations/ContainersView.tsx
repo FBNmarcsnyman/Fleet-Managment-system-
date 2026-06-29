@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useUIState } from '../../contexts/AppContexts';
+import { useUIState, useAuth } from '../../contexts/AppContexts';
 import { directSelect, directUpdate, directDelete } from '../../lib/supabase';
 import { CONTAINER_STATUSES } from './LogContainerModal';
+
+// Normalise any branch label to a depot code so DBN/JHB teams see only their containers.
+const branchCode = (b?: string) => /DBN|DURBAN/i.test(b || '') ? 'DBN' : /JHB|JOHAN/i.test(b || '') ? 'JHB' : /CPT|CAPE/i.test(b || '') ? 'CPT' : '';
 
 interface Container {
     id: string; container_no: string; seal_no: string; size: string; weight: number;
@@ -18,6 +21,14 @@ const ROUTE_LABEL: Record<string, string> = {
 // Container monitoring — from vessel/port through depot to empty turn-in.
 const ContainersView: React.FC = () => {
     const { showModal, showToast } = useUIState();
+    const { currentUser } = useAuth();
+    // Branch scope: a depot user (single DBN/JHB/CPT branch, non-admin) is locked to
+    // their depot; admins see all + can switch.
+    const isAdmin = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const opsBranches = (currentUser?.assignedBranches || []).filter((b: string) => branchCode(b));
+    const lockBranch = !isAdmin && opsBranches.length === 1;
+    const [branch, setBranch] = useState<string>(lockBranch ? branchCode(opsBranches[0]) : 'All');
+    useEffect(() => { if (lockBranch) setBranch(branchCode(opsBranches[0])); }, [lockBranch, opsBranches[0]]);
     const [rows, setRows] = useState<Container[]>([]);
     const [loading, setLoading] = useState(true);
     const [q, setQ] = useState('');
@@ -55,9 +66,12 @@ const ContainersView: React.FC = () => {
     const fmt = (s?: string) => { if (!s) return '—'; try { return new Date(s).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' }); } catch { return s; } };
     const DONE = ['Turned In', 'Delivered'];
 
+    // Apply the depot scope before anything else so counts + lists are branch-specific.
+    const scopedRows = useMemo(() => branch === 'All' ? rows : rows.filter(c => branchCode(c.branch) === branch), [rows, branch]);
+
     const filtered = useMemo(() => {
         const term = q.trim().toLowerCase();
-        const list = rows.filter(c => {
+        const list = scopedRows.filter(c => {
             if (tab === 'active' && DONE.includes(c.status)) return false;
             if (tab === 'turnin' && !(c.status === 'Empty' || (c.turn_in_date && c.status !== 'Turned In'))) return false;
             if (!term) return true;
@@ -70,7 +84,7 @@ const ContainersView: React.FC = () => {
             return (b.eta_port || '').localeCompare(a.eta_port || ''); // eta: newest first
         };
         return [...list].sort(cmp);
-    }, [rows, q, tab, sort]);
+    }, [scopedRows, q, tab, sort]);
 
     // Optional client grouping so several containers for one client read together
     // (e.g. "3 to collect, unpack, split over 2 trucks").
@@ -82,15 +96,15 @@ const ContainersView: React.FC = () => {
     }, [filtered, groupByClient]);
 
     const counts = useMemo(() => {
-        const a = rows.filter(c => !DONE.includes(c.status));
+        const a = scopedRows.filter(c => !DONE.includes(c.status));
         return {
-            atSea: rows.filter(c => c.status === 'At Sea').length,
-            atPort: rows.filter(c => c.status === 'Arrived Port' || c.status === 'Available').length,
-            atDepot: rows.filter(c => c.status === 'At Depot' || c.status === 'Collected').length,
-            empty: rows.filter(c => c.status === 'Empty').length,
+            atSea: scopedRows.filter(c => c.status === 'At Sea').length,
+            atPort: scopedRows.filter(c => c.status === 'Arrived Port' || c.status === 'Available').length,
+            atDepot: scopedRows.filter(c => c.status === 'At Depot' || c.status === 'Collected').length,
+            empty: scopedRows.filter(c => c.status === 'Empty').length,
             active: a.length,
         };
-    }, [rows]);
+    }, [scopedRows]);
 
     const card = (label: string, n: number, color: string) => (
         <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm min-w-[120px]">
@@ -147,6 +161,15 @@ const ContainersView: React.FC = () => {
                         <button key={v} onClick={() => setTab(v)} className={chip(tab === v)}>{l}</button>
                     ))}
                 </div>
+                {lockBranch ? (
+                    <span className="text-xs font-black bg-[#13294b] text-white px-3 py-1.5 rounded-md">{branch} depot</span>
+                ) : (
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+                        {['All', 'DBN', 'JHB', 'CPT'].map(b => (
+                            <button key={b} onClick={() => setBranch(b)} className={chip(branch === b)}>{b === 'All' ? 'All depots' : b}</button>
+                        ))}
+                    </div>
+                )}
                 <label className="text-xs text-slate-500 ml-auto flex items-center gap-1">Sort
                     <select value={sort} onChange={e => setSort(e.target.value as any)} className="bg-white border border-slate-300 rounded-md p-1.5 text-xs font-semibold text-slate-700">
                         <option value="eta">ETA (newest)</option>

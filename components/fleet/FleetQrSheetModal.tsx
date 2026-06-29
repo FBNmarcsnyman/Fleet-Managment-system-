@@ -10,11 +10,13 @@ interface Props { onCancel: () => void; }
 // filter to a branch first. Reuses the same QR pattern as the single-vehicle modal.
 const qrUrlFor = (v: Vehicle) => `${window.location.origin}${window.location.pathname}?checklist=${v.id}`;
 const qrImg = (v: Vehicle, size = 220) => `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(qrUrlFor(v))}`;
+const isTrailer = (v: Vehicle) => /superlink|triaxle|tri-axle|skeleton|trailer/i.test(String(v.weightCategory || ''));
 
 const FleetQrSheetModal: React.FC<Props> = ({ onCancel }) => {
     const { vehicles = [] } = useFleetData() as any;
     const [q, setQ] = useState('');
     const [branch, setBranch] = useState('All');
+    const [kind, setKind] = useState<'all' | 'trucks' | 'trailers'>('all');
 
     const branches = useMemo(() => {
         const set = new Set<string>();
@@ -27,9 +29,10 @@ const FleetQrSheetModal: React.FC<Props> = ({ onCancel }) => {
         return (vehicles as Vehicle[])
             .filter(v => v.status !== 'Sold')
             .filter(v => branch === 'All' || v.branch === branch)
+            .filter(v => kind === 'all' || (kind === 'trailers' ? isTrailer(v) : !isTrailer(v)))
             .filter(v => !needle || `${v.name} ${v.registration}`.toLowerCase().includes(needle))
             .sort((a, b) => `${a.name}`.localeCompare(`${b.name}`));
-    }, [vehicles, q, branch]);
+    }, [vehicles, q, branch, kind]);
 
     const printSheet = () => {
         const labels = list.map(v => `
@@ -73,6 +76,11 @@ const FleetQrSheetModal: React.FC<Props> = ({ onCancel }) => {
             <div className="flex items-center gap-2 mb-4">
                 <select value={branch} onChange={e => setBranch(e.target.value)} className="bg-gray-700 text-white p-2 rounded-md text-sm border border-gray-600">
                     {branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}
+                </select>
+                <select value={kind} onChange={e => setKind(e.target.value as any)} className="bg-gray-700 text-white p-2 rounded-md text-sm border border-gray-600">
+                    <option value="all">Trucks &amp; trailers</option>
+                    <option value="trucks">Trucks only</option>
+                    <option value="trailers">Trailers only</option>
                 </select>
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search reg or name…" className="bg-gray-700 text-white p-2 rounded-md text-sm border border-gray-600 flex-1" />
             </div>

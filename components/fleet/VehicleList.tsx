@@ -76,11 +76,16 @@ const VehicleList: React.FC = () => {
         handleSelectVehicle,
         handleAddVehicle,
         handleBulkAddVehicles,
-        handleUpdateVehicle
+        handleUpdateVehicle,
+        drivers = []
     } = useVehicles();
     const { showModal, hideModal, showToast } = useUIState();
     const [groupBy, setGroupBy] = useState<GroupByType>('branch');
     const [branchFilter, setBranchFilter] = useState<BranchFilter>('All');
+    // Card vs list layout — remembered per user.
+    const [layout, setLayout] = useState<'cards' | 'list'>(() => (localStorage.getItem('fleet_layout') as 'cards' | 'list') || 'cards');
+    const setLayoutPref = (l: 'cards' | 'list') => { setLayout(l); try { localStorage.setItem('fleet_layout', l); } catch { /* */ } };
+    const driverByVehicle = useMemo(() => { const m = new Map<string, string>(); (drivers as any[]).forEach(d => { if (d.assignedVehicleId) m.set(d.assignedVehicleId, d.name); }); return m; }, [drivers]);
 
     const groupedVehicles = useMemo(() => {
         const activeVehicles: Vehicle[] = (vehicles || []).filter((v: Vehicle) => v.status !== 'Sold');
@@ -251,6 +256,9 @@ const VehicleList: React.FC = () => {
                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-3">View By:</span>
                     <GroupButton type="branch" label="Branch" />
                     <GroupButton type="category" label="Category" />
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-3 ml-1 border-l border-gray-700">Layout:</span>
+                    <button onClick={() => setLayoutPref('cards')} className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${layout === 'cards' ? 'bg-brand-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>Cards</button>
+                    <button onClick={() => setLayoutPref('list')} className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${layout === 'list' ? 'bg-brand-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}>List</button>
                 </div>
 
                 <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full lg:w-auto">
@@ -300,15 +308,36 @@ const VehicleList: React.FC = () => {
                                 {groupName} 
                                 <span className="ml-3 text-sm font-bold text-gray-500 bg-gray-800 px-2 py-0.5 rounded-md uppercase tracking-tighter">{vehiclesInGroup.length} Assets</span>
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {vehiclesInGroup.map(vehicle => (
-                                    <VehicleCard
-                                        key={vehicle.id}
-                                        vehicle={vehicle}
-                                        onSelect={() => handleSelectVehicle(vehicle.id)}
-                                    />
-                                ))}
-                            </div>
+                            {layout === 'cards' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {vehiclesInGroup.map(vehicle => (
+                                        <VehicleCard
+                                            key={vehicle.id}
+                                            vehicle={vehicle}
+                                            onSelect={() => handleSelectVehicle(vehicle.id)}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto bg-white border border-slate-200 rounded-xl">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50 text-slate-500"><tr className="border-b border-slate-200">
+                                            <th className="p-3">Registration</th><th className="p-3">Name</th><th className="p-3">Category</th><th className="p-3">Driver</th><th className="p-3">Branch</th>
+                                        </tr></thead>
+                                        <tbody>
+                                            {vehiclesInGroup.map(vehicle => (
+                                                <tr key={vehicle.id} onClick={() => handleSelectVehicle(vehicle.id)} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                                                    <td className="p-3 font-bold text-[#13294b]">{vehicle.registration || '—'}</td>
+                                                    <td className="p-3 text-slate-700">{vehicle.name}</td>
+                                                    <td className="p-3 text-slate-500">{vehicle.weightCategory || '—'}</td>
+                                                    <td className="p-3 text-slate-700">{driverByVehicle.get(vehicle.id) || '—'}</td>
+                                                    <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     );
                 })}

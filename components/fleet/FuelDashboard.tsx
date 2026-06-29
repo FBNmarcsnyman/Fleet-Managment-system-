@@ -79,6 +79,26 @@ const FuelDashboard: React.FC = () => {
         .sort((a, b) => b.odometer - a.odometer), [fuelEntries, today]);
     const dispensedTodayBy = (bowserId: string) => todayFills.filter(e => e.sourceBowserId === bowserId).reduce((s, e) => s + (e.liters || 0), 0);
 
+    // Fillings for a selected day (defaults to today) — lets Marc check any date's fills.
+    const [fillDate, setFillDate] = useState(today);
+    const dayFills = useMemo(() => fuelEntries.filter(e => (e.date || '').split('T')[0] === fillDate)
+        .sort((a, b) => b.odometer - a.odometer), [fuelEntries, fillDate]);
+
+    // Last fill recorded per vehicle (to confirm data is pulling through) — oldest first
+    // so vehicles that haven't filled in a while surface at the top.
+    const lastFillRows = useMemo(() => {
+        const map = new Map<string, FuelEntry>();
+        for (const e of fuelEntries) {
+            const cur = map.get(e.vehicleId);
+            if (!cur || new Date(e.date).getTime() > new Date(cur.date).getTime()) map.set(e.vehicleId, e);
+        }
+        const now = Date.now();
+        return Array.from(map.values())
+            .map(e => ({ e, daysAgo: Math.floor((now - new Date(e.date).getTime()) / 86400000) }))
+            .sort((a, b) => b.daysAgo - a.daysAgo);
+    }, [fuelEntries]);
+    const noFuelCount = useMemo(() => vehicles.filter(veh => !fuelEntries.some(e => e.vehicleId === veh.id)).length, [vehicles, fuelEntries]);
+
     // Fleet CPK / consumption averages.
     const perfRows = useMemo(() => vehicles.map(veh => {
         const p = perfMap.get(veh.id);
@@ -211,16 +231,22 @@ const FuelDashboard: React.FC = () => {
                 </form>
             </div>
 
-            {/* Today's fillings */}
+            {/* Fillings for a chosen day */}
             <div className="bg-gray-800 rounded-2xl border border-gray-700 p-5">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Today's Fillings ({todayFills.length})</h3>
+                <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Fillings ({dayFills.length})</h3>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setFillDate(today)} className={`text-[11px] font-bold px-3 py-1.5 rounded-lg ${fillDate === today ? 'bg-[#13294b] text-white' : 'bg-gray-700 text-gray-300'}`}>Today</button>
+                        <div className="w-40"><DateField value={fillDate} onChange={setFillDate} /></div>
+                    </div>
+                </div>
                 <div className="overflow-x-auto max-h-72">
                     <table className="w-full text-left text-sm">
                         <thead className="text-gray-500"><tr className="border-b border-gray-700">
                             <th className="p-2">Vehicle</th><th className="p-2 text-right">Litres</th><th className="p-2 text-right">Odometer</th><th className="p-2">From bowser</th>
                         </tr></thead>
                         <tbody>
-                            {todayFills.map(e => (
+                            {dayFills.map(e => (
                                 <tr key={e.id} className="border-b border-gray-700/40">
                                     <td className="p-2 font-bold text-blue-300">{vehReg(e.vehicleId)}</td>
                                     <td className="p-2 text-right text-white">{L(e.liters)}</td>
@@ -228,7 +254,35 @@ const FuelDashboard: React.FC = () => {
                                     <td className="p-2 text-gray-400">{e.sourceBowserId ? (bowsers.find(b => b.id === e.sourceBowserId)?.name || 'Bowser') : 'Card / station'}</td>
                                 </tr>
                             ))}
-                            {todayFills.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-gray-500 italic">No fills logged today yet.</td></tr>}
+                            {dayFills.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-gray-500 italic">No fills logged on this date.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Last fill recorded per vehicle — confirm fuel data is pulling through */}
+            <div className="bg-gray-800 rounded-2xl border border-gray-700 p-5">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Last Fill Per Vehicle ({lastFillRows.length})</h3>
+                    {noFuelCount > 0 && <span className="text-[11px] font-bold text-amber-400">{noFuelCount} vehicle{noFuelCount > 1 ? 's' : ''} with no fuel logged yet</span>}
+                </div>
+                <div className="overflow-x-auto max-h-[28rem]">
+                    <table className="w-full text-left text-sm">
+                        <thead className="text-gray-500 sticky top-0 bg-gray-800"><tr className="border-b border-gray-700">
+                            <th className="p-2">Vehicle</th><th className="p-2">Last filled</th><th className="p-2 text-right">Days ago</th><th className="p-2 text-right">Litres</th><th className="p-2 text-right">Odometer</th><th className="p-2">Source</th>
+                        </tr></thead>
+                        <tbody>
+                            {lastFillRows.map(({ e, daysAgo }) => (
+                                <tr key={e.vehicleId} className="border-b border-gray-700/40">
+                                    <td className="p-2 font-bold text-blue-300">{vehReg(e.vehicleId)}</td>
+                                    <td className="p-2 text-white">{new Date(e.date).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                                    <td className={`p-2 text-right font-bold ${daysAgo > 30 ? 'text-red-400' : daysAgo > 14 ? 'text-amber-400' : 'text-emerald-400'}`}>{daysAgo}</td>
+                                    <td className="p-2 text-right text-white">{L(e.liters)}</td>
+                                    <td className="p-2 text-right text-gray-400 font-mono">{Math.round(e.odometer).toLocaleString()}</td>
+                                    <td className="p-2 text-gray-400">{e.sourceBowserId ? (bowsers.find(b => b.id === e.sourceBowserId)?.name || 'Bowser') : 'Card / station'}</td>
+                                </tr>
+                            ))}
+                            {lastFillRows.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-500 italic">No fuel fills recorded yet.</td></tr>}
                         </tbody>
                     </table>
                 </div>

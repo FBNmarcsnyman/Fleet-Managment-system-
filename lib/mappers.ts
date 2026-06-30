@@ -614,6 +614,7 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     sentToSupplierDate: row.sent_to_supplier_date ?? undefined,
     podRequestedAt: (row as any).pod_requested_at ?? undefined,
     podRequestedBy: (row as any).pod_requested_by ?? undefined,
+    podRequestCount: (row as any).pod_request_count ?? undefined,
     subcontractorVehicleReg: row.subcontractor_vehicle_reg ?? undefined,
     subcontractorDriverName: row.subcontractor_driver_name ?? undefined,
     subcontractorDriverCell: row.subcontractor_driver_cell ?? undefined,
@@ -1577,6 +1578,7 @@ export const toLoadConfirmationUpdate = (
     if (updates.sentToSupplierDate !== undefined) row.sent_to_supplier_date = orNull(updates.sentToSupplierDate);
     if (updates.podRequestedAt !== undefined) (row as any).pod_requested_at = orNull(updates.podRequestedAt);
     if (updates.podRequestedBy !== undefined) (row as any).pod_requested_by = orNull(updates.podRequestedBy);
+    if (updates.podRequestCount !== undefined) (row as any).pod_request_count = updates.podRequestCount ?? 0;
     if (updates.subcontractorVehicleReg !== undefined) row.subcontractor_vehicle_reg = updates.subcontractorVehicleReg ?? null;
     if (updates.subcontractorDriverName !== undefined) row.subcontractor_driver_name = updates.subcontractorDriverName ?? null;
     if ((updates as any).clientRequestStatus !== undefined) (row as any).client_request_status = (updates as any).clientRequestStatus ?? null;

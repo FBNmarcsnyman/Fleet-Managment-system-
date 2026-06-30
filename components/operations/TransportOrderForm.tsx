@@ -3,6 +3,7 @@ import { LoadConfirmation, Client, Branch, Contact } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
+import RecipientPicker from './RecipientPicker';
 import { bothDatesPast } from '../../lib/format';
 
 interface TransportOrderFormProps {
@@ -45,7 +46,7 @@ const Section: React.FC<{ title: string; accent?: string; children: React.ReactN
 
 const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => {
     const { hideModal } = useUIState();
-    const { clients = [], suppliers = [], loadConfirmations = [] } = useOperations() as any;
+    const { clients = [], suppliers = [], loadConfirmations = [], handleUpdateSupplier, handleUpdateClient } = useOperations() as any;
     const { currentUser } = useAuth();
 
     const today = new Date().toISOString().split('T')[0];
@@ -146,6 +147,51 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
     const subbieContacts: Contact[] = useMemo(
         () => (suppliers as any[]).find(s => (s.name || '').toLowerCase() === subcontractorName.toLowerCase())?.contacts || [],
         [suppliers, subcontractorName]);
+
+    // The matched company records — so the recipient picker can add a new person
+    // back onto the right company permanently.
+    const subbieCompany = useMemo(
+        () => (suppliers as any[]).find(s => (s.name || '').toLowerCase() === subcontractorName.toLowerCase()),
+        [suppliers, subcontractorName]);
+    const clientCompany = useMemo(
+        () => (clients as any[]).find(c => (c.name || '').toLowerCase() === clientName.toLowerCase()),
+        [clients, clientName]);
+
+    // The recipient picker is driven by (and writes back to) the existing email + CC
+    // fields, so there's one source of truth: first selected = To, the rest = CC.
+    const uniqEmails = (arr: (string | undefined)[]) => {
+        const seen = new Set<string>(); const out: string[] = [];
+        arr.forEach(e => { const v = (e || '').trim(); if (v && !seen.has(v.toLowerCase())) { seen.add(v.toLowerCase()); out.push(v); } });
+        return out;
+    };
+    const subbieSelected = useMemo(
+        () => uniqEmails([subcontractorEmail, ...ccEmail.split(',')]),
+        [subcontractorEmail, ccEmail]);
+    const onSubbieRecipients = (emails: string[]) => {
+        const list = uniqEmails(emails);
+        setSubcontractorEmail(list[0] || '');
+        setCcEmail(list.slice(1).join(', '));
+        // Keep "For Attention" aligned to whoever is the primary recipient.
+        const primary = subbieContacts.find(c => c.email && c.email.toLowerCase() === (list[0] || '').toLowerCase());
+        if (primary?.name) setForAttention(primary.name);
+    };
+    const onAddSubbieContact = (c: Contact) => {
+        if (!subbieCompany || !handleUpdateSupplier) return;
+        handleUpdateSupplier(subbieCompany.id, { contacts: [...(subbieCompany.contacts || []), c] });
+    };
+    const clientSelected = useMemo(
+        () => uniqEmails([clientEmail]),
+        [clientEmail]);
+    const onClientRecipients = (emails: string[]) => {
+        const list = uniqEmails(emails);
+        setClientEmail(list.join(', '));
+        const primary = clientContacts.find(c => c.email && c.email.toLowerCase() === (list[0] || '').toLowerCase());
+        if (primary?.name) setClientContact(primary.name);
+    };
+    const onAddClientContact = (c: Contact) => {
+        if (!clientCompany || !handleUpdateClient) return;
+        handleUpdateClient(clientCompany.id, { contacts: [...(clientCompany.contacts || []), c] });
+    };
 
     const onClientContactChange = (name: string) => {
         setClientContact(name);
@@ -376,8 +422,10 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             <div className="relative"><span className="absolute left-3 top-2.5 text-blue-400 font-mono text-xs">R</span>
                                 <input type="number" step="0.01" value={clientRate} onChange={e => setClientRate(e.target.value)} className={`${inputCls} pl-7`} /></div></div>
                     </div>
-                    {clientName && clientContacts.length === 0 && (
-                        <p className="text-[11px] text-gray-500 mt-3">New contact — it'll be saved to <span className="text-gray-300 font-semibold">{clientName}</span> for next time.</p>
+                    {clientName && (
+                        <div className="mt-4">
+                            <RecipientPicker kind="client" contacts={clientContacts} selectedEmails={clientSelected} onChange={onClientRecipients} onAddContact={clientCompany ? onAddClientContact : undefined} />
+                        </div>
                     )}
                 </Section>
 
@@ -466,6 +514,11 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                         <div className="md:col-span-2"><label className={labelCls}>CC for updates · accounts / other controllers</label>
                             <input value={ccEmail} onChange={e => setCcEmail(e.target.value)} className={inputCls} placeholder="comma-separated — pre-fills from the subbie's saved contacts" />
                             <p className="text-[10px] text-gray-500 mt-1">These get the LoadCon and every status update. New ones are saved to this subcontractor for next time.</p></div>
+                        {subcontractorName && (
+                            <div className="md:col-span-3">
+                                <RecipientPicker kind="supplier" contacts={subbieContacts} selectedEmails={subbieSelected} onChange={onSubbieRecipients} onAddContact={subbieCompany ? onAddSubbieContact : undefined} />
+                            </div>
+                        )}
                     </div>
                 </Section>
             </div>

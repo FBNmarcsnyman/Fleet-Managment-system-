@@ -654,6 +654,7 @@ export interface LoadConfirmation {
     sentToSupplierDate?: string;
     podRequestedAt?: string;
     podRequestedBy?: string;
+    podRequestCount?: number;
     subcontractorVehicleReg?: string;
     subcontractorDriverName?: string;
     subcontractorDriverCell?: string;

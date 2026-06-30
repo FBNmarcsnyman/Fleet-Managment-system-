@@ -72,7 +72,7 @@ const EMAIL_SAMPLES: { key: string; label: string; subject: string; html: string
 
 // Edit the boilerplate / red text that appears on every LoadCon, Order & POD.
 const DocumentSettingsView: React.FC = () => {
-    const { showToast } = useUIState();
+    const { showToast, showModal, hideModal } = useUIState();
     const [s, setS] = useState<DocSettings>(DEFAULT_DOC_SETTINGS);
     const [loaded, setLoaded] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -128,7 +128,10 @@ const DocumentSettingsView: React.FC = () => {
                     <h3 className="text-xl font-black text-slate-900">Document Settings</h3>
                     <p className="text-xs text-slate-500">Edit the standard wording that prints on every LoadCon, Client Order &amp; POD.</p>
                 </div>
-                <button onClick={save} disabled={saving} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg text-sm">{saving ? 'Saving…' : 'Save changes'}</button>
+                <div className="flex gap-2">
+                    <button onClick={() => showModal('manageLists', { onClose: hideModal })} title="Curate the route / commodity / packaging / load-type suggestion lists — hide junk + add approved values" className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-sm">🗂 Manage lists</button>
+                    <button onClick={save} disabled={saving} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg text-sm">{saving ? 'Saving…' : 'Save changes'}</button>
+                </div>
             </div>
 
             <div className="space-y-4">

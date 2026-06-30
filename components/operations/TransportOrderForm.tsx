@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { fetchManagedLists, applyManaged, ManagedLists } from '../../lib/managedLists';
 import { LoadConfirmation, Client, Branch, Contact } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
@@ -60,11 +61,17 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
         [suppliers, loadConfirmations]);
     // Routes: the built-in list plus any route ever typed on past loads, shown in
     // plain A–Z order so the list is easy to scan (not usage-ranked like names).
-    const routeSuggestions = useMemo(() => {
+    const routeSuggestionsRaw = useMemo(() => {
         const set = new Set<string>([...ROUTES]);
         (loadConfirmations as any[]).forEach(l => { const r = (l.route || '').trim(); if (r) set.add(r); });
         return [...set].sort((a, b) => a.localeCompare(b));
     }, [loadConfirmations]);
+    // Curated pick-lists — hide junk + add approved values (Doc Settings → Manage lists).
+    const [managed, setManaged] = useState<ManagedLists>({});
+    useEffect(() => { fetchManagedLists().then(setManaged); }, []);
+    const routeSuggestions = useMemo(() => applyManaged(routeSuggestionsRaw, managed.route), [routeSuggestionsRaw, managed]);
+    const loadTypeOpts = useMemo(() => applyManaged(LOAD_TYPES, managed.loadType), [managed]);
+    const packagingOpts = useMemo(() => applyManaged(PACKAGING, managed.packaging), [managed]);
 
     // Order
     const [arrangingBranch, setArrangingBranch] = useState(ARRANGING_BRANCHES[0]);
@@ -461,11 +468,11 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                 <Section title="Cargo">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div><label className={labelCls}>Load Type</label>
-                            <select value={loadType} onChange={e => setLoadType(e.target.value)} className={inputCls}><option value="">--</option>{LOAD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                            <select value={loadType} onChange={e => setLoadType(e.target.value)} className={inputCls}><option value="">--</option>{loadTypeOpts.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                         <div><label className={labelCls}>Quantity</label><input value={quantity} onChange={e => setQuantity(e.target.value)} className={inputCls} /></div>
                         <div><label className={labelCls}>Commodity</label><input value={commodity} onChange={e => setCommodity(e.target.value)} className={inputCls} /></div>
                         <div><label className={labelCls}>Packaging</label>
-                            <select value={packaging} onChange={e => setPackaging(e.target.value)} className={inputCls}><option value="">--</option>{PACKAGING.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+                            <select value={packaging} onChange={e => setPackaging(e.target.value)} className={inputCls}><option value="">--</option>{packagingOpts.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
                         <div><label className={labelCls}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value)} className={inputCls} /></div>
                         <div><label className={labelCls}>Volume / Cubes</label><input value={volume} onChange={e => setVolume(e.target.value)} className={inputCls} /></div>
                         <div className="col-span-2"><label className={labelCls}>Cargo Value (GIT)</label>

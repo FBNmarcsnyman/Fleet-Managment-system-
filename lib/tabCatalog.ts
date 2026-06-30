@@ -35,6 +35,17 @@ export const TAB_SECTIONS: TabSection[] = [
         ],
     },
     {
+        key: 'accounts', label: 'Accounts', tabs: [
+            { view: 'clients', label: 'Clients CRM' },
+            { view: 'comms', label: 'Comms & Marketing' },
+            { view: 'transporters', label: 'Transporters' },
+            { view: 'vetting', label: 'Compliance Vetting' },
+            { view: 'onboarding', label: 'Supplier Onboarding' },
+            { view: 'accountsPods', label: 'PODs (All)' },
+            { view: 'finance', label: 'Invoicing / Debtors / Creditors' },
+        ],
+    },
+    {
         key: 'workshop', label: 'Workshop', tabs: [
             { view: 'jobCards', label: 'Job Cards' },
             { view: 'servicePlanner', label: 'Service Planner' },

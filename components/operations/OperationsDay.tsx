@@ -42,7 +42,7 @@ const READY_TO_LOAD = new Set(['At Destination Depot', 'Unloaded']); // can be p
 
 const OperationsDay: React.FC = () => {
     const { loadConfirmations = [], clients = [], users = [], manifests = [], handleUpdateLoadConfirmation, handleCreateManifest, handleReceiveManifest, handleCreateTripSheet } = useOperations() as any;
-    const { vehicles = [] } = (useVehicles() as any) || {};
+    const { vehicles = [], drivers = [] } = (useVehicles() as any) || {};
     const { showModal, showToast } = useUIState();
     const { currentUser } = useAuth();
 
@@ -62,7 +62,7 @@ const OperationsDay: React.FC = () => {
 
     const branchMatch = (v?: string) => branch === 'All' || v === branch;
     const clientName = (lc: LoadConfirmation) => lc.clientName || (clients.find((c: any) => c.id === lc.clientId)?.name) || '—';
-    const driverName = (id?: string) => { if (!id) return ''; const u = users.find((u: any) => u.id === id || u.email === id); return u?.name || ''; };
+    const driverName = (id?: string) => { if (!id) return ''; const d = drivers.find((d: any) => d.id === id); if (d) return d.name || ''; const u = users.find((u: any) => u.id === id || u.email === id); return u?.name || ''; };
     // FBN unit (reg · driver). Falls back to subbie name only when brokered.
     const unit = (lc: LoadConfirmation) => {
         const reg = lc.vehicleId ? (vehicles.find((v: any) => v.id === lc.vehicleId)?.registration || '') : (lc.subcontractorVehicleReg || '');
@@ -330,11 +330,11 @@ const OperationsDay: React.FC = () => {
             )}
 
             {build && <AssignUnitPanel
-                mode={build.mode} loads={build.loads} vehicles={vehicles} users={users} driverName={driverName}
+                mode={build.mode} loads={build.loads} vehicles={vehicles} drivers={drivers} homeBranch={branch} driverName={driverName}
                 onClose={() => setBuild(null)}
                 onAssign={async (vehicleId, driverId, extra) => {
                     if (build.mode === 'manifest') {
-                        const res = await handleCreateManifest({ vehicleId, driverId, loadConIds: build.loads.map(l => l.id), originBranch: build.loads[0].collectionBranch, trailerSize: extra.trailerSize });
+                        const res = await handleCreateManifest({ vehicleId, driverId, loadConIds: build.loads.map(l => l.id), originBranch: build.loads[0].collectionBranch, trailerSize: extra.trailerSize, startOdometer: extra.odometerStart, carrierName: extra.carrierName, carrierVehicleReg: extra.carrierVehicleReg, carrierDriver: extra.carrierDriver, carrierCell: extra.carrierCell });
                         if (res && res.ok === false) { showToast?.(res.error || 'Could not build manifest'); return; }
                         const man = (res as any)?.value;
                         // Auto-email the RECEIVING depot the full manifest (contents, weights,
@@ -448,19 +448,103 @@ const BuildBtn: React.FC<{ count: number; dest: string; label: string; onClick: 
     </div>
 );
 
+// Classify a fleet vehicle from its (messy, mixed-case) weight_category.
+const catU = (v: any) => String(v?.weightCategory || '').toUpperCase();
+const isHorse = (v: any) => catU(v).includes('HORSE');
+const isTrailerV = (v: any) => /TRAILER|SKELETON|TRIAXLE|SUPERLINK/.test(catU(v));
+const isForkliftV = (v: any) => catU(v).includes('FORKLIFT');
+const isDeliveryV = (v: any) => !isHorse(v) && !isTrailerV(v) && !isForkliftV(v); // rigids / bakkies
+// City code from the vehicle's branch (the fleet uses full names: FBN Durban etc.).
+const vBranchCode = (v: any): string => {
+    const n = String(v?.branch?.name || v?.branch || '').toLowerCase();
+    if (n.includes('durban')) return 'DBN';
+    if (n.includes('johannes') || n.includes('jhb')) return 'JHB';
+    if (n.includes('cape') || n.includes('cpt')) return 'CPT';
+    if (n.includes('loadmaster') || n.includes('lm')) return 'LM';
+    return '—';
+};
+
 // Pick a truck + driver for either a line-haul manifest or a delivery trip sheet.
-const AssignUnitPanel: React.FC<{ mode: 'manifest' | 'trip'; loads: LoadConfirmation[]; vehicles: any[]; users: any[]; driverName: (id?: string) => string; onClose: () => void; onAssign: (vehicleId: string, driverId: string, extra: { trailerSize?: string; odometerStart?: number }) => Promise<void> }> = ({ mode, loads, vehicles, users, onClose, onAssign }) => {
+// Vehicles list THIS depot first (then Loadmaster, then others); a horse needs a
+// trailer; drivers come from the drivers register; the odometer auto-pulls from
+// the live tracker (Pulsit) when a vehicle is picked. Line-haul can be put on a
+// subcontractor instead of own fleet.
+const AssignUnitPanel: React.FC<{ mode: 'manifest' | 'trip'; loads: LoadConfirmation[]; vehicles: any[]; drivers: any[]; homeBranch: string; driverName: (id?: string) => string; onClose: () => void; onAssign: (vehicleId: string, driverId: string, extra: { trailerSize?: string; odometerStart?: number; carrierName?: string; carrierVehicleReg?: string; carrierDriver?: string; carrierCell?: string }) => Promise<void> }> = ({ mode, loads, vehicles, drivers, homeBranch, onClose, onAssign }) => {
+    const isManifest = mode === 'manifest';
+    const origin = loads[0]?.collectionBranch, dest = loads[0]?.destinationBranch;
+    // The depot whose vehicles should list first: origin for line-haul, destination for delivery.
+    const homeCode = code(isManifest ? origin : dest) || code(homeBranch);
+
+    const [carrierMode, setCarrierMode] = useState(false); // line-haul on a subcontractor
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
     const [trailerSize, setTrailerSize] = useState('12m');
     const [odo, setOdo] = useState('');
+    const [odoMsg, setOdoMsg] = useState('');
+    const [odoLoading, setOdoLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const isManifest = mode === 'manifest';
-    const origin = loads[0]?.collectionBranch, dest = loads[0]?.destinationBranch;
-    // Line-haul = horses; local delivery = any on-road vehicle.
-    const trucks = vehicles.filter((v: any) => v.status === 'On the road' && (isManifest ? v.weightCategory === 'Horse' : true));
-    const drivers = users.filter((u: any) => ['Staff', 'Driver'].includes(u.role));
-    const submit = async () => { if (!vehicleId || !driverId) { alert('Pick a truck and a driver.'); return; } setSaving(true); await onAssign(vehicleId, driverId, { trailerSize: isManifest ? trailerSize : undefined, odometerStart: !isManifest && odo ? Number(odo) : undefined }); setSaving(false); };
+    // Subcontractor carrier fields.
+    const [cName, setCName] = useState(''); const [cReg, setCReg] = useState(''); const [cDriver, setCDriver] = useState(''); const [cCell, setCCell] = useState('');
+
+    // Eligible vehicles: line-haul = horses; delivery = rigids/bakkies (no trailers/forklifts).
+    // Sort this depot first, then Loadmaster, then the rest. Off-road trucks go last (greyed).
+    const rank = (v: any) => { const c = vBranchCode(v); return (c === homeCode ? 0 : c === 'LM' ? 1 : 2) + (v.status === 'On the road' ? 0 : 0.5); };
+    const eligible = useMemo(() => vehicles
+        .filter((v: any) => isManifest ? isHorse(v) : isDeliveryV(v))
+        .sort((a: any, b: any) => rank(a) - rank(b) || String(a.registration || '').localeCompare(String(b.registration || ''))),
+        [vehicles, isManifest, homeCode]);
+    const groups = useMemo(() => {
+        const g: Record<string, any[]> = { [homeCode]: [], LM: [], Other: [] };
+        eligible.forEach((v: any) => { const c = vBranchCode(v); (g[c === homeCode ? homeCode : c === 'LM' ? 'LM' : 'Other'] ||= []).push(v); });
+        return g;
+    }, [eligible, homeCode]);
+
+    const chosen = vehicles.find((v: any) => v.id === vehicleId);
+    const needTrailer = isManifest && !carrierMode && chosen && isHorse(chosen);
+
+    // Active drivers, this depot first.
+    const driverList = useMemo(() => (drivers || [])
+        .filter((d: any) => d.isActive !== false)
+        .sort((a: any, b: any) => {
+            const ah = code(a.branch) === homeCode ? 0 : 1, bh = code(b.branch) === homeCode ? 0 : 1;
+            return ah - bh || String(a.name || '').localeCompare(String(b.name || ''));
+        }), [drivers, homeCode]);
+
+    // Pull the live odometer from the tracker for the chosen vehicle.
+    const pullOdo = async (reg?: string) => {
+        if (!reg) return;
+        setOdoLoading(true); setOdoMsg('');
+        try {
+            const { data } = await invokeFn('track', { body: { action: 'vehicle', reg } });
+            const km = (data as any)?.odometer ?? (data as any)?.vehicle?.odometer;
+            if (km) { setOdo(String(Math.round(Number(km)))); setOdoMsg('Pulled from live tracker'); }
+            else setOdoMsg('No live odometer for this reg — enter manually');
+        } catch { setOdoMsg('Tracker unavailable — enter manually'); }
+        setOdoLoading(false);
+    };
+    const onPickVehicle = (id: string) => { setVehicleId(id); const v = vehicles.find((x: any) => x.id === id); if (v?.registration) pullOdo(v.registration); };
+
+    const submit = async () => {
+        if (carrierMode) {
+            if (!cName.trim() || !cReg.trim()) { alert('Enter the subcontractor company and vehicle reg.'); return; }
+        } else {
+            if (!vehicleId) { alert('Pick a vehicle.'); return; }
+            if (needTrailer && !trailerSize) { alert('A horse needs a trailer — pick the trailer.'); return; }
+        }
+        if (!carrierMode && !driverId) { alert('Pick a driver.'); return; }
+        setSaving(true);
+        await onAssign(carrierMode ? '' : vehicleId, driverId, {
+            trailerSize: needTrailer ? trailerSize : undefined,
+            odometerStart: odo ? Number(odo) : undefined,
+            carrierName: carrierMode ? cName.trim() : undefined,
+            carrierVehicleReg: carrierMode ? cReg.trim() : undefined,
+            carrierDriver: carrierMode ? cDriver.trim() : undefined,
+            carrierCell: carrierMode ? cCell.trim() : undefined,
+        });
+        setSaving(false);
+    };
+
+    const sel = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm';
     return (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
@@ -480,38 +564,76 @@ const AssignUnitPanel: React.FC<{ mode: 'manifest' | 'trip'; loads: LoadConfirma
                             ))}
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">{isManifest ? 'Line-haul truck' : 'Delivery vehicle'}</label>
-                            <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                                <option value="">-- Select vehicle --</option>
-                                {trucks.map((v: any) => <option key={v.id} value={v.id}>{v.registration} ({v.name})</option>)}
-                            </select>
-                            {trucks.length === 0 && <div className="text-[11px] text-amber-600 mt-1">No vehicles marked On the road.</div>}
+
+                    {/* Line-haul: own fleet vs subcontractor */}
+                    {isManifest && (
+                        <div className="flex gap-1.5">
+                            <button onClick={() => setCarrierMode(false)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${!carrierMode ? 'bg-[#13294b] text-white border-[#13294b]' : 'bg-white text-slate-600 border-slate-300'}`}>Own fleet (incl. Loadmaster)</button>
+                            <button onClick={() => setCarrierMode(true)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${carrierMode ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-600 border-slate-300'}`}>Subcontractor</button>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Driver</label>
-                            <select value={driverId} onChange={e => setDriverId(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                                <option value="">-- Select driver --</option>
-                                {drivers.map((d: any) => <option key={d.email} value={d.email}>{d.name}</option>)}
-                            </select>
+                    )}
+
+                    {carrierMode ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Carrier company *</label><input value={cName} onChange={e => setCName(e.target.value)} className={sel} placeholder="e.g. Acme Transport" /></div>
+                            <div><label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Vehicle reg *</label><input value={cReg} onChange={e => setCReg(e.target.value.toUpperCase())} className={sel} placeholder="e.g. ND 123-456" /></div>
+                            <div><label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Driver</label><input value={cDriver} onChange={e => setCDriver(e.target.value)} className={sel} placeholder="driver name" /></div>
+                            <div><label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Driver cell</label><input value={cCell} onChange={e => setCCell(e.target.value)} className={sel} placeholder="072…" /></div>
                         </div>
-                        {isManifest ? (
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Trailer</label>
-                                <select value={trailerSize} onChange={e => setTrailerSize(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                                    <option value="6m">6 m</option>
-                                    <option value="12m">12 m</option>
-                                    <option value="6m + 6m">6 m + 6 m (superlink)</option>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">{isManifest ? 'Line-haul truck' : 'Delivery vehicle'} <span className="text-slate-400 normal-case">({homeCode} first)</span></label>
+                                <select value={vehicleId} onChange={e => onPickVehicle(e.target.value)} className={sel}>
+                                    <option value="">-- Select vehicle --</option>
+                                    {[homeCode, 'LM', 'Other'].map(gk => (groups[gk] && groups[gk].length) ? (
+                                        <optgroup key={gk} label={gk === homeCode ? `${homeCode} depot` : gk === 'LM' ? 'Loadmaster' : 'Other branches'}>
+                                            {groups[gk].map((v: any) => <option key={v.id} value={v.id}>{v.registration} — {v.name}{v.status !== 'On the road' ? ' ⚠ off-road' : ''}</option>)}
+                                        </optgroup>
+                                    ) : null)}
                                 </select>
+                                {eligible.length === 0 && <div className="text-[11px] text-amber-600 mt-1">No {isManifest ? 'horses' : 'delivery vehicles'} in the fleet.</div>}
                             </div>
-                        ) : (
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Driver</label>
+                                <select value={driverId} onChange={e => setDriverId(e.target.value)} className={sel}>
+                                    <option value="">-- Select driver --</option>
+                                    {driverList.map((d: any) => <option key={d.id} value={d.id}>{d.name}{d.branch ? ` · ${code(d.branch)}` : ''}</option>)}
+                                </select>
+                                {driverList.length === 0 && <div className="text-[11px] text-amber-600 mt-1">No drivers on the register yet (add them under Fleet → Drivers).</div>}
+                            </div>
+                            {needTrailer && (
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Trailer * <span className="text-slate-400 normal-case">(horse needs one)</span></label>
+                                    <select value={trailerSize} onChange={e => setTrailerSize(e.target.value)} className={sel}>
+                                        <option value="6m">6 m</option>
+                                        <option value="12m">12 m</option>
+                                        <option value="6m + 6m">6 m + 6 m (superlink)</option>
+                                    </select>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Odometer start (km)</label>
-                                <input value={odo} onChange={e => setOdo(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="e.g. 248500" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
+                                <div className="flex gap-1.5">
+                                    <input value={odo} onChange={e => { setOdo(e.target.value.replace(/[^\d]/g, '')); setOdoMsg(''); }} inputMode="numeric" placeholder="auto from tracker" className={sel} />
+                                    <button type="button" onClick={() => pullOdo(chosen?.registration)} disabled={!chosen || odoLoading} title="Pull the live odometer from the tracker" className="px-2.5 rounded-lg border border-slate-300 text-sm font-bold text-[#13294b] hover:bg-slate-50 disabled:opacity-40">{odoLoading ? '…' : '↻'}</button>
+                                </div>
+                                {odoMsg && <div className="text-[10px] text-slate-500 mt-0.5">{odoMsg}</div>}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
+
+                    {/* Subcontractor line-haul still needs a trailer note + driver-on-carrier handles its own driver */}
+                    {carrierMode && (
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Trailer</label>
+                            <select value={trailerSize} onChange={e => setTrailerSize(e.target.value)} className={sel}>
+                                <option value="6m">6 m</option>
+                                <option value="12m">12 m</option>
+                                <option value="6m + 6m">6 m + 6 m (superlink)</option>
+                            </select>
+                        </div>
+                    )}
                 </div>
                 <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2">
                     <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100">Cancel</button>

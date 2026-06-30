@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Supplier, RfqRequest, RfqRecipient, CarrierQuote } from '../../types';
-import { useOperations, useUIState, useFleetData } from '../../contexts/AppContexts';
+import { useOperations, useUIState, useFleetData, useAuth } from '../../contexts/AppContexts';
 import { PlusIcon } from '../icons/PlusIcon';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import Modal from '../Modal';
@@ -292,8 +292,9 @@ const LogQuote: React.FC<{ rfq: RfqRequest; onDone: () => void }> = ({ rfq, onDo
 // The winning carrier rate + markup becomes the client's sell price on a quote.
 // After the client approves it, ops convert it to a load and pick the transporter
 // via the existing Accept-quote flow. No LoadCon is created here.
-const QuoteClientModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup: number; onClose: () => void }> = ({ rfq, quote, markup, onClose }) => {
+const QuoteClientModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup: number; quotesCompared: number; onClose: () => void }> = ({ rfq, quote, markup, quotesCompared, onClose }) => {
     const { handleCreateQuote, handleUpdateQuote, handleAwardRfqQuote, handleUpdateRfq, clients = [], suppliers = [], quotes = [] } = useOperations() as any;
+    const { currentUser } = useAuth() as any;
     const { showToast } = useUIState();
     const buy = quote.price || 0;
     const [clientId, setClientId] = useState(rfq.clientId || '');
@@ -305,9 +306,18 @@ const QuoteClientModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup:
     const id = () => `id_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const subQuote = { id: id(), supplierId: quote.supplierId || '', rate: buy, timestamp: new Date().toISOString() };
 
+    // Phase 4 gates: min 3 carrier quotes compared + the awarded carrier must be vetted.
+    // Either can be bypassed by a manager — but only with a reason, which we log.
+    const carrierVetted = !!carrier?.isVetted;
+    const minQuotesMet = quotesCompared >= 3;
+    const needsOverride = !minQuotesMet || !carrierVetted;
+    const [overrideReason, setOverrideReason] = useState('');
+    const canSend = !!clientId && (!needsOverride || overrideReason.trim().length >= 4);
+
     const send = async () => {
         if (saving) return;
         if (!clientId) { showToast('Pick the client to quote.'); return; }
+        if (needsOverride && overrideReason.trim().length < 4) { showToast('A short reason is required to proceed past the checks.'); return; }
         setSaving(true);
         let quoteNumber = '';
         let res: any;
@@ -340,7 +350,18 @@ const QuoteClientModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup:
             if (res?.ok && res.value?.id) await handleUpdateRfq(rfq.id, { quoteId: res.value.id });
         }
         if (res?.ok) {
-            await handleAwardRfqQuote(rfq.id, quote.id);
+            const audit = {
+                awardedSupplierId: quote.supplierId,
+                awardedCompany: quote.companyName || carrier?.name,
+                quotesCompared,
+                minQuotesMet,
+                carrierVetted,
+                overridden: needsOverride,
+                overrideReason: needsOverride ? overrideReason.trim() : undefined,
+                awardedBy: currentUser?.name || currentUser?.email,
+                awardedAt: new Date().toISOString(),
+            };
+            await handleAwardRfqQuote(rfq.id, quote.id, audit);
             showToast(`Quote ${quoteNumber} ready for ${ (clients as any[]).find(c => c.id === clientId)?.name || 'client' } — review & send for approval.`);
             onClose();
         } else { setSaving(false); showToast(`Could not build quote: ${res?.error || 'unknown error'}`); }
@@ -372,9 +393,29 @@ const QuoteClientModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup:
                 <div className="flex justify-between"><span className="text-gray-400">Margin</span><span className={`font-mono font-bold ${margin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{rand(margin)}</span></div>
             </div>
 
+            {/* Phase 4 — pre-quote checks */}
+            <div className="mt-4 space-y-1.5">
+                <div className={`flex items-center gap-2 text-sm ${minQuotesMet ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <span>{minQuotesMet ? '✓' : '⚠'}</span>
+                    <span>{quotesCompared} of 3 minimum carrier quote{quotesCompared === 1 ? '' : 's'} compared{minQuotesMet ? '' : ' — below policy minimum'}</span>
+                </div>
+                <div className={`flex items-center gap-2 text-sm ${carrierVetted ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span>{carrierVetted ? '✓' : '⛔'}</span>
+                    <span>Awarded carrier <strong>{quote.companyName || carrier?.name || ''}</strong> {carrierVetted ? 'is vetted' : 'is NOT vetted'}</span>
+                </div>
+            </div>
+
+            {needsOverride && (
+                <div className="mt-3 bg-amber-900/20 border border-amber-700/60 rounded-lg p-3">
+                    <p className="text-[12px] font-bold text-amber-300 mb-1">Manager override required</p>
+                    <p className="text-[11px] text-amber-200/80 mb-2">{!carrierVetted ? 'This carrier has not passed compliance vetting. ' : ''}{!minQuotesMet ? 'Fewer than 3 carriers were compared. ' : ''}Give a brief reason to proceed — it is logged against this RFQ.</p>
+                    <input value={overrideReason} onChange={e => setOverrideReason(e.target.value)} placeholder="Reason (e.g. only carrier on this lane / urgent, vetting in progress)" className={input} />
+                </div>
+            )}
+
             <div className="flex justify-end gap-3 mt-6">
                 <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-300 hover:text-white">Cancel</button>
-                <button onClick={send} disabled={saving} className="px-5 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">{saving ? 'Building…' : 'Build quote for approval'}</button>
+                <button onClick={send} disabled={saving || !canSend} className="px-5 py-2 rounded-lg text-sm font-bold bg-green-600 hover:bg-green-700 text-white disabled:opacity-50">{saving ? 'Building…' : needsOverride ? 'Override & build quote' : 'Build quote for approval'}</button>
             </div>
         </div>
     );
@@ -394,6 +435,9 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
         if (a.canAssist !== b.canAssist) return a.canAssist ? -1 : 1;
         return (a.price ?? Infinity) - (b.price ?? Infinity);
     }), [rfq.quotes]);
+    // Quotes that actually count toward the "min 3" policy — a carrier who can
+    // assist AND gave a price.
+    const quotesCompared = useMemo(() => ranked.filter(q => q.canAssist && q.price != null).length, [ranked]);
 
     const statusColor = { Open: 'bg-blue-900/50 text-blue-300', Awarded: 'bg-green-900/50 text-green-300', Closed: 'bg-gray-700 text-gray-300', Cancelled: 'bg-red-900/50 text-red-300' }[rfq.status];
 
@@ -439,6 +483,15 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
                 <span className="text-[11px] text-gray-400">% → client price shown per quote</span>
             </div>
 
+            {rfq.status !== 'Awarded' && rfq.status !== 'Cancelled' && (
+                <p className={`mt-2 text-[11px] font-semibold ${quotesCompared >= 3 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {quotesCompared >= 3 ? `✓ ${quotesCompared} carrier quotes — ready to compare & quote the client` : `⚠ ${quotesCompared} of 3 carrier quotes — get at least 3 before quoting the client (manager can override)`}
+                </p>
+            )}
+            {rfq.awardAudit?.overridden && (
+                <p className="mt-1 text-[10px] text-amber-400/80" title={rfq.awardAudit.overrideReason}>⚑ Awarded with override by {rfq.awardAudit.awardedBy || 'staff'}: {rfq.awardAudit.overrideReason}</p>
+            )}
+
             <div className="mt-3 space-y-1.5">
                 {ranked.length === 0 && <p className="text-sm text-gray-600 py-2">No quotes yet.</p>}
                 {ranked.map((q, i) => {
@@ -474,7 +527,7 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
             )}
 
             <Modal isOpen={!!awarding} onClose={() => setAwarding(null)} size="lg">
-                {awarding && <QuoteClientModal rfq={rfq} quote={awarding} markup={markup} onClose={() => setAwarding(null)} />}
+                {awarding && <QuoteClientModal rfq={rfq} quote={awarding} markup={markup} quotesCompared={quotesCompared} onClose={() => setAwarding(null)} />}
             </Modal>
         </div>
     );

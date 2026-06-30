@@ -1743,6 +1743,7 @@ export const mapRfqRequest = (
     createdAt: row.created_at,
     recipients: recipientsByRfq?.[row.id] ?? [],
     quotes: quotesByRfq?.[row.id] ?? [],
+    awardAudit: row.award_audit ?? undefined,
 });
 
 export const toRfqRequestInsert = (rfq: Partial<RfqRequest>, requestNumber: string, createdBy?: string) => ({

@@ -1996,7 +1996,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         },
         // Award the RFQ to a carrier's quote: mark that quote Awarded, the others
         // Rejected, and close the request.
-        handleAwardRfqQuote: async (rfqId: string, quoteId: string): Promise<Result<void>> => {
+        handleAwardRfqQuote: async (rfqId: string, quoteId: string, audit?: import('../types').RfqAwardAudit): Promise<Result<void>> => {
             try {
                 const cur = (stateRef.current.rfqRequests || []).find((r: RfqRequest) => r.id === rfqId);
                 if (!cur) return { ok: false, error: 'Request not found.' };
@@ -2004,11 +2004,14 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const status = q.id === quoteId ? 'Awarded' : (q.status === 'Awarded' ? 'Submitted' : q.status);
                     if (status !== q.status) await directUpdate('rfq_carrier_quotes', { id: q.id }, { status });
                 }
-                await directUpdate('rfq_requests', { id: rfqId }, { status: 'Awarded', awarded_quote_id: quoteId, updated_at: new Date().toISOString() });
+                const row: any = { status: 'Awarded', awarded_quote_id: quoteId, updated_at: new Date().toISOString() };
+                if (audit) row.award_audit = audit;
+                await directUpdate('rfq_requests', { id: rfqId }, row);
                 dispatch({ type: 'UPDATE_RFQ_REQUEST', payload: {
                     ...cur,
                     status: 'Awarded',
                     awardedQuoteId: quoteId,
+                    awardAudit: audit ?? cur.awardAudit,
                     quotes: cur.quotes.map(q => ({ ...q, status: q.id === quoteId ? 'Awarded' : (q.status === 'Awarded' ? 'Submitted' : q.status) })),
                 } });
                 return { ok: true };

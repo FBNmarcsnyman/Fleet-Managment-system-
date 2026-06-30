@@ -991,6 +991,22 @@ export interface RfqRequest {
     createdAt: string;
     recipients: RfqRecipient[];
     quotes: CarrierQuote[];
+    // Audit captured when a carrier is awarded → client quote built (Phase 4 vet gate).
+    awardAudit?: RfqAwardAudit;
+}
+
+// The compliance snapshot at award time: how many carriers were compared, whether
+// the winner was vetted, and — if either rule was bypassed — who overrode and why.
+export interface RfqAwardAudit {
+    awardedSupplierId?: string;
+    awardedCompany?: string;
+    quotesCompared: number;       // carriers who could assist + gave a price
+    minQuotesMet: boolean;        // quotesCompared >= 3
+    carrierVetted: boolean;       // the awarded carrier was vetted
+    overridden: boolean;          // a rule was bypassed
+    overrideReason?: string;
+    awardedBy?: string;
+    awardedAt: string;
 }
 
 // One verification/media record on a waybill's journey. Every checkpoint

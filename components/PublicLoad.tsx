@@ -44,7 +44,17 @@ interface Summary {
     request_status?: string;
     request_reply?: string;
     live_tracking?: boolean;
+    cargo?: string;
+    packaging?: string;
 }
+
+// One clean label/value row for the detail table (mirrors the branded email layout).
+const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+    <div style={{ display: 'flex', gap: 14, padding: '10px 0', borderBottom: '1px solid #eef2f6', alignItems: 'flex-start' }}>
+        <div style={{ width: 110, flexShrink: 0, color: '#6b7280', fontSize: 13 }}>{label}</div>
+        <div style={{ flex: 1, color: '#1f2937', fontSize: 14, fontWeight: 700, lineHeight: 1.5 }}>{children}</div>
+    </div>
+);
 
 // Public client-facing stages (no internal jargon).
 const STAGES = ['Booked', 'Collecting', 'In Transit', 'Out for Delivery', 'Delivered'];
@@ -150,39 +160,47 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                 <div style={{ padding: 34 }}>
                     {err && !load ? <p style={{ color: '#b91c1c' }}>{err}</p> : !load ? <p style={{ color: '#6b7280' }}>Loading…</p> : (
                         <>
-                            <h2 style={{ color: NAVY, margin: '0 0 4px', fontSize: 26 }}>Load {load.load_con_number}</h2>
-                            <p style={{ color: '#6b7280', fontSize: 16, margin: '0 0 24px' }}>{load.collection_point} → {load.delivery_point}</p>
+                            <h2 style={{ color: NAVY, margin: '0 0 18px', fontSize: 26 }}>Load {load.load_con_number}</h2>
 
-                            {mode === 'track' && load.live_tracking === false && (
-                                <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 18, fontSize: 14, color: '#374151', lineHeight: 1.7 }}>
-                                    <p style={{ margin: 0 }}>Live tracking for this shipment is currently turned off. <strong>FBN Transport will keep you updated by email and WhatsApp</strong> at each stage and with the delivery ETA.</p>
-                                    {load.has_pod && load.pod_url && (
-                                        <a href={load.pod_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 14, background: '#16a34a', color: '#fff', textDecoration: 'none', fontWeight: 800, padding: '12px 20px', borderRadius: 8 }}>⬇ Download signed POD</a>
-                                    )}
-                                </div>
-                            )}
-                            {mode === 'track' && load.live_tracking !== false && (
+                            {mode === 'track' && (
                                 <>
-                                    <div style={{ marginBottom: 20 }}>
-                                        {STAGES.map((s, i) => (
-                                            <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '7px 0' }}>
-                                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: i <= idx ? '#16a34a' : '#e5e7eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>{i <= idx ? '✓' : i + 1}</div>
-                                                <span style={{ color: i === idx ? NAVY : i < idx ? '#16a34a' : '#9ca3af', fontWeight: i === idx ? 800 : 600, fontSize: 15 }}>{s}{i === idx ? '  ← current' : ''}</span>
-                                            </div>
-                                        ))}
+                                    {/* Clean detail table — same shape as the branded email (no bunched text). */}
+                                    <div style={{ background: '#f8fafc', border: '1px solid #eef2f6', borderRadius: 12, padding: '4px 16px', marginBottom: 20 }}>
+                                        <Row label="Collect from">{load.collection_point || '—'}</Row>
+                                        <Row label="Deliver to">{load.delivery_point || '—'}</Row>
+                                        {load.collection_date && <Row label="Collection date">{fmt(load.collection_date)}</Row>}
+                                        {load.delivery_date && <Row label="Delivery date">{fmt(load.delivery_date)}</Row>}
+                                        {load.cargo && <Row label="Cargo">{load.cargo}</Row>}
+                                        {load.packaging && <Row label="Packaging">{load.packaging}</Row>}
+                                        {load.loading_eta && <Row label="ETA at loading">{fmtDT(load.loading_eta)}</Row>}
+                                        {load.vehicle_reg && <Row label="Vehicle">{load.vehicle_reg}</Row>}
+                                        <Row label="Status">
+                                            <span style={{ color: idx >= 4 ? '#16a34a' : NAVY }}>{STAGES[idx]}</span>
+                                            {load.has_pod ? <span style={{ color: '#16a34a', marginLeft: 8 }}>· POD received ✓</span> : idx >= 4 ? <span style={{ color: '#b45309', marginLeft: 8 }}>· awaiting POD</span> : null}
+                                        </Row>
                                     </div>
-                                    <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 16, fontSize: 14, color: '#374151', lineHeight: 1.7 }}>
-                                        {load.collection_date && <div>Collection: <strong>{fmt(load.collection_date)}</strong></div>}
-                                        {load.delivery_date && <div>Delivery (planned): <strong>{fmt(load.delivery_date)}</strong></div>}
-                                        {load.loading_eta && <div>ETA at loading point: <strong>{fmtDT(load.loading_eta)}</strong></div>}
-                                        {load.vehicle_reg && <div>Vehicle: <strong>{load.vehicle_reg}</strong></div>}
-                                        {load.has_pod && <div style={{ color: '#16a34a', fontWeight: 700, marginTop: 4 }}>POD received ✓</div>}
-                                        {!load.has_pod && idx >= 4 && <div style={{ color: '#b45309', fontWeight: 700, marginTop: 4 }}>Delivered — awaiting signed POD. It will appear here once uploaded.</div>}
-                                    </div>
+
+                                    {/* Progress stepper (when live tracking on) or a friendly note (when off). */}
+                                    {load.live_tracking !== false ? (
+                                        <div style={{ marginBottom: 20 }}>
+                                            {STAGES.map((s, i) => (
+                                                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '7px 0' }}>
+                                                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: i <= idx ? '#16a34a' : '#e5e7eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>{i <= idx ? '✓' : i + 1}</div>
+                                                    <span style={{ color: i === idx ? NAVY : i < idx ? '#16a34a' : '#9ca3af', fontWeight: i === idx ? 800 : 600, fontSize: 15 }}>{s}{i === idx ? '  ← current' : ''}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 16, fontSize: 14, color: '#374151', lineHeight: 1.7, marginBottom: 4 }}>
+                                            <p style={{ margin: 0 }}><strong>FBN Transport will keep you updated by email and WhatsApp</strong> at each stage and with the delivery ETA. You can also add a note or request an update below.</p>
+                                        </div>
+                                    )}
+
                                     {load.has_pod && load.pod_url && (
                                         <a href={load.pod_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 14, background: '#16a34a', color: '#fff', textDecoration: 'none', fontWeight: 800, padding: '12px 20px', borderRadius: 8 }}>⬇ Download signed POD</a>
                                     )}
-                                    {/* Client → ops request channel (no detail editing, just a note). */}
+
+                                    {/* Client → ops channel — ALWAYS available (add remarks / extra info / request an update). */}
                                     <div style={{ marginTop: 22, borderTop: '1px solid #e5e7eb', paddingTop: 18 }}>
                                         {load.request_reply ? (
                                             <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 14, marginBottom: 14 }}>
@@ -192,14 +210,14 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                                         ) : null}
                                         {reqSent || load.request_status === 'open' ? (
                                             <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 14, textAlign: 'center' }}>
-                                                <p style={{ color: '#1e40af', fontSize: 14, margin: 0, fontWeight: 600 }}>✔ Your request is with our team — we'll be in touch shortly.</p>
+                                                <p style={{ color: '#1e40af', fontSize: 14, margin: 0, fontWeight: 600 }}>✔ Your note is with our team — we'll be in touch shortly.</p>
                                             </div>
                                         ) : (
                                             <>
-                                                <label style={{ fontSize: 13, fontWeight: 800, color: NAVY }}>Need anything for this delivery?</label>
-                                                <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 8px' }}>e.g. "Please call me 30 min before delivery." Our team will respond — you can't change the booking here.</p>
-                                                <textarea value={reqMsg} onChange={e => setReqMsg(e.target.value)} rows={3} placeholder="Type your request or special instruction…" style={{ width: '100%', padding: 11, borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-                                                <button onClick={submitRequest} disabled={reqBusy || !reqMsg.trim()} style={{ marginTop: 8, background: reqBusy || !reqMsg.trim() ? '#9ca3af' : NAVY, color: '#fff', border: 'none', padding: '11px 20px', borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>{reqBusy ? 'Sending…' : 'Send request'}</button>
+                                                <label style={{ fontSize: 13, fontWeight: 800, color: NAVY }}>Add info, remarks or request an update</label>
+                                                <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 8px' }}>e.g. weight, order/reference number, collection remarks, or "please call 30 min before delivery." Our team will action it.</p>
+                                                <textarea value={reqMsg} onChange={e => setReqMsg(e.target.value)} rows={3} placeholder="Type weight / order no / remarks / your request…" style={{ width: '100%', padding: 11, borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                                                <button onClick={submitRequest} disabled={reqBusy || !reqMsg.trim()} style={{ marginTop: 8, background: reqBusy || !reqMsg.trim() ? '#9ca3af' : NAVY, color: '#fff', border: 'none', padding: '11px 20px', borderRadius: 8, fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>{reqBusy ? 'Sending…' : 'Send to FBN'}</button>
                                             </>
                                         )}
                                     </div>

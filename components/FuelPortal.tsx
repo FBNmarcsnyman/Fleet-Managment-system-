@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useVehicles, useUIState } from '../contexts/AppContexts';
 import FuelDashboard from './fleet/FuelDashboard';
 import FuelManagement from './FuelManagement';
+import VehicleFuelView from './fuel/VehicleFuelView';
 import { BRANCHES } from '../constants';
 
 // Top-level Fuel module (own sidebar item + own access permission). Holds the
 // at-a-glance dashboard (tank levels, today's fills, CPK, Google-Drive import)
 // and the detailed logs / bowsers / price management.
 const FuelPortal: React.FC = () => {
-    const [tab, setTab] = useState<'dashboard' | 'logs'>('dashboard');
+    const [tab, setTab] = useState<'dashboard' | 'byVehicle' | 'logs'>('dashboard');
     const fleet = useVehicles() as any;
     const { showModal, hideModal } = useUIState();
     const { vehicles, fuelPriceRecords, bowsers, bowserRefills, handleAddFuelEntry, handleSetFuelPrice, handleAddBowserRefill, handleAddBowser } = fleet;
@@ -18,7 +19,7 @@ const FuelPortal: React.FC = () => {
         onCancel: hideModal,
     });
 
-    const tabs: [typeof tab, string][] = [['dashboard', 'Dashboard'], ['logs', 'Logs & Bowsers']];
+    const tabs: [typeof tab, string][] = [['dashboard', 'Dashboard'], ['byVehicle', 'By Vehicle'], ['logs', 'Logs & Bowsers']];
 
     return (
         <div className="space-y-5">
@@ -32,6 +33,8 @@ const FuelPortal: React.FC = () => {
             </div>
             {tab === 'dashboard'
                 ? <FuelDashboard />
+                : tab === 'byVehicle'
+                ? <VehicleFuelView />
                 : <FuelManagement
                     vehicles={vehicles}
                     prices={fuelPriceRecords}

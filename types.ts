@@ -200,6 +200,7 @@ export type ViewType =
   | 'broking'
   | 'collectHome'
   | 'partners'
+  | 'transporters'
   | 'quotes'
   | 'workshop'
   | 'finance'

@@ -44,8 +44,8 @@ export const ALL_NAV_ENTRIES: NavEntry[] = [
     },
     {
         kind: 'group', key: 'accounts', label: 'Accounts', icon: UsersIcon, children: [
-            { view: 'partners', label: 'Clients', icon: UsersIcon, permission: 'access_operations', subView: 'clients' },
-            { view: 'partners', label: 'Transporters', icon: UsersIcon, permission: 'access_operations', subView: 'subcontractors' },
+            { view: 'partners', label: 'Clients', icon: UsersIcon, permission: 'access_operations' },
+            { view: 'transporters', label: 'Transporters', icon: TruckIcon, permission: 'access_operations' },
             { view: 'accountsPods', label: 'PODs (All)', icon: DocumentTextIcon, permission: 'access_operations' },
             { view: 'finance', label: 'Invoicing / Debtors / Creditors', icon: CurrencyDollarIcon, permission: 'access_finance' },
         ],
@@ -77,7 +77,8 @@ export const VIEW_TITLES: Partial<Record<ViewType, string>> = {
     fuel: 'Fuel',
     broking: 'Broking',
     operations: 'Operations',
-    partners: 'Clients & Subcontractors',
+    partners: 'Clients',
+    transporters: 'Transporters',
     quotes: 'Quotes',
     workshop: 'Workshop',
     finance: 'Invoicing / Debtors / Creditors',

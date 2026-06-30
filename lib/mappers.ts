@@ -443,6 +443,7 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     networkPartner: (row as any).network_partner ?? false,
     accountStatus: (row as any).account_status ?? 'account',
     vetted: (row as any).vetted ?? true,
+    accountCode: (row as any).account_code ?? undefined,
     creditApplicationSigned: (row as any).credit_application_signed ?? false,
     creditApplicationSignedAt: (row as any).credit_application_signed_at ?? undefined,
     termsSigned: (row as any).terms_signed ?? false,
@@ -1115,6 +1116,9 @@ export const toClientInsert = (client: Omit<Client, 'id'>): Tables['clients']['I
     ...((client as any).networkPartner !== undefined ? { network_partner: (client as any).networkPartner } : {}),
     ...((client as any).accountStatus ? { account_status: (client as any).accountStatus } : {}),
     ...((client as any).vetted !== undefined ? { vetted: (client as any).vetted } : {}),
+    ...((client as any).accountCode ? { account_code: (client as any).accountCode } : {}),
+    ...((client as any).creditApplicationSigned !== undefined ? { credit_application_signed: (client as any).creditApplicationSigned } : {}),
+    ...((client as any).termsSigned !== undefined ? { terms_signed: (client as any).termsSigned } : {}),
     ...((client as any).vatNo ? { vat_no: (client as any).vatNo } : {}),
     ...((client as any).invoiceDetails ? { invoice_details: (client as any).invoiceDetails } : {}),
 } as any);
@@ -1133,6 +1137,7 @@ export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] 
     if ((u as any).networkPartner !== undefined) (row as any).network_partner = (u as any).networkPartner;
     if ((u as any).accountStatus !== undefined) (row as any).account_status = (u as any).accountStatus ?? 'account';
     if ((u as any).vetted !== undefined) (row as any).vetted = (u as any).vetted;
+    if ((u as any).accountCode !== undefined) (row as any).account_code = (u as any).accountCode ?? null;
     if ((u as any).creditApplicationSigned !== undefined) (row as any).credit_application_signed = (u as any).creditApplicationSigned;
     if ((u as any).creditApplicationSignedAt !== undefined) (row as any).credit_application_signed_at = (u as any).creditApplicationSignedAt ?? null;
     if ((u as any).termsSigned !== undefined) (row as any).terms_signed = (u as any).termsSigned;

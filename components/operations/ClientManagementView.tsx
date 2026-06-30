@@ -5,6 +5,13 @@ import { UploadIcon } from '../icons/UploadIcon';
 import { useUIState, useOperations } from '../../contexts/AppContexts';
 import * as XLSX from 'xlsx';
 
+// Normalise a company name for matching (lowercase, drop legal suffixes + punctuation).
+const normName = (s: string) => String(s || '')
+    .toLowerCase()
+    .replace(/\b(pty|ltd|limited|cc|inc|incorporated|\(pty\)|t\/a|the)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
 // Client CRM — clients grouped by category (Agent / Consolidator / Manufacturer /
 // Carrier), each with its full contact team (roles, titles), plus a LEADS view
 // that lists every contact who has asked FBN for a rate (quote-askers) so they
@@ -24,7 +31,7 @@ const catOf = (c: any) => c.category || 'Uncategorised';
 
 const ClientManagementView: React.FC = () => {
     const { showModal, showToast } = useUIState();
-    const { clients, handleBulkAddClients, handleDeleteClient, handleConvertParty, handleUpdateClient, handleApproveClientRegistration } = useOperations() as any;
+    const { clients, handleBulkAddClients, handleAddClient, handleDeleteClient, handleConvertParty, handleUpdateClient, handleApproveClientRegistration } = useOperations() as any;
     const [q, setQ] = useState('');
     const [cat, setCat] = useState<string>('All');
     const [leads, setLeads] = useState(false);
@@ -107,6 +114,93 @@ const ClientManagementView: React.FC = () => {
         if (res?.ok === false) showToast(`Could not move: ${res.error}`); else showToast(`${client.name} moved to Transporters.`);
     };
 
+    // ── Import approved clients (account codes) — matches existing by name & UPDATES
+    // them (no duplicates); creates any that aren't on file yet. ──────────────────
+    const [showImport, setShowImport] = useState(false);
+    const [importText, setImportText] = useState('');
+    const [markPaperwork, setMarkPaperwork] = useState(true);
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState<{ updated: number; created: number; rows: number } | null>(null);
+
+    // Turn a 2D table into {accountCode, name, email} rows. Detects a header row;
+    // otherwise infers which column is the code (short, no spaces) vs the name.
+    const parseClientTable = (table: string[][]): { accountCode?: string; name: string; email?: string }[] => {
+        const rows = table.map(r => r.map(c => (c ?? '').toString().trim())).filter(r => r.some(c => c));
+        if (!rows.length) return [];
+        const emailRe = /\S+@\S+\.\S+/;
+        const header = rows[0].map(h => h.toLowerCase());
+        const looksHeader = header.some(h => /name|client|company|customer|code|account|acc no|acc\b/.test(h)) && !header.some(h => emailRe.test(h));
+        let codeCol = -1, nameCol = -1, emailCol = -1;
+        if (looksHeader) {
+            header.forEach((h, i) => {
+                if (codeCol < 0 && /(acc|account).*?(code|no|number)|^code$|^acc$/.test(h)) codeCol = i;
+                else if (nameCol < 0 && /name|client|company|customer/.test(h)) nameCol = i;
+                else if (emailCol < 0 && /mail/.test(h)) emailCol = i;
+            });
+        }
+        const dataRows = looksHeader ? rows.slice(1) : rows;
+        // Infer columns when there's no header.
+        if (nameCol < 0) {
+            const colCount = Math.max(...dataRows.map(r => r.length));
+            // The "name" column = the one with the longest average text; "code" = a
+            // short, space-free column that isn't the name.
+            const avgLen = Array.from({ length: colCount }, (_, i) => dataRows.reduce((s, r) => s + (r[i]?.length || 0), 0) / dataRows.length);
+            nameCol = avgLen.indexOf(Math.max(...avgLen));
+            for (let i = 0; i < colCount; i++) {
+                if (i === nameCol) continue;
+                const vals = dataRows.map(r => r[i] || '').filter(Boolean);
+                if (vals.length && vals.every(v => v.length <= 14 && !/\s{2,}/.test(v))) { codeCol = i; break; }
+            }
+        }
+        return dataRows.map(r => ({
+            accountCode: codeCol >= 0 ? (r[codeCol] || undefined) : undefined,
+            name: (nameCol >= 0 ? r[nameCol] : r.find(c => !emailRe.test(c))) || '',
+            email: emailCol >= 0 ? (r[emailCol] || undefined) : (r.find(c => emailRe.test(c)) || undefined),
+        })).filter(x => x.name);
+    };
+
+    const runApprovedImport = async (parsed: { accountCode?: string; name: string; email?: string }[]) => {
+        if (!parsed.length) { showToast('No client rows found — check the columns (Company name + Account code).'); return; }
+        setImporting(true);
+        const byName = new Map<string, any>();
+        (clients as any[]).forEach(c => byName.set(normName(c.name), c));
+        const paperwork = markPaperwork ? { creditApplicationSigned: true, creditApplicationSignedAt: new Date().toISOString(), termsSigned: true, termsSignedAt: new Date().toISOString() } : {};
+        let updated = 0, created = 0;
+        for (const row of parsed) {
+            const existing = byName.get(normName(row.name));
+            if (existing) {
+                await handleUpdateClient?.(existing.id, { accountCode: row.accountCode, accountStatus: 'account', vetted: true, ...paperwork } as any);
+                updated++;
+            } else {
+                await handleAddClient?.({ name: row.name, contactEmail: row.email || '', accountCode: row.accountCode, accountStatus: 'account', vetted: true, address: '', contacts: row.email ? [{ name: row.name, email: row.email, getsUpdates: true }] : [], ...paperwork } as any);
+                created++;
+            }
+        }
+        setImporting(false);
+        setImportResult({ updated, created, rows: parsed.length });
+        setImportText('');
+        showToast(`Approved-client import done: ${updated} updated, ${created} added.`);
+    };
+
+    const importFromPaste = () => {
+        const table = importText.split(/\r?\n/).map(line => line.split(/\t|,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c => c.replace(/^"|"$/g, '')));
+        runApprovedImport(parseClientTable(table));
+    };
+    const importApprovedFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const wb = XLSX.read(e.target?.result, { type: 'array' });
+                const table = XLSX.utils.sheet_to_json<any>(wb.Sheets[wb.SheetNames[0]], { header: 1 }) as string[][];
+                runApprovedImport(parseClientTable(table));
+            } catch (err) { showToast(`Could not read file: ${err instanceof Error ? err.message : 'error'}`); }
+        };
+        reader.readAsArrayBuffer(file);
+        event.target.value = '';
+    };
+
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
@@ -151,7 +245,8 @@ const ClientManagementView: React.FC = () => {
                     <button onClick={() => { setCodOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${codOnly ? 'bg-rose-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="New / unvetted clients on COD — approve to an account when vetted">💰 COD / Unauthorised {codCount ? `(${codCount})` : ''}</button>
                     <button onClick={() => { setPartnerOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${partnerOnly ? 'bg-amber-400 text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Strategic network/consortium partners — own-fleet carriers we build with">⭐ Network Partners {partnerCount ? `(${partnerCount})` : ''}</button>
                     <button onClick={() => { setDocsOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${docsOnly ? 'bg-orange-500 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Account clients missing a signed credit application or signed terms">📄 Docs outstanding {docsCount ? `(${docsCount})` : ''}</button>
-                    <label htmlFor="bulk-upload" className="flex items-center font-bold py-2 px-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer text-sm"><UploadIcon className="h-4 w-4 mr-1.5" /> Import</label>
+                    <button onClick={() => { setShowImport(v => !v); setImportResult(null); }} className={`flex items-center font-bold py-2 px-3 rounded-lg text-sm ${showImport ? 'bg-[#13294b] text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`} title="Import your approved-client list with account codes — matches existing clients and updates them">⬆ Import approved (codes)</button>
+                    <label htmlFor="bulk-upload" className="flex items-center font-bold py-2 px-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer text-sm"><UploadIcon className="h-4 w-4 mr-1.5" /> Import (new only)</label>
                     <input id="bulk-upload" type="file" onChange={handleFileChange} className="hidden" accept=".xlsx, .xls" />
                     <button onClick={() => showModal('addClient')} className="flex items-center font-bold py-2 px-3 rounded-lg bg-[#13294b] hover:bg-[#1d3a66] text-white text-sm"><PlusIcon className="h-4 w-4 mr-1.5" /> Add Client</button>
                 </div>
@@ -163,6 +258,25 @@ const ClientManagementView: React.FC = () => {
                 {CATEGORIES.map(c => chip(c, c.replace(' / Shipper', '').replace(' & Forwarding Agent', ' Agent').replace(' / Transporter', ''), counts[c] || 0))}
                 {counts['Uncategorised'] ? chip('Uncategorised', 'Uncategorised', counts['Uncategorised']) : null}
             </div>
+
+            {/* ---- IMPORT APPROVED CLIENTS (account codes) ---- */}
+            {showImport && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-3 space-y-2">
+                    <h4 className="font-black text-[#13294b] text-sm">⬆ Import approved clients (with account codes)</h4>
+                    <p className="text-[12px] text-slate-600">Paste from your accounting system (or upload the export). Include a <strong>Company name</strong> column and an <strong>Account code</strong> column (an Email column is optional). Existing clients are <strong>matched by name and updated</strong> — no duplicates; any not on file are added as approved account clients.</p>
+                    <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={5} placeholder={'Paste rows, e.g.:\nAccount code\tCompany name\nACME001\tACME Logistics CC\nDHL005\tDHL Global Forwarding'} className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-mono" />
+                    <label className="flex items-center gap-2 text-[12px] text-slate-700 cursor-pointer">
+                        <input type="checkbox" checked={markPaperwork} onChange={e => setMarkPaperwork(e.target.checked)} className="h-4 w-4 rounded" />
+                        These are fully approved — also mark <strong>credit application</strong> &amp; <strong>terms</strong> as signed
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={importFromPaste} disabled={importing || !importText.trim()} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg text-sm">{importing ? 'Importing…' : 'Import pasted rows'}</button>
+                        <label className="flex items-center font-bold py-2 px-4 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer text-sm"><UploadIcon className="h-4 w-4 mr-1.5" /> Upload .xlsx / .csv
+                            <input type="file" onChange={importApprovedFile} className="hidden" accept=".xlsx,.xls,.csv" /></label>
+                        {importResult && <span className="text-[12px] font-bold text-emerald-700">✓ {importResult.rows} rows — {importResult.updated} updated, {importResult.created} added.</span>}
+                    </div>
+                </div>
+            )}
 
             {leads ? (
                 /* ---- LEADS / QUOTE-ASKERS ---- */
@@ -210,6 +324,7 @@ const ClientManagementView: React.FC = () => {
                                                         <button onClick={e => togglePartner(client, e)} title={client.networkPartner ? 'Network Partner — click to remove' : 'Mark as a ⭐ Network Partner'} className={`text-base leading-none ${client.networkPartner ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300'}`}>{client.networkPartner ? '★' : '☆'}</button>
                                                         <button onClick={() => showModal('partnerDetail', { partner: client, kind: 'client' })} className="font-bold text-[#13294b] hover:underline text-left">{client.name}</button>
                                                     </div>
+                                                    {client.accountCode && <div className="text-[10px] font-mono text-slate-400 ml-6">#{client.accountCode}</div>}
                                                 </td>
                                                 <td className="py-2 px-2 text-slate-700">{main?.name || client.contactPerson || '—'}{main?.title && <div className="text-[11px] text-slate-400">{main.title}</div>}</td>
                                                 <td className="py-2 px-2 text-slate-500">{contacts.length} contact{contacts.length === 1 ? '' : 's'}{qn ? <span className="ml-1 text-[10px] font-bold text-amber-600">· {qn} lead{qn === 1 ? '' : 's'}</span> : ''}</td>

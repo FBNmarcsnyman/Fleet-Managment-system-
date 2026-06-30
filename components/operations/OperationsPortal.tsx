@@ -21,8 +21,7 @@ const DailyShipmentsOverview = lazy(() => import('./DailyShipmentsOverview'));
 const MonthlyLoadcons = lazy(() => import('./MonthlyLoadcons'));
 const TransporterLoadCons = lazy(() => import('./TransporterLoadCons'));
 const LclStatusReport = lazy(() => import('./LclStatusReport'));
-const DeliveriesDayView = lazy(() => import('./DeliveriesDayView'));
-const PodSignOffBoard = lazy(() => import('./PodSignOffBoard'));
+const DeliveriesPod = lazy(() => import('./DeliveriesPod'));
 const OperationsDay = lazy(() => import('./OperationsDay'));
 const OperationsManifests = lazy(() => import('./OperationsManifests'));
 const OperationsTripSheets = lazy(() => import('./OperationsTripSheets'));
@@ -66,14 +65,13 @@ const OperationsPortal: React.FC = () => {
         { view: 'subcontractorLoads', label: 'LoadCons', group: 'work' },
         { view: 'driverChats', label: 'Driver Chats', group: 'work' },
         { view: 'deliveries', label: 'Deliveries / POD', group: 'track' },
-        { view: 'pods', label: 'PODs', group: 'track' },
         { view: 'transporterLoads', label: 'By Transporter', group: 'reports' },
         { view: 'monthlyLoadcons', label: 'Month View', group: 'reports' },
         { view: 'emailLog', label: 'Emails', group: 'reports' },
         { view: 'docSettings', label: 'Doc Settings', group: 'reports' },
     ];
     const OPS_TABS = [
-        { view: 'opsDashboard', label: 'Dashboard', group: 'dashboard' },
+        { view: 'opsDashboard', label: 'Daily Overview', group: 'dashboard' },
         { view: 'opsDay', label: 'Day', group: 'work' },
         { view: 'opsManifests', label: 'Manifests', group: 'work' },
         { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
@@ -82,7 +80,6 @@ const OperationsPortal: React.FC = () => {
         { view: 'imports', label: 'Imports', group: 'work' },
         { view: 'lclStatus', label: 'Status Report', group: 'work' },
         { view: 'containers', label: 'Containers', group: 'work' },
-        { view: 'transporterLoads', label: 'By Transporter', group: 'reports' },
     ];
     // The sidebar has two flat tabs — Broking and Operations — that both open
     // this portal. The current view decides which area's tab strip to show; the
@@ -161,8 +158,8 @@ const OperationsPortal: React.FC = () => {
             case 'monthlyLoadcons': return <Suspense fallback={<div>Loading…</div>}><MonthlyLoadcons /></Suspense>;
             case 'transporterLoads': return <Suspense fallback={<div>Loading…</div>}><TransporterLoadCons /></Suspense>;
             case 'lclStatus': return <Suspense fallback={<div>Loading…</div>}><LclStatusReport /></Suspense>;
-            case 'deliveries': return <Suspense fallback={<div>Loading…</div>}><DeliveriesDayView /></Suspense>;
-            case 'pods': return <Suspense fallback={<div>Loading…</div>}><PodSignOffBoard /></Suspense>;
+            case 'deliveries':
+            case 'pods': return <Suspense fallback={<div>Loading…</div>}><DeliveriesPod /></Suspense>;
             case 'dashboard':
             default:
                 return <Suspense fallback={<div>Loading…</div>}><BrokingDashboard /></Suspense>;

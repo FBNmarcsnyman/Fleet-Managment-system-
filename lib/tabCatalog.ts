@@ -14,7 +14,6 @@ export const TAB_SECTIONS: TabSection[] = [
             { view: 'subcontractorLoads', label: 'LoadCons' },
             { view: 'driverChats', label: 'Driver Chats' },
             { view: 'deliveries', label: 'Deliveries / POD' },
-            { view: 'pods', label: 'PODs' },
             { view: 'transporterLoads', label: 'By Transporter' },
             { view: 'monthlyLoadcons', label: 'Month View' },
             { view: 'emailLog', label: 'Emails' },
@@ -23,7 +22,7 @@ export const TAB_SECTIONS: TabSection[] = [
     },
     {
         key: 'operations', label: 'Operations', tabs: [
-            { view: 'opsDashboard', label: 'Dashboard' },
+            { view: 'opsDashboard', label: 'Daily Overview' },
             { view: 'opsDay', label: 'Day' },
             { view: 'opsManifests', label: 'Manifests' },
             { view: 'opsTripSheets', label: 'Trip Sheets' },
@@ -32,7 +31,6 @@ export const TAB_SECTIONS: TabSection[] = [
             { view: 'imports', label: 'Imports' },
             { view: 'lclStatus', label: 'Status Report' },
             { view: 'containers', label: 'Containers' },
-            { view: 'transporterLoads', label: 'By Transporter' },
         ],
     },
     {

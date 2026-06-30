@@ -203,6 +203,7 @@ export type ViewType =
   | 'quotes'
   | 'workshop'
   | 'finance'
+  | 'accountsPods'
   | 'incidentManagement'
   | 'hr'
   | 'compliance'

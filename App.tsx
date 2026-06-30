@@ -26,6 +26,7 @@ import FleetPortal from './components/FleetPortal';
 import FuelPortal from './components/FuelPortal';
 import OperationsPortal from './components/operations/OperationsPortal';
 import PartnersPortal from './components/operations/PartnersPortal';
+import DeliveriesPod from './components/operations/DeliveriesPod';
 import QuotesPortal from './components/operations/QuotesPortal';
 import WorkshopPortal from './components/WorkshopPortal';
 import FinancePortal from './components/FinancePortal';
@@ -403,6 +404,7 @@ const App: React.FC = () => {
             case 'broking': return <OperationsPortal />;
             case 'collectHome': return <Suspense fallback={<div />}><CollectHome /></Suspense>;
             case 'partners': return <PartnersPortal />;
+            case 'accountsPods': return <Suspense fallback={<div />}><DeliveriesPod lens="all" /></Suspense>;
             case 'quotes': return <QuotesPortal />;
             case 'workshop': return <WorkshopPortal />;
             case 'finance': return <FinancePortal />;

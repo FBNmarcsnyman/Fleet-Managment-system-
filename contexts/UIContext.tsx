@@ -17,6 +17,7 @@ interface UIState {
   workshopSubView: string;
   financeSubView: string;
   operationsSubView: string;
+  partnersSubView: string;
 }
 
 interface UIContextType extends UIState {
@@ -33,6 +34,7 @@ interface UIContextType extends UIState {
   handleWorkshopSubViewChange: (view: string) => void;
   handleFinanceSubViewChange: (view: string) => void;
   handleOperationsSubViewChange: (view: string) => void;
+  handlePartnersSubViewChange: (view: string) => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -71,6 +73,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [workshopSubView, setWorkshopSubView] = useState<string>('dashboard');
   const [financeSubView, setFinanceSubView] = useState<string>('dashboard');
   const [operationsSubView, setOperationsSubView] = useState<string>('dashboard');
+  const [partnersSubView, setPartnersSubView] = useState<string>('clients');
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -105,6 +108,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     workshopSubView,
     financeSubView,
     operationsSubView,
+    partnersSubView,
     handleViewChange,
     setSidebarOpen,
     setActiveTab,
@@ -118,7 +122,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     handleWorkshopSubViewChange: setWorkshopSubView,
     handleFinanceSubViewChange: setFinanceSubView,
     handleOperationsSubViewChange: setOperationsSubView,
-  }), [currentView, sidebarOpen, activeTab, isLiveAssistantOpen, modal, toastMessage, isOnline, managementSubView, fleetSubView, workshopSubView, financeSubView, operationsSubView]);
+    handlePartnersSubViewChange: setPartnersSubView,
+  }), [currentView, sidebarOpen, activeTab, isLiveAssistantOpen, modal, toastMessage, isOnline, managementSubView, fleetSubView, workshopSubView, financeSubView, operationsSubView, partnersSubView]);
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 };

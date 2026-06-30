@@ -12,31 +12,52 @@ import { CurrencyDollarIcon } from '../icons/CurrencyDollarIcon';
 import { FuelIcon } from '../icons/FuelIcon';
 import { TruckIcon } from '../icons/TruckIcon';
 
-export type NavItem = { view: ViewType; label: string; icon: React.ElementType; permission: Permission };
+// A clickable destination. `subView` deep-links to an in-portal tab (e.g. the
+// Accounts > Transporters child opens the Partners portal on its subbie tab).
+// `altPermission` lets restricted (loadcons-only) operators still see an item.
+// `badgeKey` flags where a live count badge should render.
+export type NavItem = { view: ViewType; label: string; icon: React.ElementType; permission: Permission; altPermission?: Permission; subView?: string; badgeKey?: string };
+// A collapsible parent that groups related destinations under one heading.
+export type NavGroup = { kind: 'group'; key: string; label: string; icon: React.ElementType; children: NavItem[] };
+export type NavEntry = NavItem | NavGroup;
+export const isGroup = (e: NavEntry): e is NavGroup => (e as NavGroup).kind === 'group';
 
-// The primary portals shown in the sidebar, in their default order. Broking
-// (brokered freight) and Operations (own consolidation / line-haul) are two
-// flat tabs that both open the Operations portal; the portal shows the matching
-// area's tab strip + its own dashboard, keyed off the current view.
-export const ALL_NAV_ITEMS: NavItem[] = [
+// The primary sidebar, grouped. Operations (own line-haul = FBN) and Broking
+// (brokered freight) are two areas of ONE portal, now nested under Operations.
+// Accounts gathers the people + money side (clients, transporters, the master
+// POD list, invoicing). FBN Fleet holds the asset register + compliance docs.
+export const ALL_NAV_ENTRIES: NavEntry[] = [
     { view: 'management', label: 'Management', icon: DashboardIcon, permission: 'access_management' },
-    { view: 'fleet', label: 'FBN Fleet', icon: CarIcon, permission: 'access_fleet' },
-    { view: 'fuel', label: 'Fuel', icon: FuelIcon, permission: 'access_fuel' },
-    { view: 'broking', label: 'Broking', icon: DocumentTextIcon, permission: 'access_operations' },
-    // Restricted operators (access_loadcons, no access_operations) see these two —
-    // Broking limited to Load Board / LoadCons / Deliveries-POD, and Operations
-    // limited to Dashboard / Day / Shipments / Daily Overview. Pinned to their floor.
-    { view: 'broking', label: 'LoadCons', icon: DocumentTextIcon, permission: 'access_loadcons' },
-    { view: 'operations', label: 'Operations', icon: TruckIcon, permission: 'access_operations' },
-    { view: 'operations', label: 'Operations', icon: TruckIcon, permission: 'access_loadcons' },
-    { view: 'partners', label: 'Clients & Subbies', icon: UsersIcon, permission: 'access_operations' },
+    {
+        kind: 'group', key: 'operations', label: 'Operations', icon: TruckIcon, children: [
+            { view: 'operations', label: 'FBN', icon: TruckIcon, permission: 'access_operations', altPermission: 'access_loadcons' },
+            { view: 'broking', label: 'Broking', icon: DocumentTextIcon, permission: 'access_operations', altPermission: 'access_loadcons', badgeKey: 'broking' },
+        ],
+    },
     { view: 'quotes', label: 'Quotes', icon: CurrencyDollarIcon, permission: 'access_operations' },
+    { view: 'fuel', label: 'Fuel', icon: FuelIcon, permission: 'access_fuel' },
+    {
+        kind: 'group', key: 'fleet', label: 'FBN Fleet', icon: CarIcon, children: [
+            { view: 'fleet', label: 'Assets & Maintenance', icon: CarIcon, permission: 'access_fleet' },
+            { view: 'compliance', label: 'Compliance', icon: DocumentTextIcon, permission: 'access_hr' },
+        ],
+    },
+    {
+        kind: 'group', key: 'accounts', label: 'Accounts', icon: UsersIcon, children: [
+            { view: 'partners', label: 'Clients', icon: UsersIcon, permission: 'access_operations', subView: 'clients' },
+            { view: 'partners', label: 'Transporters', icon: UsersIcon, permission: 'access_operations', subView: 'subcontractors' },
+            { view: 'accountsPods', label: 'PODs (All)', icon: DocumentTextIcon, permission: 'access_operations' },
+            { view: 'finance', label: 'Invoicing / Debtors / Creditors', icon: CurrencyDollarIcon, permission: 'access_finance' },
+        ],
+    },
     { view: 'workshop', label: 'Workshop', icon: WorkshopIcon, permission: 'access_workshop' },
-    { view: 'finance', label: 'Finance', icon: CurrencyDollarIcon, permission: 'access_finance' },
-    { view: 'incidentManagement', label: 'Incidents', icon: ExclamationTriangleIcon, permission: 'access_incidents' },
     { view: 'hr', label: 'HR', icon: BriefcaseIcon, permission: 'access_hr' },
-    { view: 'compliance', label: 'Compliance', icon: DocumentTextIcon, permission: 'access_hr' },
+    { view: 'incidentManagement', label: 'Claims / Incidents', icon: ExclamationTriangleIcon, permission: 'access_incidents' },
 ];
+
+// Flattened leaves (groups expanded) — for screens that work per-destination,
+// e.g. the Settings "show/hide & reorder my tabs" preference editor.
+export const ALL_NAV_ITEMS: NavItem[] = ALL_NAV_ENTRIES.flatMap(e => isGroup(e) ? e.children : [e]);
 
 // Sub-views (in-portal tabs) that belong to the Operations (consolidation) side.
 // Everything else in the Operations portal is Broking.
@@ -59,8 +80,9 @@ export const VIEW_TITLES: Partial<Record<ViewType, string>> = {
     partners: 'Clients & Subcontractors',
     quotes: 'Quotes',
     workshop: 'Workshop',
-    finance: 'Finance',
-    incidentManagement: 'Incident Management',
+    finance: 'Invoicing / Debtors / Creditors',
+    accountsPods: 'PODs — All',
+    incidentManagement: 'Claims / Incidents',
     hr: 'Human Resources',
     compliance: 'Compliance & Documents',
     userManagement: 'User Management',

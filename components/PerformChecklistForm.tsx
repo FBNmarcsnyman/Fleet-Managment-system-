@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Vehicle, User, ChecklistTemplate, ChecklistItemResult, JobCard, ChecklistItemTemplate } from '../types';
+import { Vehicle, User, ChecklistTemplate, ChecklistItemResult, JobCard, ChecklistItemTemplate, Attachment } from '../types';
 import CameraModal from './CameraModal';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
@@ -45,6 +45,18 @@ const PerformChecklistForm: React.FC<PerformChecklistFormProps> = ({ vehicle, cu
 
     const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
     const isSpotCheckMode = !!spotCheckJob;
+
+    // Meter type by asset class: forklift = engine HOURS, trailer = HUBOMETER (km),
+    // everything else = ODOMETER (km). Drives the right field + the trailer hubometer rule.
+    const wc = (vehicle?.weightCategory || '').toLowerCase();
+    const isForklift = /forklift|fork lift|reach truck/.test(wc);
+    const isTrailer = /trailer|triaxle|skeleton|superlink/.test(wc);
+    const meterType: 'odometer' | 'hubometer' | 'hours' = isForklift ? 'hours' : isTrailer ? 'hubometer' : 'odometer';
+    const meterLabel = meterType === 'hours' ? 'Hours' : meterType === 'hubometer' ? 'Hubometer (km)' : 'Odometer (km)';
+    // Trailer hubometer requirement: is one fitted? working? + a photo + the km reading.
+    const [hubFitted, setHubFitted] = useState(true);
+    const [hubWorking, setHubWorking] = useState(true);
+    const [hubPhoto, setHubPhoto] = useState<Attachment | undefined>(undefined);
 
     useEffect(() => {
         if (!vehicle || templates.length === 0) return;
@@ -245,6 +257,10 @@ const PerformChecklistForm: React.FC<PerformChecklistFormProps> = ({ vehicle, cu
     };
 
     const handlePhotoCapture = (dataUrl: string) => {
+        if (activePhotoItemId === 'meta-hubometer') {
+            setHubPhoto({ name: 'hubometer.jpg', type: 'image/jpeg', data: dataUrl });
+            setIsCameraOpen(false); setActivePhotoItemId(null); return;
+        }
         if (activePhotoItemId) {
             const itemId = activePhotoItemId;
             const result = results[itemId];
@@ -279,10 +295,32 @@ const PerformChecklistForm: React.FC<PerformChecklistFormProps> = ({ vehicle, cu
             return;
         }
 
-        const odoNum = parseFloat(odometer);
-        if (isNaN(odoNum) || odoNum < (vehicle?.currentOdometer || 0)) {
-            alert(`Invalid Odometer. Current record is ${vehicle?.currentOdometer || 0} km. You cannot log a lower value.`);
-            return;
+        // Forklift = hours is the meter; trailer with no hubometer = no reading needed.
+        const needsReading = meterType !== 'hours' && !(isTrailer && !hubFitted);
+        let odoNum = parseFloat(odometer);
+        if (needsReading) {
+            if (isNaN(odoNum) || odoNum < (vehicle?.currentOdometer || 0)) {
+                alert(`Invalid ${meterLabel}. Current record is ${vehicle?.currentOdometer || 0} km. You cannot log a lower value.`);
+                return;
+            }
+        } else {
+            odoNum = vehicle?.currentOdometer || 0; // keep the stored reading unchanged
+        }
+        if (isForklift) {
+            const hrNum = parseFloat(hours);
+            if (isNaN(hrNum) || hrNum < (vehicle?.currentHours || 0)) {
+                alert(`Invalid Hours. Current record is ${vehicle?.currentHours || 0} hrs. You cannot log a lower value.`);
+                return;
+            }
+        }
+
+        // Trailer hubometer outcome → a recorded result line. Not fitted = a flagged
+        // (red) item so it's chased; fitted-but-not-working = needs attention.
+        const extra: ChecklistItemResult[] = [];
+        if (isTrailer) {
+            extra.push(!hubFitted
+                ? { itemId: 'meta-hubometer', item: 'Hubometer', status: 'Fail', notes: 'No hubometer fitted on this trailer — please fit one.', severity: 'Minor', createJobCard: false }
+                : { itemId: 'meta-hubometer', item: 'Hubometer', status: hubWorking ? 'Pass' : 'Needs Attention', notes: `Reading ${odoNum.toLocaleString()} km${hubWorking ? ' · working / good condition' : ' · NOT working / damaged'}`, attachment: hubPhoto });
         }
 
         onSubmit({
@@ -291,7 +329,7 @@ const PerformChecklistForm: React.FC<PerformChecklistFormProps> = ({ vehicle, cu
             templateName: selectedTemplate.name,
             odometer: odoNum,
             hours: hours ? parseFloat(hours) : undefined,
-            allResults: Object.values(results),
+            allResults: [...Object.values(results), ...extra],
             spotCheckJobCardId: spotCheckJob?.id,
         });
     };
@@ -318,30 +356,47 @@ const PerformChecklistForm: React.FC<PerformChecklistFormProps> = ({ vehicle, cu
                         <p className="text-gray-400">Vehicle: <strong>{vehicle.name} ({vehicle.registration})</strong> | User: <strong>{currentUser.name}</strong></p>
                     </div>
                     {!isPreview && (
-                         <div className="flex space-x-4 bg-gray-900/40 p-3 rounded-xl border border-gray-700/50">
-                            <div className="w-32">
-                                <label className="flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">
-                                    <SpeedometerIcon className="h-3 w-3 mr-1" /> Odometer (km)
-                                </label>
-                                <input 
-                                    type="number" 
-                                    value={odometer} 
-                                    onChange={e => setOdometer(e.target.value)} 
-                                    required 
-                                    className="w-full bg-gray-800 text-white p-2 rounded-lg border border-gray-600 focus:ring-1 focus:ring-brand-secondary text-sm font-mono" 
-                                />
+                         <div className="flex flex-col gap-2 bg-gray-900/40 p-3 rounded-xl border border-gray-700/50">
+                            <div className="flex space-x-4">
+                                {/* Forklift = hours; trailer = hubometer km; else odometer km */}
+                                {meterType !== 'hours' && (
+                                    <div className="w-36">
+                                        <label className="flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">
+                                            <SpeedometerIcon className="h-3 w-3 mr-1" /> {meterLabel}
+                                        </label>
+                                        <input type="number" value={odometer} onChange={e => setOdometer(e.target.value)} required={!(isTrailer && !hubFitted)} disabled={isTrailer && !hubFitted}
+                                            className="w-full bg-gray-800 text-white p-2 rounded-lg border border-gray-600 focus:ring-1 focus:ring-brand-secondary text-sm font-mono disabled:opacity-40" />
+                                    </div>
+                                )}
+                                {isForklift && (
+                                    <div className="w-32">
+                                        <label className="flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">
+                                            <ClockIcon className="h-3 w-3 mr-1" /> Hours
+                                        </label>
+                                        <input type="number" value={hours} onChange={e => setHours(e.target.value)} required
+                                            className="w-full bg-gray-800 text-white p-2 rounded-lg border border-gray-600 focus:ring-1 focus:ring-brand-secondary text-sm font-mono" />
+                                    </div>
+                                )}
                             </div>
-                            {vehicle.weightCategory === 'Forklift' && (
-                                <div className="w-32">
-                                    <label className="flex items-center text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">
-                                        <ClockIcon className="h-3 w-3 mr-1" /> Hours
-                                    </label>
-                                    <input 
-                                        type="number" 
-                                        value={hours} 
-                                        onChange={e => setHours(e.target.value)} 
-                                        className="w-full bg-gray-800 text-white p-2 rounded-lg border border-gray-600 focus:ring-1 focus:ring-brand-secondary text-sm font-mono" 
-                                    />
+                            {/* Trailer hubometer requirement */}
+                            {isTrailer && (
+                                <div className="border-t border-gray-700/50 pt-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Hubometer fitted?</span>
+                                        <button type="button" onClick={() => setHubFitted(true)} className={`text-[11px] font-bold px-2.5 py-1 rounded ${hubFitted ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Yes</button>
+                                        <button type="button" onClick={() => setHubFitted(false)} className={`text-[11px] font-bold px-2.5 py-1 rounded ${!hubFitted ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300'}`}>No</button>
+                                    </div>
+                                    {hubFitted ? (
+                                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Condition</span>
+                                            <button type="button" onClick={() => setHubWorking(true)} className={`text-[11px] font-bold px-2.5 py-1 rounded ${hubWorking ? 'bg-emerald-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Working / good</button>
+                                            <button type="button" onClick={() => setHubWorking(false)} className={`text-[11px] font-bold px-2.5 py-1 rounded ${!hubWorking ? 'bg-amber-500 text-white' : 'bg-gray-700 text-gray-300'}`}>Not working</button>
+                                            <button type="button" onClick={() => handleOpenCamera('meta-hubometer')} className="text-[11px] font-bold px-2.5 py-1 rounded bg-gray-700 text-gray-200 hover:bg-gray-600 flex items-center gap-1"><CameraIcon className="h-3 w-3" /> {hubPhoto ? 'Retake photo' : 'Take photo'}</button>
+                                            {hubPhoto && <span className="text-[11px] text-emerald-400 font-bold">✓ photo</span>}
+                                        </div>
+                                    ) : (
+                                        <p className="text-[11px] text-red-400 font-bold mt-2">⚠ Flagged — no hubometer fitted. Please fit one so kms can be tracked for servicing.</p>
+                                    )}
                                 </div>
                             )}
                         </div>

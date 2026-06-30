@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState, useAuth, useVehicles } from '../../contexts/AppContexts';
 import { fmtDay } from '../../lib/format';
+import { invokeFn } from '../../lib/supabase';
 
 // OPERATIONS → MANIFESTS
 // Load the line-haul (LM) trucks for inter-depot transfer. Cargo that's been
@@ -17,7 +18,7 @@ const READY = new Set(['Collected', 'At Collection Depot']); // ready to load on
 
 const OperationsManifests: React.FC = () => {
     const { loadConfirmations = [], clients = [], suppliers = [], users = [], manifests = [], handleCreateManifest, handleReceiveManifest } = useOperations() as any;
-    const { vehicles = [] } = (useVehicles() as any) || {};
+    const { vehicles = [], drivers = [] } = (useVehicles() as any) || {};
     const { showModal, showToast } = useUIState();
     const { currentUser } = useAuth();
 
@@ -135,7 +136,7 @@ const OperationsManifests: React.FC = () => {
                 )}
             </div>
 
-            {building && <BuildManifestPanel loads={building} origin={origin} vehicles={vehicles} users={users} suppliers={suppliers} canSeeMargin={isManager} clientName={clientName}
+            {building && <BuildManifestPanel loads={building} origin={origin} vehicles={vehicles} drivers={drivers} suppliers={suppliers} canSeeMargin={isManager} clientName={clientName}
                 onClose={() => setBuilding(null)}
                 onBuild={async (data) => {
                     const r = await handleCreateManifest({ ...data, loadConIds: building.map(l => l.id), originBranch: origin });
@@ -151,9 +152,20 @@ const OperationsManifests: React.FC = () => {
 // Per-trailer payload caps (kg) — see fleet-weight-overload-rules.
 const TRAILER_CAP: Record<string, number> = { '6m': 12000, '12m': 22000 };
 const isTrailerVeh = (v: any) => /trailer|triaxle|skeleton|superlink/i.test(v.weightCategory || '');
+// weight_category is UPPERCASE + messy — classify case-insensitively (see fleet-structure).
+const isHorseVeh = (v: any) => String(v?.weightCategory || '').toUpperCase().includes('HORSE');
+// City code from the vehicle's branch (fleet uses full names: FBN Durban / Loadmaster …).
+const vBranchCode = (v: any): string => {
+    const n = String(v?.branch?.name || v?.branch || '').toLowerCase();
+    if (n.includes('durban')) return 'DBN';
+    if (n.includes('johannes') || n.includes('jhb')) return 'JHB';
+    if (n.includes('cape') || n.includes('cpt')) return 'CPT';
+    if (n.includes('loadmaster') || n.includes('lm')) return 'LM';
+    return '—';
+};
 
 interface BuildData { vehicleId: string; driverId: string; trailerSize: string; trailerReg6m?: string; trailerReg12m?: string; trailerSplit?: Record<string, '6m' | '12m'>; startOdometer?: number; totalRate?: number; carrierName?: string; carrierVehicleReg?: string; carrierDriver?: string; carrierCell?: string; carrierEmail?: string; }
-const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; users: any[]; suppliers?: any[]; canSeeMargin?: boolean; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ loads, origin, vehicles, users, suppliers = [], canSeeMargin = false, clientName, onClose, onBuild }) => {
+const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; drivers: any[]; suppliers?: any[]; canSeeMargin?: boolean; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ loads, origin, vehicles, drivers, suppliers = [], canSeeMargin = false, clientName, onClose, onBuild }) => {
     const [runner, setRunner] = useState<'own' | 'broker'>('own');
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
@@ -180,13 +192,42 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
         if (email && !carrierEmail) setCarrierEmail(email);
     };
     const dest = loads[0]?.destinationBranch;
+    const homeCode = code(origin);
+    const [odoMsg, setOdoMsg] = useState('');
+    const [odoLoading, setOdoLoading] = useState(false);
 
-    // Any branch's truck can run a line-haul to help — show all on-road trucks
-    // (not trailers), labelled by branch. Trailers feed the reg pick-lists.
-    const trucks = useMemo(() => vehicles.filter((v: any) => v.status === 'On the road' && !isTrailerVeh(v)).sort((a: any, b: any) => (a.branch || '').localeCompare(b.branch || '')), [vehicles]);
+    // Line-haul = horses. List this depot first, then Loadmaster, then others.
+    const eligibleTrucks = useMemo(() => vehicles
+        .filter((v: any) => isHorseVeh(v))
+        .sort((a: any, b: any) => {
+            const r = (v: any) => { const c = vBranchCode(v); return c === homeCode ? 0 : c === 'LM' ? 1 : 2; };
+            return r(a) - r(b) || String(a.registration || '').localeCompare(String(b.registration || ''));
+        }), [vehicles, homeCode]);
+    const truckGroups = useMemo(() => {
+        const g: Record<string, any[]> = { [homeCode]: [], LM: [], Other: [] };
+        eligibleTrucks.forEach((v: any) => { const c = vBranchCode(v); (g[c === homeCode ? homeCode : c === 'LM' ? 'LM' : 'Other'] ||= []).push(v); });
+        return g;
+    }, [eligibleTrucks, homeCode]);
     const trailerRegs = useMemo(() => vehicles.filter(isTrailerVeh).map((v: any) => v.registration).filter(Boolean), [vehicles]);
-    const drivers = users.filter((u: any) => ['Staff', 'Driver'].includes(u.role));
+    // Active drivers from the register, this depot first.
+    const driverList = useMemo(() => (drivers || [])
+        .filter((d: any) => d.isActive !== false)
+        .sort((a: any, b: any) => (code(a.branch) === homeCode ? 0 : 1) - (code(b.branch) === homeCode ? 0 : 1) || String(a.name || '').localeCompare(String(b.name || ''))), [drivers, homeCode]);
     const isSuper = trailer === '6m + 12m';
+
+    // Pull the live odometer from the tracker when a truck is chosen.
+    const pullOdo = async (reg?: string) => {
+        if (!reg) return;
+        setOdoLoading(true); setOdoMsg('');
+        try {
+            const { data } = await invokeFn('track', { body: { action: 'vehicle', reg } });
+            const km = (data as any)?.odometer ?? (data as any)?.vehicle?.odometer;
+            if (km) { setOdometer(String(Math.round(Number(km)))); setOdoMsg('Pulled from live tracker'); }
+            else setOdoMsg('No live odometer — enter manually');
+        } catch { setOdoMsg('Tracker unavailable — enter manually'); }
+        setOdoLoading(false);
+    };
+    const onPickTruck = (id: string) => { setVehicleId(id); const v = vehicles.find((x: any) => x.id === id); if (v?.registration) pullOdo(v.registration); };
     // Turnover = sum of every loaded waybill's client charge; line-haul cost (LM /
     // broker, changes monthly with diesel) is entered below; margin = turnover − cost.
     const turnover = useMemo(() => loads.reduce((s, l) => s + (Number((l as any).totalAmount) || 0), 0), [loads]);
@@ -275,18 +316,24 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
                         {!isBroker ? (
                             <>
                                 <div>
-                                    <label className={lbl}>Truck (any branch)</label>
-                                    <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} className={inp}>
+                                    <label className={lbl}>Line-haul truck <span className="text-slate-400 normal-case">({homeCode} first)</span></label>
+                                    <select value={vehicleId} onChange={e => onPickTruck(e.target.value)} className={inp}>
                                         <option value="">-- truck --</option>
-                                        {trucks.map((v: any) => <option key={v.id} value={v.id}>{v.registration} · {v.branch === 'LOADMASTER' ? 'LM' : (v.branch || '').replace('FBN ', '')}{v.name ? ` (${v.name})` : ''}</option>)}
+                                        {[homeCode, 'LM', 'Other'].map(gk => (truckGroups[gk] && truckGroups[gk].length) ? (
+                                            <optgroup key={gk} label={gk === homeCode ? `${homeCode} depot` : gk === 'LM' ? 'Loadmaster' : 'Other branches'}>
+                                                {truckGroups[gk].map((v: any) => <option key={v.id} value={v.id}>{v.registration} — {v.name}{v.status !== 'On the road' ? ' ⚠ off-road' : ''}</option>)}
+                                            </optgroup>
+                                        ) : null)}
                                     </select>
+                                    {eligibleTrucks.length === 0 && <div className="text-[11px] text-amber-600 mt-1">No horses in the fleet.</div>}
                                 </div>
                                 <div>
                                     <label className={lbl}>Driver</label>
                                     <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inp}>
                                         <option value="">-- driver --</option>
-                                        {drivers.map((d: any) => <option key={d.email} value={d.email}>{d.name}</option>)}
+                                        {driverList.map((d: any) => <option key={d.id} value={d.id}>{d.name}{d.branch ? ` · ${code(d.branch)}` : ''}</option>)}
                                     </select>
+                                    {driverList.length === 0 && <div className="text-[11px] text-amber-600 mt-1">No drivers on the register (add under Fleet → Drivers).</div>}
                                 </div>
                             </>
                         ) : (
@@ -305,7 +352,14 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
                             <div><label className={lbl}>12m trailer reg</label><input list="trReg" value={reg12m} onChange={e => setReg12m(e.target.value)} className={inp} placeholder="reg" /></div>
                         )}
                         <datalist id="trReg">{trailerRegs.map((r: string) => <option key={r} value={r} />)}</datalist>
-                        {!isBroker && <div><label className={lbl}>Truck mileage (km)</label><input type="number" value={odometer} onChange={e => setOdometer(e.target.value)} className={inp} placeholder="current odo — manual if no tracker" /></div>}
+                        {!isBroker && <div>
+                            <label className={lbl}>Truck mileage (km)</label>
+                            <div className="flex gap-1.5">
+                                <input type="number" value={odometer} onChange={e => { setOdometer(e.target.value); setOdoMsg(''); }} className={inp} placeholder="auto from tracker" />
+                                <button type="button" onClick={() => pullOdo(vehicles.find((v: any) => v.id === vehicleId)?.registration)} disabled={!vehicleId || odoLoading} title="Pull the live odometer from the tracker" className="px-2.5 rounded-lg border border-slate-300 text-sm font-bold text-[#13294b] hover:bg-slate-50 disabled:opacity-40">{odoLoading ? '…' : '↻'}</button>
+                            </div>
+                            {odoMsg && <div className="text-[10px] text-slate-500 mt-0.5">{odoMsg}</div>}
+                        </div>}
                         <div><label className={lbl}>Line-haul cost this trip (excl VAT)</label><input type="number" step="0.01" value={totalRate} onChange={e => setTotalRate(e.target.value)} className={inp} placeholder="LM / broker cost — changes monthly with diesel" /></div>
                     </div>
                     {/* Turnover + margin = MANAGEMENT only. Ops view/enter the cost, not profit/revenue. */}

@@ -235,11 +235,11 @@ const ClientManagementView: React.FC = () => {
     return (
         <div className="max-w-[1600px] mx-auto px-1">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto">
                     <h3 className="text-xl font-black text-[#13294b]">Clients — CRM</h3>
-                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search company, contact, email…" className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f5b700] w-64" />
+                    <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search company, contact, email…" className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f5b700] flex-1 min-w-[12rem] sm:w-64 sm:flex-initial" />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                     <button onClick={() => setLeads(l => !l)} className={`font-bold py-2 px-3 rounded-lg text-sm ${leads ? 'bg-[#f5b700] text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>Leads {leadRows.length ? `(${leadRows.length})` : ''}</button>
                     <button onClick={() => { setPendingOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${pendingOnly ? 'bg-amber-500 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Self-registered clients awaiting approval">Pending approval {pendingCount ? `(${pendingCount})` : ''}</button>
                     <button onClick={() => { setCodOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${codOnly ? 'bg-rose-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="New / unvetted clients on COD — approve to an account when vetted">COD / Unauthorised {codCount ? `(${codCount})` : ''}</button>

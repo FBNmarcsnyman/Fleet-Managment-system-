@@ -637,6 +637,9 @@ export interface LoadConfirmation {
     items: any[];
     legs: any[];
     enRouteStops?: { address: string; note?: string }[]; // extra delivery stops before the depot
+    storedSince?: string;     // storage-clock start (date on the depot floor)
+    freeDays?: number;        // free storage days before charges accrue
+    handlingCharges?: { label: string; unit?: string; qty?: number; rate?: number; amount: number; note?: string }[];
     totalAmount: number;
     supplierRate?: number; 
     collectionBranch: Branch;

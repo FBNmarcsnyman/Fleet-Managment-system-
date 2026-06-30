@@ -592,6 +592,9 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     items: (row.items as any[]) ?? [],
     legs: (row.legs as any[]) ?? [],
     enRouteStops: Array.isArray((row as any).en_route_stops) ? (row as any).en_route_stops : undefined,
+    storedSince: (row as any).stored_since ?? undefined,
+    freeDays: (row as any).free_days ?? undefined,
+    handlingCharges: Array.isArray((row as any).handling_charges) ? (row as any).handling_charges : undefined,
     totalAmount: row.total_amount,
     supplierRate: row.supplier_rate ?? undefined,
     collectionBranch: resolveBranch(row.collection_branch_id, ctx),
@@ -1584,6 +1587,9 @@ export const toLoadConfirmationUpdate = (
     if (updates.items !== undefined) row.items = updates.items as unknown as Tables['load_confirmations']['Update']['items'];
     if (updates.legs !== undefined) row.legs = updates.legs as unknown as Tables['load_confirmations']['Update']['legs'];
     if ((updates as any).enRouteStops !== undefined) (row as any).en_route_stops = (updates as any).enRouteStops ?? null;
+    if ((updates as any).storedSince !== undefined) (row as any).stored_since = (updates as any).storedSince ?? null;
+    if ((updates as any).freeDays !== undefined) (row as any).free_days = (updates as any).freeDays ?? null;
+    if ((updates as any).handlingCharges !== undefined) (row as any).handling_charges = (updates as any).handlingCharges ?? null;
     if (updates.totalAmount !== undefined) row.total_amount = updates.totalAmount;
     if (updates.supplierRate !== undefined) row.supplier_rate = updates.supplierRate ?? null;
     if (updates.collectionBranch !== undefined) row.collection_branch_id = branchIdByName.get(updates.collectionBranch) ?? null;

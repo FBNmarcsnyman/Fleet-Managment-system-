@@ -9,6 +9,7 @@ import WaybillTimeline from './WaybillTimeline';
 import { geocodeAddress } from '../../lib/geocode';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { nextStep } from '../../lib/loadStatus';
+import { fetchHandlingRates, computeStorage, UNIT_LABEL, HandlingRate } from '../../lib/handlingRates';
 import { usePickOptions } from '../../hooks/usePickOptions';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
@@ -165,6 +166,71 @@ const EnRouteStopsEditor: React.FC<{ initial: { address: string; note?: string }
                     <input value={note} onChange={e => setNote(e.target.value)} placeholder="note (optional)" className={`${inputCls} w-32`} />
                     <button onClick={add} disabled={!addr.trim()} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold px-3 rounded-md text-sm">+ Add</button>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+// Storage clock + handling charges for a load (storage per day/week beyond the
+// free days, plus shrinkwrapping / palletising / custom from the rate card). The
+// total feeds the client invoice.
+const StorageHandlingPanel: React.FC<{ lc: any; onSave: (u: any) => Promise<any>; showToast: (m: string) => void; onEditRates: () => void }> = ({ lc, onSave, showToast, onEditRates }) => {
+    const rand = (n?: number) => `R ${(Number(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const [rates, setRates] = React.useState<HandlingRate[]>([]);
+    const [storedSince, setStoredSince] = React.useState<string>((lc.storedSince || lc.collectionDate || new Date().toISOString()).slice(0, 10));
+    const [freeDays, setFreeDays] = React.useState<number>(lc.freeDays ?? 3);
+    const [lines, setLines] = React.useState<any[]>((lc.handlingCharges || []).filter((l: any) => !/^storage/i.test(l.label || '')));
+    const [storageRateId, setStorageRateId] = React.useState('');
+    const [addRateId, setAddRateId] = React.useState(''); const [addQty, setAddQty] = React.useState('1');
+    const [saving, setSaving] = React.useState(false);
+    React.useEffect(() => { fetchHandlingRates().then(rs => { const on = rs.filter(r => r.active); setRates(on); const def = on.find(r => /storage/i.test(r.name) && r.unit === 'per_day') || on.find(r => /storage/i.test(r.name)); if (def) setStorageRateId(p => p || def.id); }); }, []);
+    const storageRate = rates.find(r => r.id === storageRateId);
+    const storage = computeStorage(storedSince, freeDays, storageRate);
+    const linesTotal = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const total = storage.amount + linesTotal;
+    const handlingRatesOnly = rates.filter(r => !/storage/i.test(r.name) || r.unit !== 'per_day');
+    const addLine = () => { const r = rates.find(x => x.id === addRateId); if (!r) return; const qty = parseFloat(addQty) || 1; setLines(ls => [...ls, { label: r.name, unit: r.unit, qty, rate: r.rate, amount: Math.round(r.rate * qty * 100) / 100 }]); setAddQty('1'); };
+    const save = async () => {
+        setSaving(true);
+        const storageLine = storage.amount > 0 && storageRate ? [{ label: `Storage (${storage.chargeable} day${storage.chargeable === 1 ? '' : 's'} chargeable)`, unit: storageRate.unit, qty: storage.chargeable, rate: storageRate.rate, amount: storage.amount }] : [];
+        const res = await onSave({ storedSince, freeDays, handlingCharges: [...storageLine, ...lines] });
+        setSaving(false);
+        if (res && res.ok === false) showToast(`Could not save: ${res.error}`); else showToast('Storage & handling saved.');
+    };
+    const inp = 'bg-gray-800 text-white p-2 rounded-md border border-gray-600 text-sm';
+    return (
+        <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 mb-3 space-y-2">
+            <div className="flex items-center justify-between">
+                <p className="text-xs font-black text-indigo-300 uppercase tracking-wider">🏬 Storage &amp; handling</p>
+                <button onClick={onEditRates} className="text-[11px] font-bold text-indigo-300 hover:underline">⚙ Edit rates</button>
+            </div>
+            {/* Storage clock */}
+            <div className="flex flex-wrap items-end gap-2 text-xs text-gray-300">
+                <div><label className="block text-[10px] text-gray-500 uppercase">Stored since</label><input type="date" value={storedSince} onChange={e => setStoredSince(e.target.value)} className={inp} /></div>
+                <div><label className="block text-[10px] text-gray-500 uppercase">Free days</label><input type="number" value={freeDays} onChange={e => setFreeDays(parseInt(e.target.value) || 0)} className={`${inp} w-20`} /></div>
+                <div><label className="block text-[10px] text-gray-500 uppercase">Storage rate</label><select value={storageRateId} onChange={e => setStorageRateId(e.target.value)} className={inp}><option value="">— none —</option>{rates.filter(r => /storage/i.test(r.name)).map(r => <option key={r.id} value={r.id}>{r.name} {rand(r.rate)} {UNIT_LABEL[r.unit]}</option>)}</select></div>
+                <div className="text-[11px] text-gray-400">{storage.days} days on floor · <span className="text-amber-300 font-bold">{storage.chargeable} chargeable</span> · storage <span className="text-emerald-300 font-bold">{rand(storage.amount)}</span></div>
+            </div>
+            {/* Handling line items */}
+            {lines.length > 0 && (
+                <div className="space-y-1">
+                    {lines.map((l, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs text-gray-300 bg-gray-900/40 rounded px-2 py-1">
+                            <span className="flex-1">{l.label} <span className="text-gray-500">· {l.qty} × {rand(l.rate)} {l.unit ? UNIT_LABEL[l.unit as keyof typeof UNIT_LABEL] || '' : ''}</span></span>
+                            <span className="font-bold">{rand(l.amount)}</span>
+                            <button onClick={() => setLines(ls => ls.filter((_, x) => x !== i))} className="text-red-400 hover:text-red-300">✕</button>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <div className="flex items-end gap-2">
+                <select value={addRateId} onChange={e => setAddRateId(e.target.value)} className={`${inp} flex-1`}><option value="">+ add handling charge…</option>{handlingRatesOnly.map(r => <option key={r.id} value={r.id}>{r.name} — {rand(r.rate)} {UNIT_LABEL[r.unit]}</option>)}</select>
+                <div><label className="block text-[10px] text-gray-500 uppercase">Qty</label><input type="number" value={addQty} onChange={e => setAddQty(e.target.value)} className={`${inp} w-16`} /></div>
+                <button onClick={addLine} disabled={!addRateId} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold py-2 px-3 rounded-md text-sm">Add</button>
+            </div>
+            <div className="flex items-center justify-between border-t border-indigo-500/30 pt-2">
+                <span className="text-sm font-black text-white">Total storage &amp; handling: <span className="text-emerald-300">{rand(total)}</span> <span className="text-[10px] text-gray-500 font-normal">→ added to the client invoice</span></span>
+                <button onClick={save} disabled={saving} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-1.5 px-4 rounded-lg text-xs uppercase tracking-wider">{saving ? 'Saving…' : 'Save charges'}</button>
             </div>
         </div>
     );
@@ -610,16 +676,15 @@ const LoadDetailModal: React.FC = () => {
                 </>
             )}
 
-            {!editing && ['At Destination Depot', 'Unloaded'].includes(lc.status) && !lc.deliveryDate && (() => {
-                const since = lc.collectionDate ? Math.max(0, Math.round((Date.now() - new Date(lc.collectionDate).getTime()) / 86400000)) : null;
-                return (
-                    <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 mb-3">
-                        <p className="text-xs font-black text-indigo-300 uppercase tracking-wider">🏬 Stored at {(lc.destinationBranch || 'depot').replace('FBN ', '')} — awaiting delivery release</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">On the floor awaiting a delivery instruction{since != null ? ` · ${since} day${since === 1 ? '' : 's'} since collection` : ''}. When the client calls it in, set a delivery date to schedule it onto a trip sheet (watch for storage charges).</p>
-                        <button onClick={startEdit} className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">Set delivery date &amp; release</button>
-                    </div>
-                );
-            })()}
+            {!editing && ['At Destination Depot', 'Unloaded'].includes(lc.status) && !lc.deliveryDate && (
+                <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-xl px-3 py-2 mb-2 flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-indigo-300"><strong>Stored at {(lc.destinationBranch || 'depot').replace('FBN ', '')} — awaiting delivery release.</strong> Set a delivery date when the client calls it in.</p>
+                    <button onClick={startEdit} className="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-3 rounded-lg text-[11px] uppercase tracking-wider">Set delivery date</button>
+                </div>
+            )}
+            {!editing && (['At Destination Depot', 'Unloaded'].includes(lc.status) || (lc.handlingCharges && lc.handlingCharges.length > 0)) && (
+                <StorageHandlingPanel lc={lc} onSave={(u) => handleUpdateLoadConfirmation(lc.id, u)} showToast={showToast} onEditRates={() => showModal('handlingRates', { onClose: () => showModal('loadDetail', { loadCon: lc }) })} />
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {waybillSiblings.length > 0 && (

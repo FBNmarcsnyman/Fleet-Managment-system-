@@ -213,6 +213,25 @@ const LoadDetailModal: React.FC = () => {
 
     // Sibling trucks when this load is split across several transporters on one waybill.
     const groupTrucks = (lc.loadGroupId ? (loadConfirmations as any[]).filter(l => l.loadGroupId === lc.loadGroupId) : []).sort((a, b) => (a.isPrimary === b.isPrimary ? 0 : a.isPrimary ? -1 : 1));
+    // Other loads sharing the SAME waybill but NOT yet linked into one job (e.g. a
+    // collection/crane leg + an end-delivery leg booked separately) — offer to link.
+    const waybillSiblings = (loadConfirmations as any[]).filter(l => {
+        const wb = (lc.loadRefNo || '').trim();
+        if (!wb || l.id === lc.id) return false;
+        if ((l.loadRefNo || '').trim() !== wb) return false;
+        return !lc.loadGroupId || l.loadGroupId !== lc.loadGroupId; // not already in this group
+    });
+    const [linkBusy, setLinkBusy] = React.useState(false);
+    const linkWaybill = async () => {
+        setLinkBusy(true);
+        const gid = lc.loadGroupId || `wb-${lc.id}`;
+        const all = [lc, ...waybillSiblings];
+        // The end-delivery leg (pod_required !== false) is the primary; else this load.
+        const primary = all.find((l: any) => l.podRequired !== false) || lc;
+        for (const l of all) await handleUpdateLoadConfirmation(l.id, { loadGroupId: gid, isPrimary: l.id === primary.id } as any);
+        setLinkBusy(false);
+        showToast(`Linked ${all.length} loads on waybill ${lc.loadRefNo} as one job.`);
+    };
     // Unified toolbar button styles — one ghost style for tools, one filled for the
     // primary action. (Brand: navy #13294b / slate neutrals — no rainbow.)
     const tbtn = 'inline-flex items-center gap-1 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold py-1.5 px-2.5 rounded-lg transition';
@@ -578,6 +597,21 @@ const LoadDetailModal: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {waybillSiblings.length > 0 && (
+                    <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3 mb-1">
+                        <p className="text-xs font-black text-amber-300 uppercase tracking-wider">⚠ Same waybill — not linked ({waybillSiblings.length})</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 mb-2">These loads share waybill <strong className="text-gray-200">{lc.loadRefNo}</strong> but are separate jobs. Link them so it's ONE client charge with each transporter's own leg/POD.</p>
+                        <div className="space-y-1 mb-2">
+                            {waybillSiblings.map((l: any) => (
+                                <div key={l.id} className="flex items-center gap-2 text-sm">
+                                    <button onClick={() => showModal('loadDetail', { loadCon: l })} className="font-bold text-blue-300 hover:underline">{l.loadConNumber}</button>
+                                    <span className="text-gray-400 truncate">{l.subcontractorName || 'unassigned'} · {l.collectionPoint || ''} → {l.deliveryPoint || ''}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <button onClick={linkWaybill} disabled={linkBusy} className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white font-bold py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">{linkBusy ? 'Linking…' : '🔗 Link as one waybill job'}</button>
+                    </div>
+                )}
                 <Section title="Order" accent="bg-brand-secondary">
                     <div className="grid grid-cols-2 gap-3">
                         <F label="Status" k="status" value={lc.status} opts={STATUSES} />

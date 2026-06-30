@@ -1,4 +1,4 @@
-import { directSelect, directInsert, directUpdate } from './supabase';
+import { directSelect, directInsert, directUpdate, invokeFn } from './supabase';
 
 // CRM marketing audience (clients / carriers / prospects). Separate from the
 // operational client/supplier `contacts` so we can hold people not yet in ops and
@@ -48,6 +48,48 @@ export async function addMarketingContacts(rows: { email: string; name?: string;
     const res: any = await directInsert('marketing_contacts?on_conflict=organization_id,email', clean as any);
     if (res?.error && !/duplicate|conflict|409/i.test(res.error.message || '')) return { ok: false, count: 0, error: res.error.message };
     return { ok: true, count: clean.length };
+}
+
+// Pull contacts straight from a shared Google Sheet link (server-side, no CORS).
+// Returns parsed rows; the caller assigns kind/tag then calls addMarketingContacts.
+export async function importFromSheet(url: string): Promise<{ ok: boolean; rows: { email: string; name?: string; company?: string }[]; error?: string }> {
+    try {
+        const { data, error } = await invokeFn('import-marketing-sheet', { body: { url } });
+        if (error) return { ok: false, rows: [], error: error.message || String(error) };
+        const d: any = data;
+        if (!d?.ok) return { ok: false, rows: [], error: d?.error || 'Could not read the sheet.' };
+        return { ok: true, rows: Array.isArray(d.rows) ? d.rows : [] };
+    } catch (e: any) {
+        return { ok: false, rows: [], error: e?.message || String(e) };
+    }
+}
+
+// Client-side CSV parse (for a file upload) — same column inference as the sheet importer.
+export function parseCsvContacts(text: string): { email: string; name?: string; company?: string }[] {
+    const emailRe = /\S+@\S+\.\S+/;
+    const table: string[][] = [];
+    let row: string[] = [], cell = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQ) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else inQ = false; } else cell += ch; }
+        else if (ch === '"') inQ = true;
+        else if (ch === ',') { row.push(cell); cell = ''; }
+        else if (ch === '\n') { row.push(cell); table.push(row); row = []; cell = ''; }
+        else if (ch === '\r') { /* skip */ }
+        else cell += ch;
+    }
+    if (cell.length || row.length) { row.push(cell); table.push(row); }
+    const rows = table.filter(r => r.some(c => c.trim()));
+    const seen = new Set<string>();
+    const out: { email: string; name?: string; company?: string }[] = [];
+    for (const r of rows) {
+        const email = (r.find(c => emailRe.test(c)) || '').trim();
+        if (!email || seen.has(email.toLowerCase())) continue;
+        seen.add(email.toLowerCase());
+        const rest = r.filter(c => c.trim() && !emailRe.test(c)).map(c => c.trim());
+        out.push({ email, name: rest[0] || undefined, company: rest[1] || undefined });
+    }
+    return out;
 }
 
 export async function setOptOut(id: string, optedOut: boolean): Promise<{ ok: boolean; error?: string }> {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUIState } from '../../contexts/AppContexts';
-import { fetchMarketingContacts, addMarketingContacts, setOptOut, setBounced, prefsLink, MarketingContact } from '../../lib/marketingContacts';
+import { fetchMarketingContacts, addMarketingContacts, setOptOut, setBounced, prefsLink, importFromSheet, parseCsvContacts, MarketingContact } from '../../lib/marketingContacts';
 
 // CRM Phase 1 — the marketing audience + opt-in/out. Import emails (clients,
 // carriers, prospects), segment by kind/tag, and manage opt-out. Campaigns +
@@ -19,6 +19,9 @@ const MarketingContactsView: React.FC = () => {
     const [text, setText] = useState('');
     const [importKind, setImportKind] = useState<string>('prospect');
     const [importTag, setImportTag] = useState('');
+    const [sheetUrl, setSheetUrl] = useState('');
+    const [pulling, setPulling] = useState(false);
+    const fileRef = React.useRef<HTMLInputElement>(null);
 
     const load = async () => { setLoading(true); setRows(await fetchMarketingContacts()); setLoading(false); };
     useEffect(() => { load(); }, []);
@@ -58,6 +61,36 @@ const MarketingContactsView: React.FC = () => {
         showToast(`Imported ${res.count} contact${res.count === 1 ? '' : 's'} (duplicates skipped).`);
         setText(''); load();
     };
+
+    // Shared: apply the chosen kind/tag to parsed rows and upsert.
+    const addRows = async (parsed: { email: string; name?: string; company?: string }[], sourceLabel: string) => {
+        if (!parsed.length) { showToast('No valid email addresses found.'); return; }
+        const rows = parsed.map(r => ({ ...r, kind: importKind, tags: importTag.trim() ? [importTag.trim()] : [], source: sourceLabel }));
+        const res = await addMarketingContacts(rows);
+        if (!res.ok) { showToast(`Import failed: ${res.error}`); return; }
+        showToast(`Imported ${res.count} contact${res.count === 1 ? '' : 's'} from ${sourceLabel} (duplicates skipped).`);
+        load();
+    };
+
+    // Pull straight from a shared Google Sheet link (server-side).
+    const pullSheet = async () => {
+        if (!sheetUrl.trim()) { showToast('Paste a Google Sheet link first.'); return; }
+        setPulling(true);
+        const res = await importFromSheet(sheetUrl.trim());
+        setPulling(false);
+        if (!res.ok) { showToast(res.error || 'Could not read the sheet.'); return; }
+        await addRows(res.rows, 'google-sheet');
+        setSheetUrl('');
+    };
+
+    // Upload a CSV file (parsed in the browser).
+    const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const text = await file.text();
+        await addRows(parseCsvContacts(text), 'csv-upload');
+        if (fileRef.current) fileRef.current.value = '';
+    };
     const toggleOpt = async (c: MarketingContact) => {
         const res = await setOptOut(c.id, !c.optedOut);
         if (!res.ok) { showToast(`Could not update: ${res.error}`); return; }
@@ -80,14 +113,38 @@ const MarketingContactsView: React.FC = () => {
             </div>
 
             {/* Import */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Import / add contacts</p>
-                <p className="text-[11px] text-slate-500">Paste straight from <strong>Google Sheets / Excel</strong> (copy the cells) or type one per line — email, name, company. Duplicates are skipped.</p>
-                <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder={'Paste from a sheet (email · name · company columns), or:\nops@acme.co.za, John, ACME Logistics'} className={`${inp} w-full font-mono text-xs`} />
+
+                {/* The kind/tag apply to whichever import method you use below. */}
                 <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tag the imported as</span>
                     <select value={importKind} onChange={e => setImportKind(e.target.value)} className={inp}>{KINDS.map(k => <option key={k} value={k}>{k}</option>)}</select>
                     <input value={importTag} onChange={e => setImportTag(e.target.value)} placeholder="tag (optional, e.g. PE-prospects)" className={inp} />
-                    <button onClick={doImport} disabled={importing || !text.trim()} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg text-sm">{importing ? 'Importing…' : 'Import'}</button>
+                </div>
+
+                {/* 1) Google Sheet link */}
+                <div className="bg-white border border-slate-200 rounded-lg p-2.5 space-y-1.5">
+                    <p className="text-[11px] font-bold text-slate-600">📊 From a Google Sheet link</p>
+                    <p className="text-[11px] text-slate-500">Paste the sheet link. It must be shared <strong>"Anyone with the link → Viewer"</strong>. We read the email / name / company columns automatically.</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <input value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/…" className={`${inp} flex-1 min-w-[18rem]`} />
+                        <button onClick={pullSheet} disabled={pulling || !sheetUrl.trim()} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg text-sm whitespace-nowrap">{pulling ? 'Pulling…' : 'Pull from sheet'}</button>
+                    </div>
+                </div>
+
+                {/* 2) CSV file upload */}
+                <div className="bg-white border border-slate-200 rounded-lg p-2.5 space-y-1.5">
+                    <p className="text-[11px] font-bold text-slate-600">📁 Upload a CSV / spreadsheet export</p>
+                    <p className="text-[11px] text-slate-500">Export your sheet/Excel as <strong>.csv</strong> and upload it here.</p>
+                    <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} className="text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#13294b] file:text-white file:font-bold file:cursor-pointer" />
+                </div>
+
+                {/* 3) Paste */}
+                <div className="bg-white border border-slate-200 rounded-lg p-2.5 space-y-1.5">
+                    <p className="text-[11px] font-bold text-slate-600">📋 Or paste rows</p>
+                    <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder={'Paste from a sheet (email · name · company columns), or:\nops@acme.co.za, John, ACME Logistics'} className={`${inp} w-full font-mono text-xs`} />
+                    <button onClick={doImport} disabled={importing || !text.trim()} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg text-sm">{importing ? 'Importing…' : 'Import pasted'}</button>
                 </div>
             </div>
 

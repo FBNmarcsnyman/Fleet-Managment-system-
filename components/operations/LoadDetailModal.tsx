@@ -20,6 +20,20 @@ const fmt = (d?: string) => {
     return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 const STATUSES = ['Booked', 'Driver Assigned', 'At Collection Point', 'Collected', 'At Collection Depot', 'In Transit', 'At Destination Depot', 'Out for Delivery', 'Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'];
+// Standard line-haul routes (datalist suggestions) + city detection so the route
+// can auto-derive from the collection & delivery addresses (e.g. JHB - DBN).
+const ROUTES = ['DBN - JHB', 'JHB - DBN', 'DBN - CPT', 'CPT - DBN', 'JHB - CPT', 'CPT - JHB', 'DBN - PE', 'PE - DBN', 'DBN - EL', 'EL - DBN', 'JHB - PE', 'JHB - EL', 'DBN - BFN', 'JHB - BFN'];
+const cityCode = (s?: string): string => {
+    const u = String(s || '').toUpperCase();
+    if (/CAPE TOWN|\bCPT\b/.test(u)) return 'CPT';
+    if (/DURBAN|\bDBN\b|PINETOWN|WESTMEAD|MOBENI|PROSPECTON|CONGELLA|KWAZULU|MAYDON/.test(u)) return 'DBN';
+    if (/JOHANNESBURG|\bJHB\b|MIDRAND|RANDJES|WADEVILLE|GERMISTON|SANDTON|KEMPTON|BOKSBURG|ISANDO|GAUTENG|PRETORIA|CENTURION|CHLOORKOP|JET PARK|EDENVALE|ALBERTON|ROODEPOORT/.test(u)) return 'JHB';
+    if (/PORT ELIZABETH|GQEBERHA|\bPE\b/.test(u)) return 'PE';
+    if (/EAST LONDON/.test(u)) return 'EL';
+    if (/BLOEMFONTEIN|\bBFN\b/.test(u)) return 'BFN';
+    return '';
+};
+const deriveRoute = (collection?: string, delivery?: string): string => { const a = cityCode(collection), b = cityCode(delivery); return a && b ? `${a} - ${b}` : ''; };
 
 // Ops-only live position of the assigned truck, pulled from Pulsit via the
 // `track` edge function (the browser never sees the tracking key). Shows the
@@ -541,7 +555,7 @@ const LoadDetailModal: React.FC = () => {
                         <F label="Priority" k="priority" value={lc.priority} opts={['Low', 'Medium', 'High']} />
                         <F label="FBN Branch" k="arrangingBranch" value={lc.arrangingBranch} />
                         <F label="FBN Rep" k="fbnRepresentative" value={lc.fbnRepresentative} />
-                        <F label="Route" k="route" value={lc.route} />
+                        <F label="Route" k="route" value={lc.route || deriveRoute(lc.collectionPoint, lc.deliveryPoint)} list={ROUTES} />
                         <F label="FBN DI / Waybill" k="loadRefNo" value={lc.loadRefNo} />
                         <F label="Collection Ref" k="collectionRef" value={lc.collectionRef} />
                         <F label="Customer Order" k="customerOrderNumber" value={lc.customerOrderNumber} />

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { User, LoadConfirmation } from '../../types';
-import { supabase } from '../../lib/supabase';
+import { supabase, directSelect, directUpdate } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AppContexts';
 
 declare global {
     interface Window {
@@ -32,8 +33,9 @@ const fmtTime = (s?: string) => { if (!s) return ''; const d = new Date(s); retu
 // mostly trucks).
 const assetKind = (hint?: string): 'truck' | 'car' => {
     const s = (hint || '').toUpperCase();
-    // Bakkies / light vehicles (incl. 1-tonners) render as cars; everything else a truck.
-    if (/BAKKIE|HILUX|RANGER|TRITON|TOYOTA|POLO|SEDAN|\bCAR\b|LDV|KOMBI|\bVAN\b|D-?MAX|AMAROK|NP\s?200|CARAVAN|1\s*TON(NER)?|RIGID\s*1\s*T|\b1T\b/.test(s)) return 'car';
+    // Light vehicles — bakkies + everything up to a 4-tonner — render as cars; 5T+ as trucks.
+    if (/BAKKIE|HILUX|RANGER|TRITON|TOYOTA|POLO|SEDAN|\bCAR\b|LDV|KOMBI|\bVAN\b|D-?MAX|AMAROK|NP\s?200|CARAVAN/.test(s)) return 'car';
+    if (/RIGID\s*[1-4]\s*T\b|\b[1-4]\s*TON(NER)?\b|\b[1-4]T\b/.test(s)) return 'car';
     return 'truck';
 };
 // Small side-on SVG icons, coloured by status, as a marker image (data URI).
@@ -53,6 +55,33 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
     const [err, setErr] = useState<string | null>(null);
     const [updatedAt, setUpdatedAt] = useState<string>('');
     const [loading, setLoading] = useState(true);
+    const { currentUser } = useAuth();
+    const isAdmin = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    // Regs an admin has chosen to hide from the map (covers tracked units that aren't
+    // in the fleet register). Stored server-side on email_settings.map_hidden_regs.
+    const [hiddenRegs, setHiddenRegs] = useState<Set<string>>(new Set());
+    const loadHidden = async () => {
+        try {
+            const { data } = await directSelect('email_settings?id=eq.1&select=map_hidden_regs');
+            const row = Array.isArray(data) ? data[0] : data;
+            setHiddenRegs(new Set(((row?.map_hidden_regs as string[]) || []).map((r: string) => alnum(r))));
+        } catch { /* ignore */ }
+    };
+    useEffect(() => { loadHidden(); }, []);
+    // Bridge for the map InfoWindow button (plain HTML) to call back into React.
+    useEffect(() => {
+        (window as any).__fbnMapHide = async (reg: string) => {
+            if (!reg) return;
+            const next = new Set(hiddenRegs); next.add(alnum(reg)); setHiddenRegs(next);
+            try {
+                const { data } = await directSelect('email_settings?id=eq.1&select=map_hidden_regs');
+                const row = Array.isArray(data) ? data[0] : data;
+                const list = Array.from(new Set([...(((row?.map_hidden_regs as string[]) || [])), reg]));
+                await directUpdate('email_settings', { id: '1' }, { map_hidden_regs: list });
+            } catch { /* non-blocking */ }
+        };
+        return () => { try { delete (window as any).__fbnMapHide; } catch { /* */ } };
+    }, [hiddenRegs]);
 
     // Poll the live feed.
     useEffect(() => {
@@ -106,7 +135,8 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
         positions.forEach(p => {
             if (p.lat == null || p.lng == null) return;
             const veh = vehByReg.get(alnum(p.reg));
-            if (veh?.hidden) return; // management-hidden (personal) vehicles never plot
+            if (veh?.hidden) return; // management-hidden (personal) fleet vehicles never plot
+            if (hiddenRegs.has(alnum(p.reg))) return; // hidden directly from the map
             const job = (loadConfirmations || []).find(lc =>
                 alnum(lc.subcontractorVehicleReg) === alnum(p.reg) &&
                 !['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(lc.status));
@@ -120,6 +150,7 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
                     <div style="font-size:12px;margin-top:4px">Speed: <b>${Math.round(p.speed || 0)} km/h</b>${driver ? ` · ${driver}` : ''}</div>
                     ${job ? `<div style="font-size:12px;color:#13294b;font-weight:700;margin-top:2px">Load ${job.loadConNumber} — ${job.status}</div>` : '<div style="font-size:12px;color:#64748b;margin-top:2px">No active load</div>'}
                     <div style="font-size:11px;color:#94a3b8;margin-top:4px">Last seen ${fmtTime(p.at)}</div>
+                    ${isAdmin ? `<button onclick="window.__fbnMapHide && window.__fbnMapHide('${(p.reg || '').replace(/'/g, '')}')" style="margin-top:8px;font-size:11px;font-weight:700;color:#b45309;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:3px 8px;cursor:pointer">Hide from map</button>` : ''}
                 </div>`,
             });
             // Truck for big assets, car for bakkies/light vehicles; coloured by status.
@@ -139,7 +170,7 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
         });
         // Fit to all trucks the first time we get data.
         if (positions.length && !mapInstanceRef.current.__fitted) { mapInstanceRef.current.fitBounds(bounds); mapInstanceRef.current.__fitted = true; }
-    }, [positions, loadConfirmations, isApiLoaded]);
+    }, [positions, loadConfirmations, isApiLoaded, hiddenRegs, vehByReg, isAdmin]);
 
     return (
         <div className="bg-white border border-slate-200 rounded-xl p-4">

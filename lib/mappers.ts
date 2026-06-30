@@ -435,6 +435,7 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     slaLevel: row.sla_level ?? undefined,
     isActive: (row as any).is_active ?? true,
     category: (row as any).category ?? undefined,
+    networkPartner: (row as any).network_partner ?? false,
     accountStatus: (row as any).account_status ?? 'account',
     vetted: (row as any).vetted ?? true,
     vatNo: (row as any).vat_no ?? undefined,
@@ -532,6 +533,7 @@ export const mapSupplier = (
     contacts: (row.contacts as unknown as Contact[]) ?? [],
     address: row.address ?? '',
     averageRating: row.average_rating ?? undefined,
+    networkPartner: (row as any).network_partner ?? false,
     complianceStatus: row.compliance_status,
     expiryDate: row.expiry_date ?? undefined,
     beeStatus: row.bee_status ?? undefined,
@@ -1084,6 +1086,7 @@ export const toClientInsert = (client: Omit<Client, 'id'>): Tables['clients']['I
     address: client.address || null,
     sla_level: client.slaLevel ?? null,
     ...(((client as any).category) ? { category: (client as any).category } : {}),
+    ...((client as any).networkPartner !== undefined ? { network_partner: (client as any).networkPartner } : {}),
     ...((client as any).accountStatus ? { account_status: (client as any).accountStatus } : {}),
     ...((client as any).vetted !== undefined ? { vetted: (client as any).vetted } : {}),
     ...((client as any).vatNo ? { vat_no: (client as any).vatNo } : {}),
@@ -1101,6 +1104,7 @@ export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] 
     if (u.address !== undefined) row.address = u.address || null;
     if (u.slaLevel !== undefined) row.sla_level = u.slaLevel ?? null;
     if ((u as any).category !== undefined) (row as any).category = (u as any).category ?? null;
+    if ((u as any).networkPartner !== undefined) (row as any).network_partner = (u as any).networkPartner;
     if ((u as any).accountStatus !== undefined) (row as any).account_status = (u as any).accountStatus ?? 'account';
     if ((u as any).vetted !== undefined) (row as any).vetted = (u as any).vetted;
     if ((u as any).vatNo !== undefined) (row as any).vat_no = (u as any).vatNo ?? null;
@@ -1141,6 +1145,7 @@ export const toSupplierInsert = (supplier: Omit<Supplier, 'id'>): Tables['suppli
     vetted_at: supplier.vettedAt ?? null,
     vehicle_types: supplier.vehicleTypes ?? [],
     trailer_types: supplier.trailerTypes ?? [],
+    ...((supplier as any).networkPartner !== undefined ? { network_partner: (supplier as any).networkPartner } : {}),
 } as Tables['suppliers']['Insert']);
 
 export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Update'] => {
@@ -1158,6 +1163,7 @@ export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Upd
     if (u.regions !== undefined) row.regions = u.regions || null;
     if (u.fleetSize !== undefined) row.fleet_size = u.fleetSize || null;
     if (u.complianceStatus !== undefined) row.compliance_status = u.complianceStatus;
+    if ((u as any).networkPartner !== undefined) (row as any).network_partner = (u as any).networkPartner;
     if (u.isVetted !== undefined) (row as any).is_vetted = u.isVetted;
     if (u.vettedAt !== undefined) (row as any).vetted_at = u.vettedAt;
     if (u.vehicleTypes !== undefined) (row as any).vehicle_types = u.vehicleTypes;

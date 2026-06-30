@@ -9,13 +9,14 @@ import * as XLSX from 'xlsx';
 // Carrier), each with its full contact team (roles, titles), plus a LEADS view
 // that lists every contact who has asked FBN for a rate (quote-askers) so they
 // can be targeted for more work.
-const CATEGORIES = ['Clearing & Forwarding Agent', 'Consolidator', 'Broker', 'Manufacturer / Shipper', 'Carrier / Transporter', 'Other'];
+const CATEGORIES = ['Clearing & Forwarding Agent', 'Consolidator', 'Broker', 'Manufacturer / Shipper', 'Carrier / Transporter', 'Carrier Partner', 'Other'];
 const CAT_CHIP: Record<string, string> = {
     'Clearing & Forwarding Agent': 'bg-blue-100 text-blue-700',
     'Consolidator': 'bg-indigo-100 text-indigo-700',
     'Broker': 'bg-pink-100 text-pink-700',
     'Manufacturer / Shipper': 'bg-emerald-100 text-emerald-700',
     'Carrier / Transporter': 'bg-amber-100 text-amber-700',
+    'Carrier Partner': 'bg-amber-200 text-amber-800',
     'Other': 'bg-slate-200 text-slate-600',
     'Uncategorised': 'bg-slate-100 text-slate-500',
 };
@@ -29,6 +30,14 @@ const ClientManagementView: React.FC = () => {
     const [leads, setLeads] = useState(false);
     const [codOnly, setCodOnly] = useState(false);
     const [pendingOnly, setPendingOnly] = useState(false);
+    const [partnerOnly, setPartnerOnly] = useState(false);
+    // ⭐ Toggle a company as a strategic Network Partner (own-fleet carrier we build with).
+    const togglePartner = async (c: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const res = await handleUpdateClient?.(c.id, { networkPartner: !c.networkPartner } as any);
+        if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
+        else showToast(c.networkPartner ? `${c.name} removed from Network Partners.` : `⭐ ${c.name} marked a Network Partner.`);
+    };
 
     const active = useMemo(() => (clients as any[]).filter(c => c.isActive !== false), [clients]);
     const isCod = (c: any) => c.accountStatus === 'cod' || c.vetted === false;
@@ -54,9 +63,11 @@ const ClientManagementView: React.FC = () => {
             .filter(c => cat === 'All' || catOf(c) === cat)
             .filter(c => !codOnly || isCod(c))
             .filter(c => !pendingOnly || isPending(c))
+            .filter(c => !partnerOnly || c.networkPartner)
             .filter(c => !needle || `${c.name || ''} ${c.contactPerson || ''} ${c.contactEmail || ''} ${(c.contacts || []).map((x: any) => `${x.name} ${x.email} ${x.title || ''}`).join(' ')}`.toLowerCase().includes(needle))
             .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-    }, [active, q, cat, codOnly, pendingOnly]);
+    }, [active, q, cat, codOnly, pendingOnly, partnerOnly]);
+    const partnerCount = useMemo(() => active.filter(c => c.networkPartner).length, [active]);
 
     // Counts per category (for the filter chips).
     const counts = useMemo(() => { const m: Record<string, number> = {}; active.forEach(c => { const k = catOf(c); m[k] = (m[k] || 0) + 1; }); return m; }, [active]);
@@ -122,6 +133,7 @@ const ClientManagementView: React.FC = () => {
                     <button onClick={() => setLeads(l => !l)} className={`font-bold py-2 px-3 rounded-lg text-sm ${leads ? 'bg-[#f5b700] text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>🎯 Leads {leadRows.length ? `(${leadRows.length})` : ''}</button>
                     <button onClick={() => { setPendingOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${pendingOnly ? 'bg-amber-500 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Self-registered clients awaiting approval">🆕 Pending approval {pendingCount ? `(${pendingCount})` : ''}</button>
                     <button onClick={() => { setCodOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${codOnly ? 'bg-rose-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="New / unvetted clients on COD — approve to an account when vetted">💰 COD / Unauthorised {codCount ? `(${codCount})` : ''}</button>
+                    <button onClick={() => { setPartnerOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${partnerOnly ? 'bg-amber-400 text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Strategic network/consortium partners — own-fleet carriers we build with">⭐ Network Partners {partnerCount ? `(${partnerCount})` : ''}</button>
                     <label htmlFor="bulk-upload" className="flex items-center font-bold py-2 px-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer text-sm"><UploadIcon className="h-4 w-4 mr-1.5" /> Import</label>
                     <input id="bulk-upload" type="file" onChange={handleFileChange} className="hidden" accept=".xlsx, .xls" />
                     <button onClick={() => showModal('addClient')} className="flex items-center font-bold py-2 px-3 rounded-lg bg-[#13294b] hover:bg-[#1d3a66] text-white text-sm"><PlusIcon className="h-4 w-4 mr-1.5" /> Add Client</button>
@@ -176,7 +188,12 @@ const ClientManagementView: React.FC = () => {
                                         const qn = contacts.filter((c: any) => c.quotes).length;
                                         return (
                                             <tr key={client.id} className="border-b border-slate-100 hover:bg-blue-50/40">
-                                                <td className="py-2 pl-3 px-2"><button onClick={() => showModal('partnerDetail', { partner: client, kind: 'client' })} className="font-bold text-[#13294b] hover:underline text-left">{client.name}</button></td>
+                                                <td className="py-2 pl-3 px-2">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <button onClick={e => togglePartner(client, e)} title={client.networkPartner ? 'Network Partner — click to remove' : 'Mark as a ⭐ Network Partner'} className={`text-base leading-none ${client.networkPartner ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300'}`}>{client.networkPartner ? '★' : '☆'}</button>
+                                                        <button onClick={() => showModal('partnerDetail', { partner: client, kind: 'client' })} className="font-bold text-[#13294b] hover:underline text-left">{client.name}</button>
+                                                    </div>
+                                                </td>
                                                 <td className="py-2 px-2 text-slate-700">{main?.name || client.contactPerson || '—'}{main?.title && <div className="text-[11px] text-slate-400">{main.title}</div>}</td>
                                                 <td className="py-2 px-2 text-slate-500">{contacts.length} contact{contacts.length === 1 ? '' : 's'}{qn ? <span className="ml-1 text-[10px] font-bold text-amber-600">· {qn} lead{qn === 1 ? '' : 's'}</span> : ''}</td>
                                                 <td className="py-2 px-2 text-blue-700">{main?.email || client.contactEmail || '—'}</td>

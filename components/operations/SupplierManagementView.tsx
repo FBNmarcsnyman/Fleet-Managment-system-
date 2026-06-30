@@ -6,7 +6,14 @@ import { useUIState, useOperations, useCommonData } from '../../contexts/AppCont
 
 const SubcontractorManagementView: React.FC = () => {
     const { showModal, showToast } = useUIState();
-    const { suppliers = [], handleBulkAddSuppliers, handleDeleteSupplier, handleConvertParty } = useOperations() as any;
+    const { suppliers = [], handleBulkAddSuppliers, handleDeleteSupplier, handleConvertParty, handleUpdateSupplier } = useOperations() as any;
+    // ⭐ Strategic Network Partner — same cross-cutting flag as on Clients.
+    const togglePartner = async (s: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const res = await handleUpdateSupplier?.(s.id, { networkPartner: !s.networkPartner });
+        if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
+        else showToast(s.networkPartner ? `${s.name} removed from Network Partners.` : `⭐ ${s.name} marked a Network Partner.`);
+    };
     const toClient = async (supplier: Supplier) => {
         if (!confirm(`Move ${supplier.name} to Clients? They become a client (you can market freight to them) and leave the Transporters list.`)) return;
         const res = await handleConvertParty(supplier.id, 'client');
@@ -87,7 +94,7 @@ const SubcontractorManagementView: React.FC = () => {
                     <tbody>
                         {subcontractors.map((supplier: Supplier) => (
                             <tr key={supplier.id} className="border-b border-gray-700/50">
-                                <td className="p-2 font-semibold"><button onClick={() => showModal('partnerDetail', { partner: supplier, kind: 'supplier' })} className="text-white hover:text-brand-secondary hover:underline text-left">{supplier.name}</button></td>
+                                <td className="p-2 font-semibold"><span className="flex items-center gap-1.5"><button onClick={e => togglePartner(supplier, e)} title={(supplier as any).networkPartner ? 'Network Partner — click to remove' : 'Mark as a ⭐ Network Partner'} className={`text-base leading-none ${(supplier as any).networkPartner ? 'text-amber-400' : 'text-gray-600 hover:text-amber-300'}`}>{(supplier as any).networkPartner ? '★' : '☆'}</button><button onClick={() => showModal('partnerDetail', { partner: supplier, kind: 'supplier' })} className="text-white hover:text-brand-secondary hover:underline text-left">{supplier.name}</button></span></td>
                                 <td className="p-2">{supplier.contactPerson}</td>
                                 <td className="p-2">{supplier.contactEmail} / {supplier.contactPhone}</td>
                                 <td className="p-2 text-right space-x-2">

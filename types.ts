@@ -437,6 +437,8 @@ export interface Supplier {
     contacts?: Contact[];
     address: string;
     averageRating?: number;
+    // Strategic ⭐ network/consortium partner — same cross-cutting flag as Client.
+    networkPartner?: boolean;
     complianceStatus: 'Compliant' | 'Expired' | 'Pending';
     expiryDate?: string;
     // New detailed fields
@@ -597,7 +599,10 @@ export interface Client {
     address: string;
     slaLevel?: string;
     isActive?: boolean;
-    category?: string; // Clearing & Forwarding Agent / Consolidator / Manufacturer / Shipper / Carrier / Transporter / Other
+    category?: string; // Clearing & Forwarding Agent / Consolidator / Manufacturer / Shipper / Carrier / Transporter / Carrier Partner / Other
+    // Strategic ⭐ network/consortium partner (own-fleet carrier that also gives FBN
+    // overflow). Cross-cutting flag, independent of category; mirrored on Supplier.
+    networkPartner?: boolean;
     // COD workflow: new clients are 'cod' + unvetted until approved for an account.
     accountStatus?: 'cod' | 'account';
     vetted?: boolean;

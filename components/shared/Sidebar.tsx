@@ -58,7 +58,10 @@ const Sidebar: React.FC = () => {
     const notHidden = (item: NavItem) => !hidden.includes(item.view);
 
     // Build the visible tree: keep permitted, non-hidden leaves; for groups keep
-    // their visible children and drop any group left empty.
+    // their visible children and drop any group left empty. Then apply the user's
+    // saved order (Settings → Workspace Personalization): each top-level row is
+    // ordered by its representative view (a leaf's own view, or a group's first
+    // child), so reordering in Settings actually moves the menu rows.
     const entries = useMemo(() => {
         const out: ({ kind: 'leaf'; item: NavItem } | { kind: 'group'; group: NavGroup; children: NavItem[] })[] = [];
         for (const e of ALL_NAV_ENTRIES) {
@@ -68,6 +71,12 @@ const Sidebar: React.FC = () => {
             } else if (canSee(e) && notHidden(e)) {
                 out.push({ kind: 'leaf', item: e });
             }
+        }
+        const order = currentUser.navigationPreferences?.order;
+        if (order && order.length) {
+            const repView = (en: typeof out[number]) => en.kind === 'leaf' ? en.item.view : en.children[0]?.view;
+            const idx = (v?: string) => { const i = v ? (order as string[]).indexOf(v) : -1; return i === -1 ? Number.MAX_SAFE_INTEGER : i; };
+            out.sort((a, b) => idx(repView(a)) - idx(repView(b)));
         }
         return out;
     }, [currentUser, hasPermission]);

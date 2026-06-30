@@ -8,7 +8,7 @@ import { ClipboardIcon } from '../icons/ClipboardIcon';
 import { QrCodeIcon } from '../icons/QrCodeIcon';
 import { UserIcon } from '../icons/UserIcon';
 import { EditIcon } from '../icons/EditIcon';
-import { useVehicles, useUIState, useWorkshop } from '../../contexts/AppContexts';
+import { useVehicles, useUIState, useWorkshop, useAuth } from '../../contexts/AppContexts';
 
 interface VehicleCardProps {
     vehicle: Vehicle;
@@ -31,6 +31,14 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
     }, [drivers, vehicle.id]);
     const { showModal, hideModal, showToast } = useUIState();
     const { jobCards = [], handleCreateJobCard } = useWorkshop();
+    const { currentUser } = useAuth();
+    const isAdmin = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const toggleHidden = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const r = await handleUpdateVehicle(vehicle.id, { hidden: !vehicle.hidden } as any);
+        if (r?.ok) showToast(vehicle.hidden ? `${vehicle.registration} back in the fleet.` : `${vehicle.registration} hidden from fleet, fuel & map.`);
+        else showToast(`Could not update: ${(r as any)?.error ?? 'error'}`);
+    };
 
     const openEditModal = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -77,8 +85,11 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
                         </div>
                     </div>
                     {/* Health Score Badge */}
-                    <div className={`px-2 py-1 rounded border text-[10px] font-black uppercase tracking-widest ${getHealthColor(vehicle.healthScore || 0)}`}>
-                        {vehicle.healthScore}% HEALTH
+                    <div className="flex items-center gap-1.5">
+                        {vehicle.hidden && <span className="px-2 py-1 rounded border border-amber-500/30 bg-amber-900/20 text-amber-400 text-[10px] font-black uppercase tracking-widest">Hidden</span>}
+                        <div className={`px-2 py-1 rounded border text-[10px] font-black uppercase tracking-widest ${getHealthColor(vehicle.healthScore || 0)}`}>
+                            {vehicle.healthScore}% HEALTH
+                        </div>
                     </div>
                 </div>
 
@@ -132,6 +143,13 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
                 {vehicle.weightCategory === 'Horse' && (
                     <button onClick={(e) => { e.stopPropagation(); showModal('rigTrailers', { truck: vehicle }); }} className="p-2 text-gray-500 hover:text-white" title="Manage rig trailers (6m / 12m)">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="h-5 w-5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" /></svg>
+                    </button>
+                )}
+                {isAdmin && (
+                    <button onClick={toggleHidden} className={`p-2 ${vehicle.hidden ? 'text-amber-400 hover:text-amber-300' : 'text-gray-500 hover:text-amber-400'}`} title={vehicle.hidden ? 'Unhide — show in fleet, fuel & map' : 'Hide this vehicle (personal / off-book) from fleet, fuel & map'}>
+                        {vehicle.hidden
+                            ? <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="h-5 w-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                            : <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="h-5 w-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>}
                     </button>
                 )}
             </div>

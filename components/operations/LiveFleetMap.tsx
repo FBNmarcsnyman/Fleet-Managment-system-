@@ -32,7 +32,8 @@ const fmtTime = (s?: string) => { if (!s) return ''; const d = new Date(s); retu
 // mostly trucks).
 const assetKind = (hint?: string): 'truck' | 'car' => {
     const s = (hint || '').toUpperCase();
-    if (/BAKKIE|HILUX|RANGER|TRITON|TOYOTA|POLO|SEDAN|\bCAR\b|LDV|KOMBI|\bVAN\b|D-?MAX|AMAROK|NP200/.test(s)) return 'car';
+    // Bakkies / light vehicles (incl. 1-tonners) render as cars; everything else a truck.
+    if (/BAKKIE|HILUX|RANGER|TRITON|TOYOTA|POLO|SEDAN|\bCAR\b|LDV|KOMBI|\bVAN\b|D-?MAX|AMAROK|NP\s?200|CARAVAN|1\s*TON(NER)?|RIGID\s*1\s*T|\b1T\b/.test(s)) return 'car';
     return 'truck';
 };
 // Small side-on SVG icons, coloured by status, as a marker image (data URI).

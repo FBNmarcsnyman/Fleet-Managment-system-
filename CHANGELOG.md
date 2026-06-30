@@ -2,6 +2,45 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-30] — Big build: recipient picker, POD chain, nav refactor, fuel/Pulsit, manifests & trip sheets
+
+### Added
+- **Recipient picker** on the Transport Order form (client + subbie): multi-select saved contacts
+  (role + send-flags) and add people inline that persist to the company; one-off addresses can be
+  promoted to permanent contacts. Client↔subbie email wall preserved.
+- **Branded POD reminders + full audit trail** — shared `lib/podRequest.ts` (branded shell + button)
+  used by the Deliveries board AND Load Board; records date / who / **count**; the cron
+  (ops-daily-checks) stamps "Auto reminder (system)". Board badge "Requested 27 Jun ·2x" + hover.
+- **POD tracker = one board, three lenses** (Brokered / Own-fleet / All); honours `pod_required` so a
+  transfer/crane leg isn't chased (+ "no POD?" toggle).
+- **Grouped sidebar** (Operations ▸ FBN/Broking · FBN Fleet ▸ Assets/Compliance · Accounts ▸
+  Clients/Transporters/PODs/Finance) + saved-order honoured; **Clients & Transporters split into own
+  screens** (+ Comms & Marketing bulk branded email); **⭐ Network Partner** tag + "Carrier Partner"
+  category (clients + suppliers); **Accounts** added to Tab Access.
+- **Load Board** reworked: Transporter | Client | Route (simple) | Size | Weight (margin removed);
+  Request POD from here too; route auto-derives from collection/delivery.
+- **Fleet**: one-line superlink pairs (both regs clickable), click-to-assign driver (fixed: real
+  drivers table + persist + add), category prominent, regrouped LM/DBN/JHB then trailers; **bulk
+  service intervals** (10k/15k/20k/25k or hours + flag-before).
+- **Fuel**: By-Vehicle tab (per-vehicle fills + CPK); **fill TIME** captured (forms + master-sheet
+  sync v4 + backfill); **Pulsit live odometer cross-check** on live fills (flag >50 km off).
+- **Metering Phase 1**: meter-aware checklist (forklift=hours / trailer=hubometer + "fitted?" rule /
+  truck=odo).
+- **Manifest M1–M4**: any-branch truck picker + trailer regs + per-trailer 6m/12m split + overload +
+  manual mileage; doc/print/email; **broker line-haul leg**; **en-route stops** on the loadcon.
+  **Line-haul cost vs turnover = margin** (turnover/profit **management-only**; ops see/enter cost).
+- **Trip sheet T1/T2**: depot-ordered fleet picker + payload-cap overload; delivered-count +
+  "couldn't deliver" reason → auto-urgent next day.
+- **Waybill auto-link** (group separate loads sharing one waybill, e.g. 0013/0014).
+- **Manage Lists** screen — curate route/commodity/packaging/load-type suggestions (hide junk / add
+  approved); booking forms gained Flat-deck + Uprights options.
+- **Tracking page** reformatted (detail table + always-on "add info / request update").
+- **Notifications**: own-fleet loads badge under Operations, brokered under Broking.
+
+### Notes
+- All schema changes applied (20 new columns verified). Margin/revenue gating is UI-level for now
+  (DB-level RLS noted as a future hardening).
+
 ## [2026-06-29] — Operations hardening: containers, tab access, fuel, data audit
 
 ### Added

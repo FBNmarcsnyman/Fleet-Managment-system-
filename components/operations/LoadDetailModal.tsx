@@ -363,6 +363,21 @@ const LoadDetailModal: React.FC = () => {
         try { await navigator.clipboard.writeText(msg); showToast('Driver job + link copied — paste it into the driver’s WhatsApp.'); }
         catch { window.prompt('Copy this driver link:', link); }
     };
+    // Open WhatsApp with the job message pre-filled — to the driver's number if we have it,
+    // otherwise a blank chat so ops can pick the contact. Driver taps the link to accept + update.
+    const shareDriverWhatsApp = () => {
+        const link = `${window.location.origin}${window.location.pathname}?update=${lc.id}`;
+        const msg = `Hi ${lc.subcontractorDriverName || 'driver'}, FBN Transport load ${lc.loadConNumber}.\n`
+            + `Collect: ${lc.collectionPoint || '-'}\n`
+            + `Deliver: ${lc.deliveryPoint || '-'}\n`
+            + `Cargo: ${[lc.loadType, lc.commodity].filter(Boolean).join(' ')}${lc.weightKg ? ' · ' + lc.weightKg + 'kg' : ''}\n`
+            + `Contact: ${lc.collectionContact || '-'} ${lc.collectionTelephone || ''}\n\n`
+            + `Tap to ACCEPT + update us as you go (and upload the POD):\n${link}`;
+        const cell = (lc.subcontractorDriverCell || '').replace(/\D/g, '');
+        const intl = cell ? (cell.startsWith('27') ? cell : cell.startsWith('0') ? '27' + cell.slice(1) : cell) : '';
+        const url = `https://wa.me/${intl}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank', 'noopener');
+    };
 
     // Email the received POD to a chosen recipient (defaults to the client).
     // Goes only to you while EMAILS: TEST is on.
@@ -553,6 +568,19 @@ const LoadDetailModal: React.FC = () => {
                         {(lc.route || deriveRoute(lc.collectionPoint, lc.deliveryPoint)) && <span className="block text-xs font-black text-[#13294b] mt-0.5">{lc.route || deriveRoute(lc.collectionPoint, lc.deliveryPoint)}</span>}
                     </p>
                     <p className="hidden md:block text-sm text-slate-500">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                    {(() => {
+                        // Driver acceptance + standing time at the collection site (Phase A).
+                        const arr = lc.collectionArrivedAt ? new Date(lc.collectionArrivedAt) : null;
+                        const dep = lc.collectionDepartedAt ? new Date(lc.collectionDepartedAt) : null;
+                        const mins = arr ? Math.round(((dep ? dep.getTime() : Date.now()) - arr.getTime()) / 60000) : null;
+                        if (!lc.driverAcceptedAt && mins == null) return null;
+                        return (
+                            <p className="text-[11px] font-bold mt-0.5">
+                                {lc.driverAcceptedAt && <span className="text-emerald-600">✓ Driver accepted</span>}
+                                {mins != null && <span className={`${lc.driverAcceptedAt ? 'ml-2 ' : ''}${!dep && mins >= 30 ? 'text-rose-600' : 'text-slate-500'}`}>Standing {mins} min{!dep ? ' (on site)' : ''}{!dep && mins >= 30 ? ' ⚠' : ''}</span>}
+                            </p>
+                        );
+                    })()}
                     {groupTrucks.length > 1 && (
                         <p className="text-xs font-bold text-[#13294b] mt-0.5">Split waybill {lc.loadRefNo || ''} · truck {Math.max(1, groupTrucks.findIndex(t => t.id === lc.id) + 1)} of {groupTrucks.length}</p>
                     )}
@@ -570,7 +598,8 @@ const LoadDetailModal: React.FC = () => {
                     {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>Capture</button>}
                     {!editing && <button onClick={whatsappDriver} className={tbtn}>WhatsApp</button>}
-                    {!editing && <button onClick={copyDriverLink} title="Copy the driver job + self-update link to paste into WhatsApp — the driver taps it to update status (loaded → on route → arrived → delivered) and upload the POD." className={tbtn}>Driver link</button>}
+                    {!editing && <button onClick={shareDriverWhatsApp} title="Open WhatsApp with the job + accept/update link pre-filled (to the driver's number if we have it)." className={tbtn}>Share (WhatsApp)</button>}
+                    {!editing && <button onClick={copyDriverLink} title="Copy the driver job + self-update link to paste into WhatsApp — the driver taps it to update status (loaded → on route → arrived → delivered) and upload the POD." className={tbtn}>Copy link</button>}
                     {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className={tbtn}>Documents</button>}
                     {!editing && <button onClick={() => showModal('splitLoad', { loadCon: lc })} title="One waybill carried by several trucks/subbies — allocate transporters, split the cost, send each their loadcon." className={tbtn}>Split{lc.loadGroupId ? ' ✓' : ''}</button>}
                     {!editing && <button onClick={() => showModal('offerLoad', { loadCon: lc })} title="Market this load to carriers who run this lane + truck type; invite their best rate." className={tbtn}>Offer{(lc as any).offeredCarriers?.length ? ` · ${(lc as any).offeredCarriers.length}` : ''}</button>}

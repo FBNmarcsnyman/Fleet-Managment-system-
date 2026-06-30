@@ -686,6 +686,9 @@ export interface LoadConfirmation {
     subcontractorDriverName?: string;
     subcontractorDriverCell?: string;
     acceptedAt?: string;
+    driverAcceptedAt?: string;
+    collectionArrivedAt?: string;
+    collectionDepartedAt?: string;
     loadingEta?: string;
     deliveryEta?: string;
     backDated?: boolean;

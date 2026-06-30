@@ -40,6 +40,9 @@ interface Summary {
     has_pod?: boolean;
     pod_url?: string;
     accepted_at?: string;
+    driver_accepted_at?: string;
+    collection_arrived_at?: string;
+    collection_departed_at?: string;
     client_name?: string;
     request_status?: string;
     request_reply?: string;
@@ -110,6 +113,14 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
             });
             setLoad(await callPublic({ loadId, action: 'track' }) as Summary);  // refresh to next step
         } catch (e) { setErr(e instanceof Error ? e.message : 'Could not update. Please try again.'); }
+        finally { setStatusBusy(false); }
+    };
+
+    // Own-fleet driver accepts the collection from the WhatsApp job link.
+    const submitDriverAccept = async () => {
+        setStatusBusy(true); setErr(null);
+        try { await callPublic({ loadId, action: 'driver-accept' }); setLoad(await callPublic({ loadId, action: 'track' }) as Summary); }
+        catch (e) { setErr(e instanceof Error ? e.message : 'Could not accept. Please try again.'); }
         finally { setStatusBusy(false); }
     };
 
@@ -273,14 +284,29 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                             {mode === 'update' && (() => {
                                 const next = NEXT_ACTION(load.status);
                                 const delivered = ['Delivered', 'POD Submitted', 'Invoiced'].includes(load.status);
+                                const needAccept = !load.driver_accepted_at && ['Booked', 'Driver Assigned'].includes(load.status);
                                 return (
                                     <>
                                         <div style={{ background: '#f3f4f6', borderRadius: 10, padding: 14, fontSize: 14, color: '#374151', marginBottom: 18 }}>
                                             Current status: <strong style={{ color: NAVY }}>{STAGES[stageIndex(load.status)]}</strong>
+                                            {load.driver_accepted_at && <div style={{ marginTop: 4, color: '#16a34a', fontWeight: 700 }}>✓ You accepted this collection</div>}
                                             {load.delivery_eta && <div style={{ marginTop: 4 }}>Delivery ETA: <strong>{fmtDT(load.delivery_eta)}</strong></div>}
                                         </div>
                                         {err && <p style={{ color: '#b91c1c', fontSize: 14 }}>{err}</p>}
-                                        {delivered ? (
+                                        {needAccept ? (
+                                            <>
+                                                <div style={{ background: '#f8fafc', border: '1px solid #eef2f6', borderRadius: 12, padding: '4px 16px', marginBottom: 16 }}>
+                                                    <Row label="Collect from">{load.collection_point || '—'}</Row>
+                                                    <Row label="Deliver to">{load.delivery_point || '—'}</Row>
+                                                    {load.collection_date && <Row label="Date">{fmt(load.collection_date)}</Row>}
+                                                    {load.cargo && <Row label="Cargo">{load.cargo}</Row>}
+                                                </div>
+                                                <p style={{ color: '#374151', fontSize: 15, marginBottom: 12 }}>Accept this collection to let the office know you're on the way.</p>
+                                                <button onClick={submitDriverAccept} disabled={statusBusy} style={{ width: '100%', background: statusBusy ? '#9ca3af' : '#16a34a', color: '#fff', border: 'none', padding: 16, borderRadius: 10, fontSize: 17, fontWeight: 800, cursor: 'pointer' }}>
+                                                    {statusBusy ? 'Saving…' : 'Accept collection'}
+                                                </button>
+                                            </>
+                                        ) : delivered ? (
                                             <div style={{ textAlign: 'center' }}>
                                                 <p style={{ color: '#16a34a', fontWeight: 700, fontSize: 16 }}>✓ Delivered</p>
                                                 {!load.has_pod && <a href={`${window.location.origin}${window.location.pathname}?pod=${loadId}`} style={{ display: 'inline-block', marginTop: 8, background: '#16a34a', color: '#fff', textDecoration: 'none', padding: '14px 26px', borderRadius: 10, fontSize: 16, fontWeight: 800 }}>Upload signed POD + documents →</a>}

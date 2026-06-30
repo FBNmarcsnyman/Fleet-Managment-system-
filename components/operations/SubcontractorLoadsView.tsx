@@ -84,6 +84,18 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     const [requesting, setRequesting] = useState<string | null>(null);
     const [sendingLc, setSendingLc] = useState<string | null>(null);
 
+    // All known CLIENT email addresses — to warn if a rate-bearing LoadCon is about to
+    // be emailed to a client (a company can be both a client and a carrier, so we confirm,
+    // never block).
+    const clientEmailSet = useMemo(() => {
+        const s = new Set<string>();
+        (clients as any[]).forEach(c => {
+            [c.contactEmail, ...String(c.clientCc || '').split(/[,;]/)].forEach(e => { const v = (e || '').trim().toLowerCase(); if (v) s.add(v); });
+            (c.contacts || []).forEach((p: any) => { const v = (p.email || '').trim().toLowerCase(); if (v) s.add(v); });
+        });
+        return s;
+    }, [clients]);
+
     // Actually EMAIL the Load Confirmation (branded PDF) to the subcontractor,
     // then stamp it as sent. Always lets you confirm / change / add the recipient
     // email first, and can be used again to RESEND.
@@ -92,6 +104,11 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         if (entered === null) return; // cancelled
         const to = entered.trim();
         if (!to) { showToast('No email entered.'); return; }
+        // Guard: this LoadCon shows the transport RATE — warn if it's going to a client
+        // address (unless it IS this load's carrier email; a company can be both).
+        if (clientEmailSet.has(to.toLowerCase()) && to.toLowerCase() !== (lc.subcontractorEmail || '').toLowerCase()) {
+            if (!window.confirm(`⚠ ${to} is also a CLIENT contact.\n\nThis Load Confirmation shows your TRANSPORT RATE. Send it to this address anyway?`)) return;
+        }
         // If this load had no (or a different) email, remember the one just used.
         if (to !== (lc.subcontractorEmail || '')) onUpdateLoadConfirmation(lc.id, { subcontractorEmail: to });
         setSendingLc(lc.id);

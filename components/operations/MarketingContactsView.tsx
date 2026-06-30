@@ -13,7 +13,7 @@ const MarketingContactsView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [q, setQ] = useState('');
     const [kindFilter, setKindFilter] = useState<string>('all');
-    const [showOptedOut, setShowOptedOut] = useState(true);
+    const [optFilter, setOptFilter] = useState<'all' | 'in' | 'out'>('all');
     // Import
     const [importing, setImporting] = useState(false);
     const [text, setText] = useState('');
@@ -27,9 +27,9 @@ const MarketingContactsView: React.FC = () => {
         const needle = q.trim().toLowerCase();
         return rows
             .filter(r => kindFilter === 'all' || r.kind === kindFilter)
-            .filter(r => showOptedOut || !r.optedOut)
+            .filter(r => optFilter === 'all' || (optFilter === 'out' ? r.optedOut : !r.optedOut))
             .filter(r => !needle || `${r.email} ${r.name || ''} ${r.company || ''} ${(r.tags || []).join(' ')}`.toLowerCase().includes(needle));
-    }, [rows, q, kindFilter, showOptedOut]);
+    }, [rows, q, kindFilter, optFilter]);
 
     const counts = useMemo(() => ({
         total: rows.length, optedOut: rows.filter(r => r.optedOut).length,
@@ -89,7 +89,9 @@ const MarketingContactsView: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search email / name / company / tag…" className={`${inp} w-56`} />
                 <select value={kindFilter} onChange={e => setKindFilter(e.target.value)} className={inp}><option value="all">All kinds</option>{KINDS.map(k => <option key={k} value={k}>{k}</option>)}</select>
-                <label className="flex items-center gap-1.5 text-xs text-slate-600"><input type="checkbox" checked={showOptedOut} onChange={e => setShowOptedOut(e.target.checked)} /> show opted-out</label>
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                    {(['all', 'in', 'out'] as const).map(f => <button key={f} onClick={() => setOptFilter(f)} className={`px-2.5 py-1 text-xs font-bold rounded-md ${optFilter === f ? 'bg-[#13294b] text-white' : 'text-slate-600'}`}>{f === 'all' ? 'All' : f === 'in' ? 'Opted in' : `Opted out (${counts.optedOut})`}</button>)}
+                </div>
                 <span className="text-xs text-slate-400 ml-auto">{filtered.length} shown</span>
             </div>
 

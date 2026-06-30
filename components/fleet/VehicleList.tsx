@@ -121,10 +121,14 @@ const VehicleList: React.FC = () => {
 
         if (groupBy === 'branch') {
             const sortedGroupKeys: string[] = [];
+            // All depot fleets first (LM, DBN, JHB)…
             for (const branch of BRANCH_SORT_ORDER) {
                 const fleetKey = branchLabel(branch);
-                const trailerKey = trailerGroupLabel(branch);
                 if (groups[fleetKey]) sortedGroupKeys.push(fleetKey);
+            }
+            // …then all trailer fleets, in the same branch order (LM, DBN, JHB).
+            for (const branch of BRANCH_SORT_ORDER) {
+                const trailerKey = trailerGroupLabel(branch);
                 if (groups[trailerKey]) sortedGroupKeys.push(trailerKey);
             }
             const remaining = Object.keys(groups).filter(k => !sortedGroupKeys.includes(k)).sort();
@@ -338,7 +342,7 @@ const VehicleList: React.FC = () => {
                                 <div className="overflow-x-auto bg-white border border-slate-200 rounded-xl">
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50 text-slate-500"><tr className="border-b border-slate-200">
-                                            <th className="p-3">Registration</th><th className="p-3">Fleet&nbsp;No</th><th className="p-3">Category</th><th className="p-3">Paired with</th><th className="p-3">Driver</th><th className="p-3">Branch</th>
+                                            <th className="p-3">Asset</th><th className="p-3">Paired with</th><th className="p-3">Driver</th><th className="p-3">Branch</th>
                                         </tr></thead>
                                         <tbody>
                                             {(() => {
@@ -350,6 +354,9 @@ const VehicleList: React.FC = () => {
                                                         className="font-bold text-[#13294b] hover:text-blue-600 hover:underline" title={`Open ${v.registration || v.name}`}>{v.registration || '—'}</button>
                                                 );
                                                 const fleetNo = (v?: Vehicle) => v?.name || '—';
+                                                const catLabel = (v?: Vehicle) => v?.weightCategory || '';
+                                                // Category shown prominently under the reg + fleet no.
+                                                const catPill = (v: Vehicle) => <span className="inline-block text-[11px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded mt-0.5">{v.weightCategory || '—'}</span>;
                                                 // Click the driver to assign / change / add — opens the assign modal.
                                                 const driverCell = (v: Vehicle) => {
                                                     const name = driverByVehicle.get(v.id);
@@ -370,9 +377,10 @@ const VehicleList: React.FC = () => {
                                                         const [a, b] = orderPair(vehicle, partner);
                                                         return (
                                                             <tr key={vehicle.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                                <td className="p-3">{regBtn(a)} <span className="text-emerald-600 font-bold px-1">↔</span> {regBtn(b)}</td>
-                                                                <td className="p-3 text-slate-700">{fleetNo(a)} / {fleetNo(b)}</td>
-                                                                <td className="p-3 text-slate-500">Superlink <span className="text-[10px] text-slate-400">(6m + 12m)</span></td>
+                                                                <td className="p-3">
+                                                                    <div className="flex items-center gap-1">{regBtn(a)} <span className="text-emerald-600 font-bold px-1">↔</span> {regBtn(b)}</div>
+                                                                    <div className="text-[11px] text-slate-500 mt-0.5">{fleetNo(a)} / {fleetNo(b)} · <span className="font-bold text-slate-700">{catLabel(a) || 'Superlink'} (6m + 12m)</span></div>
+                                                                </td>
                                                                 <td className="p-3"><span className="text-emerald-700 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded-full">paired</span></td>
                                                                 <td className="p-3 text-slate-300">—</td>
                                                                 <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
@@ -381,9 +389,10 @@ const VehicleList: React.FC = () => {
                                                     }
                                                     return (
                                                         <tr key={vehicle.id} onClick={() => handleSelectVehicle(vehicle.id)} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
-                                                            <td className="p-3">{regBtn(vehicle)}</td>
-                                                            <td className="p-3 text-slate-700">{vehicle.name}</td>
-                                                            <td className="p-3 text-slate-500">{vehicle.weightCategory || '—'}</td>
+                                                            <td className="p-3">
+                                                                <div className="flex items-center gap-2">{regBtn(vehicle)} <span className="text-[11px] text-slate-500">{vehicle.name}</span></div>
+                                                                {catPill(vehicle)}
+                                                            </td>
                                                             <td className="p-3">
                                                                 {isSuperlink
                                                                     ? <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full text-xs">⚠ Not paired</span>

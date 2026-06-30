@@ -64,6 +64,7 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
         messages = [],
         serviceIntervals = [],
         serviceStatuses = new Map(),
+        drivers = [],
         handleAddFuelEntry,
         handleAddServiceEntry,
         handleAddOtherCost,
@@ -153,13 +154,23 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
                             <h2 className="text-3xl font-black text-white">{vehicle.name}</h2>
                             <span className="font-mono font-bold text-lg text-white tracking-wide bg-gray-700/70 px-3 py-1 rounded-md border border-gray-600">{formatRegistration(vehicle.registration)}</span>
                         </div>
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex gap-2 mt-2 flex-wrap">
                              <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 bg-blue-900/20 px-2 py-1 rounded border border-blue-500/10">
                                 {vehicle.branch}
                             </span>
                             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-900/40 px-2 py-1 rounded border border-gray-700">
                                 {vehicle.weightCategory}
                             </span>
+                            {!isTrailer && (() => {
+                                const drv = (drivers as any[]).find(d => d.assignedVehicleId === vehicle.id);
+                                return (
+                                    <button onClick={() => showModal('assignDriver', { vehicle, onCancel: hideModal })}
+                                        className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${drv ? 'text-emerald-400 bg-emerald-900/20 border-emerald-500/20' : 'text-amber-400 bg-amber-900/20 border-amber-500/20'}`}
+                                        title="Assign / change driver">
+                                        👤 {drv ? drv.name : '+ Assign driver'}
+                                    </button>
+                                );
+                            })()}
                         </div>
                     </div>
                     <div className="flex flex-col items-end">

@@ -443,6 +443,10 @@ export const mapClient = (row: Tables['clients']['Row']): Client => ({
     networkPartner: (row as any).network_partner ?? false,
     accountStatus: (row as any).account_status ?? 'account',
     vetted: (row as any).vetted ?? true,
+    creditApplicationSigned: (row as any).credit_application_signed ?? false,
+    creditApplicationSignedAt: (row as any).credit_application_signed_at ?? undefined,
+    termsSigned: (row as any).terms_signed ?? false,
+    termsSignedAt: (row as any).terms_signed_at ?? undefined,
     vatNo: (row as any).vat_no ?? undefined,
     invoiceDetails: (row as any).invoice_details ?? undefined,
     registrationNumber: (row as any).registration_number ?? undefined,
@@ -1129,6 +1133,10 @@ export const toClientUpdate = (u: Partial<Client>): Tables['clients']['Update'] 
     if ((u as any).networkPartner !== undefined) (row as any).network_partner = (u as any).networkPartner;
     if ((u as any).accountStatus !== undefined) (row as any).account_status = (u as any).accountStatus ?? 'account';
     if ((u as any).vetted !== undefined) (row as any).vetted = (u as any).vetted;
+    if ((u as any).creditApplicationSigned !== undefined) (row as any).credit_application_signed = (u as any).creditApplicationSigned;
+    if ((u as any).creditApplicationSignedAt !== undefined) (row as any).credit_application_signed_at = (u as any).creditApplicationSignedAt ?? null;
+    if ((u as any).termsSigned !== undefined) (row as any).terms_signed = (u as any).termsSigned;
+    if ((u as any).termsSignedAt !== undefined) (row as any).terms_signed_at = (u as any).termsSignedAt ?? null;
     if ((u as any).vatNo !== undefined) (row as any).vat_no = (u as any).vatNo ?? null;
     if ((u as any).invoiceDetails !== undefined) (row as any).invoice_details = (u as any).invoiceDetails ?? null;
     if ((u as any).registrationStatus !== undefined) (row as any).registration_status = (u as any).registrationStatus;

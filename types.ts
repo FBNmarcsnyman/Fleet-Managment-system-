@@ -613,6 +613,11 @@ export interface Client {
     // COD workflow: new clients are 'cod' + unvetted until approved for an account.
     accountStatus?: 'cod' | 'account';
     vetted?: boolean;
+    // Account paperwork: has the client returned a signed credit application / our T&Cs?
+    creditApplicationSigned?: boolean;
+    creditApplicationSignedAt?: string;
+    termsSigned?: boolean;
+    termsSignedAt?: string;
     vatNo?: string;
     invoiceDetails?: string;
     // Client self-registration (public /client-register) fields.

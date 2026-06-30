@@ -69,6 +69,21 @@ const pairLinkedVehicles = (vehicles: Vehicle[]): Vehicle[] => {
     return result;
 };
 
+// Best-effort 6m vs 12m for a superlink leg, read from any length hint on the
+// record (a future trailerLength field, the fleet name, or the category). The
+// shorter (6m) reads first, the 12m second; falls back to registration order.
+const trailerMeters = (v: Vehicle): number => {
+    const s = `${(v as any).trailerLength || ''} ${v.name || ''} ${v.weightCategory || ''}`;
+    if (/\b6\s*m/i.test(s)) return 6;
+    if (/\b12\s*m/i.test(s)) return 12;
+    return 99;
+};
+const orderPair = (a: Vehicle, b: Vehicle): [Vehicle, Vehicle] => {
+    const ma = trailerMeters(a), mb = trailerMeters(b);
+    if (ma !== mb) return ma < mb ? [a, b] : [b, a];
+    return (a.registration || '').localeCompare(b.registration || '') <= 0 ? [a, b] : [b, a];
+};
+
 const VehicleList: React.FC = () => {
     const {
         vehicles = [],
@@ -323,29 +338,63 @@ const VehicleList: React.FC = () => {
                                 <div className="overflow-x-auto bg-white border border-slate-200 rounded-xl">
                                     <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50 text-slate-500"><tr className="border-b border-slate-200">
-                                            <th className="p-3">Registration</th><th className="p-3">Name</th><th className="p-3">Category</th><th className="p-3">Pair</th><th className="p-3">Driver</th><th className="p-3">Branch</th>
+                                            <th className="p-3">Registration</th><th className="p-3">Fleet&nbsp;No</th><th className="p-3">Category</th><th className="p-3">Paired with</th><th className="p-3">Driver</th><th className="p-3">Branch</th>
                                         </tr></thead>
                                         <tbody>
-                                            {vehiclesInGroup.map(vehicle => {
-                                                const isSuperlink = /superlink/i.test(String(vehicle.weightCategory || ''));
-                                                const partner = (vehicle as any).linkedVehicleId ? vehicleById.get((vehicle as any).linkedVehicleId) : null;
-                                                return (
-                                                    <tr key={vehicle.id} onClick={() => handleSelectVehicle(vehicle.id)} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
-                                                        <td className="p-3 font-bold text-[#13294b]">{vehicle.registration || '—'}</td>
-                                                        <td className="p-3 text-slate-700">{vehicle.name}</td>
-                                                        <td className="p-3 text-slate-500">{vehicle.weightCategory || '—'}</td>
-                                                        <td className="p-3">
-                                                            {isSuperlink
-                                                                ? (partner
-                                                                    ? <span className="text-emerald-700 font-bold">↔ {partner.registration || partner.name}</span>
-                                                                    : <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full text-xs">⚠ Not paired</span>)
-                                                                : <span className="text-slate-300">—</span>}
-                                                        </td>
-                                                        <td className="p-3 text-slate-700">{driverByVehicle.get(vehicle.id) || '—'}</td>
-                                                        <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
-                                                    </tr>
+                                            {(() => {
+                                                // Collapse a linked superlink pair onto ONE row. Order the two so the
+                                                // shorter (6m) trailer reads first, then the 12m — see orderPair.
+                                                const shown = new Set<string>();
+                                                const regBtn = (v: Vehicle) => (
+                                                    <button onClick={e => { e.stopPropagation(); handleSelectVehicle(v.id); }}
+                                                        className="font-bold text-[#13294b] hover:text-blue-600 hover:underline" title={`Open ${v.registration || v.name}`}>{v.registration || '—'}</button>
                                                 );
-                                            })}
+                                                const fleetNo = (v?: Vehicle) => v?.name || '—';
+                                                // Click the driver to assign / change / add — opens the assign modal.
+                                                const driverCell = (v: Vehicle) => {
+                                                    const name = driverByVehicle.get(v.id);
+                                                    return (
+                                                        <button onClick={e => { e.stopPropagation(); showModal('assignDriver', { vehicle: v, onCancel: hideModal }); }}
+                                                            className={`text-left hover:underline ${name ? 'text-slate-700' : 'text-blue-600 font-semibold'}`} title="Assign / change driver">
+                                                            {name || '+ Assign'}
+                                                        </button>
+                                                    );
+                                                };
+                                                return vehiclesInGroup.map(vehicle => {
+                                                    if (shown.has(vehicle.id)) return null;
+                                                    shown.add(vehicle.id);
+                                                    const isSuperlink = /superlink/i.test(String(vehicle.weightCategory || ''));
+                                                    const partner = (vehicle as any).linkedVehicleId ? vehicleById.get((vehicle as any).linkedVehicleId) : null;
+                                                    if (isSuperlink && partner && !shown.has(partner.id)) {
+                                                        shown.add(partner.id);
+                                                        const [a, b] = orderPair(vehicle, partner);
+                                                        return (
+                                                            <tr key={vehicle.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                                <td className="p-3">{regBtn(a)} <span className="text-emerald-600 font-bold px-1">↔</span> {regBtn(b)}</td>
+                                                                <td className="p-3 text-slate-700">{fleetNo(a)} / {fleetNo(b)}</td>
+                                                                <td className="p-3 text-slate-500">Superlink <span className="text-[10px] text-slate-400">(6m + 12m)</span></td>
+                                                                <td className="p-3"><span className="text-emerald-700 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded-full">paired</span></td>
+                                                                <td className="p-3">{driverCell(a)}</td>
+                                                                <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
+                                                            </tr>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <tr key={vehicle.id} onClick={() => handleSelectVehicle(vehicle.id)} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                                                            <td className="p-3">{regBtn(vehicle)}</td>
+                                                            <td className="p-3 text-slate-700">{vehicle.name}</td>
+                                                            <td className="p-3 text-slate-500">{vehicle.weightCategory || '—'}</td>
+                                                            <td className="p-3">
+                                                                {isSuperlink
+                                                                    ? <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full text-xs">⚠ Not paired</span>
+                                                                    : <span className="text-slate-300">—</span>}
+                                                            </td>
+                                                            <td className="p-3">{driverCell(vehicle)}</td>
+                                                            <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
+                                                        </tr>
+                                                    );
+                                                });
+                                            })()}
                                         </tbody>
                                     </table>
                                 </div>

@@ -34,14 +34,22 @@ const RecipientPicker: React.FC<Props> = ({ contacts, selectedEmails, onChange, 
         c.getsUpdates && 'Updates',
     ].filter(Boolean) as string[];
 
+    const blankNew = () => ({ name: '', email: '', role: 'Controller', getsDocs: true, getsPod: kind === 'supplier', getsUpdates: false } as Contact);
     const saveNew = () => {
         const email = (n.email || '').trim();
         if (!n.name.trim() || !email) return;
         onAddContact?.({ ...n, name: n.name.trim().toUpperCase(), email });
-        onChange([...selectedEmails, email]); // auto-select the new person
+        // Keep it selected (it may already be selected if promoted from a one-off box).
+        onChange(sel.has(email.toLowerCase()) ? selectedEmails : [...selectedEmails, email]);
         setAdding(false);
-        setN({ name: '', email: '', role: 'Controller', getsDocs: true, getsPod: kind === 'supplier', getsUpdates: false });
+        setN(blankNew());
     };
+
+    // Addresses on this load that were typed in by hand (or pulled from a past load)
+    // but aren't saved contacts yet — offer to promote them to a permanent contact.
+    const knownEmails = new Set(contacts.map(c => (c.email || '').toLowerCase()).filter(Boolean));
+    const unsaved = selectedEmails.filter(e => e && !knownEmails.has(e.toLowerCase()));
+    const promote = (email: string) => { setN({ ...blankNew(), email }); setAdding(true); };
 
     const inp = 'w-full bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm';
     return (
@@ -65,6 +73,17 @@ const RecipientPicker: React.FC<Props> = ({ contacts, selectedEmails, onChange, 
                     </label>
                 );
             })}
+            {onAddContact && unsaved.length > 0 && !adding && (
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-2 space-y-1">
+                    <p className="text-[11px] font-bold text-amber-700">On this load but not saved yet — tap to keep for next time:</p>
+                    {unsaved.map(e => (
+                        <div key={e} className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-slate-600 truncate">{e}</span>
+                            <button type="button" onClick={() => promote(e)} className="shrink-0 text-[10px] font-bold bg-amber-500 hover:bg-amber-400 text-white px-2 py-0.5 rounded">+ Save to company</button>
+                        </div>
+                    ))}
+                </div>
+            )}
             {adding && (
                 <div className="bg-white border border-slate-200 rounded-md p-2 space-y-2 mt-1">
                     <div className="grid grid-cols-2 gap-2">

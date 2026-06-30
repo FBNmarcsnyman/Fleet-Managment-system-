@@ -25,7 +25,8 @@ const dOnly = (s?: string) => (s || '').slice(0, 10);
 
 const DailyShipmentsOverview: React.FC = () => {
     const { loadConfirmations = [], clients = [] } = useOperations() as any;
-    const { showModal } = useUIState();
+    const { showModal, handleOperationsSubViewChange } = useUIState();
+    const goTab = (view: string) => handleOperationsSubViewChange(view);
     const [sel, setSel] = useState<string | null>(null);
 
     const today = todayIso();
@@ -131,48 +132,48 @@ const DailyShipmentsOverview: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <div>
-                    <h4 className="text-sm font-black text-slate-700 uppercase tracking-wider mb-2">🚚 Collecting today ({collectingToday.length})</h4>
+                    <button onClick={() => goTab('opsDay')} className="text-sm font-black text-slate-700 hover:text-blue-600 uppercase tracking-wider mb-2">🚚 Collecting today ({collectingToday.length}) →</button>
                     <List items={collectingToday} />
                 </div>
                 <div>
-                    <h4 className="text-sm font-black text-slate-700 uppercase tracking-wider mb-2">📦 Delivering today ({deliveringToday.length})</h4>
+                    <button onClick={() => goTab('opsDay')} className="text-sm font-black text-slate-700 hover:text-blue-600 uppercase tracking-wider mb-2">📦 Delivering today ({deliveringToday.length}) →</button>
                     <List items={deliveringToday} />
                 </div>
                 <div>
-                    <h4 className="text-sm font-black text-slate-700 uppercase tracking-wider mb-2">🔄 Inbound between depots</h4>
+                    <button onClick={() => goTab('opsManifests')} className="text-sm font-black text-slate-700 hover:text-purple-600 uppercase tracking-wider mb-2">🔄 Inbound between depots →</button>
                     <div className="space-y-2">
                         {inbound.length === 0 && <p className="text-sm text-slate-400">Nothing in transit between depots.</p>}
                         {inbound.map(([lane, items]) => (
-                            <div key={lane} className="bg-white border border-slate-200 rounded-xl p-3">
+                            <button key={lane} onClick={() => goTab('opsManifests')} className="w-full text-left bg-white border border-slate-200 hover:border-purple-300 rounded-xl p-3 transition">
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-black text-purple-700">{lane}</span>
                                     <span className="text-xs font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">{items.length}</span>
                                 </div>
                                 <p className="text-[11px] text-slate-500 mt-1 truncate">{items.map(i => i.loadConNumber).slice(0, 6).join(', ')}</p>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </div>
             </div>
 
             <div>
-                <h4 className="text-sm font-black text-slate-700 uppercase tracking-wider mb-2">🚢 Containers (FCL) — {ctr.active} active</h4>
+                <button onClick={() => goTab('containers')} className="text-sm font-black text-slate-700 hover:text-teal-600 uppercase tracking-wider mb-2">🚢 Containers (FCL) — {ctr.active} active →</button>
                 <div className="flex gap-2 flex-wrap">
-                    <Card label="At sea" n={ctr.atSea} active={false} onClick={() => {}} tone="text-blue-600" />
-                    <Card label="At port" n={ctr.atPort} active={false} onClick={() => {}} tone="text-amber-600" />
-                    <Card label="At depot / yard" n={ctr.atDepot} active={false} onClick={() => {}} tone="text-teal-600" />
-                    <Card label="Empty to turn in" n={ctr.empty} active={false} onClick={() => {}} tone="text-rose-600" />
-                    <Card label="ETA today" n={ctr.etaToday.length} active={false} onClick={() => {}} tone="text-slate-800" />
+                    <Card label="At sea" n={ctr.atSea} active={false} onClick={() => goTab('containers')} tone="text-blue-600" />
+                    <Card label="At port" n={ctr.atPort} active={false} onClick={() => goTab('containers')} tone="text-amber-600" />
+                    <Card label="At depot / yard" n={ctr.atDepot} active={false} onClick={() => goTab('containers')} tone="text-teal-600" />
+                    <Card label="Empty to turn in" n={ctr.empty} active={false} onClick={() => goTab('containers')} tone="text-rose-600" />
+                    <Card label="ETA today" n={ctr.etaToday.length} active={false} onClick={() => goTab('containers')} tone="text-slate-800" />
                 </div>
                 {ctr.etaToday.length > 0 && (
                     <div className="mt-2 bg-white border border-slate-200 rounded-xl p-3">
                         <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2">Arriving port today ({ctr.etaToday.length})</p>
                         <div className="flex flex-wrap gap-1.5">
                             {ctr.etaToday.slice(0, 30).map((c: any) => (
-                                <span key={c.container_no} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px]">
+                                <button key={c.container_no} onClick={() => goTab('containers')} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:border-blue-300 rounded-lg px-2 py-1 text-[11px]">
                                     <span className="font-mono font-bold text-[#13294b]">{c.container_no}</span>
                                     {c.client_name && <span className="text-slate-500">{c.client_name}</span>}
-                                </span>
+                                </button>
                             ))}
                             {ctr.etaToday.length > 30 && <span className="text-[11px] text-slate-400 self-center">+{ctr.etaToday.length - 30} more</span>}
                         </div>

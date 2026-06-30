@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
-import { invokeFn } from '../../lib/supabase';
+import { invokeFn, directSelect, directUpdate } from '../../lib/supabase';
 import { brandedEmail } from '../../lib/emailTemplate';
 import { fetchMarketingContacts, prefsLink, MarketingContact } from '../../lib/marketingContacts';
 
@@ -50,6 +50,23 @@ const ClientCommsView: React.FC<{ carrierMode?: boolean }> = ({ carrierMode }) =
     const [mkKind, setMkKind] = useState<string>(carrierMode ? 'carrier' : 'all');
     const [mkAll, setMkAll] = useState<MarketingContact[]>([]);
     useEffect(() => { fetchMarketingContacts().then(setMkAll); }, []);
+    // Saved audiences — a named, reusable segment (source + filters). Stored on email_settings.
+    type SavedAudience = { name: string; source: 'clients' | 'marketing'; cat: string; audience: Audience; mkKind: string };
+    const [saved, setSaved] = useState<SavedAudience[]>([]);
+    const loadSaved = async () => {
+        try { const { data } = await directSelect('email_settings?id=eq.1&select=marketing_audiences'); const row = Array.isArray(data) ? data[0] : data; setSaved((row?.marketing_audiences as SavedAudience[]) || []); } catch { /* ignore */ }
+    };
+    useEffect(() => { loadSaved(); }, []);
+    const persistSaved = async (list: SavedAudience[]) => { setSaved(list); try { await directUpdate('email_settings', { id: '1' }, { marketing_audiences: list }); } catch { /* non-blocking */ } };
+    const saveAudience = async () => {
+        const name = window.prompt('Name this audience (e.g. "DBN agents", "Carrier prospects"):')?.trim();
+        if (!name) return;
+        const a: SavedAudience = { name, source, cat, audience, mkKind };
+        await persistSaved([...saved.filter(x => x.name.toLowerCase() !== name.toLowerCase()), a]);
+        showToast(`Audience "${name}" saved.`);
+    };
+    const applyAudience = (a: SavedAudience) => { setSource(a.source); setCat(a.cat); setAudience(a.audience); setMkKind(a.mkKind); showToast(`Loaded audience "${a.name}".`); };
+    const deleteAudience = async (name: string) => { if (!window.confirm(`Delete saved audience "${name}"?`)) return; await persistSaved(saved.filter(x => x.name !== name)); };
     // Exclude both opted-out AND bounced (invalid mailbox) addresses from every send.
     const blocked = useMemo(() => new Set(mkAll.filter(c => c.optedOut || c.bounced).map(c => c.email.toLowerCase())), [mkAll]);
 
@@ -158,6 +175,21 @@ const ClientCommsView: React.FC<{ carrierMode?: boolean }> = ({ carrierMode }) =
                 <div className="flex flex-wrap gap-1.5">
                     <button onClick={() => setSource('clients')} className={chip(source === 'clients')}>Client CRM</button>
                     <button onClick={() => setSource('marketing')} className={chip(source === 'marketing')}>Marketing list (incl. prospects/carriers)</button>
+                </div>
+            </div>
+
+            {/* Saved audiences — load a named segment, or save the current one. */}
+            <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Saved audiences</p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                    {saved.length === 0 && <span className="text-[11px] text-slate-400">None yet — set an audience below and save it for reuse.</span>}
+                    {saved.map(a => (
+                        <span key={a.name} className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden">
+                            <button onClick={() => applyAudience(a)} className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">{a.name}</button>
+                            <button onClick={() => deleteAudience(a.name)} title="Delete saved audience" className="px-2 py-1.5 text-xs text-slate-400 hover:text-rose-600 border-l border-slate-200">✕</button>
+                        </span>
+                    ))}
+                    <button onClick={saveAudience} className="px-3 py-1.5 text-xs font-bold rounded-lg border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50">＋ Save current</button>
                 </div>
             </div>
 

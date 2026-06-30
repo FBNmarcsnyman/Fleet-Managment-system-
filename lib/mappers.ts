@@ -103,6 +103,8 @@ export const mapFuelEntry = (row: Tables['fuel_entries']['Row']): FuelEntry => (
     liters: row.liters,
     tripDistance: row.trip_distance_km ?? undefined,
     sourceBowserId: row.source_bowser_id ?? undefined,
+    pulsitOdometer: (row as any).pulsit_odometer ?? undefined,
+    odoVarianceKm: (row as any).odo_variance_km ?? undefined,
 });
 
 // -- service_entries → ServiceEntry ------------------------------------------
@@ -1072,6 +1074,8 @@ export const toFuelEntryInsert = (
     liters: entry.liters,
     trip_distance_km: entry.tripDistance ?? null,
     source_bowser_id: entry.sourceBowserId ?? null,
+    pulsit_odometer: (entry as any).pulsitOdometer ?? null,
+    odo_variance_km: (entry as any).odoVarianceKm ?? null,
     // Optional extras (who filled / time in notes, and per-fill cost).
     notes: (entry as any).notes ?? null,
     cost_per_liter: (entry as any).costPerLiter ?? null,

@@ -79,6 +79,8 @@ export interface FuelEntry {
   liters: number;
   tripDistance?: number;
   sourceBowserId?: string; // Track which bowser was used, if any
+  pulsitOdometer?: number;  // live Pulsit odo captured at a live fill
+  odoVarianceKm?: number;   // entered odo − Pulsit odo (flag if large)
 }
 
 export interface FuelEntryWithCost extends FuelEntry {

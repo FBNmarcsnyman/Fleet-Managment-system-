@@ -96,13 +96,14 @@ const VehicleFuelView: React.FC = () => {
                                             {fills.length === 0 ? <p className="text-slate-400 text-xs">No fuel fills recorded for {v.name}.</p> : (
                                                 <table className="w-full text-xs">
                                                     <thead><tr className="text-left text-[10px] uppercase tracking-wider text-slate-400">
-                                                        <th className="py-1 px-2">Date</th><th className="py-1 px-2">Time</th><th className="py-1 px-2 text-right">Odo</th><th className="py-1 px-2 text-right">Litres</th><th className="py-1 px-2 text-right">Cost</th><th className="py-1 px-2 text-right">L/100km</th><th className="py-1 px-2 text-right">R/km</th>
+                                                        <th className="py-1 px-2">Date</th><th className="py-1 px-2">Time</th><th className="py-1 px-2 text-right">Odo</th><th className="py-1 px-2 text-right">Pulsit Δ</th><th className="py-1 px-2 text-right">Litres</th><th className="py-1 px-2 text-right">Cost</th><th className="py-1 px-2 text-right">L/100km</th><th className="py-1 px-2 text-right">R/km</th>
                                                     </tr></thead>
                                                     <tbody>{fills.slice(0, 60).map((f, i) => (
                                                         <tr key={i} className="border-t border-slate-200">
                                                             <td className="py-1 px-2 text-slate-700">{fmtD(f.date)}</td>
                                                             <td className="py-1 px-2 text-slate-500">{(f as any).time || '—'}</td>
                                                             <td className="py-1 px-2 text-right text-slate-600">{f.odometer ? f.odometer.toLocaleString() : '—'}</td>
+                                                            <td className="py-1 px-2 text-right">{(f as any).odoVarianceKm != null ? <span className={Math.abs((f as any).odoVarianceKm) > 50 ? 'text-amber-600 font-bold' : 'text-emerald-600'} title="Entered odometer minus Pulsit reading at the fill">{Math.abs((f as any).odoVarianceKm) > 50 ? '⚠ ' : ''}{(f as any).odoVarianceKm > 0 ? '+' : ''}{Number((f as any).odoVarianceKm).toLocaleString()}</span> : <span className="text-slate-300">—</span>}</td>
                                                             <td className="py-1 px-2 text-right text-slate-600">{f.liters?.toFixed(1)}</td>
                                                             <td className="py-1 px-2 text-right text-slate-600">{fmtR(f.cost)}</td>
                                                             <td className="py-1 px-2 text-right text-slate-600">{f.consumption ? f.consumption.toFixed(1) : '—'}</td>

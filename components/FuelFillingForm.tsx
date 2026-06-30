@@ -6,7 +6,12 @@ import { TableIcon } from './icons/TableIcon';
 import { LinkIcon } from './icons/LinkIcon';
 import { RefreshIcon } from './icons/RefreshIcon';
 import { useVehicles } from '../contexts/AppContexts';
+import { supabase } from '../lib/supabase';
 import DateField from './operations/DateField';
+
+// Flag a live fill whose entered odometer is more than this far from Pulsit's
+// current reading — likely a typo or wrong vehicle.
+const ODO_FLAG_KM = 50;
 
 interface FuelFillingFormProps {
     vehicles: Vehicle[];
@@ -42,6 +47,18 @@ const FuelFillingForm: React.FC<FuelFillingFormProps> = ({
     const [odometer, setOdometer] = useState('');
     const [liters, setLiters] = useState('');
     const [sourceBowserId, setSourceBowserId] = useState('');
+    // Live Pulsit odometer cross-check (fetched on demand for the chosen vehicle).
+    const [pulsitOdo, setPulsitOdo] = useState<number | null>(null);
+    const [checking, setChecking] = useState(false);
+    const variance = (pulsitOdo != null && odometer) ? Math.round(parseFloat(odometer) - pulsitOdo) : null;
+    const checkPulsit = async () => {
+        const reg = vehicles.find(v => v.id === vehicleId)?.registration;
+        if (!reg || !odometer) { setPulsitOdo(null); return; }
+        setChecking(true);
+        try { const { data } = await supabase.functions.invoke('track', { body: { action: 'vehicle', reg } }); const o = (data as any)?.vehicle?.odometer; setPulsitOdo(typeof o === 'number' ? o : null); }
+        catch { setPulsitOdo(null); }
+        setChecking(false);
+    };
 
     const filteredVehicles = useMemo(() => {
         if (branchFilter === 'All') return vehicles;
@@ -62,11 +79,14 @@ const FuelFillingForm: React.FC<FuelFillingFormProps> = ({
             odometer: parseFloat(odometer),
             liters: parseFloat(liters),
             sourceBowserId: sourceBowserId || undefined,
-        });
+            pulsitOdometer: pulsitOdo ?? undefined,
+            odoVarianceKm: variance ?? undefined,
+        } as any);
 
         // Reset fields for next entry
         setOdometer('');
         setLiters('');
+        setPulsitOdo(null);
         setSourceBowserId('');
     };
 
@@ -220,7 +240,13 @@ const FuelFillingForm: React.FC<FuelFillingFormProps> = ({
                                 </div>
                                 <div>
                                     <label htmlFor="odometer" className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Odometer (km)</label>
-                                    <input id="odometer" type="number" required placeholder="e.g., 12500" value={odometer} onChange={e => setOdometer(e.target.value)} className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary" />
+                                    <input id="odometer" type="number" required placeholder="e.g., 12500" value={odometer} onChange={e => { setOdometer(e.target.value); setPulsitOdo(null); }} onBlur={() => { if (vehicleId && odometer) checkPulsit(); }} className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary" />
+                                    {checking && <p className="text-[10px] text-gray-400 mt-1">Checking tracker…</p>}
+                                    {pulsitOdo != null && variance != null && (
+                                        <p className={`text-[10px] mt-1 font-bold ${Math.abs(variance) > ODO_FLAG_KM ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                            {Math.abs(variance) > ODO_FLAG_KM ? '⚠ ' : '✓ '}Pulsit: {pulsitOdo.toLocaleString()} km{variance !== 0 ? ` · ${variance > 0 ? '+' : ''}${variance.toLocaleString()} km` : ' · matches'}
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
                                     <label htmlFor="liters" className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Fuel (Liters)</label>

@@ -93,7 +93,7 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
                 <div style={{ padding: 22 }}>
                     {loadingErr ? <p style={{ color: '#b91c1c' }}>{loadingErr}</p> : !load ? <p style={{ color: '#6b7280' }}>Loading…</p> : done ? (
                         <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                            <div style={{ fontSize: 44 }}>✅</div>
+                            <div style={{ fontSize: 44 }}>✓</div>
                             <h2 style={{ color: NAVY, margin: '8px 0' }}>POD received</h2>
                             <p style={{ color: '#4b5563' }}>Thank you. The POD for load <strong>{load.load_con_number}</strong> has been sent to FBN Transport.</p>
                         </div>
@@ -109,7 +109,7 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
 
                             <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '0 0 6px' }}>1. Attach the signed POD</p>
                             <button onClick={() => fileRef.current?.click()} style={{ width: '100%', background: file ? '#e2e8f0' : NAVY, color: file ? '#1e293b' : '#fff', border: 'none', padding: 14, borderRadius: 10, fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
-                                {file ? '📷 Change photo' : '📷 Take photo / choose POD'}
+                                {file ? 'Change photo' : 'Take photo / choose POD'}
                             </button>
                             <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" style={{ display: 'none' }} onChange={onFile} />
                             {file && file.type.startsWith('image') && <img src={file.preview} alt="POD" style={{ width: '100%', borderRadius: 8, marginTop: 10, maxHeight: 180, objectFit: 'cover' }} />}
@@ -122,13 +122,13 @@ const PublicPodUpload: React.FC<{ loadId: string }> = ({ loadId }) => {
 
                             <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '18px 0 6px' }}>3. Damage photos (if any)</p>
                             <button onClick={() => dmgRef.current?.click()} style={{ width: '100%', background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                                {damages.length ? `📸 ${damages.length} damage photo(s) added — add more` : '📸 Add damage photos'}
+                                {damages.length ? `${damages.length} damage photo(s) added — add more` : 'Add damage photos'}
                             </button>
                             <input ref={dmgRef} type="file" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={onMulti(setDamages)} />
 
                             <p style={{ color: '#374151', fontSize: 13, fontWeight: 700, margin: '18px 0 6px' }}>4. Client backing documents (optional) <span style={{ color: '#b91c1c', fontWeight: 800 }}>— no invoices</span></p>
                             <button onClick={() => docRef.current?.click()} style={{ width: '100%', background: '#fff', color: '#1e293b', border: '1px solid #cbd5e1', padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                                {docs.length ? `📎 ${docs.length} document(s) added — add more` : '📎 Add client backing documents'}
+                                {docs.length ? `${docs.length} document(s) added — add more` : 'Add client backing documents'}
                             </button>
                             <input ref={docRef} type="file" accept="image/*,application/pdf" multiple style={{ display: 'none' }} onChange={onMulti(setDocs)} />
 

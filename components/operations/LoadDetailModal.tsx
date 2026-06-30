@@ -201,8 +201,8 @@ const StorageHandlingPanel: React.FC<{ lc: any; onSave: (u: any) => Promise<any>
     return (
         <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 mb-3 space-y-2">
             <div className="flex items-center justify-between">
-                <p className="text-xs font-black text-indigo-300 uppercase tracking-wider">🏬 Storage &amp; handling</p>
-                <button onClick={onEditRates} className="text-[11px] font-bold text-indigo-300 hover:underline">⚙ Edit rates</button>
+                <p className="text-xs font-black text-indigo-300 uppercase tracking-wider">Storage &amp; handling</p>
+                <button onClick={onEditRates} className="text-[11px] font-bold text-indigo-300 hover:underline">Edit rates</button>
             </div>
             {/* Storage clock */}
             <div className="flex flex-wrap items-end gap-2 text-xs text-gray-300">
@@ -547,7 +547,7 @@ const LoadDetailModal: React.FC = () => {
                     )}
                     <p className="text-sm text-slate-500">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                     {groupTrucks.length > 1 && (
-                        <p className="text-xs font-bold text-[#13294b] mt-0.5">🚚 Split waybill {lc.loadRefNo || ''} · truck {Math.max(1, groupTrucks.findIndex(t => t.id === lc.id) + 1)} of {groupTrucks.length}</p>
+                        <p className="text-xs font-bold text-[#13294b] mt-0.5">Split waybill {lc.loadRefNo || ''} · truck {Math.max(1, groupTrucks.findIndex(t => t.id === lc.id) + 1)} of {groupTrucks.length}</p>
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -560,13 +560,13 @@ const LoadDetailModal: React.FC = () => {
                     })()}
                     {!editing && nextStep(lc) && <button onClick={quickAdvance} disabled={advancing} title="Move this load to the next status" className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-50">{advancing ? '…' : `${nextStep(lc)!.label} →`}</button>}
                     {!editing && canMarkDelivered && <button onClick={markDelivered} disabled={advancing} title="Mark this load delivered now (skips the in-between steps)" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-50">✓ Mark delivered</button>}
-                    {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">📄 View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
-                    {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>📷 Capture</button>}
-                    {!editing && <button onClick={whatsappDriver} className={tbtn}>💬 WhatsApp</button>}
-                    {!editing && <button onClick={copyDriverLink} title="Copy the driver job + self-update link to paste into WhatsApp — the driver taps it to update status (loaded → on route → arrived → delivered) and upload the POD." className={tbtn}>🔗 Driver link</button>}
-                    {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className={tbtn}>📁 Documents</button>}
-                    {!editing && <button onClick={() => showModal('splitLoad', { loadCon: lc })} title="One waybill carried by several trucks/subbies — allocate transporters, split the cost, send each their loadcon." className={tbtn}>🚚 Split{lc.loadGroupId ? ' ✓' : ''}</button>}
-                    {!editing && <button onClick={() => showModal('offerLoad', { loadCon: lc })} title="Market this load to carriers who run this lane + truck type; invite their best rate." className={tbtn}>📣 Offer{(lc as any).offeredCarriers?.length ? ` · ${(lc as any).offeredCarriers.length}` : ''}</button>}
+                    {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
+                    {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>Capture</button>}
+                    {!editing && <button onClick={whatsappDriver} className={tbtn}>WhatsApp</button>}
+                    {!editing && <button onClick={copyDriverLink} title="Copy the driver job + self-update link to paste into WhatsApp — the driver taps it to update status (loaded → on route → arrived → delivered) and upload the POD." className={tbtn}>Driver link</button>}
+                    {!editing && <button onClick={() => showModal('loadDocuments', { loadCon: lc })} className={tbtn}>Documents</button>}
+                    {!editing && <button onClick={() => showModal('splitLoad', { loadCon: lc })} title="One waybill carried by several trucks/subbies — allocate transporters, split the cost, send each their loadcon." className={tbtn}>Split{lc.loadGroupId ? ' ✓' : ''}</button>}
+                    {!editing && <button onClick={() => showModal('offerLoad', { loadCon: lc })} title="Market this load to carriers who run this lane + truck type; invite their best rate." className={tbtn}>Offer{(lc as any).offeredCarriers?.length ? ` · ${(lc as any).offeredCarriers.length}` : ''}</button>}
                     {!editing && !lc.supplierId && (
                         <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} title="Shipment going onward (e.g. to CPT) after collection — raise a subcontractor LoadCon; it then shows on the Broking board to keep updating." className={tbtn}>↪ Onward</button>
                     )}
@@ -583,11 +583,11 @@ const LoadDetailModal: React.FC = () => {
                 const finalRegion = (lc.destinationBranch || '').replace('FBN ', '') || (lc.deliveryPoint || '').split(',').pop()?.trim();
                 return (
                     <div className="rounded-xl p-4 border bg-indigo-50 border-indigo-200">
-                        <p className="text-[11px] font-black uppercase tracking-widest mb-1 text-indigo-700">🔄 Transit via {lc.transitDepot}</p>
+                        <p className="text-[11px] font-black uppercase tracking-widest mb-1 text-indigo-700">Transit via {lc.transitDepot}</p>
                         <p className="text-sm text-slate-700 mb-2">Leg 1 (subbie): <strong>{(lc.collectionBranch || '').replace('FBN ', '') || 'origin'} → {lc.transitDepot}</strong> · Leg 2 (FBN): <strong>line-haul {lc.transitDepot} → {finalRegion}</strong>, then local delivery.</p>
                         {!received ? (
                             <button onClick={() => handleUpdateLoadConfirmation(lc.id, { transitReceivedAt: new Date().toISOString(), status: 'At Collection Depot' as any }).then((r: any) => showToast(r?.ok === false ? `Could not update: ${r.error}` : `Received at ${lc.transitDepot} — add it to the ${finalRegion} line-haul manifest.`))}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm">📦 Mark received at {lc.transitDepot} depot</button>
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Mark received at {lc.transitDepot} depot</button>
                         ) : (
                             <div className="space-y-2">
                                 <p className="text-xs text-slate-600">At {lc.transitDepot} depot for <strong className={dwellH >= 48 ? 'text-rose-600' : 'text-slate-800'}>{dwellH}h</strong>{dwellH >= 48 ? ' — chase the line-haul' : ''}. Add to the <strong>{finalRegion} line-haul manifest</strong> for the inter-depot transfer, then deliver locally on arrival.</p>
@@ -599,8 +599,8 @@ const LoadDetailModal: React.FC = () => {
                                         className="bg-[#13294b] text-white font-bold py-1.5 px-3 rounded-md text-sm">Save plan</button>
                                 </div>
                                 <div className="flex flex-wrap gap-2 pt-1">
-                                    <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">🚚 FBN planned delivery</button>
-                                    <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">🔁 Reroute with subbie</button>
+                                    <button onClick={() => showModal('assignFbn', { loadCon: lc })} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">FBN planned delivery</button>
+                                    <button onClick={() => showModal('assignLoadCon', { loadCon: lc })} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 px-3 rounded-md text-sm">Reroute with subbie</button>
                                 </div>
                             </div>
                         )}
@@ -699,7 +699,7 @@ const LoadDetailModal: React.FC = () => {
                                 </div>
                             ))}
                         </div>
-                        <button onClick={linkWaybill} disabled={linkBusy} className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white font-bold py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">{linkBusy ? 'Linking…' : '🔗 Link as one waybill job'}</button>
+                        <button onClick={linkWaybill} disabled={linkBusy} className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white font-bold py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">{linkBusy ? 'Linking…' : 'Link as one waybill job'}</button>
                     </div>
                 )}
                 <Section title="Order" accent="bg-brand-secondary">
@@ -825,7 +825,7 @@ const LoadDetailModal: React.FC = () => {
                         <div className={`mt-3 p-3 rounded-lg border ${lc.podAuthorisation === 'blocked' ? 'border-red-500/50 bg-red-500/10' : 'border-amber-400/40 bg-amber-500/5'}`}>
                             {lc.podAuthorisation === 'blocked' ? (
                                 <>
-                                    <p className="text-[11px] font-black text-red-400 uppercase tracking-widest">⛔ POD BLOCKED — never send as-is</p>
+                                    <p className="text-[11px] font-black text-red-400 uppercase tracking-widest">POD BLOCKED — never send as-is</p>
                                     <p className="text-xs text-slate-300 mt-1 mb-2">This upload contained an <strong>invoice or incorrect document</strong> and must <strong>never</strong> go to the client. To serve a clean POD, upload a <strong>cleaned version</strong> below — the as-is file is permanently barred from sending.</p>
                                 </>
                             ) : (
@@ -836,8 +836,8 @@ const LoadDetailModal: React.FC = () => {
                             )}
                             {isSuperAdmin ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {podLink && <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-2 px-3 rounded-lg">📄 View / download original</a>}
-                                    {lc.podAuthorisation !== 'blocked' && <button onClick={() => authorisePod()} disabled={authorising} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{authorising ? '…' : '✅ Authorise as-is & send to client'}</button>}
+                                    {podLink && <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-2 px-3 rounded-lg">View / download original</a>}
+                                    {lc.podAuthorisation !== 'blocked' && <button onClick={() => authorisePod()} disabled={authorising} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{authorising ? '…' : '✓ Authorise as-is & send to client'}</button>}
                                     <label className="text-xs font-bold bg-amber-500 hover:bg-amber-400 text-white py-2 px-3 rounded-lg cursor-pointer">⬆ Upload cleaned version &amp; send<input type="file" className="hidden" accept="application/pdf,image/*" onChange={e => { const f = e.target.files?.[0]; if (f) authorisePod(f); e.currentTarget.value = ''; }} /></label>
                                 </div>
                             ) : (
@@ -850,17 +850,17 @@ const LoadDetailModal: React.FC = () => {
                     {/* COD — cargo held until payment, then released for delivery. */}
                     <div className="mt-3 pt-3 border-t border-slate-200">
                         {(lc as any).codReleasedAt ? (
-                            <p className="text-[11px] font-bold text-emerald-400">💰 COD payment received — cargo RELEASED for delivery ({fmt((lc as any).codReleasedAt)}).</p>
+                            <p className="text-[11px] font-bold text-emerald-400">COD payment received — cargo RELEASED for delivery ({fmt((lc as any).codReleasedAt)}).</p>
                         ) : (lc as any).codHold ? (
                             <div className="p-3 rounded-lg border border-red-500/50 bg-red-500/10">
-                                <p className="text-[11px] font-black text-red-400 uppercase tracking-widest">⛔ COD — cargo HELD pending payment</p>
+                                <p className="text-[11px] font-black text-red-400 uppercase tracking-widest">COD — cargo HELD pending payment</p>
                                 <p className="text-xs text-slate-300 mt-1 mb-2">Ops &amp; the subcontractor must <strong>NOT deliver</strong> until payment is received and the cargo is released.</p>
                                 {isSuperAdmin && <button onClick={codReleasePay} disabled={codBusy} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{codBusy ? '…' : '✓ Payment received — release cargo'}</button>}
                             </div>
                         ) : (
                             <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
                                 <input type="checkbox" checked={false} disabled={codBusy} onChange={e => toggleCodHold(e.target.checked)} className="h-4 w-4 accent-[#13294b]" />
-                                💰 Mark this load <strong>COD</strong> — hold cargo until payment (ops/subbie can't deliver until released)
+                                Mark this load <strong>COD</strong> — hold cargo until payment (ops/subbie can't deliver until released)
                             </label>
                         )}
                     </div>
@@ -868,8 +868,8 @@ const LoadDetailModal: React.FC = () => {
                     <div className="mt-3 pt-3 border-t border-slate-200">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Get the signed POD / waybill back</p>
                         <div className="flex flex-wrap gap-2">
-                            <button onClick={emailWaybillToSupplier} disabled={waybillBusy} className="text-xs font-bold bg-[#13294b] text-white hover:bg-[#1d3a66] disabled:opacity-50 py-2 px-3 rounded-lg">{waybillBusy ? 'Sending…' : '📄 Email waybill/POD to supplier'}</button>
-                            <button onClick={podToDriverWhatsApp} className="text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 py-2 px-3 rounded-lg">💬 WhatsApp driver to sign &amp; upload</button>
+                            <button onClick={emailWaybillToSupplier} disabled={waybillBusy} className="text-xs font-bold bg-[#13294b] text-white hover:bg-[#1d3a66] disabled:opacity-50 py-2 px-3 rounded-lg">{waybillBusy ? 'Sending…' : 'Email waybill/POD to supplier'}</button>
+                            <button onClick={podToDriverWhatsApp} className="text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 py-2 px-3 rounded-lg">WhatsApp driver to sign &amp; upload</button>
                         </div>
                         <p className="text-[10px] text-gray-500 mt-2">Use the waybill email when the supplier prints &amp; signs; use the driver WhatsApp link when the driver signs on-screen and uploads.</p>
                     </div>

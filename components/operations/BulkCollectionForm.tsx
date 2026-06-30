@@ -117,7 +117,7 @@ const BulkCollectionForm: React.FC = () => {
                     <p className="text-xs text-gray-400">One pickup at an unpack depot → many consignments, each delivered to its own door.</p>
                 </div>
                 <DocScanButton prompt={BULK_DOC_PROMPT} schema={BULK_DOC_SCHEMA} onResult={applyScan}
-                    label="📄 Scan manifest" />
+                    label="Scan manifest" />
             </div>
             <div className="grid grid-cols-3 gap-3 mb-4">
                 <div><label className={lbl}>Unpack depot</label><input list="depots" value={depot} onChange={e => setDepot(e.target.value.toUpperCase())} className={inp} /><datalist id="depots">{DEPOTS.map(d => <option key={d} value={d} />)}</datalist></div>

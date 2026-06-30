@@ -227,7 +227,7 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
 
                             {mode === 'accept' && (done || load.accepted_at ? (
                                 <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                                    <div style={{ fontSize: 48 }}>✅</div>
+                                    <div style={{ fontSize: 48 }}>✓</div>
                                     <h3 style={{ color: NAVY }}>Load accepted</h3>
                                     <p style={{ color: '#4b5563' }}>Thank you. FBN Transport has your acceptance and driver details for load {load.load_con_number}.</p>
                                 </div>
@@ -282,7 +282,7 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                                         {err && <p style={{ color: '#b91c1c', fontSize: 14 }}>{err}</p>}
                                         {delivered ? (
                                             <div style={{ textAlign: 'center' }}>
-                                                <p style={{ color: '#16a34a', fontWeight: 700, fontSize: 16 }}>✅ Delivered</p>
+                                                <p style={{ color: '#16a34a', fontWeight: 700, fontSize: 16 }}>✓ Delivered</p>
                                                 {!load.has_pod && <a href={`${window.location.origin}${window.location.pathname}?pod=${loadId}`} style={{ display: 'inline-block', marginTop: 8, background: '#16a34a', color: '#fff', textDecoration: 'none', padding: '14px 26px', borderRadius: 10, fontSize: 16, fontWeight: 800 }}>Upload signed POD + documents →</a>}
                                                 {load.has_pod && <p style={{ color: '#16a34a' }}>POD received — thank you ✓</p>}
                                             </div>

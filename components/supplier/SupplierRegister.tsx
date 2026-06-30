@@ -83,7 +83,7 @@ const SupplierRegister: React.FC<{ inviteToken?: string | null }> = ({ inviteTok
     if (done) return (
         <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
             <div className={`${card} max-w-lg w-full p-10 text-center`}>
-                <div className="text-5xl mb-3">✅</div>
+                <div className="text-5xl mb-3">✓</div>
                 <h1 className="text-2xl font-black text-[#13294b]">Application received</h1>
                 <p className="text-slate-600 text-sm mt-2">Thank you. Your company profile and signed agreement are now with our compliance team for vetting. Reference <strong>{done.ref}</strong> — we've emailed you a confirmation.</p>
                 <a href="/" className="inline-block mt-6 bg-[#13294b] text-white font-bold py-2.5 px-6 rounded-lg text-sm">Done</a>

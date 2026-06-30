@@ -216,7 +216,7 @@ const QuickCollectionForm: React.FC = () => {
                 </div>
                 <div className="border-t border-gray-700 pt-3">
                     <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
-                        <input type="checkbox" checked={isContainer} onChange={e => setIsContainer(e.target.checked)} /> 📦 Container collection
+                        <input type="checkbox" checked={isContainer} onChange={e => setIsContainer(e.target.checked)} /> Container collection
                     </label>
                     {isContainer && (
                         <div className="grid grid-cols-2 gap-3 mt-3">

@@ -76,7 +76,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'opsManifests', label: 'Manifests', group: 'work' },
         { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
         { view: 'deliveries', label: 'Deliveries / POD', group: 'track' },
-        { view: 'liveMap', label: '📍 Live Map', group: 'track' },
+        { view: 'liveMap', label: 'Live Map', group: 'track' },
         { view: 'shipments', label: 'Shipments', group: 'work' },
         { view: 'imports', label: 'Imports', group: 'work' },
         { view: 'lclStatus', label: 'Status Report', group: 'work' },
@@ -199,7 +199,7 @@ const OperationsPortal: React.FC = () => {
                             </React.Fragment>
                         );
                     })}
-                    <button onClick={() => setCustomise(c => !c)} title="Show/hide & reorder your tabs" className={`ml-1 px-2.5 py-2 text-xs font-bold rounded-lg whitespace-nowrap ${customise ? 'bg-[#f5b700] text-[#13294b]' : 'text-slate-500 hover:bg-white'}`}>{customise ? 'Done' : '⚙ Customise'}</button>
+                    <button onClick={() => setCustomise(c => !c)} title="Show/hide & reorder your tabs" className={`ml-1 px-2.5 py-2 text-xs font-bold rounded-lg whitespace-nowrap ${customise ? 'bg-[#f5b700] text-[#13294b]' : 'text-slate-500 hover:bg-white'}`}>{customise ? 'Done' : 'Customise'}</button>
                 </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

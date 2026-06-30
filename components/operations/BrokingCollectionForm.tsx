@@ -166,7 +166,7 @@ const BrokingCollectionForm: React.FC = () => {
 
                 <div className="border-t border-gray-700 pt-3">
                     <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
-                        <input type="checkbox" checked={transitVia} onChange={e => setTransitVia(e.target.checked)} /> 🔄 Route via a transit depot (cross-dock)
+                        <input type="checkbox" checked={transitVia} onChange={e => setTransitVia(e.target.checked)} /> Route via a transit depot (cross-dock)
                     </label>
                     {transitVia && (
                         <div className="mt-3 space-y-3">
@@ -194,7 +194,7 @@ const BrokingCollectionForm: React.FC = () => {
                 <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>
                 <div className="border-t border-gray-700 pt-3">
                     <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
-                        <input type="checkbox" checked={isContainer} onChange={e => setIsContainer(e.target.checked)} /> 📦 Container collection
+                        <input type="checkbox" checked={isContainer} onChange={e => setIsContainer(e.target.checked)} /> Container collection
                     </label>
                     {isContainer && (
                         <div className="grid grid-cols-2 gap-3 mt-3">

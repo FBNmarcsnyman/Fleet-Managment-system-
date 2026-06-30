@@ -286,7 +286,7 @@ const CreateQuoteForm: React.FC<CreateQuoteFormProps> = ({ clients, suppliers, o
                 {hasSummary && (
                     <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
                         <h3 className="text-xs font-black text-amber-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            📦 What you're pricing
+                            What you're pricing
                             {reqSummary.hazardous && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">HAZARDOUS</span>}
                             {reqSummary.cross_border && <span className="bg-purple-600 text-white text-[10px] px-2 py-0.5 rounded-full">CROSS-BORDER</span>}
                         </h3>

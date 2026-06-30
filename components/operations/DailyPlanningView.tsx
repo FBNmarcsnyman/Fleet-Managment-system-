@@ -109,7 +109,7 @@ const DailyPlanningView: React.FC<DailyPlanningViewProps> = ({
 
             {consolidation.length > 0 && (
                 <div className="bg-indigo-900/20 border border-indigo-500/30 p-4 rounded-2xl">
-                    <h3 className="text-sm font-black text-indigo-200 uppercase tracking-widest mb-1">🔗 Consolidation opportunities</h3>
+                    <h3 className="text-sm font-black text-indigo-200 uppercase tracking-widest mb-1">Consolidation opportunities</h3>
                     <p className="text-[11px] text-indigo-300/70 mb-3">Active loads heading to the same area — combine onto one run. Cross-branch matches are highlighted.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {consolidation.map(g => (

@@ -61,7 +61,7 @@ const ManifestDoc: React.FC = () => {
             <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                 <h2 className="text-xl font-black text-slate-900">Manifest {m.manifestNumber}</h2>
                 <div className="flex gap-2">
-                    <button onClick={print} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg text-sm">🖨 Print</button>
+                    <button onClick={print} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Print</button>
                     <button onClick={email} disabled={busy} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm disabled:opacity-50">✉ Email depot</button>
                     {m.status !== 'Arrived' && <button onClick={receive} disabled={busy} className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-4 rounded-lg text-sm disabled:opacity-50">✓ Receive</button>}
                 </div>

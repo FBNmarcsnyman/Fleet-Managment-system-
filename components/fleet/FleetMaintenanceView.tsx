@@ -28,7 +28,7 @@ const FleetMaintenanceView: React.FC = () => {
             {planBookings.length > 0 && (
                 <div className="mb-6 bg-amber-500/10 border border-amber-500/40 rounded-2xl p-4">
                     <h3 className="text-sm font-black text-amber-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        🛠️ Book into dealer plan
+                        Book into dealer plan
                         <span className="bg-amber-500 text-white text-[11px] px-2 py-0.5 rounded-full">{planBookings.length}</span>
                     </h3>
                     <div className="space-y-2">

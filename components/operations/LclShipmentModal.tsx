@@ -105,7 +105,7 @@ const LclShipmentModal: React.FC = () => {
                     <h2 className="text-xl font-black text-white">{existing?.id ? 'Shipment' : 'Log'} — {f.fbn_di || f.file_ref || 'LCL groupage'}</h2>
                     {existing?.client_sheet && <p className="text-xs text-gray-400">{existing.client_sheet}</p>}
                 </div>
-                <DocScanButton prompt={DRO_DOC_PROMPT} schema={DRO_DOC_SCHEMA} onResult={applyScan} label="📄 Scan DRO / release" />
+                <DocScanButton prompt={DRO_DOC_PROMPT} schema={DRO_DOC_SCHEMA} onResult={applyScan} label="Scan DRO / release" />
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div><label className={lbl}>FBN DI</label><input value={f.fbn_di || ''} onChange={e => set('fbn_di', e.target.value)} className={inp} /></div>
@@ -144,7 +144,7 @@ const LclShipmentModal: React.FC = () => {
                 <input type="file" accept="image/*,application/pdf" multiple onChange={e => setDocs(Array.from(e.target.files || []))}
                     className="w-full text-sm text-gray-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-gray-700 file:text-white file:font-bold" />
                 {docs.length > 0 && <p className="text-[11px] text-emerald-300 mt-1">{docs.length} file{docs.length === 1 ? '' : 's'} ready to email</p>}
-                <button type="button" onClick={emailReport} disabled={emailing} className="mt-2 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white font-bold text-sm py-2 px-4 rounded-lg">{emailing ? 'Emailing…' : `📧 Email report${f.damaged ? ' + damage advice' : ''} to client`}</button>
+                <button type="button" onClick={emailReport} disabled={emailing} className="mt-2 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white font-bold text-sm py-2 px-4 rounded-lg">{emailing ? 'Emailing…' : `Email report${f.damaged ? ' + damage advice' : ''} to client`}</button>
             </div>
             <div className="flex justify-end gap-3 mt-6">
                 <button type="button" onClick={hideModal} disabled={busy} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2.5 px-5 rounded-lg disabled:opacity-50">Cancel</button>

@@ -126,7 +126,7 @@ const CartageAdviceScanModal: React.FC = () => {
                     <h2 className="text-xl font-black text-white">Import job — scan cartage advice</h2>
                     <p className="text-xs text-gray-400">Scan the cartage advice / delivery order, check, pick who to bill, save.</p>
                 </div>
-                <DocScanButton prompt={CARTAGE_DOC_PROMPT} schema={CARTAGE_DOC_SCHEMA} onResult={applyScan} label="📄 Scan cartage advice" />
+                <DocScanButton prompt={CARTAGE_DOC_PROMPT} schema={CARTAGE_DOC_SCHEMA} onResult={applyScan} label="Scan cartage advice" />
             </div>
 
             {/* Job type */}

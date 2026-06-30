@@ -44,7 +44,7 @@ const BreakdownTyre: React.FC = () => {
     if (done) return (
         <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
             <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-sm w-full text-center">
-                <div className="text-5xl mb-2">🛠️</div>
+                <div className="mx-auto mb-3 w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black">✓</div>
                 <h1 className="text-2xl font-black text-[#13294b]">Breakdown logged</h1>
                 <p className="text-slate-600 mt-1">The workshop has been notified. Reference <strong>{done.reference}</strong>.</p>
                 <p className="text-[12px] text-slate-400 mt-3">Once you're back on the road, the workshop or ops will close this off with the breakdown waybill.</p>
@@ -70,7 +70,7 @@ const BreakdownTyre: React.FC = () => {
                     </div>
                     <div>
                         <label className={lbl}>Current location</label>
-                        <div className="flex gap-2"><input value={f.location} onChange={e => set('location', e.target.value)} className={inp} placeholder="Address or landmark" /><button type="button" onClick={useGps} className="shrink-0 bg-[#13294b] text-white font-bold px-3 rounded-lg text-sm">📍 GPS</button></div>
+                        <div className="flex gap-2"><input value={f.location} onChange={e => set('location', e.target.value)} className={inp} placeholder="Address or landmark" /><button type="button" onClick={useGps} className="shrink-0 bg-[#13294b] text-white font-bold px-3 rounded-lg text-sm">GPS</button></div>
                     </div>
                     <div><label className={lbl}>What happened?</label><textarea value={f.description} onChange={e => set('description', e.target.value)} rows={2} className={inp} style={{ textTransform: 'none' }} /></div>
                     <div><label className={lbl}>Tyre position that failed</label><select value={f.tyrePosition} onChange={e => set('tyrePosition', e.target.value)} className={inp}>{POSITIONS.map(p => <option key={p}>{p}</option>)}</select></div>
@@ -90,7 +90,7 @@ const BreakdownTyre: React.FC = () => {
                     <div><label className={lbl}>Estimated time back on road</label><input value={f.etaBack} onChange={e => set('etaBack', e.target.value)} className={inp} placeholder="e.g. 2 hours" /></div>
                     <div>
                         <label className={lbl}>Photos (scene, damaged tyre, replacement)</label>
-                        <label className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold cursor-pointer bg-[#13294b] text-white">📷 Add photos<input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={e => addPhotos(e.target.files)} /></label>
+                        <label className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold cursor-pointer bg-[#13294b] text-white">Add photos<input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={e => addPhotos(e.target.files)} /></label>
                         {photos.length > 0 && <p className="text-xs text-emerald-700 mt-1">{photos.length} photo(s) attached</p>}
                     </div>
                 </div>

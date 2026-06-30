@@ -9,7 +9,7 @@ const DocScanButton: React.FC<{
     onResult: (data: any) => void;
     label?: string;
     className?: string;
-}> = ({ prompt, schema, onResult, label = '📄 Scan document', className }) => {
+}> = ({ prompt, schema, onResult, label = 'Scan document', className }) => {
     const ref = useRef<HTMLInputElement>(null);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState<string | null>(null);

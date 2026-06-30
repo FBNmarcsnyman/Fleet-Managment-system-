@@ -100,7 +100,7 @@ const ComplianceExpiryWidget: React.FC = () => {
                             {items.map((i, idx) => (
                                 <tr key={idx} className="border-t border-gray-700/50">
                                     <td className="py-1.5 pr-2 text-white">
-                                        <span className="text-[10px] text-gray-500 mr-1">{i.subject === 'Driver' ? '👤' : '🚛'}</span>{i.who}
+                                        <span className="text-[10px] text-gray-500 mr-1">{i.subject === 'Driver' ? '' : ''}</span>{i.who}
                                     </td>
                                     <td className="py-1.5 px-2 text-gray-400">{i.kind}</td>
                                     <td className="py-1.5 px-2 text-gray-400 font-mono">{i.date}</td>

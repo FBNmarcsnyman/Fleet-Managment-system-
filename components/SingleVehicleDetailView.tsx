@@ -167,7 +167,7 @@ const SingleVehicleDetailView: React.FC<{ vehicle: Vehicle; isEmbedded?: boolean
                                     <button onClick={() => showModal('assignDriver', { vehicle, onCancel: hideModal })}
                                         className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${drv ? 'text-emerald-400 bg-emerald-900/20 border-emerald-500/20' : 'text-amber-400 bg-amber-900/20 border-amber-500/20'}`}
                                         title="Assign / change driver">
-                                        👤 {drv ? drv.name : '+ Assign driver'}
+                                        {drv ? drv.name : '+ Assign driver'}
                                     </button>
                                 );
                             })()}

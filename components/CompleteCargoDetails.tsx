@@ -73,7 +73,7 @@ const CompleteCargoDetails: React.FC<{ loadId: string }> = ({ loadId }) => {
                 <div style={{ padding: 22 }}>
                     {err && !load ? <p style={{ color: '#b91c1c' }}>{err}</p> : !load ? <p style={{ color: '#6b7280' }}>Loading…</p> : done ? (
                         <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                            <div style={{ fontSize: 44 }}>✅</div>
+                            <div style={{ fontSize: 44 }}>✓</div>
                             <h2 style={{ color: NAVY, margin: '8px 0' }}>Saved</h2>
                             <p style={{ color: '#4b5563' }}>Thank you. The cargo details for <strong>{load.load_con_number}</strong> have been updated{condition === 'damaged' ? ' and the damage has been logged' : ''}.</p>
                         </div>
@@ -106,7 +106,7 @@ const CompleteCargoDetails: React.FC<{ loadId: string }> = ({ loadId }) => {
                                 </>
                             )}
                             <label style={lbl}>Photos {condition === 'damaged' && <span style={{ color: '#dc2626' }}>— please attach damage photos</span>}</label>
-                            <button onClick={() => photoRef.current?.click()} style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', fontWeight: 700, color: NAVY, cursor: 'pointer' }}>📷 {photos.length ? `${photos.length} photo(s) — add more` : 'Take / add photos'}</button>
+                            <button onClick={() => photoRef.current?.click()} style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', fontWeight: 700, color: NAVY, cursor: 'pointer' }}>{photos.length ? `${photos.length} photo(s) — add more` : 'Take / add photos'}</button>
                             <input ref={photoRef} type="file" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={addPhotos} />
                             {photos.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>{photos.map((p, i) => <img key={i} src={p.url} alt="" style={{ height: 60, width: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }} />)}</div>}
                             <p style={{ color: '#94a3b8', fontSize: 11, margin: '8px 0 14px' }}>Photos &amp; damage notes are stored on the FBN system — not sent to the client unless FBN chooses to.</p>

@@ -78,7 +78,7 @@ const LogContainerModal: React.FC = () => {
             <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <h2 className="text-xl font-black text-white">{editing ? 'Edit' : 'Log'} Container</h2>
                 <DocScanButton prompt={CONTAINER_DOC_PROMPT} schema={CONTAINER_DOC_SCHEMA} onResult={applyScan}
-                    label="📄 Scan arrival doc" />
+                    label="Scan arrival doc" />
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div><label className={lbl}>Container #</label><input value={f.container_no || ''} onChange={e => set('container_no', e.target.value)} className={inp} placeholder="ABCU1234567" /></div>

@@ -24,8 +24,8 @@ const CollectFab: React.FC = () => {
         <div className="fixed z-40 right-4 bottom-20 md:bottom-6 flex flex-col items-end gap-2">
             {open && (
                 <div className="flex flex-col items-end gap-2 mb-1">
-                    <button onClick={() => go('quickCollection')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-full shadow-lg text-sm whitespace-nowrap active:scale-95">🚚 Ops collection</button>
-                    <button onClick={() => go('brokingCollection')} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-full shadow-lg text-sm whitespace-nowrap active:scale-95">📋 Broking collection</button>
+                    <button onClick={() => go('quickCollection')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-full shadow-lg text-sm whitespace-nowrap active:scale-95">Ops collection</button>
+                    <button onClick={() => go('brokingCollection')} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-full shadow-lg text-sm whitespace-nowrap active:scale-95">Broking collection</button>
                 </div>
             )}
             <button onClick={() => setOpen(o => !o)} aria-label="Log a collection"

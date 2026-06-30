@@ -23,7 +23,7 @@ const Topbar: React.FC = () => {
     const [pushOn, setPushOn] = useState(pushAlreadyEnabled());
     const turnOnPush = async () => {
         const r = await enablePush(currentUser?.id);
-        if (r.ok) { setPushOn(true); alert('Notifications enabled on this device. 🔔'); }
+        if (r.ok) { setPushOn(true); alert('Notifications enabled on this device. '); }
         else alert(r.error || 'Could not enable notifications.');
     };
     const { currentView, isOnline, setSidebarOpen } = useUIState();
@@ -68,7 +68,7 @@ const Topbar: React.FC = () => {
                     {isPushSupported() && !pushOn && (
                         <button onClick={turnOnPush} title="Get push notifications on this device"
                             className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-blue-300 hover:text-white bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 px-2.5 py-1.5 rounded-lg">
-                            🔔 Enable alerts
+                            Enable alerts
                         </button>
                     )}
                     <div className="relative">

@@ -218,7 +218,7 @@ const LclStatusReport: React.FC = () => {
             {view === 'current' && readyByDepot.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                     <button onClick={() => setShowCollect(s => !s)} className="w-full flex items-center justify-between text-left">
-                        <span className="text-sm font-black text-amber-800">🚚 Ready to collect — {readyByDepot.reduce((s, [, l]) => s + l.length, 0)} shipment(s) unpacked at {readyByDepot.length} depot(s)</span>
+                        <span className="text-sm font-black text-amber-800">Ready to collect — {readyByDepot.reduce((s, [, l]) => s + l.length, 0)} shipment(s) unpacked at {readyByDepot.length} depot(s)</span>
                         <span className="text-amber-700 text-xs font-bold">{showCollect ? '▼ hide' : '▶ show'}</span>
                     </button>
                     {showCollect && (

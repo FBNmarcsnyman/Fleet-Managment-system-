@@ -70,7 +70,7 @@ const FuelQuickCapture: React.FC = () => {
     return (
         <div className="bg-gray-800 rounded-2xl border border-gray-700 p-5">
             <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">⛽ Quick capture fillings</h3>
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Quick capture fillings</h3>
                 <span className="text-gray-500 text-lg">{open ? '−' : '+'}</span>
             </button>
             {open && (

@@ -124,7 +124,7 @@ const RfqCard: React.FC<{ rfq: RfqRequest; supplier: Supplier; now: number }> = 
 
             {rfq.status === 'Awarded' && (
                 <p className={`mt-3 text-xs font-bold ${mine?.status === 'Awarded' ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    {mine?.status === 'Awarded' ? '🎉 You were awarded this load — ops will be in touch.' : 'This load has been awarded.'}
+                    {mine?.status === 'Awarded' ? 'You were awarded this load — ops will be in touch.' : 'This load has been awarded.'}
                 </p>
             )}
 

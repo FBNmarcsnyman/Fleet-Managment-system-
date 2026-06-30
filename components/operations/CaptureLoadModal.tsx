@@ -84,11 +84,11 @@ const CaptureLoadModal: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <label className="cursor-pointer text-center bg-brand-primary hover:opacity-90 text-white font-bold text-sm py-2.5 rounded-lg">
-                            📷 Take photo
+                            Take photo
                             <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={e => { addFiles(e.target.files); e.currentTarget.value = ''; }} />
                         </label>
                         <label className="cursor-pointer text-center bg-gray-700 hover:bg-gray-600 text-white font-bold text-sm py-2.5 rounded-lg">
-                            📁 Upload from phone
+                            Upload from phone
                             <input type="file" accept="image/*" multiple className="hidden" onChange={e => { addFiles(e.target.files); e.currentTarget.value = ''; }} />
                         </label>
                     </div>

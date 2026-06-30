@@ -377,7 +377,7 @@ const TransportOrderForm: React.FC<TransportOrderFormProps> = ({ onSubmit }) => 
                             <input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={inputCls} placeholder="manual waybill / DI no (tracking + invoicing)" /></div>
                         <div className="md:col-span-3 bg-gray-900/30 rounded-lg p-3">
                             <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
-                                <input type="checkbox" checked={transitVia} onChange={e => setTransitVia(e.target.checked)} /> 🔄 Subbie delivers to an FBN depot for inter-depot transfer (transit)
+                                <input type="checkbox" checked={transitVia} onChange={e => setTransitVia(e.target.checked)} /> Subbie delivers to an FBN depot for inter-depot transfer (transit)
                             </label>
                             {transitVia && (
                                 <div className="grid grid-cols-2 gap-3 mt-3">

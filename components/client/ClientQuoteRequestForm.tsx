@@ -31,7 +31,7 @@ const ClientQuoteRequestForm: React.FC<{ clientId?: string; onDone: () => void }
 
     if (ref) return (
         <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center max-w-lg mx-auto">
-            <div className="text-5xl mb-3">✅</div>
+            <div className="text-5xl mb-3">✓</div>
             <h2 className="text-2xl font-black text-[#13294b]">Quote request submitted</h2>
             <p className="text-slate-600 text-sm mt-2">Our team will price it and send you a quote. Reference <strong>{ref}</strong>.</p>
             <button onClick={onDone} className="mt-6 bg-[#13294b] text-white font-bold py-2.5 px-6 rounded-lg text-sm">View my quotes</button>

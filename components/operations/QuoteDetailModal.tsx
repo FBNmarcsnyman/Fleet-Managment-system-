@@ -68,12 +68,12 @@ const QuoteDetailModal: React.FC<{
     };
 
     const equipLabels: Record<string, string> = {
-        crane_truck: '🏗️ Crane truck',
-        forklift: '🏭 Forklift',
-        driver_hire: '👷 Driver hire',
+        crane_truck: 'Crane truck',
+        forklift: 'Forklift',
+        driver_hire: 'Driver hire',
         taillift_collection: '⬆️ Tail-lift (collection)',
         taillift_delivery: '⬇️ Tail-lift (delivery)',
-        labour: '💪 Labour',
+        labour: 'Labour',
     };
 
     return (
@@ -103,7 +103,7 @@ const QuoteDetailModal: React.FC<{
 
             {/* Contact Details */}
             <div className="bg-gray-800 rounded-lg p-4 mb-4">
-                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-3">👤 Contact Details</h3>
+                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-3">Contact Details</h3>
                 <div className="grid grid-cols-2 gap-x-6">
                     <Field label="Company" value={rd.company_name || client?.name} />
                     <Field label="Contact Person" value={rd.contact_person || client?.contactPerson} />
@@ -114,7 +114,7 @@ const QuoteDetailModal: React.FC<{
 
             {/* Route */}
             <div className="bg-gray-800 rounded-lg p-4 mb-4">
-                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-3">🚚 Route</h3>
+                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-3">Route</h3>
                 <div className="grid grid-cols-2 gap-x-6">
                     <Field label="Collect From" value={rd.collect_from} />
                     <Field label="Deliver To" value={rd.deliver_to} />
@@ -127,7 +127,7 @@ const QuoteDetailModal: React.FC<{
 
             {/* Cargo Details */}
             <div className="bg-gray-800 rounded-lg p-4 mb-4">
-                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-3">📋 Cargo Details</h3>
+                <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wide mb-3">Cargo Details</h3>
                 <div className="grid grid-cols-2 gap-x-6">
                     <Field label="Commodity" value={rd.commodity || quote.commodity} />
                     <Field label="Packages" value={rd.packages || quote.packaging} />
@@ -143,7 +143,7 @@ const QuoteDetailModal: React.FC<{
             {/* Additional Info (if submitted) */}
             {mi.submitted_at && (
                 <div className="bg-gray-800 rounded-lg p-4 mb-4 border border-green-800/50">
-                    <h3 className="text-sm font-bold text-green-400 uppercase tracking-wide mb-3">📐 Additional Details Received</h3>
+                    <h3 className="text-sm font-bold text-green-400 uppercase tracking-wide mb-3">Additional Details Received</h3>
                     {mi.commodity_details && <Field label="Detailed Commodity" value={mi.commodity_details} />}
                     {mi.dimensions?.length > 0 && (
                         <div className="py-2 border-b border-gray-700/30">
@@ -182,11 +182,11 @@ const QuoteDetailModal: React.FC<{
 
             {/* Action Buttons */}
             {mi.last_requested_at && (
-                <p className="text-xs text-amber-600 font-semibold mt-5 mb-1">📨 More info last requested: <strong>{new Date(mi.last_requested_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>{Number(mi.count) > 1 ? ` · ${mi.count} times` : ''} — waiting on the client's reply.</p>
+                <p className="text-xs text-amber-600 font-semibold mt-5 mb-1">More info last requested: <strong>{new Date(mi.last_requested_at).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>{Number(mi.count) > 1 ? ` · ${mi.count} times` : ''} — waiting on the client's reply.</p>
             )}
             {(quote.status === 'Requested' || quote.status === 'More Info Requested') && (
                 <div className="mb-3">
-                    <label className="block text-xs font-bold uppercase tracking-wide text-amber-400 mb-1">📝 Extra questions for the client <span className="text-gray-400 font-normal normal-case">(optional — added to the "Request More Info" email)</span></label>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-amber-400 mb-1">Extra questions for the client <span className="text-gray-400 font-normal normal-case">(optional — added to the "Request More Info" email)</span></label>
                     {/* One-click question presets — append a standard question to the note. */}
                     <div className="flex flex-wrap gap-1.5 mb-2">
                         {[
@@ -240,7 +240,7 @@ const QuoteDetailModal: React.FC<{
                     className="btn-on-color w-full mt-3 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
                     style={{ background: '#0e7490' }}
                 >
-                    📨 Request Transporter Rates →
+                    Request Transporter Rates →
                 </button>
             )}
 
@@ -285,7 +285,7 @@ const QuoteDetailModal: React.FC<{
                     className="btn-on-color w-full mt-4 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110"
                     style={{ background: '#475569' }}
                 >
-                    {proforma ? 'Sending…' : '🧾 Email COD Proforma (cc debtors)'}
+                    {proforma ? 'Sending…' : 'Email COD Proforma (cc debtors)'}
                 </button>
             )}
 
@@ -298,8 +298,8 @@ const QuoteDetailModal: React.FC<{
                 const copyLink = async () => { try { await navigator.clipboard.writeText(link); } catch { window.prompt('Copy the quote link:', link); } };
                 return (
                     <div className="flex gap-2 mt-4">
-                        <a href={wa} target="_blank" rel="noreferrer" className="btn-on-color flex-1 text-center py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110" style={{ background: '#25D366' }}>📱 Share on WhatsApp</a>
-                        <button onClick={copyLink} className="btn-on-color px-4 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110" style={{ background: NAVY }} title="Copy the client view/accept link">🔗 Copy link</button>
+                        <a href={wa} target="_blank" rel="noreferrer" className="btn-on-color flex-1 text-center py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110" style={{ background: '#25D366' }}>Share on WhatsApp</a>
+                        <button onClick={copyLink} className="btn-on-color px-4 py-3 rounded-lg text-white font-bold text-sm uppercase tracking-wide transition-all hover:brightness-110" style={{ background: NAVY }} title="Copy the client view/accept link">Copy link</button>
                     </div>
                 );
             })()}

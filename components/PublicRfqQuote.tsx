@@ -68,8 +68,8 @@ const PublicRfqQuote: React.FC<{ token: string }> = ({ token }) => {
 
     if (state === 'loading') return <Shell><p className="text-center text-gray-500 py-10">Loading request…</p></Shell>;
     if (state === 'error') return <Shell><p className="text-center text-red-600 py-10 font-semibold">{error || 'This link is no longer valid.'}</p></Shell>;
-    if (state === 'done') return <Shell><div className="text-center py-8"><p className="text-4xl mb-3">✅</p><p className="text-lg font-bold text-gray-900">Quote submitted</p><p className="text-sm text-gray-500 mt-1">Thank you — our ops team will be in touch if you're awarded the load.</p></div></Shell>;
-    if (state === 'declined') return <Shell><div className="text-center py-8"><p className="text-4xl mb-3">👍</p><p className="text-lg font-bold text-gray-900">Noted, thanks</p><p className="text-sm text-gray-500 mt-1">We've recorded that you can't assist on this one.</p></div></Shell>;
+    if (state === 'done') return <Shell><div className="text-center py-8"><p className="text-4xl mb-3">✓</p><p className="text-lg font-bold text-gray-900">Quote submitted</p><p className="text-sm text-gray-500 mt-1">Thank you — our ops team will be in touch if you're awarded the load.</p></div></Shell>;
+    if (state === 'declined') return <Shell><div className="text-center py-8"><p className="text-4xl mb-3">✓</p><p className="text-lg font-bold text-gray-900">Noted, thanks</p><p className="text-sm text-gray-500 mt-1">We've recorded that you can't assist on this one.</p></div></Shell>;
 
     return (
         <Shell>

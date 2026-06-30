@@ -47,8 +47,8 @@ const HelpChat: React.FC = () => {
                     className="fixed right-4 bottom-36 md:bottom-24 z-30 flex items-center gap-2 bg-white border border-slate-300 text-[#13294b] hover:bg-slate-50 font-bold py-2.5 px-4 rounded-full shadow-lg transition active:scale-95"
                     title="Ask the help assistant"
                 >
-                    <span className="text-lg leading-none">💬</span>
-                    <span className="hidden sm:inline text-sm">Help</span>
+                    <span className="text-base font-black leading-none">?</span>
+                    <span className="text-sm">Help</span>
                 </button>
             )}
 
@@ -69,7 +69,7 @@ const HelpChat: React.FC = () => {
                     <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50">
                         {messages.length === 0 && (
                             <div className="text-sm text-slate-500">
-                                <p className="mb-3">Hi 👋 Pick a topic below, or type your own question about anything in the Control Centre.</p>
+                                <p className="mb-3">Hi Pick a topic below, or type your own question about anything in the Control Centre.</p>
                                 <div className="space-y-3">
                                     {TOPICS.map(t => (
                                         <div key={t.label}>

@@ -125,7 +125,7 @@ const MarketingContactsView: React.FC = () => {
 
                 {/* 1) Google Sheet link */}
                 <div className="bg-white border border-slate-200 rounded-lg p-2.5 space-y-1.5">
-                    <p className="text-[11px] font-bold text-slate-600">📊 From a Google Sheet link</p>
+                    <p className="text-[11px] font-bold text-slate-600">From a Google Sheet link</p>
                     <p className="text-[11px] text-slate-500">Paste the sheet link. It must be shared <strong>"Anyone with the link → Viewer"</strong>. We read the email / name / company columns automatically.</p>
                     <div className="flex flex-wrap items-center gap-2">
                         <input value={sheetUrl} onChange={e => setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/…" className={`${inp} flex-1 min-w-[18rem]`} />
@@ -135,14 +135,14 @@ const MarketingContactsView: React.FC = () => {
 
                 {/* 2) CSV file upload */}
                 <div className="bg-white border border-slate-200 rounded-lg p-2.5 space-y-1.5">
-                    <p className="text-[11px] font-bold text-slate-600">📁 Upload a CSV / spreadsheet export</p>
+                    <p className="text-[11px] font-bold text-slate-600">Upload a CSV / spreadsheet export</p>
                     <p className="text-[11px] text-slate-500">Export your sheet/Excel as <strong>.csv</strong> and upload it here.</p>
                     <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} className="text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#13294b] file:text-white file:font-bold file:cursor-pointer" />
                 </div>
 
                 {/* 3) Paste */}
                 <div className="bg-white border border-slate-200 rounded-lg p-2.5 space-y-1.5">
-                    <p className="text-[11px] font-bold text-slate-600">📋 Or paste rows</p>
+                    <p className="text-[11px] font-bold text-slate-600">Or paste rows</p>
                     <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder={'Paste from a sheet (email · name · company columns), or:\nops@acme.co.za, John, ACME Logistics'} className={`${inp} w-full font-mono text-xs`} />
                     <button onClick={doImport} disabled={importing || !text.trim()} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg text-sm">{importing ? 'Importing…' : 'Import pasted'}</button>
                 </div>
@@ -174,7 +174,7 @@ const MarketingContactsView: React.FC = () => {
                                 <td className="py-2 px-2"><span className="text-[10px] font-bold uppercase bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{c.kind}</span></td>
                                 <td className="py-2 px-2 text-slate-500 text-xs">{(c.tags || []).join(', ') || '—'}</td>
                                 <td className="py-2 px-2 text-right pr-3 whitespace-nowrap">
-                                    <button onClick={() => { navigator.clipboard?.writeText(prefsLink(c)); showToast('Self-service link copied — send it to them to update/opt-out.'); }} title="Copy a link they can click to update their details / add colleagues / opt out" className="text-[11px] font-bold text-blue-600 hover:underline mr-3">🔗 link</button>
+                                    <button onClick={() => { navigator.clipboard?.writeText(prefsLink(c)); showToast('Self-service link copied — send it to them to update/opt-out.'); }} title="Copy a link they can click to update their details / add colleagues / opt out" className="text-[11px] font-bold text-blue-600 hover:underline mr-3">link</button>
                                     {c.optedOut
                                         ? <button onClick={() => toggleOpt(c)} className="text-[11px] font-bold text-rose-600">opted out · re-opt-in</button>
                                         : <button onClick={() => toggleOpt(c)} className="text-[11px] font-bold text-emerald-700 hover:underline">opted in · opt out</button>}

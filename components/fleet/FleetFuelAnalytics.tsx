@@ -175,7 +175,7 @@ const FleetFuelAnalytics: React.FC = () => {
 
             {/* Top 5 / Worst 5 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RankCard title="🏆 Top 5 Most Efficient" rows={ranked.best} tone="good" />
+                <RankCard title="Top 5 Most Efficient" rows={ranked.best} tone="good" />
                 <RankCard title="⚠️ 5 Least Efficient" rows={ranked.worst} tone="bad" />
             </div>
             <p className="text-xs text-gray-500 -mt-4">

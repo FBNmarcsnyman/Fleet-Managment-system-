@@ -11,7 +11,7 @@ const fmtD = (d?: string) => { if (!d) return ''; const dt = new Date(d); return
 const money = (n?: number | string) => { const v = Number(n); return isNaN(v) ? '' : 'R ' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); };
 const shortLoc = (a?: string) => { const p = String(a || '').split(',').map(s => s.trim()).filter(Boolean); return p.length ? p[p.length - 1] : (a || ''); };
 const mapLink = (a?: string) => a ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}` : '';
-const withMap = (a?: string) => a ? `${a} &nbsp;<a href="${mapLink(a)}" style="color:#1d4ed8;font-weight:700;white-space:nowrap">📍 View on map</a>` : '';
+const withMap = (a?: string) => a ? `${a} &nbsp;<a href="${mapLink(a)}" style="color:#1d4ed8;font-weight:700;white-space:nowrap">View on map</a>` : '';
 const lblTd = 'padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;white-space:nowrap;vertical-align:top';
 const valTd = 'padding:5px 0;color:#13294b;font-size:13px;font-weight:700';
 const table = (rows: [string, string | undefined][]) => {
@@ -93,7 +93,7 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
     const html = brandedEmail(`<div style="text-align:right;font-weight:800;color:#13294b;font-size:16px;margin-bottom:10px">${lc.loadConNumber}</div>
       <p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
       <p>Please find ${attachments ? 'attached ' : ''}your FBN Load Confirmation${lc.legRole && lc.legRole !== 'Truck' ? ` (<strong>${lc.legRole}</strong>)` : ''} for the load from <strong>${collLoc}</strong> to <strong>${delLoc}</strong>.</p>
-      ${lc.codHold && !lc.codReleasedAt ? `<p style="background:#fef2f2;border:1px solid #dc2626;border-radius:8px;padding:10px 14px;color:#991b1b;font-size:13px;font-weight:700">⛔ COD — DO NOT DELIVER this cargo until FBN sends you a written "released for delivery" confirmation. Collect and hold; we will confirm once payment is received.</p>` : ''}
+      ${lc.codHold && !lc.codReleasedAt ? `<p style="background:#fef2f2;border:1px solid #dc2626;border-radius:8px;padding:10px 14px;color:#991b1b;font-size:13px;font-weight:700">COD — DO NOT DELIVER this cargo until FBN sends you a written "released for delivery" confirmation. Collect and hold; we will confirm once payment is received.</p>` : ''}
       ${lc.transitDepot ? `<p style="background:#eef2ff;border-radius:8px;padding:10px;color:#3730a3;font-size:13px"><strong>Delivery is to our ${lc.transitDepot} depot</strong> — FBN arranges the onward leg from there. Please offload at the depot and obtain a receipt.</p>` : ''}
       ${table([['Collection', withMap(lc.collectionPoint)], ['Delivery', withMap(subDel)], ['Loading date', fmtD(lc.collectionDate)], ['Loading time', lc.loadingTime], lc.legRole && lc.legRole !== 'Truck' ? ['Service', lc.legRole] : ['Load type / size', lc.loadType], ['Weight (kg)', lc.weightKg], ['Commodity', lc.commodity], ['Packaging', lc.packaging], ['Transport rate', lc.supplierRate ? money(lc.supplierRate) : '']])}
       ${lc.specialInstructions ? `<p style="background:#fffbeb;border:1px solid #f5b700;border-radius:8px;padding:10px;font-size:13px;color:#374151"><strong>Instructions:</strong> ${lc.specialInstructions}</p>` : ''}
@@ -231,12 +231,12 @@ const _fmtDT = (s?: string) => { if (!s) return ''; const d = new Date(s); if (i
 const _vehiclePhase = (l: any): { label: string; etaLabel: string; eta: string } => {
     const s = l.status;
     const dlv = l.deliveryEta || l.deliveryDate;
-    if (s === 'Delivered') return { label: '✅ Delivered', etaLabel: '', eta: '' };
-    if (s === 'POD Submitted' || s === 'Invoiced') return { label: '✅ Delivered — POD received', etaLabel: '', eta: '' };
-    if (['Out for Delivery', 'At Destination Depot', 'Unloaded'].includes(s)) return { label: '🚚 Out for delivery', etaLabel: 'ETA delivery', eta: dlv };
-    if (['Collected', 'In Transit'].includes(s)) return { label: '🚚 Loaded — in transit', etaLabel: 'ETA delivery', eta: dlv };
-    if (['At Collection Point', 'Loading'].includes(s)) return { label: '📦 At loading point', etaLabel: 'ETA loading', eta: l.loadingEta };
-    return { label: '🕒 Allocated', etaLabel: 'ETA to loading', eta: l.loadingEta }; // Booked / Driver Assigned
+    if (s === 'Delivered') return { label: '✓ Delivered', etaLabel: '', eta: '' };
+    if (s === 'POD Submitted' || s === 'Invoiced') return { label: '✓ Delivered — POD received', etaLabel: '', eta: '' };
+    if (['Out for Delivery', 'At Destination Depot', 'Unloaded'].includes(s)) return { label: 'Out for delivery', etaLabel: 'ETA delivery', eta: dlv };
+    if (['Collected', 'In Transit'].includes(s)) return { label: 'Loaded — in transit', etaLabel: 'ETA delivery', eta: dlv };
+    if (['At Collection Point', 'Loading'].includes(s)) return { label: 'At loading point', etaLabel: 'ETA loading', eta: l.loadingEta };
+    return { label: 'Allocated', etaLabel: 'ETA to loading', eta: l.loadingEta }; // Booked / Driver Assigned
 };
 
 export async function sendClientGroupUpdate(loads: any[], trigger?: any): Promise<Sent> {

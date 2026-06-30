@@ -90,7 +90,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
                         </button>
                     </div>
                 )) : (
-                    <p className="text-center text-gray-500 py-10 text-sm">You're all caught up 🎉</p>
+                    <p className="text-center text-gray-500 py-10 text-sm">You're all caught up </p>
                 )}
             </div>
         </div>

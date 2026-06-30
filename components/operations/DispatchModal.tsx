@@ -87,7 +87,7 @@ const DispatchModal: React.FC = () => {
             </div>
             <div className="flex gap-3 mt-6">
                 <button type="button" onClick={hideModal} disabled={busy} className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg disabled:opacity-50">Cancel</button>
-                <button type="button" onClick={dispatch} disabled={busy} className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-lg disabled:opacity-50 uppercase tracking-wider">{busy ? 'Dispatching…' : '🚚 Dispatch & notify client'}</button>
+                <button type="button" onClick={dispatch} disabled={busy} className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-lg disabled:opacity-50 uppercase tracking-wider">{busy ? 'Dispatching…' : 'Dispatch & notify client'}</button>
             </div>
         </div>
     );

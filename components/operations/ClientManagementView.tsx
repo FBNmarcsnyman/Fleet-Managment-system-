@@ -52,12 +52,12 @@ const ClientManagementView: React.FC = () => {
         if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
         else showToast(`${c.name}: ${field === 'creditApplicationSigned' ? 'Credit application' : 'Terms'} ${now ? 'marked signed' : 'cleared'}.`);
     };
-    // ⭐ Toggle a company as a strategic Network Partner (own-fleet carrier we build with).
+    // ★ Toggle a company as a strategic Network Partner (own-fleet carrier we build with).
     const togglePartner = async (c: any, e: React.MouseEvent) => {
         e.stopPropagation();
         const res = await handleUpdateClient?.(c.id, { networkPartner: !c.networkPartner } as any);
         if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
-        else showToast(c.networkPartner ? `${c.name} removed from Network Partners.` : `⭐ ${c.name} marked a Network Partner.`);
+        else showToast(c.networkPartner ? `${c.name} removed from Network Partners.` : `★ ${c.name} marked a Network Partner.`);
     };
 
     const active = useMemo(() => (clients as any[]).filter(c => c.isActive !== false), [clients]);
@@ -240,11 +240,11 @@ const ClientManagementView: React.FC = () => {
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search company, contact, email…" className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f5b700] w-64" />
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={() => setLeads(l => !l)} className={`font-bold py-2 px-3 rounded-lg text-sm ${leads ? 'bg-[#f5b700] text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>🎯 Leads {leadRows.length ? `(${leadRows.length})` : ''}</button>
-                    <button onClick={() => { setPendingOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${pendingOnly ? 'bg-amber-500 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Self-registered clients awaiting approval">🆕 Pending approval {pendingCount ? `(${pendingCount})` : ''}</button>
-                    <button onClick={() => { setCodOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${codOnly ? 'bg-rose-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="New / unvetted clients on COD — approve to an account when vetted">💰 COD / Unauthorised {codCount ? `(${codCount})` : ''}</button>
-                    <button onClick={() => { setPartnerOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${partnerOnly ? 'bg-amber-400 text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Strategic network/consortium partners — own-fleet carriers we build with">⭐ Network Partners {partnerCount ? `(${partnerCount})` : ''}</button>
-                    <button onClick={() => { setDocsOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${docsOnly ? 'bg-orange-500 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Account clients missing a signed credit application or signed terms">📄 Docs outstanding {docsCount ? `(${docsCount})` : ''}</button>
+                    <button onClick={() => setLeads(l => !l)} className={`font-bold py-2 px-3 rounded-lg text-sm ${leads ? 'bg-[#f5b700] text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>Leads {leadRows.length ? `(${leadRows.length})` : ''}</button>
+                    <button onClick={() => { setPendingOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${pendingOnly ? 'bg-amber-500 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Self-registered clients awaiting approval">Pending approval {pendingCount ? `(${pendingCount})` : ''}</button>
+                    <button onClick={() => { setCodOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${codOnly ? 'bg-rose-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="New / unvetted clients on COD — approve to an account when vetted">COD / Unauthorised {codCount ? `(${codCount})` : ''}</button>
+                    <button onClick={() => { setPartnerOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${partnerOnly ? 'bg-amber-400 text-[#13294b]' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Strategic network/consortium partners — own-fleet carriers we build with">★ Network Partners {partnerCount ? `(${partnerCount})` : ''}</button>
+                    <button onClick={() => { setDocsOnly(v => !v); setLeads(false); }} className={`font-bold py-2 px-3 rounded-lg text-sm ${docsOnly ? 'bg-orange-500 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`} title="Account clients missing a signed credit application or signed terms">Docs outstanding {docsCount ? `(${docsCount})` : ''}</button>
                     <button onClick={() => { setShowImport(v => !v); setImportResult(null); }} className={`flex items-center font-bold py-2 px-3 rounded-lg text-sm ${showImport ? 'bg-[#13294b] text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`} title="Import your approved-client list with account codes — matches existing clients and updates them">⬆ Import approved (codes)</button>
                     <label htmlFor="bulk-upload" className="flex items-center font-bold py-2 px-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer text-sm"><UploadIcon className="h-4 w-4 mr-1.5" /> Import (new only)</label>
                     <input id="bulk-upload" type="file" onChange={handleFileChange} className="hidden" accept=".xlsx, .xls" />
@@ -281,7 +281,7 @@ const ClientManagementView: React.FC = () => {
             {leads ? (
                 /* ---- LEADS / QUOTE-ASKERS ---- */
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-200 font-black text-[#13294b] text-sm uppercase tracking-wider">🎯 Quote-asker leads <span className="text-slate-400">({leadRows.length})</span></div>
+                    <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-200 font-black text-[#13294b] text-sm uppercase tracking-wider">Quote-asker leads <span className="text-slate-400">({leadRows.length})</span></div>
                     {leadRows.length === 0 ? <div className="px-4 py-10 text-center text-slate-400 text-sm">No quote-asker contacts in this filter.</div> : (
                         <div className="overflow-x-auto"><table className="w-full text-sm">
                             <thead><tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
@@ -321,7 +321,7 @@ const ClientManagementView: React.FC = () => {
                                             <tr key={client.id} className="border-b border-slate-100 hover:bg-blue-50/40">
                                                 <td className="py-2 pl-3 px-2">
                                                     <div className="flex items-center gap-1.5">
-                                                        <button onClick={e => togglePartner(client, e)} title={client.networkPartner ? 'Network Partner — click to remove' : 'Mark as a ⭐ Network Partner'} className={`text-base leading-none ${client.networkPartner ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300'}`}>{client.networkPartner ? '★' : '☆'}</button>
+                                                        <button onClick={e => togglePartner(client, e)} title={client.networkPartner ? 'Network Partner — click to remove' : 'Mark as a ★ Network Partner'} className={`text-base leading-none ${client.networkPartner ? 'text-amber-400' : 'text-slate-300 hover:text-amber-300'}`}>{client.networkPartner ? '★' : '☆'}</button>
                                                         <button onClick={() => showModal('partnerDetail', { partner: client, kind: 'client' })} className="font-bold text-[#13294b] hover:underline text-left">{client.name}</button>
                                                     </div>
                                                     {client.accountCode && <div className="text-[10px] font-mono text-slate-400 ml-6">#{client.accountCode}</div>}

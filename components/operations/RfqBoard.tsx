@@ -236,10 +236,10 @@ const RfqForm: React.FC<{ suppliers: Supplier[]; onClose: () => void; prefillQuo
                 {extraEmails.trim() && carriers.filter(c => picked.has(c.id)).length === 1 && (
                     <label className="flex items-center gap-2 mt-1.5 text-xs text-gray-300 cursor-pointer">
                         <input type="checkbox" checked={saveToSubby} onChange={e => setSaveToSubby(e.target.checked)} className="h-3.5 w-3.5 rounded" />
-                        💾 Save these emails to <strong className="text-white">{carriers.find(c => picked.has(c.id))?.name}</strong>'s contacts for next time
+                        Save these emails to <strong className="text-white">{carriers.find(c => picked.has(c.id))?.name}</strong>'s contacts for next time
                     </label>
                 )}
-                <p className="text-[11px] text-gray-500 mt-1">🔒 Client name/contact/rate are included <strong>only</strong> for FBN internal recipients (<span className="text-gray-400">@fbn-transport.co.za</span>). Subcontractors never see any client detail.</p>
+                <p className="text-[11px] text-gray-500 mt-1">Client name/contact/rate are included <strong>only</strong> for FBN internal recipients (<span className="text-gray-400">@fbn-transport.co.za</span>). Subcontractors never see any client detail.</p>
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
@@ -400,7 +400,7 @@ const QuoteClientModal: React.FC<{ rfq: RfqRequest; quote: CarrierQuote; markup:
                     <span>{quotesCompared} of 3 minimum carrier quote{quotesCompared === 1 ? '' : 's'} compared{minQuotesMet ? '' : ' — below policy minimum'}</span>
                 </div>
                 <div className={`flex items-center gap-2 text-sm ${carrierVetted ? 'text-emerald-400' : 'text-red-400'}`}>
-                    <span>{carrierVetted ? '✓' : '⛔'}</span>
+                    <span>{carrierVetted ? '✓' : ''}</span>
                     <span>Awarded carrier <strong>{quote.companyName || carrier?.name || ''}</strong> {carrierVetted ? 'is vetted' : 'is NOT vetted'}</span>
                 </div>
             </div>
@@ -453,7 +453,7 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
                     <h4 className="text-white font-bold mt-1">{rfq.origin} → {rfq.destination}</h4>
                     {(clientName || quoteNumber) && (
                         <p className="text-[11px] text-emerald-300/90 mt-0.5">
-                            {clientName && <span>👤 {clientName}</span>}
+                            {clientName && <span>{clientName}</span>}
                             {clientName && quoteNumber && <span className="text-gray-600"> · </span>}
                             {quoteNumber && <span className="font-mono">{quoteNumber}</span>}
                         </p>

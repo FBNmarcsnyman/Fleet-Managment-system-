@@ -100,7 +100,7 @@ const DriverHub: React.FC = () => {
             <div className="max-w-xl mx-auto p-4 pb-28 space-y-4">
                 {done ? (
                     <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center">
-                        <div className="text-5xl mb-2">✅</div>
+                        <div className="text-5xl mb-2">✓</div>
                         <h2 className="text-xl font-black text-[#13294b]">Incident reported</h2>
                         <p className="text-slate-600 mt-1">Ref <strong>{done}</strong> — management has been notified.</p>
                         <button onClick={() => { setDone(null); setView('home'); }} className="mt-4 bg-[#13294b] text-white font-bold py-2.5 px-5 rounded-lg">Back to hub</button>
@@ -112,7 +112,7 @@ const DriverHub: React.FC = () => {
                             <div><label className={lbl}>Your contact number</label><input value={driverContact} onChange={e => setDriverContact(e.target.value)} className={inp} inputMode="tel" /></div>
                             <div><label className={lbl}>What happened?</label><select value={inc.incidentType} onChange={e => setInc({ ...inc, incidentType: e.target.value })} className={inp}>{INCIDENT_TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
                             <div><label className={lbl}>Describe it</label><textarea value={inc.description} onChange={e => setInc({ ...inc, description: e.target.value })} rows={4} className={inp} style={{ textTransform: 'none' }} placeholder="What happened, where, who was involved…" /></div>
-                            <div><label className={lbl}>Location</label><div className="flex gap-2"><input value={inc.location} onChange={e => setInc({ ...inc, location: e.target.value })} className={inp} placeholder="Where did it happen?" /><button type="button" onClick={useGps} className="shrink-0 px-3 rounded-lg bg-slate-100 border border-slate-300 text-sm font-bold">📍 GPS</button></div></div>
+                            <div><label className={lbl}>Location</label><div className="flex gap-2"><input value={inc.location} onChange={e => setInc({ ...inc, location: e.target.value })} className={inp} placeholder="Where did it happen?" /><button type="button" onClick={useGps} className="shrink-0 px-3 rounded-lg bg-slate-100 border border-slate-300 text-sm font-bold">GPS</button></div></div>
                             <label className="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" checked={inc.thirdParty} onChange={e => setInc({ ...inc, thirdParty: e.target.checked })} className="w-5 h-5" /> Another vehicle / third party involved</label>
                             <div>
                                 <label className={lbl}>Photos</label>
@@ -161,10 +161,10 @@ const DriverHub: React.FC = () => {
         <div className="min-h-screen bg-slate-100">
             {Header(`${vehicle.name}${vehicle.depot ? ` · ${vehicle.depot}` : ''}`)}
             <div className="max-w-xl mx-auto p-4 space-y-3">
-                {Tile('📋', 'Vehicle inspection', 'Do your daily / pre-trip checklist', () => { window.location.href = `/?checklist=${vehicle.id}`; }, 'bg-white border-slate-200')}
-                {Tile('🛞', 'Report a breakdown', 'Roadside tyre change / breakdown', () => { window.location.href = '/breakdown/tyre'; }, 'bg-white border-slate-200')}
+                {Tile('', 'Vehicle inspection', 'Do your daily / pre-trip checklist', () => { window.location.href = `/?checklist=${vehicle.id}`; }, 'bg-white border-slate-200')}
+                {Tile('', 'Report a breakdown', 'Roadside tyre change / breakdown', () => { window.location.href = '/breakdown/tyre'; }, 'bg-white border-slate-200')}
                 {Tile('⚠️', 'Report an incident', 'Accident, theft, fine or damage', () => { setDone(null); setView('incident'); }, 'bg-white border-slate-200')}
-                {Tile('🗂️', 'My logs', 'See your recent inspections, breakdowns & incidents', openLogs, 'bg-white border-slate-200')}
+                {Tile('', 'My logs', 'See your recent inspections, breakdowns & incidents', openLogs, 'bg-white border-slate-200')}
             </div>
         </div>
     );

@@ -15,7 +15,7 @@ const InspectionPhoto: React.FC<{ path: string; label?: string }> = ({ path, lab
     };
     if (failed) return <span className="text-xs text-slate-400">photo unavailable</span>;
     if (url) return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={label || 'photo'} className="h-20 w-20 object-cover rounded-lg border border-slate-200" /></a>;
-    return <button onClick={load} className="h-20 w-20 rounded-lg border border-dashed border-slate-300 text-[11px] font-bold text-slate-500 hover:bg-slate-50">{loading ? '…' : `📷 ${label || 'View'}`}</button>;
+    return <button onClick={load} className="h-20 w-20 rounded-lg border border-dashed border-slate-300 text-[11px] font-bold text-slate-500 hover:bg-slate-50">{loading ? '…' : `${label || 'View'}`}</button>;
 };
 
 export default InspectionPhoto;

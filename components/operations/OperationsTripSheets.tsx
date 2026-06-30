@@ -86,8 +86,8 @@ const OperationsTripSheets: React.FC = () => {
             {/* On the floor */}
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4">
                 <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-                    <div className="font-black text-[#13294b] text-sm uppercase tracking-wider">🏬 On the floor — {code(branch)} <span className="text-slate-400">({floor.length})</span></div>
-                    {sel.size > 0 && <button onClick={() => setBuilding(floor.filter(l => sel.has(l.id)))} className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-black py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">🚚 Load vehicle → trip sheet ({sel.size})</button>}
+                    <div className="font-black text-[#13294b] text-sm uppercase tracking-wider">On the floor — {code(branch)} <span className="text-slate-400">({floor.length})</span></div>
+                    {sel.size > 0 && <button onClick={() => setBuilding(floor.filter(l => sel.has(l.id)))} className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-black py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">Load vehicle → trip sheet ({sel.size})</button>}
                 </div>
                 {floor.length === 0 ? <div className="px-4 py-8 text-center text-slate-400 text-sm">Nothing on the {code(branch)} floor awaiting delivery.</div> : (
                     <div className="divide-y divide-slate-100">
@@ -105,7 +105,7 @@ const OperationsTripSheets: React.FC = () => {
 
             {/* Trip sheets out for delivery */}
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 font-black text-[#13294b] text-sm uppercase tracking-wider">🚚 Out for delivery <span className="text-slate-400">({trips.length})</span></div>
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 font-black text-[#13294b] text-sm uppercase tracking-wider">Out for delivery <span className="text-slate-400">({trips.length})</span></div>
                 {trips.length === 0 ? <div className="px-4 py-8 text-center text-slate-400 text-sm">No trip sheets running.</div> : (
                     <div className="divide-y divide-slate-100">
                         {trips.map(t => {

@@ -87,7 +87,7 @@ const ImportsBoard: React.FC = () => {
                     <p className="text-xs text-slate-500">LCL groupage awaiting unpack/release. Mark released as the depot frees cargo, then book one collection per depot for the day.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={() => showModal('cartageScan', {})} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm shadow active:scale-95">📄 Scan cartage advice</button>
+                    <button onClick={() => showModal('cartageScan', {})} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm shadow active:scale-95">Scan cartage advice</button>
                     <button onClick={() => showModal('bulkCollection', {})} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm shadow active:scale-95">+ Depot collection</button>
                 </div>
             </div>

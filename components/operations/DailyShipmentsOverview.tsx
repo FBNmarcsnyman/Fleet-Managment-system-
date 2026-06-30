@@ -110,7 +110,7 @@ const DailyShipmentsOverview: React.FC = () => {
 
             {openRequests.length > 0 && (
                 <div className="bg-amber-50 border border-amber-300 rounded-xl p-3">
-                    <p className="text-sm font-black text-amber-800 mb-2">📨 {openRequests.length} client request{openRequests.length !== 1 ? 's' : ''} awaiting a reply</p>
+                    <p className="text-sm font-black text-amber-800 mb-2">{openRequests.length} client request{openRequests.length !== 1 ? 's' : ''} awaiting a reply</p>
                     <div className="flex flex-wrap gap-2">
                         {openRequests.slice(0, 12).map(l => (
                             <button key={l.id} onClick={() => showModal('loadDetail', { loadCon: l })} className="text-xs font-bold bg-white border border-amber-300 hover:bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg">{l.loadConNumber} · {clientName(l)}</button>
@@ -132,15 +132,15 @@ const DailyShipmentsOverview: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <div>
-                    <button onClick={() => goTab('opsDay')} className="text-sm font-black text-slate-700 hover:text-blue-600 uppercase tracking-wider mb-2">🚚 Collecting today ({collectingToday.length}) →</button>
+                    <button onClick={() => goTab('opsDay')} className="text-sm font-black text-slate-700 hover:text-blue-600 uppercase tracking-wider mb-2">Collecting today ({collectingToday.length}) →</button>
                     <List items={collectingToday} />
                 </div>
                 <div>
-                    <button onClick={() => goTab('opsDay')} className="text-sm font-black text-slate-700 hover:text-blue-600 uppercase tracking-wider mb-2">📦 Delivering today ({deliveringToday.length}) →</button>
+                    <button onClick={() => goTab('opsDay')} className="text-sm font-black text-slate-700 hover:text-blue-600 uppercase tracking-wider mb-2">Delivering today ({deliveringToday.length}) →</button>
                     <List items={deliveringToday} />
                 </div>
                 <div>
-                    <button onClick={() => goTab('opsManifests')} className="text-sm font-black text-slate-700 hover:text-purple-600 uppercase tracking-wider mb-2">🔄 Inbound between depots →</button>
+                    <button onClick={() => goTab('opsManifests')} className="text-sm font-black text-slate-700 hover:text-purple-600 uppercase tracking-wider mb-2">Inbound between depots →</button>
                     <div className="space-y-2">
                         {inbound.length === 0 && <p className="text-sm text-slate-400">Nothing in transit between depots.</p>}
                         {inbound.map(([lane, items]) => (
@@ -157,7 +157,7 @@ const DailyShipmentsOverview: React.FC = () => {
             </div>
 
             <div>
-                <button onClick={() => goTab('containers')} className="text-sm font-black text-slate-700 hover:text-teal-600 uppercase tracking-wider mb-2">🚢 Containers (FCL) — {ctr.active} active →</button>
+                <button onClick={() => goTab('containers')} className="text-sm font-black text-slate-700 hover:text-teal-600 uppercase tracking-wider mb-2">Containers (FCL) — {ctr.active} active →</button>
                 <div className="flex gap-2 flex-wrap">
                     <Card label="At sea" n={ctr.atSea} active={false} onClick={() => goTab('containers')} tone="text-blue-600" />
                     <Card label="At port" n={ctr.atPort} active={false} onClick={() => goTab('containers')} tone="text-amber-600" />

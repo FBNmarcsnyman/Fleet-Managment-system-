@@ -15,8 +15,8 @@ const EMAIL_SAMPLES: { key: string; label: string; subject: string; html: string
           <p>Good day ${SAMPLE.name},</p>
           <p>Please find attached your FBN Load Confirmation for the load from <strong>Salt River</strong> to <strong>Bloemfontein</strong>.</p>
           <table style="border-collapse:collapse;margin:6px 0 14px">
-            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Collection</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, RSE Store, Salt River &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
-            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Delivery</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, Wagon Build, Bloemfontein &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Collection</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, RSE Store, Salt River &nbsp;<a href="#" style="color:#1d4ed8">View on map</a></td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Delivery</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, Wagon Build, Bloemfontein &nbsp;<a href="#" style="color:#1d4ed8">View on map</a></td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Loading date</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18/06/2026</td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Load type / size</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">12M</td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Weight (kg)</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18000</td></tr>
@@ -34,8 +34,8 @@ const EMAIL_SAMPLES: { key: string; label: string; subject: string; html: string
           <table style="border-collapse:collapse;margin:6px 0 14px">
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">FBN order no.</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">${SAMPLE.loadConNumber}</td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Your reference</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">PO 88421</td></tr>
-            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Collection</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, RSE Store, Salt River &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
-            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Delivery</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, Wagon Build, Bloemfontein &nbsp;<a href="#" style="color:#1d4ed8">📍 View on map</a></td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Collection</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, RSE Store, Salt River &nbsp;<a href="#" style="color:#1d4ed8">View on map</a></td></tr>
+            <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700;vertical-align:top">Delivery</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">Transnet, Wagon Build, Bloemfontein &nbsp;<a href="#" style="color:#1d4ed8">View on map</a></td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Loading date</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18/06/2026</td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Load type / size</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">12M</td></tr>
             <tr><td style="padding:5px 14px 5px 0;color:#13294b;font-size:13px;font-weight:700">Weight (kg)</td><td style="padding:5px 0;color:#13294b;font-size:13px;font-weight:700">18000</td></tr>
@@ -129,7 +129,7 @@ const DocumentSettingsView: React.FC = () => {
                     <p className="text-xs text-slate-500">Edit the standard wording that prints on every LoadCon, Client Order &amp; POD.</p>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => showModal('manageLists', { onClose: hideModal })} title="Curate the route / commodity / packaging / load-type suggestion lists — hide junk + add approved values" className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-sm">🗂 Manage lists</button>
+                    <button onClick={() => showModal('manageLists', { onClose: hideModal })} title="Curate the route / commodity / packaging / load-type suggestion lists — hide junk + add approved values" className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-2 px-4 rounded-lg text-sm">Manage lists</button>
                     <button onClick={save} disabled={saving} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold py-2 px-5 rounded-lg text-sm">{saving ? 'Saving…' : 'Save changes'}</button>
                 </div>
             </div>

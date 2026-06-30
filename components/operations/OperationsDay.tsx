@@ -11,11 +11,11 @@ import { invokeFn } from '../../lib/supabase';
 //
 // The whole own-fleet day worked as a staged LIST, the way a dispatch desk
 // actually runs it — three stages you click between:
-//   📥 Collections — everything still to collect / at the origin depot. Tick the
+//   Collections — everything still to collect / at the origin depot. Tick the
 //      ones going the same way → GROUP → build a line-haul manifest (inter-depot).
-//   🚛 Line-haul   — the manifests (trucks) in transit; RECEIVE at the depot,
+//   Line-haul   — the manifests (trucks) in transit; RECEIVE at the depot,
 //      which drops the loads onto the delivery list.
-//   🚚 Deliveries  — cargo received at this depot for local delivery to clients.
+//   Deliveries  — cargo received at this depot for local delivery to clients.
 //      Tick the drops → assign a TRIP SHEET (one truck, multiple drops) → deliver
 //      → POD.
 //
@@ -173,9 +173,9 @@ const OperationsDay: React.FC = () => {
 
     const inputCls = 'border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#f5b700]';
     const STAGES: { key: Stage; label: string; n: number }[] = [
-        { key: 'collect', label: '📥 Collections', n: collections.length },
-        { key: 'linehaul', label: '🚛 Line-haul', n: linehaul.length },
-        { key: 'deliver', label: '🚚 Deliveries', n: deliveries.length },
+        { key: 'collect', label: 'Collections', n: collections.length },
+        { key: 'linehaul', label: 'Line-haul', n: linehaul.length },
+        { key: 'deliver', label: 'Deliveries', n: deliveries.length },
     ];
 
     return (
@@ -204,7 +204,7 @@ const OperationsDay: React.FC = () => {
             {stage === 'collect' && (
                 <ListCard title="Collections to action" count={collections.length} empty="Nothing to collect for this filter."
                     leftFilter={<DateChips mode={dateMode} set={setDateMode} />}
-                    action={sel.size > 0 && <BuildBtn count={sel.size} dest={selDests.length === 1 ? code(selDests[0] as string) : ''} label="🚛 Group → build manifest" onClick={() => openBuild('manifest')} onClear={() => setSel(new Set())} />}>
+                    action={sel.size > 0 && <BuildBtn count={sel.size} dest={selDests.length === 1 ? code(selDests[0] as string) : ''} label="Group → build manifest" onClick={() => openBuild('manifest')} onClear={() => setSel(new Set())} />}>
                     {/* desktop table */}
                     <div className="hidden md:block">
                     <Table cols={['', 'Load', 'Client', 'Route', 'Pkgs', 'Weight', 'Collect by', 'FBN unit', 'Status', 'Action']}>
@@ -280,7 +280,7 @@ const OperationsDay: React.FC = () => {
                                     <span className="text-xs text-slate-500">{veh?.registration || 'truck'}{driverName(m.driverId) ? ` · ${driverName(m.driverId)}` : ''} · {n} load{n === 1 ? '' : 's'}</span>
                                     <span className="text-[11px] text-slate-400">disp {fmtDay(m.dispatchDate)}</span>
                                     <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">{m.status || 'In Transit'}</span>
-                                    <button onClick={e => { e.stopPropagation(); receive(m); }} disabled={busy === m.id} className={`ml-auto font-bold py-1 px-3 rounded-lg text-[11px] uppercase text-white ${inbound ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-500 hover:bg-slate-400'} disabled:opacity-50`}>{busy === m.id ? '…' : `📦 Receive at ${code(m.destinationBranch)}`}</button>
+                                    <button onClick={e => { e.stopPropagation(); receive(m); }} disabled={busy === m.id} className={`ml-auto font-bold py-1 px-3 rounded-lg text-[11px] uppercase text-white ${inbound ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-500 hover:bg-slate-400'} disabled:opacity-50`}>{busy === m.id ? '…' : `Receive at ${code(m.destinationBranch)}`}</button>
                                 </div>
                             );
                         })}
@@ -291,7 +291,7 @@ const OperationsDay: React.FC = () => {
             {/* ===== DELIVERIES ===== */}
             {stage === 'deliver' && (
                 <ListCard title="Deliveries from depot" count={deliveries.length} empty="No cargo waiting for delivery at this depot."
-                    action={sel.size > 0 && <BuildBtn count={sel.size} dest="" label="🚚 Assign trip sheet (multi-drop)" onClick={() => openBuild('trip')} onClear={() => setSel(new Set())} />}>
+                    action={sel.size > 0 && <BuildBtn count={sel.size} dest="" label="Assign trip sheet (multi-drop)" onClick={() => openBuild('trip')} onClear={() => setSel(new Set())} />}>
                     {/* desktop table */}
                     <div className="hidden md:block">
                     <Table cols={['', 'Load', 'Client', 'Deliver to', 'Pkgs', 'Weight', 'Deliver by', 'FBN unit', 'Status', 'Action']}>
@@ -422,7 +422,7 @@ const MobileCard: React.FC<{ lc: LoadConfirmation; selected: boolean; onOpen: ()
                 <span className="font-bold text-slate-700">{meta}</span>
                 <span className={overdue ? 'text-red-600 font-bold' : 'text-slate-500'}>{dateLabel}{overdue ? ' ⚠' : ''}</span>
             </div>
-            <div className="text-[11px] text-slate-500 truncate">🚚 {unit}</div>
+            <div className="text-[11px] text-slate-500 truncate">{unit}</div>
             {action && <div className="mt-2" onClick={e => e.stopPropagation()}>{action}</div>}
         </div>
     </div>

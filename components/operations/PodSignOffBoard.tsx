@@ -42,15 +42,15 @@ const PodSignOffBoard: React.FC = () => {
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                         <span className="font-bold text-blue-700 font-mono text-xs">{lc.loadConNumber}</span>
-                        {(lc as any).podAuthorisation === 'blocked' && <span className="text-[10px] font-black text-red-600 uppercase">⛔ blocked</span>}
+                        {(lc as any).podAuthorisation === 'blocked' && <span className="text-[10px] font-black text-red-600 uppercase">blocked</span>}
                         {pending && <span className="text-[10px] font-black text-amber-600 uppercase">⚠ review</span>}
                         {(lc as any).podAuthorisation === 'authorised' && <span className="text-[10px] font-black text-emerald-600 uppercase">sent ✓</span>}
                     </div>
                     <div className="text-xs text-slate-600 truncate">{clientMap.get(lc.clientId || '') || lc.clientName || '—'} · {lc.collectionPoint} → {lc.deliveryPoint}</div>
-                    <div className="text-[11px] text-slate-400 truncate">🚚 {lc.subcontractorName || 'Own fleet'} · delivered {fmtDay(lc.deliveryDate || lc.collectionDate)}</div>
+                    <div className="text-[11px] text-slate-400 truncate">{lc.subcontractorName || 'Own fleet'} · delivered {fmtDay(lc.deliveryDate || lc.collectionDate)}</div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {pod && <a href={pod} target="_blank" rel="noreferrer" className="text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-1.5 px-2.5 rounded-lg">📄 View</a>}
+                    {pod && <a href={pod} target="_blank" rel="noreferrer" className="text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-1.5 px-2.5 rounded-lg">View</a>}
                     <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-[11px] font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-1.5 px-2.5 rounded-lg">{cta === 'signoff' ? 'Sign off →' : 'Open'}</button>
                 </div>
             </div>
@@ -74,9 +74,9 @@ const PodSignOffBoard: React.FC = () => {
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search PODs…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-56" />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-                <SectionCard title="📤 Awaiting sign-off" hint="Uploaded — review & authorise to the client" rows={awaiting} cta="signoff" accent="bg-amber-50 text-amber-800" />
-                <SectionCard title="✅ Finalised" hint="Authorised / sent to the client" rows={finalised} cta="view" accent="bg-emerald-50 text-emerald-800" />
-                <SectionCard title="🗄 Archived" hint="Filed — search & view later" rows={archived} cta="view" accent="bg-slate-100 text-slate-600" />
+                <SectionCard title="Awaiting sign-off" hint="Uploaded — review & authorise to the client" rows={awaiting} cta="signoff" accent="bg-amber-50 text-amber-800" />
+                <SectionCard title="✓ Finalised" hint="Authorised / sent to the client" rows={finalised} cta="view" accent="bg-emerald-50 text-emerald-800" />
+                <SectionCard title="Archived" hint="Filed — search & view later" rows={archived} cta="view" accent="bg-slate-100 text-slate-600" />
             </div>
         </div>
     );

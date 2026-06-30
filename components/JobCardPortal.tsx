@@ -59,7 +59,7 @@ const JobCardPortal: React.FC<any> = () => {
             </div>
 
             <div className="space-y-2 max-w-3xl">
-                {open.length === 0 && <p className="text-center text-slate-400 py-12 bg-white border border-slate-200 rounded-xl">No open job cards. 🎉</p>}
+                {open.length === 0 && <p className="text-center text-slate-400 py-12 bg-white border border-slate-200 rounded-xl">No open job cards. </p>}
                 {open.map((jc: JobCard) => <Row key={jc.id} jc={jc} />)}
             </div>
 

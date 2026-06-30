@@ -53,7 +53,7 @@ const ComplianceVettingView: React.FC = () => {
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                 <h3 className="text-lg font-black text-slate-900 mb-1">Compliance Vetting Queue</h3>
                 <p className="text-xs text-slate-500 mb-4">Documents uploaded by subcontractors awaiting management approval.</p>
-                {pending.length === 0 ? <p className="text-sm text-slate-400 py-4 text-center">Nothing awaiting vetting. ✅</p> : (
+                {pending.length === 0 ? <p className="text-sm text-slate-400 py-4 text-center">Nothing awaiting vetting. ✓</p> : (
                     <div className="space-y-2">
                         {pending.map(({ s, d }) => (
                             <div key={d.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-3">

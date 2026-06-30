@@ -108,7 +108,7 @@ const FuelReconciliation: React.FC = () => {
     return (
         <div className="bg-gray-800 rounded-2xl border border-gray-700 p-5">
             <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">🔎 Tank reconciliation &amp; fuel anomalies</h3>
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Tank reconciliation &amp; fuel anomalies</h3>
                 <div className="flex items-center gap-3"><input type="month" value={month} onChange={e => { e.stopPropagation(); setMonth(e.target.value); }} onClick={e => e.stopPropagation()} className="bg-gray-700 text-white p-1.5 rounded-md border border-gray-600 text-xs" /><span className="text-gray-500 text-lg">{open ? '−' : '+'}</span></div>
             </button>
             {open && (

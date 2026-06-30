@@ -180,7 +180,7 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
     if (done) return (
         <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
             <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-md w-full text-center">
-                <div className="text-5xl mb-2">{done.result === 'Roadworthy' ? '✅' : done.result === 'Grounded' ? '⛔' : '⚠️'}</div>
+                <div className="text-5xl mb-2">{done.result === 'Roadworthy' ? '✓' : done.result === 'Grounded' ? '' : '⚠️'}</div>
                 <h1 className="text-2xl font-black text-[#13294b]">Inspection submitted</h1>
                 <p className="text-slate-600 mt-1">Reference <strong>{done.reference}</strong></p>
                 <p className={`mt-3 inline-block px-3 py-1 rounded-lg font-bold ${done.result === 'Roadworthy' ? 'bg-emerald-100 text-emerald-700' : done.result === 'Grounded' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{done.resultLabel || done.result}</p>
@@ -196,7 +196,7 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
         </div>
     );
     const PhotoBtn = (label: string, has: boolean, onFile: (f?: File) => void) => (
-        <label className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold cursor-pointer text-sm ${has ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-[#13294b] text-white'}`}>{has ? `✓ ${label}` : `📷 ${label}`}<input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => onFile(e.target.files?.[0])} /></label>
+        <label className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold cursor-pointer text-sm ${has ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-[#13294b] text-white'}`}>{has ? `✓ ${label}` : `${label}`}<input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => onFile(e.target.files?.[0])} /></label>
     );
 
     return (
@@ -228,13 +228,13 @@ const MobileInspection: React.FC<{ uuid: string }> = ({ uuid }) => {
                 {step === 2 && (
                     <div className="space-y-4">
                         <h2 className="text-xl font-black text-slate-900">Your details {driver.substituting && <span className="text-amber-600 text-sm">(substituting)</span>}</h2>
-                        <label className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold cursor-pointer bg-[#13294b] text-white">{scanning ? 'Reading licence…' : '📷 Scan my licence'}<input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => onLicence(e.target.files?.[0])} /></label>
+                        <label className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold cursor-pointer bg-[#13294b] text-white">{scanning ? 'Reading licence…' : 'Scan my licence'}<input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => onLicence(e.target.files?.[0])} /></label>
                         <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
                             <div><label className={lbl}>Full name</label><input value={driver.name} onChange={e => setDriver({ ...driver, name: e.target.value })} className={inp} /></div>
                             <div><label className={lbl}>ID number</label><input value={driver.idNumber} onChange={e => setDriver({ ...driver, idNumber: e.target.value })} className={inp} inputMode="numeric" /></div>
                             <div><label className={lbl}>Licence code</label><select value={driver.licenceCode} onChange={e => setDriver({ ...driver, licenceCode: e.target.value })} className={inp}>{LICENCE_CODES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                             <div><label className={lbl}>PDP expiry</label><input type="date" value={driver.pdpExpiry} onChange={e => setDriver({ ...driver, pdpExpiry: e.target.value })} className={inp} /></div>
-                            {pdpDays !== null && pdpDays < 0 && <p className="text-sm font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">⛔ PDP expired — flagged.</p>}
+                            {pdpDays !== null && pdpDays < 0 && <p className="text-sm font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">PDP expired — flagged.</p>}
                             {pdpDays !== null && pdpDays >= 0 && pdpDays <= 30 && <p className="text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">⚠️ PDP expires in {pdpDays} days.</p>}
                             <div><label className={lbl}>Depot / branch</label><select value={depot} onChange={e => setDepot(e.target.value)} className={inp}><option value="">-- select --</option>{DEPOTS.map(d => <option key={d}>{d}</option>)}</select></div>
                         </div>

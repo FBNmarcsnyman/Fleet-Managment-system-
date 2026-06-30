@@ -186,11 +186,11 @@ const LoadBoard: React.FC = () => {
         const showPod = !pod && delivered && !podWaived;
         const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
         const cls = (base: string) => `${compact ? 'flex-1 py-1.5 text-[10px]' : 'py-1 px-2.5 text-[11px]'} font-black rounded-lg uppercase tracking-wider text-white ${base}`;
-        const viewPod = pod ? <button onClick={stop(() => window.open(pod, '_blank', 'noopener'))} title="View the uploaded POD" className={cls('bg-[#13294b] hover:bg-[#1d3a66]')}>📄 View POD</button> : null;
+        const viewPod = pod ? <button onClick={stop(() => window.open(pod, '_blank', 'noopener'))} title="View the uploaded POD" className={cls('bg-[#13294b] hover:bg-[#1d3a66]')}>View POD</button> : null;
         if (isArch(lc)) return <div className="flex gap-1.5 justify-end">{viewPod}<button onClick={stop(() => setArchived(lc, false))} disabled={busy === lc.id} title="Move back onto the active board" className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Unarchive'}</button></div>;
         if (!assigned && lc.status === 'Booked') return (
             <div className="flex gap-1.5 justify-end">
-                <button onClick={stop(() => showModal('offerLoad', { loadCon: lc }))} title="Offer to matching carriers for a rate" className={cls('bg-[#f5b700] hover:brightness-95 !text-[#13294b]')}>📣 Offer{(lc as any).offeredCarriers?.length ? ` ${(lc as any).offeredCarriers.length}` : ''}</button>
+                <button onClick={stop(() => showModal('offerLoad', { loadCon: lc }))} title="Offer to matching carriers for a rate" className={cls('bg-[#f5b700] hover:brightness-95 !text-[#13294b]')}>Offer{(lc as any).offeredCarriers?.length ? ` ${(lc as any).offeredCarriers.length}` : ''}</button>
                 <button onClick={stop(() => showModal('assignFbn', { loadCon: lc }))} className={cls('bg-emerald-600 hover:bg-emerald-500')}>Assign FBN</button>
                 <button onClick={stop(() => showModal('assignLoadCon', { loadCon: lc }))} className={cls('bg-amber-500 hover:bg-amber-400')}>Subbie</button>
             </div>
@@ -205,7 +205,7 @@ const LoadBoard: React.FC = () => {
             </div>
         );
         if (lc.status === 'POD Submitted') return <div className="flex gap-1.5 justify-end">{viewPod}{(lc as any).podAuthorisation === 'blocked'
-            ? <button onClick={stop(() => showModal('loadDetail', { loadCon: lc }))} title="POD blocked — contained an invoice/incorrect doc; never send as-is" className={cls('bg-red-600 hover:bg-red-500')}>⛔ Blocked</button>
+            ? <button onClick={stop(() => showModal('loadDetail', { loadCon: lc }))} title="POD blocked — contained an invoice/incorrect doc; never send as-is" className={cls('bg-red-600 hover:bg-red-500')}>Blocked</button>
             : (lc as any).podAuthorisation === 'pending'
             ? <button onClick={stop(() => showModal('loadDetail', { loadCon: lc }))} title="POD awaiting review — open to authorise" className={cls('bg-amber-500 hover:bg-amber-400')}>⚠ Authorise</button>
             : <button onClick={stop(() => close(lc))} disabled={busy === lc.id} className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Close'}</button>}</div>;
@@ -240,7 +240,7 @@ const LoadBoard: React.FC = () => {
                             <button key={s.key} onClick={() => setStageFilter(s.key)} className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide ${stageFilter === s.key ? 'bg-[#13294b] text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>{s.label} <span className="opacity-60">{counts[s.key] || 0}</span></button>
                         ))}
                         {archivedCount > 0 && (
-                            <button onClick={() => setStageFilter('archived')} title="Loads filed away / bulk-imported from the LoadCon sheet — still searchable" className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide ${stageFilter === 'archived' ? 'bg-[#13294b] text-white' : 'bg-white border border-slate-300 text-slate-500 hover:bg-slate-50'}`}>🗄 Archived <span className="opacity-60">{archivedCount}</span></button>
+                            <button onClick={() => setStageFilter('archived')} title="Loads filed away / bulk-imported from the LoadCon sheet — still searchable" className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide ${stageFilter === 'archived' ? 'bg-[#13294b] text-white' : 'bg-white border border-slate-300 text-slate-500 hover:bg-slate-50'}`}>Archived <span className="opacity-60">{archivedCount}</span></button>
                         )}
                     </div>
 
@@ -256,7 +256,7 @@ const LoadBoard: React.FC = () => {
                                     return (
                                         <div key={lc.id} onClick={() => showModal('loadDetail', { loadCon: lc })} className="p-3 active:bg-blue-50">
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className={`text-xs truncate font-bold ${isAssigned(lc) ? 'text-slate-800' : 'text-amber-600'}`}>🚚 {transporterOf(lc) || 'Needs transporter'}</span>
+                                                <span className={`text-xs truncate font-bold ${isAssigned(lc) ? 'text-slate-800' : 'text-amber-600'}`}>{transporterOf(lc) || 'Needs transporter'}</span>
                                                 <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${st.chip}`}>{st.label}</span>
                                             </div>
                                             {lc.clientRequestStatus === 'open' && <div className="text-[10px] font-black text-rose-600 animate-pulse">✉ client request — tap to respond</div>}

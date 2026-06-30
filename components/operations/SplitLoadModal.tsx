@@ -96,7 +96,7 @@ const SplitLoadModal: React.FC = () => {
                 {rows.map((r, i) => (
                     <div key={i} className="border border-slate-200 rounded-xl p-3 bg-slate-50">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-black uppercase tracking-wider text-[#13294b]">🚚 Truck {i + 1}{i === 0 ? ' (this load)' : ''}</span>
+                            <span className="text-xs font-black uppercase tracking-wider text-[#13294b]">Truck {i + 1}{i === 0 ? ' (this load)' : ''}</span>
                             {i > 0 && <button onClick={() => removeRow(i)} className="text-rose-500 hover:text-rose-600 text-xs font-bold">Remove</button>}
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">

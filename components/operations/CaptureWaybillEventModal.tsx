@@ -89,7 +89,7 @@ const CaptureWaybillEventModal: React.FC = () => {
 
             <div className="mt-3">
                 <label className={lbl}>Photos {condition !== 'ok' && <span className="text-red-600">— please attach damage photos</span>}</label>
-                <button type="button" onClick={() => document.getElementById('wb-photo-input')?.click()} className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">{photos.length ? `📷 ${photos.length} photo(s) — add more` : '📷 Take / add photos'}</button>
+                <button type="button" onClick={() => document.getElementById('wb-photo-input')?.click()} className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">{photos.length ? `${photos.length} photo(s) — add more` : 'Take / add photos'}</button>
                 <input id="wb-photo-input" type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={addPhotos as any} />
                 {photos.length > 0 && <div className="flex flex-wrap gap-2 mt-2">{photos.map((p, i) => <img key={i} src={p.url} alt="" className="h-16 w-16 object-cover rounded-lg border border-slate-200" />)}</div>}
             </div>

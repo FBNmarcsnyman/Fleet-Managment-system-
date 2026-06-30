@@ -83,8 +83,8 @@ const OperationsManifests: React.FC = () => {
             {/* Cargo ready to load */}
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-4">
                 <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-                    <div className="font-black text-[#13294b] text-sm uppercase tracking-wider">📦 Ready to load — {code(origin)} <span className="text-slate-400">({ready.length})</span></div>
-                    {sel.size > 0 && <button onClick={openBuild} className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-black py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">🚛 Load truck → manifest ({sel.size})</button>}
+                    <div className="font-black text-[#13294b] text-sm uppercase tracking-wider">Ready to load — {code(origin)} <span className="text-slate-400">({ready.length})</span></div>
+                    {sel.size > 0 && <button onClick={openBuild} className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-black py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">Load truck → manifest ({sel.size})</button>}
                 </div>
                 {ready.length === 0 ? <div className="px-4 py-8 text-center text-slate-400 text-sm">No cargo waiting to line-haul out of {code(origin)}.</div> : (
                     <div className="divide-y divide-slate-100">
@@ -103,7 +103,7 @@ const OperationsManifests: React.FC = () => {
 
             {/* Trucks in transit */}
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 font-black text-[#13294b] text-sm uppercase tracking-wider">🚛 Line-haul trucks <span className="text-slate-400">({linehaul.length})</span></div>
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 font-black text-[#13294b] text-sm uppercase tracking-wider">Line-haul trucks <span className="text-slate-400">({linehaul.length})</span></div>
                 {linehaul.length === 0 ? <div className="px-4 py-8 text-center text-slate-400 text-sm">No trucks in transit.</div> : (
                     <div className="divide-y divide-slate-100">
                         {linehaul.map(m => {
@@ -123,7 +123,7 @@ const OperationsManifests: React.FC = () => {
                                         <span className="text-xs text-slate-500">{m.carrierName ? `${m.carrierName}${m.carrierVehicleReg ? ' · ' + m.carrierVehicleReg : ''}` : (veh?.registration || 'truck')} · {loads.length} load{loads.length === 1 ? '' : 's'} · {tot.p} pkgs · {kg(tot.k)} kg</span>
                                         <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">{m.status || 'In Transit'}</span>
                                         {isManager && (m as any).totalRate != null && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${margin < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>margin R {kg(margin)}</span>}
-                                        <button onClick={() => receive(m)} disabled={busy === m.id} className={`ml-auto font-bold py-1 px-3 rounded-lg text-[11px] uppercase text-white ${inbound ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-500 hover:bg-slate-400'} disabled:opacity-50`}>{busy === m.id ? '…' : `📦 Receive at ${code(m.destinationBranch)}`}</button>
+                                        <button onClick={() => receive(m)} disabled={busy === m.id} className={`ml-auto font-bold py-1 px-3 rounded-lg text-[11px] uppercase text-white ${inbound ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-500 hover:bg-slate-400'} disabled:opacity-50`}>{busy === m.id ? '…' : `Receive at ${code(m.destinationBranch)}`}</button>
                                     </div>
                                     {/* what's loaded on this trailer */}
                                     <div className="mt-1.5 pl-1 text-[11px] text-slate-500">

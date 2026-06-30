@@ -178,7 +178,7 @@ const ShipmentsBoard: React.FC = () => {
                                 <p className="text-[10px] text-slate-500 mb-1 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                                 {lc.collectionDate && (
                                     <div className="inline-flex items-center gap-1 bg-amber-100 border border-amber-300 text-amber-800 text-[11px] font-black px-2 py-0.5 rounded-md mb-1">
-                                        📅 Collect {new Date(lc.collectionDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' })}{lc.loadingTime ? ` · ${lc.loadingTime}` : ''}
+                                        Collect {new Date(lc.collectionDate).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' })}{lc.loadingTime ? ` · ${lc.loadingTime}` : ''}
                                     </div>
                                 )}
                                 {isInterBranch(lc) && <p className="text-[9px] font-black text-purple-600 mb-1 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</p>}
@@ -196,7 +196,7 @@ const ShipmentsBoard: React.FC = () => {
                                     {needsSubbieLeg(lc) && !lc.supplierId && (
                                         <button onClick={stop(() => showModal('assignLoadCon', { loadCon: lc }))} className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider" title="Raise the line-haul LoadCon to a subcontractor — moves to the Broking board">{assigned ? 'Subbie line-haul' : 'Subbie'}</button>
                                     )}
-                                    <button onClick={stop(() => showModal('captureLoad', { loadCon: lc }))} className="flex-1 bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-1.5 rounded-lg text-[10px] uppercase tracking-wider">📷</button>
+                                    <button onClick={stop(() => showModal('captureLoad', { loadCon: lc }))} className="flex-1 bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-1.5 rounded-lg text-[10px] uppercase tracking-wider">Capture</button>
                                     {showPod ? (
                                         <button onClick={stop(() => getPod(lc))} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-black py-1.5 rounded-lg text-[10px] uppercase tracking-wider">Get POD</button>
                                     ) : step ? (

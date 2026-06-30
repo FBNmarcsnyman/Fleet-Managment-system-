@@ -636,7 +636,8 @@ export interface LoadConfirmation {
     date: string;
     items: any[];
     legs: any[];
-    totalAmount: number; 
+    enRouteStops?: { address: string; note?: string }[]; // extra delivery stops before the depot
+    totalAmount: number;
     supplierRate?: number; 
     collectionBranch: Branch;
     destinationBranch: Branch;

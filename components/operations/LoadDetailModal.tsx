@@ -141,6 +141,35 @@ const F: React.FC<{ label: string; k?: string; value?: React.ReactNode; type?: s
     );
 };
 
+// Extra delivery stops the truck makes EN ROUTE (e.g. drop in PMB before the
+// depot) — the loadcon's 3rd/4th delivery stop. Saved immediately to the load.
+const EnRouteStopsEditor: React.FC<{ initial: { address: string; note?: string }[]; onSave: (s: { address: string; note?: string }[]) => void }> = ({ initial, onSave }) => {
+    const [stops, setStops] = React.useState<{ address: string; note?: string }[]>(initial || []);
+    const [addr, setAddr] = React.useState('');
+    const [note, setNote] = React.useState('');
+    const add = () => { if (!addr.trim()) return; const next = [...stops, { address: addr.trim(), note: note.trim() || undefined }]; setStops(next); setAddr(''); setNote(''); onSave(next); };
+    const remove = (i: number) => { const next = stops.filter((_, x) => x !== i); setStops(next); onSave(next); };
+    return (
+        <div className="space-y-2">
+            {stops.length === 0 && <p className="text-xs text-gray-500">No extra stops. The truck goes straight to the destination/depot.</p>}
+            {stops.map((s, i) => (
+                <div key={i} className="flex items-center gap-2 bg-gray-900/40 rounded-md px-3 py-1.5">
+                    <span className="text-[10px] font-black text-white bg-indigo-600 rounded-full w-5 h-5 flex items-center justify-center shrink-0">{i + 1}</span>
+                    <span className="text-sm text-gray-200 flex-1 truncate">{s.address}{s.note ? <span className="text-gray-500"> · {s.note}</span> : ''}</span>
+                    <button onClick={() => remove(i)} className="text-red-400 hover:text-red-300 text-xs font-bold">✕</button>
+                </div>
+            ))}
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                <AddressAutocompleteInput value={addr} onChange={setAddr} placeholder="Add a stop address / town (e.g. PMB)…" className={inputCls} />
+                <div className="flex gap-2">
+                    <input value={note} onChange={e => setNote(e.target.value)} placeholder="note (optional)" className={`${inputCls} w-32`} />
+                    <button onClick={add} disabled={!addr.trim()} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-bold px-3 rounded-md text-sm">+ Add</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const LoadDetailModal: React.FC = () => {
     const { modal, showModal, showToast, hideModal } = useUIState();
     const { handleUpdateLoadConfirmation, handleDeleteLoadConfirmation, handleGetWaybillEvents, quotes = [], clients = [], suppliers = [], loadConfirmations = [] } = useOperations() as any;
@@ -585,6 +614,10 @@ const LoadDetailModal: React.FC = () => {
                         <F label="Time" k="offloadingTime" type="time" value={lc.offloadingTime} />
                         <F label="Contact" k="deliveryContact" value={lc.deliveryContact} />
                         <F label="Tel" k="deliveryTelephone" value={lc.deliveryTelephone} />
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-700/50">
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">En-route stops (delivered before the depot)</p>
+                        <EnRouteStopsEditor initial={lc.enRouteStops || []} onSave={(s) => { const res = handleUpdateLoadConfirmation(lc.id, { enRouteStops: s } as any); if (res?.then) res.then((r: any) => { if (r && r.ok === false) showToast(`Could not save stop: ${r.error}`); }); }} />
                     </div>
                 </Section>
                 {(() => {

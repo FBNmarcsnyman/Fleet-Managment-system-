@@ -175,6 +175,13 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
         { w: 18, text: 'CONTACT', style: 'label', size: 7 }, { w: CW / 2 - 18, text: `${lc.deliveryContact || ''}${lc.deliveryTelephone ? ' / ' + lc.deliveryTelephone : ''}`, style: 'value' },
     ]);
 
+    // Extra en-route delivery stops (e.g. drop in PMB before the depot).
+    const enRoute = ((lc as any).enRouteStops || []) as { address: string; note?: string }[];
+    if (enRoute.length) {
+        row([{ w: CW, text: 'EN-ROUTE STOPS (deliver in order before final destination)', style: 'centerLabel' }]);
+        enRoute.forEach((s, i) => row([{ w: 14, text: `${i + 1}`, style: 'label', size: 7 }, { w: CW - 14, text: `${s.address}${s.note ? '  —  ' + s.note : ''}`, style: 'value' }]));
+    }
+
     row([{ w: L, text: 'EQUIPMENT REQUIRED', style: 'label' }, { w: CW - L, text: (lc.equipmentRequired || []).join(', '), style: 'value' }]);
 
     // Rate row

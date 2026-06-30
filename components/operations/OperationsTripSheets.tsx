@@ -159,31 +159,60 @@ const OperationsTripSheets: React.FC = () => {
     );
 };
 
+// Max payload (kg) from the vehicle's category — rigids + trailers. Longest match
+// first so "15 tonner" doesn't trip the "5 ton" rule. See fleet-weight-overload-rules.
+const payloadCap = (v: any): number | null => {
+    const c = (v?.weightCategory || '').toLowerCase();
+    if (/15\s*ton/.test(c)) return 14500;
+    if (/12\s*ton/.test(c)) return 11500;
+    if (/8\s*ton/.test(c)) return 7500;
+    if (/5\s*ton/.test(c)) return 4500;
+    if (/2\s*ton/.test(c)) return 1500;
+    if (/1\s*ton/.test(c)) return 750;
+    if (/triaxle|tri-axle/.test(c)) return 28000;
+    if (/12\s*m/.test(c)) return 22000;
+    if (/6\s*m/.test(c)) return 12000;
+    return null;
+};
+
 const BuildTripPanel: React.FC<{ loads: LoadConfirmation[]; branch: string; vehicles: any[]; users: any[]; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (vehicleId: string, driverId: string, odo?: number) => Promise<void> }> = ({ loads, branch, vehicles, users, clientName, onClose, onBuild }) => {
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
     const [odo, setOdo] = useState('');
     const [saving, setSaving] = useState(false);
-    const trucks = vehicles.filter((v: any) => v.status === 'On the road');
+    // Fleet picker ordered by THIS depot first, then LM, then the rest — others can help.
+    const trucks = useMemo(() => vehicles.filter((v: any) => v.status === 'On the road' && !/trailer|triaxle|skeleton|superlink/i.test(v.weightCategory || ''))
+        .sort((a: any, b: any) => {
+            const rank = (v: any) => v.branch === branch ? 0 : v.branch === 'LOADMASTER' ? 1 : 2;
+            return rank(a) - rank(b) || (a.registration || '').localeCompare(b.registration || '');
+        }), [vehicles, branch]);
     const drivers = users.filter((u: any) => ['Staff', 'Driver'].includes(u.role));
-    const submit = async () => { if (!vehicleId || !driverId) { alert('Pick a vehicle and a driver.'); return; } setSaving(true); await onBuild(vehicleId, driverId, odo ? Number(odo) : undefined); setSaving(false); };
+    const totalKg = useMemo(() => loads.reduce((s, l) => s + (Number(l.weightKg) || 0), 0), [loads]);
+    const selVeh = vehicles.find((v: any) => v.id === vehicleId);
+    const cap = selVeh ? payloadCap(selVeh) : null;
+    const over = cap != null && totalKg > cap;
+    const submit = async () => {
+        if (!vehicleId || !driverId) { alert('Pick a vehicle and a driver.'); return; }
+        if (over && !window.confirm(`⚠ OVERLOADED — ${kg(totalKg)} kg vs ${kg(cap!)} kg cap (over by ${kg(totalKg - cap!)} kg). Dispatch anyway? This override is recorded.`)) return;
+        setSaving(true); await onBuild(vehicleId, driverId, odo ? Number(odo) : undefined); setSaving(false);
+    };
     return (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
                 <div className="px-5 py-3 rounded-t-2xl bg-[#13294b] text-white flex items-center justify-between">
                     <h3 className="font-black text-lg">Load delivery vehicle</h3>
-                    <span className="text-sm text-white/80">{code(branch)} · {loads.length} drop{loads.length === 1 ? '' : 's'}</span>
+                    <span className="text-sm text-white/80">{code(branch)} · {loads.length} drop{loads.length === 1 ? '' : 's'} · {kg(totalKg)} kg</span>
                 </div>
                 <div className="p-5 space-y-4">
                     <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
-                        {loads.map(l => <div key={l.id} className="px-3 py-1.5 text-sm flex justify-between gap-2"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span><span className="text-slate-500 truncate">{clientName(l)} — {l.deliveryPoint || ''}</span></div>)}
+                        {loads.map(l => <div key={l.id} className="px-3 py-1.5 text-sm flex justify-between gap-2"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span><span className="text-slate-500 truncate">{clientName(l)} — {l.deliveryPoint || ''}{l.weightKg ? ` · ${kg(Number(l.weightKg))} kg` : ''}</span></div>)}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Vehicle</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Vehicle (this depot first)</label>
                             <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                                 <option value="">-- vehicle --</option>
-                                {trucks.map((v: any) => <option key={v.id} value={v.id}>{v.registration} ({v.name})</option>)}
+                                {trucks.map((v: any) => <option key={v.id} value={v.id}>{v.registration} · {v.branch === 'LOADMASTER' ? 'LM' : (v.branch || '').replace('FBN ', '')} ({v.name})</option>)}
                             </select>
                         </div>
                         <div>
@@ -198,6 +227,11 @@ const BuildTripPanel: React.FC<{ loads: LoadConfirmation[]; branch: string; vehi
                             <input value={odo} onChange={e => setOdo(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="km" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" />
                         </div>
                     </div>
+                    {cap != null && (
+                        <p className={`text-xs font-bold ${over ? 'text-red-600' : 'text-emerald-600'}`}>
+                            {over ? '⚠ ' : '✓ '}Load {kg(totalKg)} kg vs {kg(cap)} kg cap{over ? ` — OVER by ${kg(totalKg - cap)} kg` : ` — ${kg(cap - totalKg)} kg headroom`}
+                        </p>
+                    )}
                 </div>
                 <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2">
                     <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100">Cancel</button>

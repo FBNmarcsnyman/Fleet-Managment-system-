@@ -16,7 +16,7 @@ const kg = (n: number) => Math.round(n).toLocaleString('en-ZA');
 const READY = new Set(['Collected', 'At Collection Depot']); // ready to load on the line-haul
 
 const OperationsManifests: React.FC = () => {
-    const { loadConfirmations = [], clients = [], users = [], manifests = [], handleCreateManifest, handleReceiveManifest } = useOperations() as any;
+    const { loadConfirmations = [], clients = [], suppliers = [], users = [], manifests = [], handleCreateManifest, handleReceiveManifest } = useOperations() as any;
     const { vehicles = [] } = (useVehicles() as any) || {};
     const { showModal, showToast } = useUIState();
     const { currentUser } = useAuth();
@@ -116,7 +116,8 @@ const OperationsManifests: React.FC = () => {
                                         <button onClick={() => showModal('manifestDoc', { manifest: m })} className="font-bold text-[#13294b] underline decoration-dotted">{m.manifestNumber}</button>
                                         <span className="text-sm font-bold text-slate-700">{code(m.originBranch)} → {code(m.destinationBranch)}</span>
                                         {m.trailerSize && <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">{m.trailerSize}</span>}
-                                        <span className="text-xs text-slate-500">{veh?.registration || 'truck'} · {loads.length} load{loads.length === 1 ? '' : 's'} · {tot.p} pkgs · {kg(tot.k)} kg</span>
+                                        {m.carrierName && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">BROKER</span>}
+                                        <span className="text-xs text-slate-500">{m.carrierName ? `${m.carrierName}${m.carrierVehicleReg ? ' · ' + m.carrierVehicleReg : ''}` : (veh?.registration || 'truck')} · {loads.length} load{loads.length === 1 ? '' : 's'} · {tot.p} pkgs · {kg(tot.k)} kg</span>
                                         <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">{m.status || 'In Transit'}</span>
                                         <button onClick={() => receive(m)} disabled={busy === m.id} className={`ml-auto font-bold py-1 px-3 rounded-lg text-[11px] uppercase text-white ${inbound ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-500 hover:bg-slate-400'} disabled:opacity-50`}>{busy === m.id ? '…' : `📦 Receive at ${code(m.destinationBranch)}`}</button>
                                     </div>
@@ -131,7 +132,7 @@ const OperationsManifests: React.FC = () => {
                 )}
             </div>
 
-            {building && <BuildManifestPanel loads={building} origin={origin} vehicles={vehicles} users={users} clientName={clientName}
+            {building && <BuildManifestPanel loads={building} origin={origin} vehicles={vehicles} users={users} suppliers={suppliers} clientName={clientName}
                 onClose={() => setBuilding(null)}
                 onBuild={async (data) => {
                     const r = await handleCreateManifest({ ...data, loadConIds: building.map(l => l.id), originBranch: origin });
@@ -148,8 +149,9 @@ const OperationsManifests: React.FC = () => {
 const TRAILER_CAP: Record<string, number> = { '6m': 12000, '12m': 22000 };
 const isTrailerVeh = (v: any) => /trailer|triaxle|skeleton|superlink/i.test(v.weightCategory || '');
 
-interface BuildData { vehicleId: string; driverId: string; trailerSize: string; trailerReg6m?: string; trailerReg12m?: string; trailerSplit?: Record<string, '6m' | '12m'>; startOdometer?: number; totalRate?: number; }
-const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; users: any[]; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ loads, origin, vehicles, users, clientName, onClose, onBuild }) => {
+interface BuildData { vehicleId: string; driverId: string; trailerSize: string; trailerReg6m?: string; trailerReg12m?: string; trailerSplit?: Record<string, '6m' | '12m'>; startOdometer?: number; totalRate?: number; carrierName?: string; carrierVehicleReg?: string; carrierDriver?: string; carrierCell?: string; carrierEmail?: string; }
+const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; users: any[]; suppliers?: any[]; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ loads, origin, vehicles, users, suppliers = [], clientName, onClose, onBuild }) => {
+    const [runner, setRunner] = useState<'own' | 'broker'>('own');
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
     const [trailer, setTrailer] = useState('12m');
@@ -159,6 +161,21 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
     const [totalRate, setTotalRate] = useState('');
     const [split, setSplit] = useState<Record<string, '6m' | '12m'>>({});
     const [saving, setSaving] = useState(false);
+    // Broker (subbie) running the depot->depot leg — their details + email.
+    const [carrierName, setCarrierName] = useState('');
+    const [carrierReg, setCarrierReg] = useState('');
+    const [carrierDriver, setCarrierDriver] = useState('');
+    const [carrierCell, setCarrierCell] = useState('');
+    const [carrierEmail, setCarrierEmail] = useState('');
+    const isBroker = runner === 'broker';
+    const supplierNames = useMemo(() => (suppliers || []).filter((s: any) => s.type === 'Transport').map((s: any) => s.name).filter(Boolean), [suppliers]);
+    // Auto-fill the broker email from the matched supplier's first contact.
+    const onCarrierName = (name: string) => {
+        setCarrierName(name);
+        const s = (suppliers || []).find((x: any) => (x.name || '').toLowerCase() === name.toLowerCase());
+        const email = s?.contactEmail || (s?.contacts || [])[0]?.email;
+        if (email && !carrierEmail) setCarrierEmail(email);
+    };
     const dest = loads[0]?.destinationBranch;
 
     // Any branch's truck can run a line-haul to help — show all on-road trucks
@@ -180,19 +197,25 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
     const overloaded = legs.filter(leg => (totals[leg] || 0) > (TRAILER_CAP[leg] || Infinity));
 
     const submit = async () => {
-        if (!vehicleId || !driverId) { alert('Pick a truck and a driver.'); return; }
+        if (isBroker) { if (!carrierName.trim()) { alert('Enter the broker (carrier) name.'); return; } }
+        else if (!vehicleId || !driverId) { alert('Pick a truck and a driver.'); return; }
         if (overloaded.length) {
             const msg = overloaded.map(leg => `${leg}: ${kg(totals[leg])} kg vs ${kg(TRAILER_CAP[leg])} kg cap (over by ${kg(totals[leg] - TRAILER_CAP[leg])} kg)`).join('\n');
             if (!window.confirm(`⚠ OVERLOADED — dispatch anyway?\n\n${msg}\n\nThis override will be recorded.`)) return;
         }
         setSaving(true);
         await onBuild({
-            vehicleId, driverId, trailerSize: trailer,
+            vehicleId: isBroker ? '' : vehicleId, driverId: isBroker ? '' : driverId, trailerSize: trailer,
             trailerReg6m: (isSuper || trailer === '6m') ? (reg6m || undefined) : undefined,
             trailerReg12m: (isSuper || trailer === '12m') ? (reg12m || undefined) : undefined,
             trailerSplit: isSuper ? loads.reduce((m, l) => ({ ...m, [l.id]: trailerOf(l) }), {} as Record<string, '6m' | '12m'>) : undefined,
             startOdometer: odometer ? parseFloat(odometer) : undefined,
             totalRate: totalRate ? parseFloat(totalRate) : undefined,
+            carrierName: isBroker ? carrierName.trim() : undefined,
+            carrierVehicleReg: isBroker ? (carrierReg || undefined) : undefined,
+            carrierDriver: isBroker ? (carrierDriver || undefined) : undefined,
+            carrierCell: isBroker ? (carrierCell || undefined) : undefined,
+            carrierEmail: isBroker ? (carrierEmail || undefined) : undefined,
         });
         setSaving(false);
     };
@@ -228,6 +251,11 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
                         </div>
                     </div>
 
+                    {/* Who runs the depot->depot leg */}
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+                        <button type="button" onClick={() => setRunner('own')} className={`px-3 py-1.5 text-xs font-bold rounded-md ${!isBroker ? 'bg-[#13294b] text-white' : 'text-slate-600'}`}>Own fleet</button>
+                        <button type="button" onClick={() => setRunner('broker')} className={`px-3 py-1.5 text-xs font-bold rounded-md ${isBroker ? 'bg-amber-500 text-white' : 'text-slate-600'}`}>Broker (subbie)</button>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className={lbl}>Trailer config</label>
@@ -237,13 +265,32 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
                                 <option value="6m + 12m">6 m + 12 m (superlink)</option>
                             </select>
                         </div>
-                        <div>
-                            <label className={lbl}>Truck (any branch)</label>
-                            <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} className={inp}>
-                                <option value="">-- truck --</option>
-                                {trucks.map((v: any) => <option key={v.id} value={v.id}>{v.registration} · {v.branch === 'LOADMASTER' ? 'LM' : (v.branch || '').replace('FBN ', '')}{v.name ? ` (${v.name})` : ''}</option>)}
-                            </select>
-                        </div>
+                        {!isBroker ? (
+                            <>
+                                <div>
+                                    <label className={lbl}>Truck (any branch)</label>
+                                    <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} className={inp}>
+                                        <option value="">-- truck --</option>
+                                        {trucks.map((v: any) => <option key={v.id} value={v.id}>{v.registration} · {v.branch === 'LOADMASTER' ? 'LM' : (v.branch || '').replace('FBN ', '')}{v.name ? ` (${v.name})` : ''}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Driver</label>
+                                    <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inp}>
+                                        <option value="">-- driver --</option>
+                                        {drivers.map((d: any) => <option key={d.email} value={d.email}>{d.name}</option>)}
+                                    </select>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div><label className={lbl}>Broker (carrier)</label><input list="brokerList" value={carrierName} onChange={e => onCarrierName(e.target.value)} className={inp} placeholder="carrier name" /><datalist id="brokerList">{supplierNames.map((n: string) => <option key={n} value={n} />)}</datalist></div>
+                                <div><label className={lbl}>Carrier email</label><input type="email" value={carrierEmail} onChange={e => setCarrierEmail(e.target.value)} className={inp} placeholder="manifest is emailed here" /></div>
+                                <div><label className={lbl}>Vehicle reg</label><input value={carrierReg} onChange={e => setCarrierReg(e.target.value)} className={inp} placeholder="reg" /></div>
+                                <div><label className={lbl}>Driver name</label><input value={carrierDriver} onChange={e => setCarrierDriver(e.target.value)} className={inp} /></div>
+                                <div><label className={lbl}>Driver cell</label><input value={carrierCell} onChange={e => setCarrierCell(e.target.value)} className={inp} /></div>
+                            </>
+                        )}
                         {(isSuper || trailer === '6m') && (
                             <div><label className={lbl}>6m trailer reg</label><input list="trReg" value={reg6m} onChange={e => setReg6m(e.target.value)} className={inp} placeholder="reg" /></div>
                         )}
@@ -251,16 +298,10 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
                             <div><label className={lbl}>12m trailer reg</label><input list="trReg" value={reg12m} onChange={e => setReg12m(e.target.value)} className={inp} placeholder="reg" /></div>
                         )}
                         <datalist id="trReg">{trailerRegs.map((r: string) => <option key={r} value={r} />)}</datalist>
-                        <div>
-                            <label className={lbl}>Driver</label>
-                            <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inp}>
-                                <option value="">-- driver --</option>
-                                {drivers.map((d: any) => <option key={d.email} value={d.email}>{d.name}</option>)}
-                            </select>
-                        </div>
-                        <div><label className={lbl}>Truck mileage (km)</label><input type="number" value={odometer} onChange={e => setOdometer(e.target.value)} className={inp} placeholder="current odo — manual if no tracker" /></div>
+                        {!isBroker && <div><label className={lbl}>Truck mileage (km)</label><input type="number" value={odometer} onChange={e => setOdometer(e.target.value)} className={inp} placeholder="current odo — manual if no tracker" /></div>}
                         <div><label className={lbl}>Total rate (excl VAT)</label><input type="number" step="0.01" value={totalRate} onChange={e => setTotalRate(e.target.value)} className={inp} placeholder="R" /></div>
                     </div>
+                    {isBroker && <p className="text-[11px] text-slate-500">Depot → depot transfer — no POD requested from the broker (the receiving-depot GRN is the proof). The manifest is emailed to the carrier.</p>}
                     {overloaded.length > 0 && <p className="text-[11px] font-bold text-red-600">⚠ Overloaded on {overloaded.join(' & ')} — remove stock or override on dispatch (recorded).</p>}
                 </div>
                 <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2 sticky bottom-0 bg-white">

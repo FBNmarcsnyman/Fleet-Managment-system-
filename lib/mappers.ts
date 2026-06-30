@@ -722,6 +722,11 @@ export const mapManifest = (row: Tables['manifests']['Row'], ctx: MapperCtx): Ma
     trailerReg6m: (row as any).trailer_reg_6m ?? undefined,
     trailerReg12m: (row as any).trailer_reg_12m ?? undefined,
     trailerSplit: (row as any).trailer_split ?? undefined,
+    carrierName: (row as any).carrier_name ?? undefined,
+    carrierVehicleReg: (row as any).carrier_vehicle_reg ?? undefined,
+    carrierDriver: (row as any).carrier_driver ?? undefined,
+    carrierCell: (row as any).carrier_cell ?? undefined,
+    carrierEmail: (row as any).carrier_email ?? undefined,
 });
 
 // Waybill verification/media events (cargo-verification spine).

@@ -20,8 +20,12 @@ const ManifestDoc: React.FC = () => {
     const driver = (users as any[]).find((u: any) => u.id === m.driverId)?.name || '';
     const loads: LoadConfirmation[] = useMemo(() => (loadConfirmations as LoadConfirmation[]).filter(l => (m.loadConfirmationIds || []).includes(l.id)), [loadConfirmations, m]);
     const clientName = (lc: LoadConfirmation) => (clients as any[]).find(c => c.id === lc.clientId)?.name || lc.clientName || '—';
-    const vehicleLabel = veh ? `${veh.registration}${veh.name ? ` (${veh.name})` : ''}` : '';
-    const buildHtml = () => manifestHtml({ manifest: m, loads, vehicleLabel, driverName: driver, clientNameOf: clientName });
+    // Brokered line-haul leg → show the carrier's truck/driver instead of own fleet.
+    const vehicleLabel = m.carrierName
+        ? `${m.carrierName}${m.carrierVehicleReg ? ` · ${m.carrierVehicleReg}` : ''} (broker)`
+        : (veh ? `${veh.registration}${veh.name ? ` (${veh.name})` : ''}` : '');
+    const driverName = m.carrierName ? (m.carrierDriver || '') : driver;
+    const buildHtml = () => manifestHtml({ manifest: m, loads, vehicleLabel, driverName, clientNameOf: clientName });
 
     const print = () => {
         const w = window.open('', '_blank', 'width=900,height=700');
@@ -31,10 +35,12 @@ const ManifestDoc: React.FC = () => {
     };
     const email = async () => {
         setBusy(true);
-        const to = opsEmailFor(m.destinationBranch);
-        const r = await invokeFn('send-email', { body: { to, cc: [opsEmailFor(m.originBranch), 'ops@fbn-transport.co.za'], subject: `LINE-HAUL MANIFEST ${m.manifestNumber} — ${m.originBranch} to ${m.destinationBranch}`, html: buildHtml(), fromName: 'FBN Transport' } });
+        // Always to the receiving depot ops; if a broker runs it, send it to them too.
+        const to = m.carrierEmail ? m.carrierEmail : opsEmailFor(m.destinationBranch);
+        const cc = [opsEmailFor(m.destinationBranch), opsEmailFor(m.originBranch), 'ops@fbn-transport.co.za'].filter((e, i, a) => e && a.indexOf(e) === i && e !== to);
+        const r = await invokeFn('send-email', { body: { to, cc, subject: `LINE-HAUL MANIFEST ${m.manifestNumber} — ${m.originBranch} to ${m.destinationBranch}`, html: buildHtml(), fromName: 'FBN Transport' } });
         setBusy(false);
-        showToast(r.error ? `Email failed: ${r.error.message || r.error}` : `Manifest emailed to ${m.destinationBranch} ops.`);
+        showToast(r.error ? `Email failed: ${r.error.message || r.error}` : `Manifest emailed${m.carrierEmail ? ' to the carrier + ' : ' to '}${m.destinationBranch} ops.`);
     };
     const receive = async () => {
         if (!confirm(`Mark manifest ${m.manifestNumber} received at ${m.destinationBranch}? All its loads move to "At destination depot".`)) return;

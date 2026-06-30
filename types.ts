@@ -1029,6 +1029,12 @@ export interface Manifest {
     trailerReg6m?: string;       // 6m trailer registration
     trailerReg12m?: string;      // 12m trailer registration
     trailerSplit?: Record<string, '6m' | '12m'>; // loadId -> which trailer (superlink)
+    // If the line-haul leg is run by a subbie (broker) rather than own fleet:
+    carrierName?: string;
+    carrierVehicleReg?: string;
+    carrierDriver?: string;
+    carrierCell?: string;
+    carrierEmail?: string;
 }
 
 export interface TripSheet {

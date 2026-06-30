@@ -2,7 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { invokeFn } from '../../lib/supabase';
 import { brandedEmail } from '../../lib/emailTemplate';
-import { fetchMarketingContacts } from '../../lib/marketingContacts';
+import { fetchMarketingContacts, prefsLink, MarketingContact } from '../../lib/marketingContacts';
+
+// A few ready, branded message templates (subject + body) to start from.
+const TEMPLATES: { name: string; subject: string; body: string }[] = [
+    { name: 'Intro — who we are', subject: 'FBN Transport — your freight partner', body: 'Good day,\n\nFBN Transport moves commercial freight nationwide — full loads, part loads, containers and abnormal cargo — backed by a vetted carrier network and live tracking.\n\nWe would love to quote on your next load. Simply reply to this email with the collection, delivery and cargo details and we will come back to you promptly.\n\nRegards,\nFBN Transport' },
+    { name: 'Invite to request quotes', subject: 'Need a rate? Send it to FBN Transport', body: 'Good day,\n\nHave a load to move? Send us the route, cargo and dates and we will get you a competitive rate from our network.\n\nReply here or use our quote request and we will be in touch.\n\nRegards,\nFBN Transport' },
+    { name: 'Become a carrier partner', subject: 'Join the FBN Transport carrier network', body: 'Good day,\n\nWe are growing our carrier network. If you own trucks and want consistent, well-priced loads, partner with FBN Transport.\n\nRegister your fleet, routes and certifications and — once vetted — you will receive load offers that suit your lanes.\n\nReply to find out more.\n\nRegards,\nFBN Transport' },
+];
 
 // Clients > Comms & Marketing — segment the client base by category / contact
 // flag, then send ONE branded email to the chosen audience via the existing
@@ -22,9 +29,12 @@ const ClientCommsView: React.FC = () => {
     const [body, setBody] = useState('');
     const [sending, setSending] = useState(false);
     const [showList, setShowList] = useState(false);
-    // Opted-out emails (marketing contacts) — never email these.
-    const [optedOut, setOptedOut] = useState<Set<string>>(new Set());
-    useEffect(() => { fetchMarketingContacts().then(cs => setOptedOut(new Set(cs.filter(c => c.optedOut).map(c => c.email.toLowerCase())))); }, []);
+    // Audience source: the operational client CRM, or the marketing list (incl prospects/carriers).
+    const [source, setSource] = useState<'clients' | 'marketing'>('clients');
+    const [mkKind, setMkKind] = useState<string>('all');
+    const [mkAll, setMkAll] = useState<MarketingContact[]>([]);
+    useEffect(() => { fetchMarketingContacts().then(setMkAll); }, []);
+    const optedOut = useMemo(() => new Set(mkAll.filter(c => c.optedOut).map(c => c.email.toLowerCase())), [mkAll]);
 
     // The clients in the current category filter.
     const inCat = useMemo(
@@ -32,9 +42,17 @@ const ClientCommsView: React.FC = () => {
         [clients, cat]);
 
     // Resolve the audience to a de-duplicated list, EXCLUDING opted-out emails.
+    // Marketing recipients carry id+token so each email gets a personal manage link.
     const recipients = useMemo(() => {
         const seen = new Set<string>();
-        const out: { email: string; name: string; company: string }[] = [];
+        const out: { email: string; name: string; company: string; link?: string }[] = [];
+        if (source === 'marketing') {
+            mkAll.filter(c => !c.optedOut).filter(c => mkKind === 'all' || c.kind === mkKind).forEach(c => {
+                const e = (c.email || '').trim(); if (!e || seen.has(e.toLowerCase())) return; seen.add(e.toLowerCase());
+                out.push({ email: e, name: c.name || '', company: c.company || '', link: prefsLink(c) });
+            });
+            return out;
+        }
         const push = (email?: string, name?: string, company?: string) => {
             const e = (email || '').trim();
             if (!e || seen.has(e.toLowerCase()) || optedOut.has(e.toLowerCase())) return;
@@ -48,7 +66,7 @@ const ClientCommsView: React.FC = () => {
             else { const main = contacts.find(p => p.getsUpdates) || contacts[0]; push(main?.email || c.contactEmail, main?.name || c.contactPerson, c.name); }
         });
         return out;
-    }, [inCat, audience, optedOut]);
+    }, [source, mkAll, mkKind, inCat, audience, optedOut]);
 
     const counts = useMemo(() => {
         const m: Record<string, number> = {};
@@ -60,7 +78,7 @@ const ClientCommsView: React.FC = () => {
         if (!subject.trim() || !body.trim()) { showToast('Add a subject and a message first.'); return; }
         if (!recipients.length) { showToast('No recipients in this segment.'); return; }
         if (!window.confirm(`Send this email to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'}? (If Email TEST MODE is on, it routes to you only.)`)) return;
-        const html = brandedEmail(body.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join(''));
+        const bodyHtml = body.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
         setSending(true);
         let ok = 0, fail = 0;
         // Send individually (one recipient each) so addresses aren't exposed to one another.
@@ -68,6 +86,9 @@ const ClientCommsView: React.FC = () => {
             const batch = recipients.slice(i, i + 5);
             await Promise.all(batch.map(async r => {
                 try {
+                    // Marketing recipients get a personal manage/unsubscribe footer (legal + opt-out).
+                    const footer = r.link ? `<p style="font-size:11px;color:#94a3b8;margin-top:18px">You're receiving this because you're on FBN Transport's contact list. <a href="${r.link}" style="color:#64748b">Update your details or unsubscribe</a>.</p>` : '';
+                    const html = brandedEmail(bodyHtml + footer);
                     const { data, error } = await invokeFn('send-email', { body: { to: r.email, subject: subject.trim(), html, fromName: 'FBN Transport' } });
                     if (error || (data as any)?.error) fail++; else ok++;
                 } catch { fail++; }
@@ -85,25 +106,51 @@ const ClientCommsView: React.FC = () => {
         <div className="space-y-4 max-w-3xl">
             <div>
                 <h3 className="text-lg font-bold text-slate-900">Comms &amp; Marketing</h3>
-                <p className="text-xs text-slate-500">Segment your clients and send one branded email to the whole audience.</p>
+                <p className="text-xs text-slate-500">Pick an audience + a template, and send one branded email. Marketing recipients get a personal unsubscribe / update link.</p>
             </div>
 
             <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Segment by category</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Audience</p>
                 <div className="flex flex-wrap gap-1.5">
-                    <button onClick={() => setCat('ALL')} className={chip(cat === 'ALL')}>All ({clients.length})</button>
-                    {CATEGORIES.map(c => <button key={c} onClick={() => setCat(c)} className={chip(cat === c)}>{c} ({counts[c] || 0})</button>)}
+                    <button onClick={() => setSource('clients')} className={chip(source === 'clients')}>Client CRM</button>
+                    <button onClick={() => setSource('marketing')} className={chip(source === 'marketing')}>Marketing list (incl. prospects/carriers)</button>
                 </div>
             </div>
 
+            {/* Templates */}
             <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Who at each company</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Start from a template</p>
                 <div className="flex flex-wrap gap-1.5">
-                    <button onClick={() => setAudience('primary')} className={chip(audience === 'primary')}>Primary contact</button>
-                    <button onClick={() => setAudience('updates')} className={chip(audience === 'updates')}>Contacts flagged "Updates"</button>
-                    <button onClick={() => setAudience('all')} className={chip(audience === 'all')}>All contacts</button>
+                    {TEMPLATES.map(t => <button key={t.name} onClick={() => { setSubject(t.subject); setBody(t.body); }} className={chip(subject === t.subject)}>{t.name}</button>)}
                 </div>
             </div>
+
+            {source === 'clients' ? (
+                <>
+                    <div>
+                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Segment by category</p>
+                        <div className="flex flex-wrap gap-1.5">
+                            <button onClick={() => setCat('ALL')} className={chip(cat === 'ALL')}>All ({clients.length})</button>
+                            {CATEGORIES.map(c => <button key={c} onClick={() => setCat(c)} className={chip(cat === c)}>{c} ({counts[c] || 0})</button>)}
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Who at each company</p>
+                        <div className="flex flex-wrap gap-1.5">
+                            <button onClick={() => setAudience('primary')} className={chip(audience === 'primary')}>Primary contact</button>
+                            <button onClick={() => setAudience('updates')} className={chip(audience === 'updates')}>Contacts flagged "Updates"</button>
+                            <button onClick={() => setAudience('all')} className={chip(audience === 'all')}>All contacts</button>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <div>
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Marketing segment (opted-out excluded)</p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {['all', 'prospect', 'client', 'carrier'].map(k => <button key={k} onClick={() => setMkKind(k)} className={chip(mkKind === k)}>{k === 'all' ? 'Everyone' : k}</button>)}
+                    </div>
+                </div>
+            )}
 
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between">
                 <span className="text-sm font-bold text-[#13294b]">{recipients.length} recipient{recipients.length === 1 ? '' : 's'} in this segment</span>

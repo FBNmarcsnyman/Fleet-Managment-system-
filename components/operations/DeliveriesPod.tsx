@@ -6,7 +6,9 @@ import React, { lazy, Suspense, useState } from 'react';
 const DeliveriesDayView = lazy(() => import('./DeliveriesDayView'));
 const PodSignOffBoard = lazy(() => import('./PodSignOffBoard'));
 
-const DeliveriesPod: React.FC = () => {
+// lens presets the Brokered/Own-fleet/All filter on the By-day board so the same
+// component serves Broking (brokered), Operations (own-fleet) and Accounts (all).
+const DeliveriesPod: React.FC<{ lens?: 'all' | 'brokered' | 'ownfleet' }> = ({ lens = 'all' }) => {
     const [tab, setTab] = useState<'day' | 'signoff'>('day');
     const chip = (active: boolean) => `px-3 py-1.5 text-xs font-bold rounded-md ${active ? 'bg-[#13294b] text-white' : 'text-slate-600 hover:bg-white'}`;
     return (
@@ -16,7 +18,7 @@ const DeliveriesPod: React.FC = () => {
                 <button onClick={() => setTab('signoff')} className={chip(tab === 'signoff')}>POD sign-off</button>
             </div>
             <Suspense fallback={<div className="text-slate-400 p-6">Loading…</div>}>
-                {tab === 'day' ? <DeliveriesDayView /> : <PodSignOffBoard />}
+                {tab === 'day' ? <DeliveriesDayView lens={lens} /> : <PodSignOffBoard />}
             </Suspense>
         </div>
     );

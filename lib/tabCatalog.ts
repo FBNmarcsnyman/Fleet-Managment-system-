@@ -26,6 +26,7 @@ export const TAB_SECTIONS: TabSection[] = [
             { view: 'opsDay', label: 'Day' },
             { view: 'opsManifests', label: 'Manifests' },
             { view: 'opsTripSheets', label: 'Trip Sheets' },
+            { view: 'deliveries', label: 'Deliveries / POD' },
             { view: 'liveMap', label: 'Live Map' },
             { view: 'shipments', label: 'Shipments' },
             { view: 'imports', label: 'Imports' },

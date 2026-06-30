@@ -75,6 +75,7 @@ const OperationsPortal: React.FC = () => {
         { view: 'opsDay', label: 'Day', group: 'work' },
         { view: 'opsManifests', label: 'Manifests', group: 'work' },
         { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
+        { view: 'deliveries', label: 'Deliveries / POD', group: 'track' },
         { view: 'liveMap', label: '📍 Live Map', group: 'track' },
         { view: 'shipments', label: 'Shipments', group: 'work' },
         { view: 'imports', label: 'Imports', group: 'work' },
@@ -159,7 +160,7 @@ const OperationsPortal: React.FC = () => {
             case 'transporterLoads': return <Suspense fallback={<div>Loading…</div>}><TransporterLoadCons /></Suspense>;
             case 'lclStatus': return <Suspense fallback={<div>Loading…</div>}><LclStatusReport /></Suspense>;
             case 'deliveries':
-            case 'pods': return <Suspense fallback={<div>Loading…</div>}><DeliveriesPod /></Suspense>;
+            case 'pods': return <Suspense fallback={<div>Loading…</div>}><DeliveriesPod lens={isOps ? 'ownfleet' : 'brokered'} /></Suspense>;
             case 'dashboard':
             default:
                 return <Suspense fallback={<div>Loading…</div>}><BrokingDashboard /></Suspense>;

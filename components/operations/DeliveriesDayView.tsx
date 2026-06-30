@@ -9,13 +9,19 @@ import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 // outstanding-POD count, compact one-line rows, and a one-tap Get POD.
 const dOnly = (s?: string) => (s || '').slice(0, 10);
 const podOut = (lc: LoadConfirmation) => lc.status === 'Delivered' && !(lc as any).podPhoto;
+// Brokered = a subbie is doing it (name OR supplier_id — never supplier_id alone, see
+// the brokered-load-visibility rule). Own-fleet = an FBN truck, no subcontractor.
+const isBrokered = (lc: any) => !!(lc.subcontractorName || lc.supplierId);
 
-const DeliveriesDayView: React.FC = () => {
+type Lens = 'all' | 'brokered' | 'ownfleet';
+
+const DeliveriesDayView: React.FC<{ lens?: Lens }> = ({ lens: initialLens = 'all' }) => {
     const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation } = useOperations() as any;
     const { showModal, showToast } = useUIState();
     const { currentUser } = useAuth();
     const [reqBusy, setReqBusy] = useState<string | null>(null);
     const [scope, setScope] = useState<'week' | 'all' | 'podout'>('week');
+    const [lens, setLens] = useState<Lens>(initialLens);
     const [q, setQ] = useState('');
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
@@ -30,6 +36,8 @@ const DeliveriesDayView: React.FC = () => {
         const needle = q.trim().toLowerCase();
         const rel = loads.filter(l => {
             if (!['Delivered', 'POD Submitted'].includes(l.status)) return false;
+            if (lens === 'brokered' && !isBrokered(l)) return false;
+            if (lens === 'ownfleet' && isBrokered(l)) return false;
             if (scope === 'podout' && !podOut(l)) return false;
             const dd = dOnly((l as any).deliveryDate) || dOnly(l.collectionDate);
             if (scope === 'week' && dd && dd < weekAgo) return false;
@@ -42,9 +50,9 @@ const DeliveriesDayView: React.FC = () => {
         const map = new Map<string, LoadConfirmation[]>();
         rel.forEach(l => { const k = dOnly((l as any).deliveryDate) || dOnly(l.collectionDate) || 'No date'; map.set(k, [...(map.get(k) || []), l]); });
         return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-    }, [loads, scope, q, clients, suppliers]);
+    }, [loads, scope, lens, q, clients, suppliers]);
 
-    const totalOut = useMemo(() => loads.filter(podOut).length, [loads]);
+    const totalOut = useMemo(() => loads.filter(l => podOut(l) && (lens === 'all' || (lens === 'brokered' ? isBrokered(l) : !isBrokered(l)))).length, [loads, lens]);
 
     const getPod = (lc: LoadConfirmation) => showModal('pod', {
         loadCon: lc, isManualUpload: true,
@@ -105,6 +113,11 @@ const DeliveriesDayView: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search…" className="bg-white text-slate-800 p-2 rounded-md border border-slate-300 text-sm w-40" />
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg" title="Brokered = subbie did it · Own-fleet = FBN truck">
+                        <button onClick={() => setLens('all')} className={chip(lens === 'all')}>All</button>
+                        <button onClick={() => setLens('brokered')} className={chip(lens === 'brokered')}>Brokered</button>
+                        <button onClick={() => setLens('ownfleet')} className={chip(lens === 'ownfleet')}>Own-fleet</button>
+                    </div>
                     <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
                         <button onClick={() => setScope('week')} className={chip(scope === 'week')}>Last 2 weeks</button>
                         <button onClick={() => setScope('podout')} className={chip(scope === 'podout')}>POD outstanding</button>

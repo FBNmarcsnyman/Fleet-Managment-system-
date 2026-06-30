@@ -610,6 +610,17 @@ const LoadDetailModal: React.FC = () => {
                 </>
             )}
 
+            {!editing && ['At Destination Depot', 'Unloaded'].includes(lc.status) && !lc.deliveryDate && (() => {
+                const since = lc.collectionDate ? Math.max(0, Math.round((Date.now() - new Date(lc.collectionDate).getTime()) / 86400000)) : null;
+                return (
+                    <div className="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3 mb-3">
+                        <p className="text-xs font-black text-indigo-300 uppercase tracking-wider">🏬 Stored at {(lc.destinationBranch || 'depot').replace('FBN ', '')} — awaiting delivery release</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">On the floor awaiting a delivery instruction{since != null ? ` · ${since} day${since === 1 ? '' : 's'} since collection` : ''}. When the client calls it in, set a delivery date to schedule it onto a trip sheet (watch for storage charges).</p>
+                        <button onClick={startEdit} className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">Set delivery date &amp; release</button>
+                    </div>
+                );
+            })()}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {waybillSiblings.length > 0 && (
                     <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3 mb-1">

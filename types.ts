@@ -74,6 +74,7 @@ export interface FuelEntry {
   id: string;
   vehicleId: string;
   date: string;
+  time?: string;            // HH:MM (24h) — for the Pulsit odometer cross-check
   odometer: number;
   liters: number;
   tripDistance?: number;

@@ -5,6 +5,7 @@ import { normalizeRegistration as normalizeReg, formatRegistration } from './veh
 export interface ParsedFuelCsvRow {
   registration: string;
   date: string;
+  time: string;
   odometer: number | null;
   litres: number | null;
   tripDistance: number | null;
@@ -19,6 +20,7 @@ export interface ParsedFuelCsvRow {
 const HEADER_ALIASES: { [key: string]: string[] } = {
   registration: ['registration', 'reg', 'vehicle', 'plate', 'plate_number', 'vehicle_registration'],
   date: ['date', 'fill_date', 'fuel_date'],
+  time: ['time', 'fill_time', 'fuel_time', 'transaction_time', 'time_of_fill'],
   odometer: ['odometer', 'odo', 'km', 'mileage'],
   litres: ['litres', 'liters', 'l', 'fuel'],
   tripDistance: ['trip_distance', 'distance', 'kms', 'km_travelled'],
@@ -100,6 +102,7 @@ export const parseFuelCsv = (text: string): ParsedFuelCsvRow[] => {
     return {
       registration: get('registration'),
       date: get('date'),
+      time: get('time'),
       odometer: Number.isFinite(odometer) ? odometer : null,
       litres: Number.isFinite(litres) ? litres : null,
       tripDistance: Number.isFinite(tripDistance) ? tripDistance : null,
@@ -168,6 +171,7 @@ export const buildFuelEntry = (row: ParsedFuelCsvRow, vehicleId: string): Omit<F
   return {
     vehicleId,
     date: row.date,
+    time: row.time || undefined,
     odometer: row.odometer,
     liters: row.litres,
     tripDistance: row.tripDistance ?? undefined,

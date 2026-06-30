@@ -9,6 +9,7 @@ interface AddFuelEntryFormProps {
 
 const AddFuelEntryForm: React.FC<AddFuelEntryFormProps> = ({ onSubmit, onCancel }) => {
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [time, setTime] = useState('');
     const [odometer, setOdometer] = useState('');
     const [liters, setLiters] = useState('');
     const [tripDistance, setTripDistance] = useState('');
@@ -21,6 +22,7 @@ const AddFuelEntryForm: React.FC<AddFuelEntryFormProps> = ({ onSubmit, onCancel 
         }
         onSubmit({
             date,
+            time: time || undefined,
             odometer: parseFloat(odometer),
             liters: parseFloat(liters),
             tripDistance: tripDistance ? parseFloat(tripDistance) : undefined,
@@ -45,7 +47,10 @@ const AddFuelEntryForm: React.FC<AddFuelEntryFormProps> = ({ onSubmit, onCancel 
         <form onSubmit={handleSubmit}>
             <h2 className="text-2xl font-bold mb-6 text-white">Add Fuel Entry</h2>
             <div className="space-y-4">
-                {renderInput("date", "Date", "date", date, setDate)}
+                <div className="grid grid-cols-2 gap-4">
+                    {renderInput("date", "Date", "date", date, setDate)}
+                    {renderInput("time", "Time of fill", "time", time, setTime)}
+                </div>
                 {renderInput("odometer", "Odometer (km)", "number", odometer, setOdometer)}
                 {renderInput("liters", "Fuel (Liters)", "number", liters, setLiters)}
                 {renderInput("tripDistance", "Trip Distance (km) - Optional", "number", tripDistance, setTripDistance)}

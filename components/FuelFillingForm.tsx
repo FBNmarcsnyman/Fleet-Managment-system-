@@ -38,6 +38,7 @@ const FuelFillingForm: React.FC<FuelFillingFormProps> = ({
     const [branchFilter, setBranchFilter] = useState('All');
     const [vehicleId, setVehicleId] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [time, setTime] = useState('');
     const [odometer, setOdometer] = useState('');
     const [liters, setLiters] = useState('');
     const [sourceBowserId, setSourceBowserId] = useState('');
@@ -57,6 +58,7 @@ const FuelFillingForm: React.FC<FuelFillingFormProps> = ({
         onSubmitSingle({
             vehicleId,
             date,
+            time: time || undefined,
             odometer: parseFloat(odometer),
             liters: parseFloat(liters),
             sourceBowserId: sourceBowserId || undefined,
@@ -207,10 +209,14 @@ const FuelFillingForm: React.FC<FuelFillingFormProps> = ({
                                     </select>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                                 <div>
                                     <label htmlFor="date" className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Date</label>
                                     <DateField value={date} onChange={setDate} className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary" />
+                                </div>
+                                <div>
+                                    <label htmlFor="time" className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Time</label>
+                                    <input id="time" type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary" />
                                 </div>
                                 <div>
                                     <label htmlFor="odometer" className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Odometer (km)</label>

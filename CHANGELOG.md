@@ -2,6 +2,32 @@
 
 All notable changes to the FBN Fleet Management System. Newest first.
 
+## [2026-06-30] — CRM phases 3-4, professional polish, mobile + live-map
+
+### Added
+- **CRM marketing module** — client vs carrier branded templates (new client templates incl. quirky
+  options) + a **Send-test** button; carrier "Comms & Marketing" tab on Transporters (recruitment funnel
+  → `/supplier-register`). **Google Sheet link import + CSV upload** (edge fn `import-marketing-sheet`)
+  on top of paste. **Bounce handling**: invalid mailboxes flagged + excluded from sends, plus an
+  **automatic bounce reader** (edge fn `scan-bounces`, IMAP of tracking@, daily cron) — never deletes.
+- **CRM Phase 4 (RFQ)** — min-3 carrier quotes + vetted-carrier gate before the client quote, with a
+  manager override-reason logged to `rfq_requests.award_audit`.
+- **Clients** — account status + signed **credit application / terms** chips + "Docs outstanding" filter;
+  **account codes** with an "Import approved (codes)" tool that matches existing clients by name (no dupes).
+- **Hide personal vehicles** (`vehicles.hidden`) — admin Hide/Unhide in the Fleet list + cards; excluded
+  from fleet, fuel & live map. **Live map**: orange dots → side-on truck/car icons (bakkie/car = car, rest
+  truck) with an admin panel to pick which registrations to hide and to override each reg's Truck/Car icon
+  (`email_settings.map_hidden_regs` / `map_car_regs`).
+- **Fuel** — sortable By-Vehicle columns; trailers excluded (they don't fill).
+- **Load Board** — tap-to-sort columns.
+
+### Changed
+- **Removed decorative emojis system-wide** for a professional look (kept ✓ ✗ ⚠ ★ arrows); house standard.
+- **Mobile** — Operations header restructured (pill + actions on top row, full-width tab strip below);
+  Clients header wraps; Fuel nested table scrolls; topbar status pills hidden < md; manifest/trip-sheet
+  build modal scrolls; list-row widths responsive.
+- **Manifest & trip-sheet docs** resolve the driver name from the Drivers register (was login users).
+
 ## [2026-06-30] — Big build: recipient picker, POD chain, nav refactor, fuel/Pulsit, manifests & trip sheets
 
 ### Added

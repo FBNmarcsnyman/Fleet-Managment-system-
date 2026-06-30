@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Vehicle, Branch } from '../../types';
-import { useVehicles, useUIState } from '../../contexts/AppContexts';
+import { useVehicles, useUIState, useAuth } from '../../contexts/AppContexts';
 import { BRANCHES, CATEGORY_ORDER } from '../../constants';
 import VehicleCard from './VehicleCard';
 import VehicleDetail from './VehicleDetail';
@@ -95,8 +95,20 @@ const VehicleList: React.FC = () => {
         drivers = []
     } = useVehicles();
     const { showModal, hideModal, showToast } = useUIState();
+    const { currentUser } = useAuth();
+    const isAdmin = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
     const [groupBy, setGroupBy] = useState<GroupByType>('branch');
     const [branchFilter, setBranchFilter] = useState<BranchFilter>('All');
+    // Management can hide personal / off-book vehicles. Hidden ones never show for
+    // anyone unless an admin flicks "Show hidden".
+    const [showHidden, setShowHidden] = useState(false);
+    const hiddenCount = useMemo(() => (vehicles as Vehicle[]).filter(v => v.hidden && v.status !== 'Sold').length, [vehicles]);
+    const toggleHidden = async (v: Vehicle, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const r = await handleUpdateVehicle(v.id, { hidden: !v.hidden } as any);
+        if (r?.ok) showToast(v.hidden ? `${v.registration} is back in the fleet.` : `${v.registration} hidden from fleet, fuel & map.`);
+        else showToast(`Could not update: ${(r as any)?.error ?? 'error'}`);
+    };
     // Card vs list layout — remembered per user.
     const [layout, setLayout] = useState<'cards' | 'list'>(() => (localStorage.getItem('fleet_layout') as 'cards' | 'list') || 'cards');
     const setLayoutPref = (l: 'cards' | 'list') => { setLayout(l); try { localStorage.setItem('fleet_layout', l); } catch { /* */ } };
@@ -104,7 +116,7 @@ const VehicleList: React.FC = () => {
     const vehicleById = useMemo(() => new Map((vehicles as Vehicle[]).map(v => [v.id, v])), [vehicles]);
 
     const groupedVehicles = useMemo(() => {
-        const activeVehicles: Vehicle[] = (vehicles || []).filter((v: Vehicle) => v.status !== 'Sold');
+        const activeVehicles: Vehicle[] = (vehicles || []).filter((v: Vehicle) => v.status !== 'Sold' && (showHidden || !v.hidden));
 
         const filteredVehicles: Vehicle[] = activeVehicles.filter((v: Vehicle) => branchFilter === 'All' || v.branch === branchFilter);
 
@@ -154,7 +166,7 @@ const VehicleList: React.FC = () => {
             return sortedObj;
         }, {} as Record<string, Vehicle[]>);
 
-    }, [vehicles, groupBy, branchFilter]);
+    }, [vehicles, groupBy, branchFilter, showHidden]);
 
     if (selectedVehicleId) {
         return <VehicleDetail />;
@@ -313,6 +325,11 @@ const VehicleList: React.FC = () => {
                         <button onClick={() => showModal('bulkServiceInterval', {})} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-cyan-400 rounded-xl border border-cyan-500/20 transition-all" title="Set service intervals on many assets at once (every X km / hours + flag-before)">
                             Service Intervals
                         </button>
+                        {isAdmin && (
+                            <button onClick={() => setShowHidden(s => !s)} className={`flex items-center px-4 py-2 text-sm font-bold rounded-xl border transition-all ${showHidden ? 'bg-amber-500 text-white border-amber-500' : 'bg-gray-800 hover:bg-gray-700 text-gray-300 border-gray-600'}`} title="Show vehicles management has hidden (personal / off-book), so you can unhide them">
+                                {showHidden ? 'Hiding shown' : `Show hidden${hiddenCount ? ` (${hiddenCount})` : ''}`}
+                            </button>
+                        )}
                         <button onClick={openAddAsset} className="flex items-center px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-900/30 transition-all active:scale-95">
                             <PlusIcon className="h-4 w-4 mr-2" /> Add Asset
                         </button>
@@ -402,7 +419,13 @@ const VehicleList: React.FC = () => {
                                                                     : <span className="text-slate-300">—</span>}
                                                             </td>
                                                             <td className="p-3">{isTrailerCategory(vehicle.weightCategory) ? <span className="text-slate-300">—</span> : driverCell(vehicle)}</td>
-                                                            <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
+                                                            <td className="p-3 text-slate-500">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span>{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</span>
+                                                                    {vehicle.hidden && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">HIDDEN</span>}
+                                                                    {isAdmin && <button onClick={e => toggleHidden(vehicle, e)} className="text-[11px] font-bold text-slate-400 hover:text-amber-600 ml-auto" title="Hide this vehicle from the fleet, fuel & map (management only)">{vehicle.hidden ? 'Unhide' : 'Hide'}</button>}
+                                                                </div>
+                                                            </td>
                                                         </tr>
                                                     );
                                                 });

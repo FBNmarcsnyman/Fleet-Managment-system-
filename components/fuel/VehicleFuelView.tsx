@@ -7,6 +7,7 @@ import { useVehicles } from '../../contexts/AppContexts';
 // first so the thirsty units stand out.
 const fmtR = (n: number) => `R ${(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtD = (s?: string) => { if (!s) return '—'; const d = new Date(s); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: '2-digit' }); };
+const isTrailer = (v: Vehicle) => /trailer|triaxle|skeleton|superlink/i.test(v.weightCategory || '');
 
 const VehicleFuelView: React.FC = () => {
     const { vehicles = [], vehiclePerformanceMap = new Map(), calculatedFuelData = [] } = useVehicles() as any;
@@ -38,6 +39,8 @@ const VehicleFuelView: React.FC = () => {
         const needle = q.trim().toLowerCase();
         const list = (vehicles as Vehicle[])
             .filter(v => v.status !== 'Sold')
+            .filter(v => !v.hidden)            // management-hidden (personal) vehicles
+            .filter(v => !isTrailer(v))        // trailers don't take fuel
             .filter(v => branch === 'All' || v.branch === branch)
             .filter(v => cat === 'All' || v.weightCategory === cat)
             .filter(v => !needle || `${v.name || ''} ${v.registration || ''}`.toLowerCase().includes(needle))
@@ -68,7 +71,6 @@ const VehicleFuelView: React.FC = () => {
         return { litres, cost, dist, cpk: dist > 0 ? cost / dist : 0 };
     }, [rows]);
 
-    const isTrailer = (v: Vehicle) => /trailer|triaxle|skeleton|superlink/i.test(v.weightCategory || '');
     // Clickable, sortable column header.
     const Th: React.FC<{ k: SortKey; label: string; className?: string }> = ({ k, label, className }) => (
         <th className={className}>

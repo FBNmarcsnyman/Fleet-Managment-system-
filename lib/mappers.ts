@@ -91,6 +91,7 @@ export const mapVehicle = (row: Tables['vehicles']['Row'], ctx: MapperCtx): Vehi
     monthlyFixedCost: row.monthly_fixed_cost ?? undefined,
     onMaintenancePlan: (row as any).on_maintenance_plan ?? false,
     maintenancePlanProvider: (row as any).maintenance_plan_provider ?? undefined,
+    hidden: (row as any).hidden ?? false,
 });
 
 // -- fuel_entries → FuelEntry ------------------------------------------------
@@ -1078,6 +1079,7 @@ export const toVehicleUpdate = (
     if (updates.monthlyFixedCost !== undefined) row.monthly_fixed_cost = updates.monthlyFixedCost;
     if ((updates as any).onMaintenancePlan !== undefined) (row as any).on_maintenance_plan = (updates as any).onMaintenancePlan;
     if ((updates as any).maintenancePlanProvider !== undefined) (row as any).maintenance_plan_provider = (updates as any).maintenancePlanProvider ?? null;
+    if ((updates as any).hidden !== undefined) (row as any).hidden = (updates as any).hidden;
     return row;
 };
 

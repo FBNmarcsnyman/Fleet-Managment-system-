@@ -48,6 +48,8 @@ export interface Vehicle {
   // "book into the dealer plan" ahead of time (see hooks/useServiceStatus).
   onMaintenancePlan?: boolean;
   maintenancePlanProvider?: string;
+  // Management can hide personal / off-book vehicles from the fleet, fuel & map views.
+  hidden?: boolean;
 }
 
 export type VehicleStatus = 'On the road' | 'In for service' | 'Off the road' | 'Sold';

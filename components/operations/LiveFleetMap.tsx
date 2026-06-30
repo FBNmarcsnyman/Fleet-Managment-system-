@@ -27,10 +27,23 @@ const REFRESH_MS = 30000;
 const alnum = (s?: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const fmtTime = (s?: string) => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? '' : d.toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
 
+// Decide whether a tracked unit is a "truck" (big asset) or a "car"/bakkie (small),
+// from its fleet category or the tracker description. Default to truck (the fleet is
+// mostly trucks).
+const assetKind = (hint?: string): 'truck' | 'car' => {
+    const s = (hint || '').toUpperCase();
+    if (/BAKKIE|HILUX|RANGER|TRITON|TOYOTA|POLO|SEDAN|\bCAR\b|LDV|KOMBI|\bVAN\b|D-?MAX|AMAROK|NP200/.test(s)) return 'car';
+    return 'truck';
+};
+// Small side-on SVG icons, coloured by status, as a marker image (data URI).
+const truckSvg = (c: string) => `<svg xmlns='http://www.w3.org/2000/svg' width='38' height='30' viewBox='0 0 26 20'><g fill='${c}' stroke='white' stroke-width='0.8' stroke-linejoin='round'><rect x='1' y='4' width='13' height='9' rx='1'/><path d='M14 6h5l4 4v3h-9z'/><circle cx='6' cy='15' r='2.2'/><circle cx='18' cy='15' r='2.2'/></g><g fill='white'><circle cx='6' cy='15' r='0.8'/><circle cx='18' cy='15' r='0.8'/></g></svg>`;
+const carSvg = (c: string) => `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='26' viewBox='0 0 26 20'><g fill='${c}' stroke='white' stroke-width='0.8' stroke-linejoin='round'><path d='M2 13c0-1 .5-3 2-3l3-3h7l4 3h3c1.5 0 3 1 3 2.5V13z'/><circle cx='7' cy='14' r='2.2'/><circle cx='18' cy='14' r='2.2'/></g><g fill='white'><circle cx='7' cy='14' r='0.8'/><circle cx='18' cy='14' r='0.8'/></g></svg>`;
+const iconUri = (kind: 'truck' | 'car', colour: string) => 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent((kind === 'car' ? carSvg : truckSvg)(colour));
+
 // Live fleet map: real truck positions from Pulsit, refreshed every 30s. Each
 // marker is green (moving), amber (stopped, ignition on) or slate (ignition off).
 // Clicking shows the reg, address, speed, last-seen and any active load on that truck.
-const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ users = [], loadConfirmations = [] }) => {
+const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], loadConfirmations = [] }) => {
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]);
@@ -75,6 +88,13 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ users = [], loadConfirmatio
         }
     }, [isApiLoaded]);
 
+    // Match a tracked reg to a fleet vehicle (for asset size + to drop hidden ones).
+    const vehByReg = React.useMemo(() => {
+        const m = new Map<string, any>();
+        (vehicles as any[]).forEach(v => { if (v.registration) m.set(alnum(v.registration), v); });
+        return m;
+    }, [vehicles]);
+
     // Render / refresh the markers whenever positions change.
     useEffect(() => {
         if (!mapInstanceRef.current || !isApiLoaded || !window.google?.maps?.Map) return;
@@ -84,6 +104,8 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ users = [], loadConfirmatio
 
         positions.forEach(p => {
             if (p.lat == null || p.lng == null) return;
+            const veh = vehByReg.get(alnum(p.reg));
+            if (veh?.hidden) return; // management-hidden (personal) vehicles never plot
             const job = (loadConfirmations || []).find(lc =>
                 alnum(lc.subcontractorVehicleReg) === alnum(p.reg) &&
                 !['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(lc.status));
@@ -99,9 +121,16 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ users = [], loadConfirmatio
                     <div style="font-size:11px;color:#94a3b8;margin-top:4px">Last seen ${fmtTime(p.at)}</div>
                 </div>`,
             });
+            // Truck for big assets, car for bakkies/light vehicles; coloured by status.
+            const kind = assetKind(veh?.weightCategory || p.desc || p.fleet);
+            const sz = kind === 'car' ? 30 : 36;
             const marker = new window.google.maps.Marker({
                 position: { lat: p.lat, lng: p.lng }, map: mapInstanceRef.current, title: p.reg,
-                icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: colour, fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 },
+                icon: {
+                    url: iconUri(kind, colour),
+                    scaledSize: new window.google.maps.Size(sz, sz * 0.8),
+                    anchor: new window.google.maps.Point(sz / 2, sz * 0.4),
+                },
             });
             marker.addListener('click', () => info.open({ anchor: marker, map: mapInstanceRef.current }));
             markersRef.current.push(marker);

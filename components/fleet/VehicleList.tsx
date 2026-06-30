@@ -310,6 +310,9 @@ const VehicleList: React.FC = () => {
                         <button onClick={() => showModal('qrSheet', { onCancel: hideModal })} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-amber-400 rounded-xl border border-amber-500/20 transition-all" title="Print scannable checklist QR labels for every vehicle & trailer">
                             <QrCodeIcon className="h-4 w-4 mr-2" /> QR Labels
                         </button>
+                        <button onClick={() => showModal('bulkServiceInterval', {})} className="flex items-center px-4 py-2 text-sm font-bold bg-gray-800 hover:bg-gray-700 text-cyan-400 rounded-xl border border-cyan-500/20 transition-all" title="Set service intervals on many assets at once (every X km / hours + flag-before)">
+                            🛠 Service Intervals
+                        </button>
                         <button onClick={openAddAsset} className="flex items-center px-4 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-900/30 transition-all active:scale-95">
                             <PlusIcon className="h-4 w-4 mr-2" /> Add Asset
                         </button>

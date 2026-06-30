@@ -149,6 +149,10 @@ export interface ServiceInterval {
     distanceInterval: number | null;
     timeIntervalDays: number | null;
     hoursInterval: number | null;
+    // Flag "Due Soon" this many km / hours before due (e.g. 2000 km). Falls back
+    // to the global default when null.
+    warnDistance?: number | null;
+    warnHours?: number | null;
 }
 
 export interface ServiceStatus {

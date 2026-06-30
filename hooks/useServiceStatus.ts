@@ -84,9 +84,10 @@ export const useServiceStatus = (
                     const dueOdometer = lastServiceOdo + interval.distanceInterval;
                     const kmRemaining = dueOdometer - currentOdometer;
 
+                    const kmWarn = (interval.warnDistance && interval.warnDistance > 0) ? interval.warnDistance : KM_SOON_THRESHOLD;
                     if (kmRemaining <= 0) {
                         distStatus = { description: interval.description, status: 'Overdue', details: `Overdue by ${Math.abs(kmRemaining).toLocaleString()} km` };
-                    } else if (kmRemaining <= KM_SOON_THRESHOLD) {
+                    } else if (kmRemaining <= kmWarn) {
                         distStatus = { description: interval.description, status: 'Due Soon', details: `Due in ${kmRemaining.toLocaleString()} km` };
                     } else {
                         distStatus = { description: interval.description, status: 'OK', details: `Due in ${kmRemaining.toLocaleString()} km` };
@@ -99,9 +100,10 @@ export const useServiceStatus = (
                     const dueHours = lastServiceHours + interval.hoursInterval;
                     const hoursRemaining = dueHours - currentHours;
 
+                    const hoursWarn = (interval.warnHours && interval.warnHours > 0) ? interval.warnHours : HOURS_SOON_THRESHOLD;
                     if (hoursRemaining <= 0) {
                         hoursStatus = { description: interval.description, status: 'Overdue', details: `Overdue by ${Math.abs(hoursRemaining).toLocaleString()} hrs` };
-                    } else if (hoursRemaining <= HOURS_SOON_THRESHOLD) {
+                    } else if (hoursRemaining <= hoursWarn) {
                         hoursStatus = { description: interval.description, status: 'Due Soon', details: `Due in ${hoursRemaining.toLocaleString()} hrs` };
                     } else {
                         hoursStatus = { description: interval.description, status: 'OK', details: `Due in ${hoursRemaining.toLocaleString()} hrs` };

@@ -155,6 +155,8 @@ export const mapServiceInterval = (row: Tables['service_intervals']['Row']): Ser
     distanceInterval: row.distance_interval,
     timeIntervalDays: row.time_interval_days,
     hoursInterval: row.hours_interval,
+    warnDistance: (row as any).warn_distance ?? undefined,
+    warnHours: (row as any).warn_hours ?? undefined,
 });
 
 // -- planned_services → PlannedService ---------------------------------------
@@ -1547,7 +1549,9 @@ export const toServiceIntervalInsert = (
     distance_interval: si.distanceInterval,
     time_interval_days: si.timeIntervalDays,
     hours_interval: si.hoursInterval,
-});
+    ...(((si as any).warnDistance ?? null) !== null ? { warn_distance: (si as any).warnDistance } : {}),
+    ...(((si as any).warnHours ?? null) !== null ? { warn_hours: (si as any).warnHours } : {}),
+} as any);
 
 export const toLoadConfirmationUpdate = (
     updates: Partial<LoadConfirmation>,

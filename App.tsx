@@ -119,6 +119,7 @@ const ViewPodModal = lazy(() => import('./components/operations/ViewPodModal'));
 const InvoicePDFModal = lazy(() => import('./components/operations/InvoicePDFModal'));
 const MoveBranchModal = lazy(() => import('./components/fleet/MoveBranchModal'));
 const AssignDriverModal = lazy(() => import('./components/AssignDriverModal'));
+const BulkServiceIntervalModal = lazy(() => import('./components/fleet/BulkServiceIntervalModal'));
 const SetBudgetModal = lazy(() => import('./components/finance/SetBudgetModal'));
 const AITriageModal = lazy(() => import('./components/workshop/AITriageModal'));
 const JobCardDetailModal = lazy(() => import('./components/workshop/JobCardDetailModal'));
@@ -200,6 +201,7 @@ const ModalRegistry: { [key: string]: React.LazyExoticComponent<React.FC<any>> }
     invoicePdf: InvoicePDFModal,
     moveBranch: MoveBranchModal,
     assignDriver: AssignDriverModal,
+    bulkServiceInterval: BulkServiceIntervalModal,
     setBudget: SetBudgetModal,
     aiTriage: AITriageModal,
     jobCardDetail: JobCardDetailModal,
@@ -250,6 +252,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
     bulkImportCosts: '2xl',
     quickbooksSync: '2xl',
     assignDriver: 'md',
+    bulkServiceInterval: '2xl',
     bulkAssignDrivers: 'md',
     bulkFuelImport: '5xl',
 };

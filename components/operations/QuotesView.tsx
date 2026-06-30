@@ -28,6 +28,10 @@ const QuotesView: React.FC<{
         showToast(`Could not add client: ${res?.error || 'error'}`); return null;
     };
     const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'All'>('All');
+    type QSort = 'number' | 'client' | 'date' | 'amount' | 'rkg' | 'status';
+    const [sortKey, setSortKey] = useState<QSort>('date');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const setSort = (k: QSort) => { if (k === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir(k === 'number' || k === 'client' || k === 'status' ? 'asc' : 'desc'); } };
     const [quoteToAccept, setQuoteToAccept] = useState<Quote | null>(null);
     const [tab, setTab] = useState<'quotes' | 'rfq'>('quotes');
     // When "Request Transporter Rates" is clicked on a quote, jump to the RFQ tab pre-filled.
@@ -146,11 +150,29 @@ const QuotesView: React.FC<{
     const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c.name])), [clients]);
 
     const filteredQuotes = useMemo(() => {
-        return (quotes || [])
+        const list = (quotes || [])
             // Hide archived from the default view; show them only when explicitly filtered.
-            .filter(q => statusFilter === 'All' ? q.status !== 'Archived' : q.status === statusFilter)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [quotes, statusFilter]);
+            .filter(q => statusFilter === 'All' ? q.status !== 'Archived' : q.status === statusFilter);
+        const val = (q: Quote): string | number => {
+            switch (sortKey) {
+                case 'number': return (q.quoteNumber || '').toLowerCase();
+                case 'client': return (clientMap.get(q.clientId) || '').toLowerCase();
+                case 'amount': return q.totalAmount || 0;
+                case 'rkg': return ratePerKg(q) ?? -1;
+                case 'status': return (q.status || '').toLowerCase();
+                case 'date': default: return new Date(q.date).getTime();
+            }
+        };
+        const dir = sortDir === 'asc' ? 1 : -1;
+        return list.sort((a, b) => {
+            const av = val(a), bv = val(b);
+            if (typeof av === 'string' || typeof bv === 'string') return String(av).localeCompare(String(bv)) * dir;
+            return (av - bv) * dir;
+        });
+    }, [quotes, statusFilter, sortKey, sortDir, clientMap]);
+    const Th: React.FC<{ k: QSort; label: string; className?: string }> = ({ k, label, className }) => (
+        <th className={className}><button onClick={() => setSort(k)} className={`inline-flex items-center gap-1 hover:text-white ${sortKey === k ? 'text-white' : ''}`}>{label}{sortKey === k && <span className="text-[9px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}</button></th>
+    );
 
     // Wrap the async handlers so the modal sees void-returning onSubmit
     // (matches CreateQuoteForm's contract) but the Result surfaces as a toast.
@@ -251,12 +273,12 @@ const QuotesView: React.FC<{
                     <thead>
                         <tr className="border-b border-gray-700">
                             <th className="p-2 w-8"></th>
-                            <th className="p-2">Quote #</th>
-                            <th className="p-2">Client</th>
-                            <th className="p-2">Date</th>
-                            <th className="p-2 text-right">Amount</th>
-                            <th className="p-2 text-right">R / kg</th>
-                            <th className="p-2 text-center">Status</th>
+                            <Th k="number" label="Quote #" className="p-2" />
+                            <Th k="client" label="Client" className="p-2" />
+                            <Th k="date" label="Date" className="p-2" />
+                            <Th k="amount" label="Amount" className="p-2 text-right" />
+                            <Th k="rkg" label="R / kg" className="p-2 text-right" />
+                            <Th k="status" label="Status" className="p-2 text-center" />
                             <th className="p-2 text-right">Actions</th>
                         </tr>
                     </thead>

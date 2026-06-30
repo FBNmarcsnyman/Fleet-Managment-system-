@@ -221,12 +221,35 @@ const ClientManagementView: React.FC = () => {
     };
 
     // Group the filtered list by category for the sectioned table.
+    // Sort within each category group (tap a column header).
+    type CSort = 'company' | 'contact' | 'email' | 'docs';
+    const [sortKey, setSortKey] = useState<CSort>('company');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+    const setSort = (k: CSort) => { if (k === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir(k === 'docs' ? 'asc' : 'asc'); } };
+    const mainOf = (c: any) => (c.contacts || []).find((p: any) => p.getsUpdates) || (c.contacts || [])[0];
     const groups = useMemo(() => {
         const order = [...CATEGORIES, 'Uncategorised'];
         const by: Record<string, any[]> = {};
         filtered.forEach(c => { const k = catOf(c); (by[k] = by[k] || []).push(c); });
-        return order.filter(k => by[k]?.length).map(k => ({ cat: k, rows: by[k] }));
-    }, [filtered]);
+        const val = (c: any): string | number => {
+            switch (sortKey) {
+                case 'contact': return (mainOf(c)?.name || c.contactPerson || '').toLowerCase();
+                case 'email': return (mainOf(c)?.email || c.contactEmail || '').toLowerCase();
+                case 'docs': return (hasCreditApp(c) ? 1 : 0) + (hasTerms(c) ? 1 : 0); // outstanding first when asc
+                case 'company': default: return (c.name || '').toLowerCase();
+            }
+        };
+        const dir = sortDir === 'asc' ? 1 : -1;
+        const sortRows = (rows: any[]) => [...rows].sort((a, b) => {
+            const av = val(a), bv = val(b);
+            if (typeof av === 'string' || typeof bv === 'string') return String(av).localeCompare(String(bv)) * dir;
+            return (av - bv) * dir;
+        });
+        return order.filter(k => by[k]?.length).map(k => ({ cat: k, rows: sortRows(by[k]) }));
+    }, [filtered, sortKey, sortDir]);
+    const Th: React.FC<{ k: CSort; label: string; className?: string }> = ({ k, label, className }) => (
+        <th className={className}><button onClick={() => setSort(k)} className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-[#13294b] ${sortKey === k ? 'text-[#13294b] font-bold' : ''}`}>{label}{sortKey === k && <span className="text-[9px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}</button></th>
+    );
 
     const chip = (key: string, label: string, n: number) => (
         <button key={key} onClick={() => setCat(key)} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide whitespace-nowrap ${cat === key ? 'bg-[#13294b] text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>{label} <span className="opacity-60">{n}</span></button>
@@ -310,7 +333,7 @@ const ClientManagementView: React.FC = () => {
                             </div>
                             <div className="overflow-x-auto"><table className="w-full text-sm">
                                 <thead><tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                                    <th className="py-2 pl-3 px-2">Company</th><th className="py-2 px-2">Main contact</th><th className="py-2 px-2">Team</th><th className="py-2 px-2">Primary email</th><th className="py-2 px-2">Account &amp; docs</th><th className="py-2 px-2 text-right pr-3">Actions</th>
+                                    <Th k="company" label="Company" className="py-2 pl-3 px-2" /><Th k="contact" label="Main contact" className="py-2 px-2" /><th className="py-2 px-2">Team</th><Th k="email" label="Primary email" className="py-2 px-2" /><Th k="docs" label="Account & docs" className="py-2 px-2" /><th className="py-2 px-2 text-right pr-3">Actions</th>
                                 </tr></thead>
                                 <tbody>
                                     {g.rows.map(client => {

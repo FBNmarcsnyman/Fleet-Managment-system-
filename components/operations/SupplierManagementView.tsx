@@ -21,14 +21,23 @@ const SubcontractorManagementView: React.FC = () => {
     };
     const { users = [], handleAddUser } = useCommonData();
     const [q, setQ] = useState('');
+    type SSort = 'name' | 'contact' | 'email';
+    const [sortKey, setSortKey] = useState<SSort>('name');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+    const setSort = (k: SSort) => { if (k === sortKey) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
 
     const subcontractors = useMemo(() => {
         const needle = q.trim().toLowerCase();
+        const val = (s: any) => (sortKey === 'contact' ? (s.contactPerson || '') : sortKey === 'email' ? (s.contactEmail || '') : (s.name || '')).toLowerCase();
+        const dir = sortDir === 'asc' ? 1 : -1;
         return (suppliers || [])
             .filter((s: Supplier) => s.type === 'Transport' && s.isActive !== false)
             .filter((s: any) => !needle || `${s.name || ''} ${s.contactPerson || ''} ${s.contactEmail || ''} ${(s.contacts || []).map((x: any) => `${x.name} ${x.email}`).join(' ')}`.toLowerCase().includes(needle))
-            .sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || '')));
-    }, [suppliers, q]);
+            .sort((a: any, b: any) => val(a).localeCompare(val(b)) * dir);
+    }, [suppliers, q, sortKey, sortDir]);
+    const Th: React.FC<{ k: SSort; label: string; className?: string }> = ({ k, label, className }) => (
+        <th className={className}><button onClick={() => setSort(k)} className={`inline-flex items-center gap-1 hover:text-white ${sortKey === k ? 'text-white' : ''}`}>{label}{sortKey === k && <span className="text-[9px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}</button></th>
+    );
 
     const handleDelete = async (supplier: Supplier) => {
         if (!confirm(`Remove ${supplier.name}? They'll be hidden from your list (past loads & history are kept).`)) return;
@@ -85,9 +94,9 @@ const SubcontractorManagementView: React.FC = () => {
                 <table className="w-full text-left text-sm">
                     <thead>
                          <tr className="border-b border-gray-700">
-                            <th className="p-2 text-gray-400">Company Name</th>
-                            <th className="p-2 text-gray-400">Contact Person</th>
-                            <th className="p-2 text-gray-400">Contact Details</th>
+                            <Th k="name" label="Company Name" className="p-2 text-gray-400" />
+                            <Th k="contact" label="Contact Person" className="p-2 text-gray-400" />
+                            <Th k="email" label="Contact Details" className="p-2 text-gray-400" />
                             <th className="p-2 text-gray-400 text-right">Actions</th>
                         </tr>
                     </thead>

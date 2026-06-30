@@ -14,6 +14,15 @@ const VehicleFuelView: React.FC = () => {
     const [cat, setCat] = useState('All');
     const [q, setQ] = useState('');
     const [openId, setOpenId] = useState<string | null>(null);
+    // Sortable columns. Default: worst CPK first (the thirsty units).
+    type SortKey = 'name' | 'branch' | 'fills' | 'odo' | 'cons' | 'cpk' | 'spend';
+    const [sortKey, setSortKey] = useState<SortKey>('cpk');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+    const setSort = (k: SortKey) => {
+        if (k === sortKey) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); return; }
+        setSortKey(k);
+        setSortDir(k === 'name' || k === 'branch' ? 'asc' : 'desc'); // text A→Z, numbers high→low
+    };
 
     const branches = useMemo(() => ['All', ...Array.from(new Set((vehicles as Vehicle[]).map(v => v.branch).filter(Boolean)))], [vehicles]);
     const cats = useMemo(() => ['All', ...Array.from(new Set((vehicles as Vehicle[]).map(v => v.weightCategory).filter(Boolean))).sort()], [vehicles]);
@@ -27,14 +36,30 @@ const VehicleFuelView: React.FC = () => {
 
     const rows = useMemo(() => {
         const needle = q.trim().toLowerCase();
-        return (vehicles as Vehicle[])
+        const list = (vehicles as Vehicle[])
             .filter(v => v.status !== 'Sold')
             .filter(v => branch === 'All' || v.branch === branch)
             .filter(v => cat === 'All' || v.weightCategory === cat)
             .filter(v => !needle || `${v.name || ''} ${v.registration || ''}`.toLowerCase().includes(needle))
-            .map(v => ({ v, stats: vehiclePerformanceMap.get(v.id) as VehiclePerformanceStats | undefined, fills: fillsByVehicle.get(v.id) || [] }))
-            .sort((a, b) => (b.stats?.avgCpk || 0) - (a.stats?.avgCpk || 0));
-    }, [vehicles, branch, cat, q, vehiclePerformanceMap, fillsByVehicle]);
+            .map(v => ({ v, stats: vehiclePerformanceMap.get(v.id) as VehiclePerformanceStats | undefined, fills: fillsByVehicle.get(v.id) || [] }));
+        const val = (r: typeof list[number]): string | number => {
+            switch (sortKey) {
+                case 'name': return (r.v.name || r.v.registration || '').toLowerCase();
+                case 'branch': return (r.v.branch || '').toLowerCase();
+                case 'fills': return r.stats?.points || 0;
+                case 'odo': return r.stats?.latestOdo || 0;
+                case 'cons': return r.stats?.avgConsumption || 0;
+                case 'spend': return r.stats?.totalCost || 0;
+                case 'cpk': default: return r.stats?.avgCpk || 0;
+            }
+        };
+        const dir = sortDir === 'asc' ? 1 : -1;
+        return list.sort((a, b) => {
+            const av = val(a), bv = val(b);
+            if (typeof av === 'string' || typeof bv === 'string') return String(av).localeCompare(String(bv)) * dir;
+            return (av - bv) * dir;
+        });
+    }, [vehicles, branch, cat, q, vehiclePerformanceMap, fillsByVehicle, sortKey, sortDir]);
 
     // Totals across the filtered set.
     const totals = useMemo(() => {
@@ -44,6 +69,14 @@ const VehicleFuelView: React.FC = () => {
     }, [rows]);
 
     const isTrailer = (v: Vehicle) => /trailer|triaxle|skeleton|superlink/i.test(v.weightCategory || '');
+    // Clickable, sortable column header.
+    const Th: React.FC<{ k: SortKey; label: string; className?: string }> = ({ k, label, className }) => (
+        <th className={className}>
+            <button onClick={() => setSort(k)} className={`inline-flex items-center gap-1 font-bold uppercase tracking-wider hover:text-[#13294b] ${sortKey === k ? 'text-[#13294b]' : ''}`}>
+                {label}{sortKey === k && <span className="text-[9px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+            </button>
+        </th>
+    );
     const sel = 'bg-white text-slate-800 p-2 rounded-lg border border-slate-300 text-sm';
     const Card: React.FC<{ label: string; value: string; tone?: string }> = ({ label, value, tone }) => (
         <div className="bg-white border border-slate-200 rounded-xl px-4 py-3">
@@ -62,18 +95,22 @@ const VehicleFuelView: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search reg / fleet no…" className={`${sel} w-48`} />
+                <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search reg / fleet no…" className={`${sel} w-36 sm:w-48`} />
                 <select value={branch} onChange={e => setBranch(e.target.value)} className={sel}>{branches.map(b => <option key={b} value={b}>{b === 'All' ? 'All branches' : b}</option>)}</select>
                 <select value={cat} onChange={e => setCat(e.target.value)} className={sel}>{cats.map(c => <option key={c} value={c}>{c === 'All' ? 'All categories' : c}</option>)}</select>
-                <span className="text-xs text-slate-400 ml-auto">Worst CPK first</span>
+                <span className="text-xs text-slate-400 ml-auto">Tap a column to sort</span>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead><tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                        <th className="py-2 pl-3 px-2">Vehicle</th><th className="py-2 px-2">Branch</th><th className="py-2 px-2 text-right">Fills</th>
-                        <th className="py-2 px-2 text-right">Latest odo</th><th className="py-2 px-2 text-right">Avg L/100km</th>
-                        <th className="py-2 px-2 text-right">Avg CPK</th><th className="py-2 px-2 text-right pr-3">Spend</th>
+                        <Th k="name" label="Vehicle" className="py-2 pl-3 px-2" />
+                        <Th k="branch" label="Branch" className="py-2 px-2" />
+                        <Th k="fills" label="Fills" className="py-2 px-2 text-right" />
+                        <Th k="odo" label="Latest odo" className="py-2 px-2 text-right" />
+                        <Th k="cons" label="Avg L/100km" className="py-2 px-2 text-right" />
+                        <Th k="cpk" label="Avg CPK" className="py-2 px-2 text-right" />
+                        <Th k="spend" label="Spend" className="py-2 px-2 text-right pr-3" />
                     </tr></thead>
                     <tbody>
                         {rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-slate-400">No vehicles in this filter.</td></tr>}
@@ -94,7 +131,7 @@ const VehicleFuelView: React.FC = () => {
                                     {open && (
                                         <tr className="bg-slate-50"><td colSpan={7} className="px-4 py-3">
                                             {fills.length === 0 ? <p className="text-slate-400 text-xs">No fuel fills recorded for {v.name}.</p> : (
-                                                <table className="w-full text-xs">
+                                                <div className="overflow-x-auto"><table className="w-full text-xs min-w-[560px]">
                                                     <thead><tr className="text-left text-[10px] uppercase tracking-wider text-slate-400">
                                                         <th className="py-1 px-2">Date</th><th className="py-1 px-2">Time</th><th className="py-1 px-2 text-right">Odo</th><th className="py-1 px-2 text-right">Pulsit Δ</th><th className="py-1 px-2 text-right">Litres</th><th className="py-1 px-2 text-right">Cost</th><th className="py-1 px-2 text-right">L/100km</th><th className="py-1 px-2 text-right">R/km</th>
                                                     </tr></thead>
@@ -110,7 +147,7 @@ const VehicleFuelView: React.FC = () => {
                                                             <td className="py-1 px-2 text-right text-slate-600">{f.cpk ? fmtR(f.cpk) : '—'}</td>
                                                         </tr>
                                                     ))}</tbody>
-                                                </table>
+                                                </table></div>
                                             )}
                                         </td></tr>
                                     )}

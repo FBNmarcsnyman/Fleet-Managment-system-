@@ -6,7 +6,7 @@ import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
 
-const VEHICLE_SIZES = ['2 TON', '5 TON', '8 TON', '12 TON', '15 TON', 'TRI-AXLE (28T)', 'SUPERLINK (34T)', 'LINK', 'TAUTLINER', 'FLAT DECK', 'LDV', 'TANKER', 'REEFER', 'ABNORMAL'];
+const VEHICLE_SIZES = ['2 TON', '5 TON', '8 TON', '12 TON', '15 TON', 'TRI-AXLE (28T)', 'SUPERLINK (34T)', 'LINK', 'TAUTLINER', 'FLAT DECK', 'FLAT DECK + UPRIGHTS', '6M FLAT DECK', '12M FLAT DECK', 'TRI-AXLE FLAT', 'LDV', 'TANKER', 'REEFER', 'ABNORMAL'];
 const FBN_BRANCHES: { code: Branch; label: string }[] = [
     { code: 'FBN CPT', label: 'Cape Town' }, { code: 'FBN JHB', label: 'Johannesburg' }, { code: 'FBN DBN', label: 'Durban' },
 ];

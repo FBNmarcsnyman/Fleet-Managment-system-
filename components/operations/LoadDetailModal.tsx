@@ -35,6 +35,8 @@ const cityCode = (s?: string): string => {
     return '';
 };
 const deriveRoute = (collection?: string, delivery?: string): string => { const a = cityCode(collection), b = cityCode(delivery); return a && b ? `${a} - ${b}` : ''; };
+// Short company label from a full address — the bit before the first comma.
+const coShort = (s?: string): string => (s || '').split(',')[0].trim() || '—';
 
 // Ops-only live position of the assigned truck, pulled from Pulsit via the
 // `track` edge function (the browser never sees the tracking key). Shows the
@@ -545,7 +547,12 @@ const LoadDetailModal: React.FC = () => {
                     {sourceQuote && (
                         <p className="text-xs font-bold text-amber-600 font-mono">From quote {sourceQuote.quoteNumber}{lc.totalAmount ? ` · R ${Number(lc.totalAmount).toLocaleString()}` : ''}</p>
                     )}
-                    <p className="text-sm text-slate-500">{lc.collectionPoint} → {lc.deliveryPoint}</p>
+                    {/* Mobile: just companies + the route code. Desktop: the full addresses. */}
+                    <p className="text-sm text-slate-600 md:hidden">
+                        <span className="font-bold text-slate-800">{coShort(lc.collectionPoint)}</span> → <span className="font-bold text-slate-800">{coShort(lc.deliveryPoint)}</span>
+                        {(lc.route || deriveRoute(lc.collectionPoint, lc.deliveryPoint)) && <span className="block text-xs font-black text-[#13294b] mt-0.5">{lc.route || deriveRoute(lc.collectionPoint, lc.deliveryPoint)}</span>}
+                    </p>
+                    <p className="hidden md:block text-sm text-slate-500">{lc.collectionPoint} → {lc.deliveryPoint}</p>
                     {groupTrucks.length > 1 && (
                         <p className="text-xs font-bold text-[#13294b] mt-0.5">Split waybill {lc.loadRefNo || ''} · truck {Math.max(1, groupTrucks.findIndex(t => t.id === lc.id) + 1)} of {groupTrucks.length}</p>
                     )}
@@ -744,6 +751,19 @@ const LoadDetailModal: React.FC = () => {
                         <EnRouteStopsEditor initial={lc.enRouteStops || []} onSave={(s) => { const res = handleUpdateLoadConfirmation(lc.id, { enRouteStops: s } as any); if (res?.then) res.then((r: any) => { if (r && r.ok === false) showToast(`Could not save stop: ${r.error}`); }); }} />
                     </div>
                 </Section>
+                <Section title="Cargo" accent="bg-gray-500">
+                    <div className="grid grid-cols-2 gap-3">
+                        <F label="Load Type" k="loadType" value={lc.loadType} />
+                        <F label="Commodity" k="commodity" value={lc.commodity} list={commodityOpts} />
+                        <F label="Packaging" k="packaging" value={lc.packaging} list={packagingOpts} />
+                        <F label="Quantity" k="quantity" value={lc.quantity} />
+                        <F label="Weight (kg)" k="weightKg" value={lc.weightKg} />
+                        <F label="Volume" k="volume" value={lc.volume} />
+                        <F label="Cargo Value" k="cargoValue" value={lc.cargoValue} />
+                        <F label="Container" k="containerNo" value={lc.containerNo} />
+                    </div>
+                    <div className="mt-2"><F label="Instructions" k="specialInstructions" value={lc.specialInstructions} prose /></div>
+                </Section>
                 {(() => {
                     // In-network own truck (GP/KZN ↔ DBN/JHB) = FBN vehicle + driver, NO
                     // subcontractor. Out-of-network end destination (CPT/PE/EL/Bloem…) = FBN
@@ -783,19 +803,6 @@ const LoadDetailModal: React.FC = () => {
                         </Section>
                     );
                 })()}
-                <Section title="Cargo" accent="bg-gray-500">
-                    <div className="grid grid-cols-2 gap-3">
-                        <F label="Load Type" k="loadType" value={lc.loadType} />
-                        <F label="Commodity" k="commodity" value={lc.commodity} list={commodityOpts} />
-                        <F label="Packaging" k="packaging" value={lc.packaging} list={packagingOpts} />
-                        <F label="Quantity" k="quantity" value={lc.quantity} />
-                        <F label="Weight (kg)" k="weightKg" value={lc.weightKg} />
-                        <F label="Volume" k="volume" value={lc.volume} />
-                        <F label="Cargo Value" k="cargoValue" value={lc.cargoValue} />
-                        <F label="Container" k="containerNo" value={lc.containerNo} />
-                    </div>
-                    <div className="mt-2"><F label="Instructions" k="specialInstructions" value={lc.specialInstructions} prose /></div>
-                </Section>
                 {!editing && (
                     <Section title="Cargo Verification" accent="bg-teal-500">
                         <div className="flex items-center justify-between mb-3">

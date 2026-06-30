@@ -53,6 +53,11 @@ const LoadBoard: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [view, setView] = useState<'list' | 'board'>(() => { try { return (localStorage.getItem('brokingView') as any) || 'list'; } catch { return 'list'; } });
     const [stageFilter, setStageFilter] = useState<StageKey | 'all' | 'archived'>('all');
+    // Optional user sort (tap a column). Null = default stage+date grouping.
+    type SortKey = 'load' | 'transporter' | 'client' | 'route' | 'collect' | 'size' | 'weight' | 'stage';
+    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+    const setSort = (k: SortKey) => { if (k === sortKey) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); } else { setSortKey(k); setSortDir('asc'); } };
     useEffect(() => { try { localStorage.setItem('brokingView', view); } catch { /* ignore */ } }, [view]);
 
     const refresh = async () => { setRefreshing(true); try { await handleRefreshLoads?.(); } finally { setRefreshing(false); } };
@@ -176,6 +181,40 @@ const LoadBoard: React.FC = () => {
     const transporterOf = (lc: LoadConfirmation): string =>
         lc.supplierId ? (supplierMap.get(lc.supplierId) || lc.subcontractorName || 'Subcontractor') : (lc.subcontractorName || (isAssigned(lc) ? 'Own fleet' : ''));
 
+    // Apply the user's column sort on top of the stage-grouped base, if one is set.
+    const STAGE_RANK: Record<StageKey, number> = { collection: 0, collecting: 1, loading: 2, onroute: 3, arrived: 4, delivered: 5, pod: 6, closed: 7 };
+    const displayRows = useMemo(() => {
+        if (!sortKey) return listRows;
+        const val = (lc: LoadConfirmation): string | number => {
+            switch (sortKey) {
+                case 'load': return (lc.loadConNumber || '').toLowerCase();
+                case 'transporter': return transporterOf(lc).toLowerCase();
+                case 'client': return (clientMap.get(lc.clientId || '') || lc.clientName || '').toLowerCase();
+                case 'route': return routeSimple(lc).toLowerCase();
+                case 'collect': return new Date(lc.collectionDate || lc.date || 0).getTime();
+                case 'size': return sizeOf(lc).toLowerCase();
+                case 'weight': return Number((lc as any).weightKg) || 0;
+                case 'stage': return STAGE_RANK[stageOf(lc)];
+                default: return 0;
+            }
+        };
+        const dir = sortDir === 'asc' ? 1 : -1;
+        return [...listRows].sort((a, b) => {
+            const av = val(a), bv = val(b);
+            if (typeof av === 'string' || typeof bv === 'string') return String(av).localeCompare(String(bv)) * dir;
+            return (av - bv) * dir;
+        });
+    }, [listRows, sortKey, sortDir, clientMap, supplierMap]);
+
+    // Sortable column header.
+    const Th: React.FC<{ k: SortKey; label: string; className?: string }> = ({ k, label, className }) => (
+        <th className={className}>
+            <button onClick={() => setSort(k)} className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-[#13294b] ${sortKey === k ? 'text-[#13294b] font-bold' : ''}`}>
+                {label}{sortKey === k && <span className="text-[9px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+            </button>
+        </th>
+    );
+
     // Right-hand action button(s) for a load, shared by list + board.
     const RowActions: React.FC<{ lc: LoadConfirmation; compact?: boolean }> = ({ lc, compact }) => {
         const step = nextStep(lc);
@@ -249,7 +288,7 @@ const LoadBoard: React.FC = () => {
                             <>
                             {/* mobile cards */}
                             <div className="md:hidden divide-y divide-slate-100">
-                                {listRows.map(lc => {
+                                {displayRows.map(lc => {
                                     const terminal = ['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(lc.status);
                                     const overdue = lc.collectionDate && !terminal && new Date(lc.collectionDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
                                     const st = STAGES.find(s => s.key === stageOf(lc))!;
@@ -276,18 +315,18 @@ const LoadBoard: React.FC = () => {
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead><tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                                        <th className="py-2 pl-3 px-2">Load</th>
-                                        <th className="py-2 px-2">Transporter</th>
-                                        <th className="py-2 px-2">Client</th>
-                                        <th className="py-2 px-2">Route</th>
-                                        <th className="py-2 px-2">Collect</th>
-                                        <th className="py-2 px-2">Size</th>
-                                        <th className="py-2 px-2 text-right">Weight</th>
-                                        <th className="py-2 px-2">Stage</th>
+                                        <Th k="load" label="Load" className="py-2 pl-3 px-2" />
+                                        <Th k="transporter" label="Transporter" className="py-2 px-2" />
+                                        <Th k="client" label="Client" className="py-2 px-2" />
+                                        <Th k="route" label="Route" className="py-2 px-2" />
+                                        <Th k="collect" label="Collect" className="py-2 px-2" />
+                                        <Th k="size" label="Size" className="py-2 px-2" />
+                                        <Th k="weight" label="Weight" className="py-2 px-2 text-right" />
+                                        <Th k="stage" label="Stage" className="py-2 px-2" />
                                         <th className="py-2 px-2 text-right pr-3">Action</th>
                                     </tr></thead>
                                     <tbody>
-                                        {listRows.map(lc => {
+                                        {displayRows.map(lc => {
                                             const terminal = ['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(lc.status);
                                             const overdue = lc.collectionDate && !terminal && new Date(lc.collectionDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
                                             const st = STAGES.find(s => s.key === stageOf(lc))!;

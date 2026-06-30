@@ -38,9 +38,10 @@ const assetKind = (hint?: string): 'truck' | 'car' => {
     if (/BAKKIE|HILUX|RANGER|TRITON|AMAROK|D-?MAX|NP\s?200|POLO|SEDAN|\bCAR\b|LDV|KOMBI|\bVAN\b|CADDY|CARAVAN/.test(s)) return 'car';
     return 'truck';
 };
-// Small side-on SVG icons, coloured by status, as a marker image (data URI).
-const truckSvg = (c: string) => `<svg xmlns='http://www.w3.org/2000/svg' width='38' height='30' viewBox='0 0 26 20'><g fill='${c}' stroke='white' stroke-width='0.8' stroke-linejoin='round'><rect x='1' y='4' width='13' height='9' rx='1'/><path d='M14 6h5l4 4v3h-9z'/><circle cx='6' cy='15' r='2.2'/><circle cx='18' cy='15' r='2.2'/></g><g fill='white'><circle cx='6' cy='15' r='0.8'/><circle cx='18' cy='15' r='0.8'/></g></svg>`;
-const carSvg = (c: string) => `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='26' viewBox='0 0 26 20'><g fill='${c}' stroke='white' stroke-width='0.8' stroke-linejoin='round'><path d='M2 13c0-1 .5-3 2-3l3-3h7l4 3h3c1.5 0 3 1 3 2.5V13z'/><circle cx='7' cy='14' r='2.2'/><circle cx='18' cy='14' r='2.2'/></g><g fill='white'><circle cx='7' cy='14' r='0.8'/><circle cx='18' cy='14' r='0.8'/></g></svg>`;
+// Side-on SVG icons, coloured by status, as a marker image (data URI). Deliberately
+// distinct silhouettes: a long boxy LORRY for trucks, a low rounded CAR for bakkies/cars.
+const truckSvg = (c: string) => `<svg xmlns='http://www.w3.org/2000/svg' width='44' height='26' viewBox='0 0 32 18'><g fill='${c}' stroke='white' stroke-width='0.9' stroke-linejoin='round'><rect x='1' y='2' width='18' height='11' rx='1'/><path d='M19 5h6l5 5v3H19z'/><circle cx='8' cy='14.5' r='2.6'/><circle cx='24' cy='14.5' r='2.6'/></g><g fill='white'><circle cx='8' cy='14.5' r='1.1'/><circle cx='24' cy='14.5' r='1.1'/></g></svg>`;
+const carSvg = (c: string) => `<svg xmlns='http://www.w3.org/2000/svg' width='30' height='18' viewBox='0 0 24 15'><g fill='${c}' stroke='white' stroke-width='0.9' stroke-linejoin='round'><path d='M1 10c0-1.4 1-2 2-2l2.5-3.2C6 4 6.7 3.6 7.6 3.6h6.8c.9 0 1.7.4 2.2 1.1L19 8c1.6.1 2.8.8 2.8 2.2V11H1z'/><circle cx='7' cy='11.5' r='2.3'/><circle cx='16' cy='11.5' r='2.3'/></g><g fill='white'><circle cx='7' cy='11.5' r='1'/><circle cx='16' cy='11.5' r='1'/></g></svg>`;
 const iconUri = (kind: 'truck' | 'car', colour: string) => 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent((kind === 'car' ? carSvg : truckSvg)(colour));
 
 // Live fleet map: real truck positions from Pulsit, refreshed every 30s. Each
@@ -172,13 +173,14 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
             // Truck for big assets, car for bakkies/light vehicles; coloured by status.
             // An admin override (carSet) forces specific regs to the car icon.
             const kind = carSet.has(alnum(p.reg)) ? 'car' : assetKind(veh?.weightCategory || p.desc || p.fleet);
-            const sz = kind === 'car' ? 30 : 36;
+            const sz = kind === 'car' ? 28 : 42;
+            const h = kind === 'car' ? sz * 0.625 : sz * 0.5625; // match each viewBox so it isn't squashed
             const marker = new window.google.maps.Marker({
                 position: { lat: p.lat, lng: p.lng }, map: mapInstanceRef.current, title: p.reg,
                 icon: {
                     url: iconUri(kind, colour),
-                    scaledSize: new window.google.maps.Size(sz, sz * 0.8),
-                    anchor: new window.google.maps.Point(sz / 2, sz * 0.4),
+                    scaledSize: new window.google.maps.Size(sz, h),
+                    anchor: new window.google.maps.Point(sz / 2, h / 2),
                 },
             });
             marker.addListener('click', () => info.open({ anchor: marker, map: mapInstanceRef.current }));

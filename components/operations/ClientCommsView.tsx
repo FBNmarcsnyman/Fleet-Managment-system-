@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { invokeFn } from '../../lib/supabase';
 import { brandedEmail } from '../../lib/emailTemplate';
+import { fetchMarketingContacts } from '../../lib/marketingContacts';
 
 // Clients > Comms & Marketing — segment the client base by category / contact
 // flag, then send ONE branded email to the chosen audience via the existing
@@ -21,19 +22,22 @@ const ClientCommsView: React.FC = () => {
     const [body, setBody] = useState('');
     const [sending, setSending] = useState(false);
     const [showList, setShowList] = useState(false);
+    // Opted-out emails (marketing contacts) — never email these.
+    const [optedOut, setOptedOut] = useState<Set<string>>(new Set());
+    useEffect(() => { fetchMarketingContacts().then(cs => setOptedOut(new Set(cs.filter(c => c.optedOut).map(c => c.email.toLowerCase())))); }, []);
 
     // The clients in the current category filter.
     const inCat = useMemo(
         () => (clients as any[]).filter(c => cat === 'ALL' || catOf(c) === cat),
         [clients, cat]);
 
-    // Resolve the audience to a de-duplicated list of {email, name, company}.
+    // Resolve the audience to a de-duplicated list, EXCLUDING opted-out emails.
     const recipients = useMemo(() => {
         const seen = new Set<string>();
         const out: { email: string; name: string; company: string }[] = [];
         const push = (email?: string, name?: string, company?: string) => {
             const e = (email || '').trim();
-            if (!e || seen.has(e.toLowerCase())) return;
+            if (!e || seen.has(e.toLowerCase()) || optedOut.has(e.toLowerCase())) return;
             seen.add(e.toLowerCase());
             out.push({ email: e, name: name || '', company: company || '' });
         };
@@ -44,7 +48,7 @@ const ClientCommsView: React.FC = () => {
             else { const main = contacts.find(p => p.getsUpdates) || contacts[0]; push(main?.email || c.contactEmail, main?.name || c.contactPerson, c.name); }
         });
         return out;
-    }, [inCat, audience]);
+    }, [inCat, audience, optedOut]);
 
     const counts = useMemo(() => {
         const m: Record<string, number> = {};

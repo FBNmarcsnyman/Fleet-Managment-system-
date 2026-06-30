@@ -37,6 +37,7 @@ export const TAB_SECTIONS: TabSection[] = [
     {
         key: 'accounts', label: 'Accounts', tabs: [
             { view: 'clients', label: 'Clients CRM' },
+            { view: 'contacts', label: 'Marketing Contacts' },
             { view: 'comms', label: 'Comms & Marketing' },
             { view: 'transporters', label: 'Transporters' },
             { view: 'vetting', label: 'Compliance Vetting' },

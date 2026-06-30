@@ -11,13 +11,17 @@ import { manifestHtml, opsEmailFor } from '../../lib/linehaulDocs';
 const ManifestDoc: React.FC = () => {
     const { modal, hideModal, showToast } = useUIState();
     const { loadConfirmations = [], clients = [], suppliers = [], users = [], handleReceiveManifest } = useOperations() as any;
-    const { vehicles = [] } = useVehicles() as any;
+    const { vehicles = [], drivers = [] } = useVehicles() as any;
     const m = modal.payload?.manifest;
     const [busy, setBusy] = useState(false);
     if (!m) return null;
 
     const veh = (vehicles as any[]).find(v => v.id === m.vehicleId);
-    const driver = (users as any[]).find((u: any) => u.id === m.driverId)?.name || '';
+    // Driver now lives in the drivers register (uuid id); fall back to login users
+    // for older manifests that stored a user id/email.
+    const driver = (drivers as any[]).find((d: any) => d.id === m.driverId)?.name
+        || (users as any[]).find((u: any) => u.id === m.driverId || u.email === m.driverId)?.name
+        || '';
     const loads: LoadConfirmation[] = useMemo(() => (loadConfirmations as LoadConfirmation[]).filter(l => (m.loadConfirmationIds || []).includes(l.id)), [loadConfirmations, m]);
     const clientName = (lc: LoadConfirmation) => (clients as any[]).find(c => c.id === lc.clientId)?.name || lc.clientName || '—';
     // Brokered line-haul leg → show the carrier's truck/driver instead of own fleet.

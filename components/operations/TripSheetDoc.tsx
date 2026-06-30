@@ -11,13 +11,15 @@ import { tripSheetHtml, tripWaText, waNum, opsEmailFor } from '../../lib/linehau
 const TripSheetDoc: React.FC = () => {
     const { modal, showToast } = useUIState();
     const { loadConfirmations = [], clients = [], users = [] } = useOperations() as any;
-    const { vehicles = [] } = useVehicles() as any;
+    const { vehicles = [], drivers = [] } = useVehicles() as any;
     const t = modal.payload?.tripSheet;
     const [busy, setBusy] = useState<string | null>(null);
     if (!t) return null;
 
     const veh = (vehicles as any[]).find(v => v.id === t.vehicleId);
-    const driverUser = (users as any[]).find((u: any) => u.id === t.driverId || u.email === t.driverId);
+    // Driver from the drivers register first (uuid); fall back to login users for older trips.
+    const driverRec = (drivers as any[]).find((d: any) => d.id === t.driverId);
+    const driverUser = driverRec || (users as any[]).find((u: any) => u.id === t.driverId || u.email === t.driverId);
     const driver = driverUser?.name || '';
     const driverCell = driverUser?.cell || '';
     const vehicleLabel = veh ? `${veh.registration}${veh.name ? ` (${veh.name})` : ''}` : '';

@@ -30,7 +30,7 @@ export const ALL_NAV_ENTRIES: NavEntry[] = [
     { view: 'management', label: 'Management', icon: DashboardIcon, permission: 'access_management' },
     {
         kind: 'group', key: 'operations', label: 'Operations', icon: TruckIcon, children: [
-            { view: 'operations', label: 'FBN', icon: TruckIcon, permission: 'access_operations', altPermission: 'access_loadcons' },
+            { view: 'operations', label: 'FBN', icon: TruckIcon, permission: 'access_operations', altPermission: 'access_loadcons', badgeKey: 'operations' },
             { view: 'broking', label: 'Broking', icon: DocumentTextIcon, permission: 'access_operations', altPermission: 'access_loadcons', badgeKey: 'broking' },
         ],
     },

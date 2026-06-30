@@ -467,9 +467,19 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
         [state.branches],
     );
 
-    const derived = useMemo(() => ({
-        unassignedJobCount: (state.loadConfirmations || []).filter(lc => lc.status === 'Booked').length,
-    }), [state.loadConfirmations]);
+    const derived = useMemo(() => {
+        const booked = (state.loadConfirmations || []).filter(lc => lc.status === 'Booked');
+        // Brokered = a carrier is/was involved (name OR supplier_id). Own-fleet loads
+        // (no subbie) belong to OPERATIONS, not Broking — so they badge separately.
+        const isBrokered = (lc: any) => !!(lc.subcontractorName || lc.supplierId);
+        const brokingCount = booked.filter(isBrokered).length;
+        const opsCount = booked.length - brokingCount;
+        return {
+            unassignedJobCount: booked.length,        // total (legacy)
+            unassignedBrokingCount: brokingCount,     // Booked + brokered → Broking badge
+            unassignedOpsCount: opsCount,             // Booked own-fleet → Operations badge
+        };
+    }, [state.loadConfirmations]);
 
     const handlers = useMemo(() => ({
         // -- Clients ----------------------------------------------------------

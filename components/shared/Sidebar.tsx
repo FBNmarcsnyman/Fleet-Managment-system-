@@ -34,7 +34,7 @@ const NavLink: React.FC<{
 const Sidebar: React.FC = () => {
     const { currentUser, hasPermission, handleLogout } = useAuth();
     const { currentView, partnersSubView, handleViewChange, handlePartnersSubViewChange, sidebarOpen, setSidebarOpen } = useUIState();
-    const { unassignedJobCount = 0 } = useOperations();
+    const { unassignedBrokingCount = 0, unassignedOpsCount = 0 } = useOperations() as any;
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
     if (!currentUser) return null;
@@ -81,7 +81,7 @@ const Sidebar: React.FC = () => {
         return out;
     }, [currentUser, hasPermission]);
 
-    const badgeFor = (item: NavItem) => item.badgeKey === 'broking' ? unassignedJobCount : undefined;
+    const badgeFor = (item: NavItem) => item.badgeKey === 'broking' ? unassignedBrokingCount : item.badgeKey === 'operations' ? unassignedOpsCount : undefined;
     const settingsItems = SETTINGS_NAV_ITEMS.filter(item => hasPermission(item.permission));
 
     return (

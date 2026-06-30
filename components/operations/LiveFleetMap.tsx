@@ -62,13 +62,16 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
     // The exact reg strings the admin chose to hide (stored server-side). hiddenSet
     // is the normalised lookup used while plotting. NOTHING is hidden by default.
     const [hiddenList, setHiddenList] = useState<string[]>([]);
+    const [carList, setCarList] = useState<string[]>([]); // regs forced to the CAR icon
     const [manageOpen, setManageOpen] = useState(false);
     const hiddenSet = React.useMemo(() => new Set(hiddenList.map(r => alnum(r))), [hiddenList]);
+    const carSet = React.useMemo(() => new Set(carList.map(r => alnum(r))), [carList]);
     const loadHidden = async () => {
         try {
-            const { data } = await directSelect('email_settings?id=eq.1&select=map_hidden_regs');
+            const { data } = await directSelect('email_settings?id=eq.1&select=map_hidden_regs,map_car_regs');
             const row = Array.isArray(data) ? data[0] : data;
             setHiddenList((row?.map_hidden_regs as string[]) || []);
+            setCarList((row?.map_car_regs as string[]) || []);
         } catch { /* ignore */ }
     };
     useEffect(() => { loadHidden(); }, []);
@@ -80,6 +83,15 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
             : hiddenList.filter(r => alnum(r) !== alnum(reg));
         setHiddenList(next);
         try { await directUpdate('email_settings', { id: '1' }, { map_hidden_regs: next }); } catch { /* non-blocking */ }
+    };
+    // Force a registration's map icon to car (true) or back to auto/truck (false).
+    const setRegCar = async (reg: string, isCar: boolean) => {
+        if (!reg) return;
+        const next = isCar
+            ? Array.from(new Set([...carList, reg]))
+            : carList.filter(r => alnum(r) !== alnum(reg));
+        setCarList(next);
+        try { await directUpdate('email_settings', { id: '1' }, { map_car_regs: next }); } catch { /* non-blocking */ }
     };
     // Bridge for the map InfoWindow "Hide from map" button (plain HTML → React).
     useEffect(() => {
@@ -158,7 +170,8 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
                 </div>`,
             });
             // Truck for big assets, car for bakkies/light vehicles; coloured by status.
-            const kind = assetKind(veh?.weightCategory || p.desc || p.fleet);
+            // An admin override (carSet) forces specific regs to the car icon.
+            const kind = carSet.has(alnum(p.reg)) ? 'car' : assetKind(veh?.weightCategory || p.desc || p.fleet);
             const sz = kind === 'car' ? 30 : 36;
             const marker = new window.google.maps.Marker({
                 position: { lat: p.lat, lng: p.lng }, map: mapInstanceRef.current, title: p.reg,
@@ -174,7 +187,7 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
         });
         // Fit to all trucks the first time we get data.
         if (positions.length && !mapInstanceRef.current.__fitted) { mapInstanceRef.current.fitBounds(bounds); mapInstanceRef.current.__fitted = true; }
-    }, [positions, loadConfirmations, isApiLoaded, hiddenSet, vehByReg, isAdmin]);
+    }, [positions, loadConfirmations, isApiLoaded, hiddenSet, carSet, vehByReg, isAdmin]);
 
     return (
         <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -201,19 +214,23 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
                 const all = Array.from(new Set([...tracked, ...hiddenList])).sort((a, b) => a.localeCompare(b));
                 return (
                     <div className="mb-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
-                        <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Hide registrations from the map</p>
-                        <p className="text-[11px] text-slate-500 mb-2">Tick a registration to hide it (e.g. a personal vehicle). Nothing is hidden until you pick it; untick to show again.</p>
-                        <div className="max-h-52 overflow-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
+                        <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Manage map vehicles</p>
+                        <p className="text-[11px] text-slate-500 mb-2">Per registration: <strong>Hide</strong> it from the map (e.g. a personal vehicle), or set its icon to <strong>Car</strong> vs Truck. Nothing changes until you pick it.</p>
+                        <div className="max-h-60 overflow-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {all.length === 0 && <span className="text-xs text-slate-400">No tracked vehicles right now.</span>}
                             {all.map(reg => {
                                 const hidden = hiddenSet.has(alnum(reg));
+                                const isCar = carSet.has(alnum(reg));
                                 const veh = vehByReg.get(alnum(reg));
                                 return (
-                                    <label key={reg} className="flex items-center gap-2 text-sm bg-white border border-slate-200 rounded-lg px-2 py-1.5 cursor-pointer">
-                                        <input type="checkbox" checked={hidden} onChange={() => setRegHidden(reg, !hidden)} className="h-4 w-4 accent-[#13294b]" />
-                                        <span className="font-mono font-bold text-slate-800">{reg}</span>
-                                        {veh?.name && <span className="text-[11px] text-slate-400 truncate">{veh.name}</span>}
-                                    </label>
+                                    <div key={reg} className="flex items-center gap-2 text-sm bg-white border border-slate-200 rounded-lg px-2 py-1.5">
+                                        <span className="font-mono font-bold text-slate-800 truncate flex-1">{reg}{veh?.name ? <span className="text-[11px] text-slate-400 font-sans"> · {veh.name}</span> : ''}</span>
+                                        <div className="flex gap-0.5 shrink-0">
+                                            <button onClick={() => setRegCar(reg, false)} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${!isCar ? 'bg-[#13294b] text-white' : 'text-slate-500 hover:bg-slate-100'}`} title="Show as a truck">Truck</button>
+                                            <button onClick={() => setRegCar(reg, true)} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isCar ? 'bg-[#13294b] text-white' : 'text-slate-500 hover:bg-slate-100'}`} title="Show as a car / bakkie">Car</button>
+                                        </div>
+                                        <button onClick={() => setRegHidden(reg, !hidden)} className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${hidden ? 'bg-amber-500 text-white' : 'text-slate-400 hover:bg-amber-100 hover:text-amber-700'}`} title={hidden ? 'Currently hidden — click to show' : 'Hide from map'}>{hidden ? 'Hidden' : 'Hide'}</button>
+                                    </div>
                                 );
                             })}
                         </div>

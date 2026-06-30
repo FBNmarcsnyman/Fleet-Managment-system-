@@ -35,38 +35,53 @@ type ManifestDocData = { manifest: Manifest; loads: LoadConfirmation[]; vehicleL
 export const manifestHtml = ({ manifest: m, loads, vehicleLabel, driverName, clientNameOf }: ManifestDocData): string => {
     const tot = loads.reduce((t, l) => ({ pkgs: t.pkgs + pkgsOf(l), kg: t.kg + (Number(l.weightKg) || 0), cube: t.cube + cubesOf(l) }), { pkgs: 0, kg: 0, cube: 0 });
     const td = 'border:1px solid #cbd5e1;padding:5px 8px';
+    const isSuper = m.trailerSize === '6m + 12m';
+    const split = (m as any).trailerSplit || {};
+    const trailerOf = (l: LoadConfirmation): string => isSuper ? (split[l.id] || '12m') : (m.trailerSize || '');
+    // Per-trailer kg subtotals (superlink shows each leg).
+    const legKg: Record<string, number> = {};
+    loads.forEach(l => { const t = trailerOf(l); legKg[t] = (legKg[t] || 0) + (Number(l.weightKg) || 0); });
     const rows = loads.map(l => `<tr>
         <td style="${td};font-family:monospace">${l.loadConNumber}</td>
         <td style="${td}">${clientNameOf(l)}</td>
         <td style="${td}">${l.deliveryPoint || ''}</td>
+        ${isSuper ? `<td style="${td};text-align:center;font-weight:700">${trailerOf(l)}</td>` : ''}
         <td style="${td};text-align:right">${pkgsOf(l) || ''}</td>
         <td style="${td};text-align:right">${l.weightKg ? kg(Number(l.weightKg)) : ''}</td>
         <td style="${td};text-align:right">${m3(cubesOf(l))}</td>
       </tr>`).join('');
+    const trailerLine = isSuper
+        ? `6m + 12m (superlink)${(m as any).trailerReg6m || (m as any).trailerReg12m ? ` — 6m: <b>${(m as any).trailerReg6m || '—'}</b> · 12m: <b>${(m as any).trailerReg12m || '—'}</b>` : ''}`
+        : `${m.trailerSize || '—'}${((m as any).trailerReg6m || (m as any).trailerReg12m) ? ` — <b>${(m as any).trailerReg6m || (m as any).trailerReg12m}</b>` : ''}`;
+    const colspan = isSuper ? 4 : 3;
     return `<div style="font-family:Arial,sans-serif;color:#13294b;max-width:820px">
       ${HEAD('LINE-HAUL MANIFEST', m.manifestNumber, m.dispatchDate)}
       <table style="border-collapse:collapse;margin-bottom:12px;font-size:13px">
         <tr><td style="padding:2px 14px 2px 0;font-weight:700">Route</td><td>${m.originBranch || ''} &rarr; ${m.destinationBranch || ''}</td></tr>
-        <tr><td style="padding:2px 14px 2px 0;font-weight:700">Trailer</td><td>${m.trailerSize || '—'}</td></tr>
-        <tr><td style="padding:2px 14px 2px 0;font-weight:700">Vehicle</td><td>${vehicleLabel || '—'}</td></tr>
+        <tr><td style="padding:2px 14px 2px 0;font-weight:700">Trailer</td><td>${trailerLine}</td></tr>
+        <tr><td style="padding:2px 14px 2px 0;font-weight:700">Vehicle</td><td>${vehicleLabel || '—'}${(m as any).startOdometer != null ? ` · odo ${kg(Number((m as any).startOdometer))} km` : ''}</td></tr>
         <tr><td style="padding:2px 14px 2px 0;font-weight:700">Driver</td><td>${driverName || '—'}</td></tr>
+        ${(m as any).totalRate != null ? `<tr><td style="padding:2px 14px 2px 0;font-weight:700">Total rate</td><td>R ${kg(Number((m as any).totalRate))}</td></tr>` : ''}
       </table>
       <table style="border-collapse:collapse;width:100%;font-size:12px">
         <thead><tr style="background:#13294b;color:#fff">
           <th style="border:1px solid #13294b;padding:6px 8px;text-align:left">LoadCon</th>
           <th style="border:1px solid #13294b;padding:6px 8px;text-align:left">Client</th>
           <th style="border:1px solid #13294b;padding:6px 8px;text-align:left">Deliver to</th>
+          ${isSuper ? '<th style="border:1px solid #13294b;padding:6px 8px;text-align:center">Trailer</th>' : ''}
           <th style="border:1px solid #13294b;padding:6px 8px;text-align:right">Pkgs</th>
           <th style="border:1px solid #13294b;padding:6px 8px;text-align:right">Kg</th>
           <th style="border:1px solid #13294b;padding:6px 8px;text-align:right">Cube m³</th>
         </tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr style="font-weight:800;background:#f1f5f9">
-          <td style="${td}" colspan="3">TOTAL — ${loads.length} shipment${loads.length !== 1 ? 's' : ''}</td>
+          <td style="${td}" colspan="${colspan}">TOTAL — ${loads.length} shipment${loads.length !== 1 ? 's' : ''}</td>
           <td style="${td};text-align:right">${tot.pkgs}</td>
           <td style="${td};text-align:right">${kg(tot.kg)}</td>
           <td style="${td};text-align:right">${m3(tot.cube)}</td>
-        </tr></tfoot>
+        </tr>
+        ${isSuper ? `<tr style="font-weight:700;background:#f8fafc;font-size:11px"><td style="${td}" colspan="${colspan}">Per trailer</td><td style="${td};text-align:right" colspan="3">6m: ${kg(legKg['6m'] || 0)} kg (cap 12 000) · 12m: ${kg(legKg['12m'] || 0)} kg (cap 22 000)</td></tr>` : ''}
+        </tfoot>
       </table>
       <p style="font-size:11px;color:#5b6573;margin-top:16px">Received in good order at ${m.destinationBranch || 'destination'} depot — Name __________________  Signature __________________  Date ________</p>
     </div>`;

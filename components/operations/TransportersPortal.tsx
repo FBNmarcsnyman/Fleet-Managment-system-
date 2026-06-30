@@ -4,17 +4,19 @@ import ComplianceVettingView from './ComplianceVettingView';
 import { useAuth } from '../../contexts/AppContexts';
 
 const SubcontractorManagementView = lazy(() => import('./SupplierManagementView'));
+const ClientCommsView = lazy(() => import('./ClientCommsView'));
 
 // Transporters (subcontractors) — their own screen: the carrier list/CRM, the
 // compliance-doc vetting, and the new-supplier onboarding queue. Kept separate
 // from Clients so the two relationships (and their comms) never mix.
 // Sub-tabs controllable per role/branch via Users → Tab Access (accounts:*).
-type TransTab = 'list' | 'vetting' | 'onboarding';
+type TransTab = 'list' | 'vetting' | 'onboarding' | 'comms';
 
 const NAV: { view: TransTab; key: string; label: string }[] = [
     { view: 'list', key: 'transporters', label: 'Transporters' },
     { view: 'vetting', key: 'vetting', label: 'Compliance Vetting' },
     { view: 'onboarding', key: 'onboarding', label: 'Supplier Onboarding' },
+    { view: 'comms', key: 'comms', label: 'Comms & Marketing' },
 ];
 
 const TransportersPortal: React.FC = () => {
@@ -26,6 +28,7 @@ const TransportersPortal: React.FC = () => {
         switch (view) {
             case 'vetting': return <ComplianceVettingView />;
             case 'onboarding': return <SupplierOnboardingView />;
+            case 'comms': return <Suspense fallback={<div className="text-gray-400 p-4">Loading…</div>}><ClientCommsView carrierMode /></Suspense>;
             case 'list':
             default: return <Suspense fallback={<div className="text-gray-400 p-4">Loading…</div>}><SubcontractorManagementView /></Suspense>;
         }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUIState } from '../../contexts/AppContexts';
-import { fetchMarketingContacts, addMarketingContacts, setOptOut, prefsLink, MarketingContact } from '../../lib/marketingContacts';
+import { fetchMarketingContacts, addMarketingContacts, setOptOut, setBounced, prefsLink, MarketingContact } from '../../lib/marketingContacts';
 
 // CRM Phase 1 — the marketing audience + opt-in/out. Import emails (clients,
 // carriers, prospects), segment by kind/tag, and manage opt-out. Campaigns +
@@ -13,7 +13,7 @@ const MarketingContactsView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [q, setQ] = useState('');
     const [kindFilter, setKindFilter] = useState<string>('all');
-    const [optFilter, setOptFilter] = useState<'all' | 'in' | 'out'>('all');
+    const [optFilter, setOptFilter] = useState<'all' | 'in' | 'out' | 'bounced'>('all');
     // Import
     const [importing, setImporting] = useState(false);
     const [text, setText] = useState('');
@@ -27,14 +27,20 @@ const MarketingContactsView: React.FC = () => {
         const needle = q.trim().toLowerCase();
         return rows
             .filter(r => kindFilter === 'all' || r.kind === kindFilter)
-            .filter(r => optFilter === 'all' || (optFilter === 'out' ? r.optedOut : !r.optedOut))
+            .filter(r => optFilter === 'all' || (optFilter === 'out' ? r.optedOut : optFilter === 'bounced' ? r.bounced : (!r.optedOut && !r.bounced)))
             .filter(r => !needle || `${r.email} ${r.name || ''} ${r.company || ''} ${(r.tags || []).join(' ')}`.toLowerCase().includes(needle));
     }, [rows, q, kindFilter, optFilter]);
 
     const counts = useMemo(() => ({
         total: rows.length, optedOut: rows.filter(r => r.optedOut).length,
         prospect: rows.filter(r => r.kind === 'prospect').length, client: rows.filter(r => r.kind === 'client').length, carrier: rows.filter(r => r.kind === 'carrier').length,
+        bounced: rows.filter(r => r.bounced).length,
     }), [rows]);
+    const markBounced = async (c: MarketingContact) => {
+        const res = await setBounced(c.id, !c.bounced);
+        if (!res.ok) { showToast(`Could not update: ${res.error}`); return; }
+        setRows(rs => rs.map(r => r.id === c.id ? { ...r, bounced: !c.bounced } : r));
+    };
 
     // Parse pasted lines: "email, name, company" (comma-separated) or just an email per line.
     const doImport = async () => {
@@ -90,7 +96,7 @@ const MarketingContactsView: React.FC = () => {
                 <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search email / name / company / tag…" className={`${inp} w-56`} />
                 <select value={kindFilter} onChange={e => setKindFilter(e.target.value)} className={inp}><option value="all">All kinds</option>{KINDS.map(k => <option key={k} value={k}>{k}</option>)}</select>
                 <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-                    {(['all', 'in', 'out'] as const).map(f => <button key={f} onClick={() => setOptFilter(f)} className={`px-2.5 py-1 text-xs font-bold rounded-md ${optFilter === f ? 'bg-[#13294b] text-white' : 'text-slate-600'}`}>{f === 'all' ? 'All' : f === 'in' ? 'Opted in' : `Opted out (${counts.optedOut})`}</button>)}
+                    {(['all', 'in', 'out', 'bounced'] as const).map(f => <button key={f} onClick={() => setOptFilter(f)} className={`px-2.5 py-1 text-xs font-bold rounded-md ${optFilter === f ? 'bg-[#13294b] text-white' : 'text-slate-600'}`}>{f === 'all' ? 'All' : f === 'in' ? 'Opted in' : f === 'out' ? `Opted out (${counts.optedOut})` : `Bounced (${counts.bounced})`}</button>)}
                 </div>
                 <span className="text-xs text-slate-400 ml-auto">{filtered.length} shown</span>
             </div>
@@ -104,8 +110,8 @@ const MarketingContactsView: React.FC = () => {
                         {loading && <tr><td colSpan={6} className="py-8 text-center text-slate-400">Loading…</td></tr>}
                         {!loading && filtered.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-slate-400">No contacts. Paste some above to get started.</td></tr>}
                         {filtered.map(c => (
-                            <tr key={c.id} className={`border-b border-slate-100 ${c.optedOut ? 'bg-rose-50/40' : 'hover:bg-slate-50'}`}>
-                                <td className="py-2 pl-3 px-2 text-blue-700">{c.email}</td>
+                            <tr key={c.id} className={`border-b border-slate-100 ${c.bounced ? 'bg-orange-50/50' : c.optedOut ? 'bg-rose-50/40' : 'hover:bg-slate-50'}`}>
+                                <td className="py-2 pl-3 px-2 text-blue-700">{c.email}{c.bounced && <span className="ml-2 text-[9px] font-black uppercase bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">bounced</span>}</td>
                                 <td className="py-2 px-2 text-slate-700">{c.name || '—'}</td>
                                 <td className="py-2 px-2 text-slate-600">{c.company || '—'}</td>
                                 <td className="py-2 px-2"><span className="text-[10px] font-bold uppercase bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{c.kind}</span></td>
@@ -115,6 +121,7 @@ const MarketingContactsView: React.FC = () => {
                                     {c.optedOut
                                         ? <button onClick={() => toggleOpt(c)} className="text-[11px] font-bold text-rose-600">opted out · re-opt-in</button>
                                         : <button onClick={() => toggleOpt(c)} className="text-[11px] font-bold text-emerald-700 hover:underline">opted in · opt out</button>}
+                                    <button onClick={() => markBounced(c)} title="Mark this address as invalid/bounced — it stays on file but is excluded from all sends" className={`text-[11px] font-bold ml-3 ${c.bounced ? 'text-orange-600' : 'text-slate-400 hover:text-orange-600'}`}>{c.bounced ? 'bounced · clear' : 'mark invalid'}</button>
                                 </td>
                             </tr>
                         ))}

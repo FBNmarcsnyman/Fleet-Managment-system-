@@ -14,12 +14,15 @@ export interface MarketingContact {
     optedOutAt?: string;
     source?: string;
     unsubscribeToken?: string;
+    bounced?: boolean;
+    bounceReason?: string;
 }
 
 const map = (r: any): MarketingContact => ({
     id: r.id, email: r.email, name: r.name ?? undefined, company: r.company ?? undefined,
     kind: r.kind || 'prospect', tags: r.tags || [], optedOut: !!r.opted_out, optedOutAt: r.opted_out_at ?? undefined, source: r.source ?? undefined,
     unsubscribeToken: r.unsubscribe_token ?? undefined,
+    bounced: !!r.bounced, bounceReason: r.bounce_reason ?? undefined,
 });
 
 // The public self-service link (opt out/in, update details, add colleagues).
@@ -49,5 +52,11 @@ export async function addMarketingContacts(rows: { email: string; name?: string;
 
 export async function setOptOut(id: string, optedOut: boolean): Promise<{ ok: boolean; error?: string }> {
     const res: any = await directUpdate('marketing_contacts', { id }, { opted_out: optedOut, opted_out_at: optedOut ? new Date().toISOString() : null });
+    return res?.error ? { ok: false, error: res.error.message } : { ok: true };
+}
+
+// Flag / clear a bounced (invalid mailbox) contact — kept on file, excluded from sends.
+export async function setBounced(id: string, bounced: boolean, reason?: string): Promise<{ ok: boolean; error?: string }> {
+    const res: any = await directUpdate('marketing_contacts', { id }, { bounced, bounced_at: bounced ? new Date().toISOString() : null, bounce_reason: bounced ? (reason || 'Marked invalid') : null });
     return res?.error ? { ok: false, error: res.error.message } : { ok: true };
 }

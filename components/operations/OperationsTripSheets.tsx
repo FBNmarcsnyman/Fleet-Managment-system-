@@ -60,6 +60,16 @@ const OperationsTripSheets: React.FC = () => {
     const saveStops = async (t: any, stops: any[]) => { const r = await handleUpdateTripSheet(t.id, { stops }); if (r?.ok === false) showToast(`Could not reorder: ${r.error}`); };
     const move = (t: any, fromIdx: number, toIdx: number) => { const arr = runStops(t); if (toIdx < 0 || toIdx >= arr.length) return; const [m] = arr.splice(fromIdx, 1); arr.splice(toIdx, 0, m); saveStops(t, arr.map((s, i) => ({ ...s, order: i }))); };
     const toggleUrgent = (t: any, loadId: string) => { const arr = runStops(t).map(s => s.loadId === loadId ? { ...s, urgent: !s.urgent } : s); saveStops(t, arr); };
+    // A drop that couldn't be delivered today — capture the reason and auto-flag it
+    // URGENT for the next day so it's first on the run.
+    const markNotDelivered = (t: any, loadId: string) => {
+        const reason = window.prompt('Why was this drop NOT delivered? (it will be flagged URGENT for next day)');
+        if (reason == null) return;
+        const arr = runStops(t).map((s: any) => s.loadId === loadId ? { ...s, failed: true, reason: reason.trim(), urgent: true } : s);
+        saveStops(t, arr);
+    };
+    const clearNotDelivered = (t: any, loadId: string) => { const arr = runStops(t).map((s: any) => s.loadId === loadId ? { ...s, failed: false, reason: undefined } : s); saveStops(t, arr); };
+    const isDelivered = (l: any) => ['Delivered', 'POD Submitted', 'Invoiced'].includes(l.status) || !!l.podPhoto;
 
     return (
         <div className="max-w-[1600px] mx-auto px-1">
@@ -107,7 +117,7 @@ const OperationsTripSheets: React.FC = () => {
                                         <button onClick={() => showModal('tripSheetDoc', { tripSheet: t })} className="font-bold text-[#13294b] underline decoration-dotted">{t.tripSheetNumber}</button>
                                         <span className="text-sm font-bold text-slate-700">{veh?.registration || 'vehicle'}</span>
                                         <span className="text-xs text-slate-500">{loads.length} drop{loads.length === 1 ? '' : 's'} · {code(t.branch)}</span>
-                                        <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">{t.status || 'Out for Delivery'}</span>
+                                        {(() => { const done = loads.filter(isDelivered).length; const failed = runStops(t).filter((s: any) => s.failed).length; return <><span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${done === loads.length ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{done}/{loads.length} delivered</span>{failed > 0 && <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">{failed} not delivered ⚠</span>}</>; })()}
                                     </div>
                                     {/* Ordered delivery run — drop 1, 2, 3… (reorder / flag urgent) */}
                                     {loads.length > 1 && <p className="text-[10px] text-slate-400 mt-2 mb-0.5 uppercase tracking-wider font-bold">Delivery run · {loads.length} drops — reorder with ▲▼ or flag urgent</p>}
@@ -117,7 +127,8 @@ const OperationsTripSheets: React.FC = () => {
                                             if (!l) return null;
                                             const multi = loads.length > 1;
                                             return (
-                                            <div key={l.id} className={`flex items-center gap-2 px-3 py-1.5 text-sm ${stop.urgent ? 'bg-red-50' : ''}`}>
+                                            <div key={l.id}>
+                                            <div className={`flex items-center gap-2 px-3 py-1.5 text-sm ${stop.urgent ? 'bg-red-50' : ''}`}>
                                                 {multi && (
                                                     <span className="flex flex-col leading-none">
                                                         <button onClick={() => move(t, idx, idx - 1)} disabled={idx === 0} className="text-slate-400 hover:text-[#13294b] disabled:opacity-20 text-xs">▲</button>
@@ -130,11 +141,16 @@ const OperationsTripSheets: React.FC = () => {
                                                 {stop.urgent && <span className="text-[9px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded uppercase">Urgent</span>}
                                                 <span className="text-[11px] text-slate-400 hidden sm:inline">{pkgsOf(l) || '?'} pkgs</span>
                                                 {multi && <button onClick={() => toggleUrgent(t, l.id)} title="Flag this drop urgent (go first)" className={`text-[10px] font-bold py-1 px-1.5 rounded ${stop.urgent ? 'bg-red-600 text-white' : 'text-red-500 hover:bg-red-50'}`}>⚑</button>}
+                                                {(stop as any).failed && <span className="text-[9px] font-black text-red-700 bg-red-100 px-1.5 py-0.5 rounded uppercase" title={(stop as any).reason || ''}>Not delivered · urgent next day</span>}
                                                 {l.status === 'Delivered' && !l.podPhoto
                                                     ? <button onClick={() => getPod(l)} className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold py-1 px-2 rounded uppercase">Get POD</button>
                                                     : l.status === 'POD Submitted'
                                                         ? <span className="text-[10px] font-bold text-emerald-600">✓ POD</span>
-                                                        : <button onClick={() => markDelivered(l)} disabled={busy === l.id} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-bold py-1 px-2 rounded uppercase">{busy === l.id ? '…' : 'Delivered'}</button>}
+                                                        : (stop as any).failed
+                                                            ? <button onClick={() => clearNotDelivered(t, l.id)} className="text-[10px] font-bold text-slate-500 hover:underline">undo</button>
+                                                            : <><button onClick={() => markDelivered(l)} disabled={busy === l.id} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-bold py-1 px-2 rounded uppercase">{busy === l.id ? '…' : 'Delivered'}</button><button onClick={() => markNotDelivered(t, l.id)} title="Couldn't deliver — capture reason + flag urgent next day" className="text-[10px] font-bold text-red-500 hover:bg-red-50 py-1 px-1.5 rounded">✕ no</button></>}
+                                            </div>
+                                            {(stop as any).failed && (stop as any).reason && <div className="px-3 pb-1.5 text-[11px] text-red-600 -mt-1">↳ {(stop as any).reason}</div>}
                                             </div>
                                             );
                                         })}

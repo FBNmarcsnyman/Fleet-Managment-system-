@@ -1167,8 +1167,8 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                         const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
                         const html = brandedEmail(`<p><strong>Inter-branch handover.</strong></p>
                           <p>Load <strong>${m.loadConNumber}</strong> has arrived at the <strong>${m.destinationBranch}</strong> depot (${m.collectionBranch} &rarr; ${m.destinationBranch}).</p>
-                          <p>Please arrange the delivery leg — assign a driver and ETA:</p>
-                          ${emailButton(`${base}?accept=${id}`, 'Assign delivery driver &amp; ETA &rarr;', '#16a34a')}
+                          <p>Arrange the delivery leg in the app (raise a trip sheet / assign the driver), then use this link to set the delivery ETA and mark it delivered:</p>
+                          ${emailButton(`${base}?update=${id}`, 'Update delivery — ETA / mark delivered &rarr;', '#16a34a')}
                           <p>Regards,<br>FBN Transport</p>`);
                         void invokeFn('send-email', { body: { to: opsEmail(m.destinationBranch), cc: [opsEmail(m.collectionBranch), OPS_GENERAL], subject: `HANDOVER ${m.loadConNumber} at ${m.destinationBranch} - arrange delivery`, html, fromName: 'FBN Transport' } });
                     }

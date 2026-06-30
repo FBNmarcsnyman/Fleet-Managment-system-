@@ -416,6 +416,19 @@ const LoadDetailModal: React.FC = () => {
         setAdvancing(false);
         if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
     };
+    // One-tap "delivered" from any in-progress delivery state (At Destination Depot
+    // etc. otherwise needs 3 step-throughs). Stamps today's delivery date if missing.
+    const DELIVERY_PROGRESS = ['Driver Assigned', 'At Collection Point', 'Loading', 'Collected', 'At Collection Depot', 'In Transit', 'At Destination Depot', 'Unloaded', 'Out for Delivery'];
+    const canMarkDelivered = DELIVERY_PROGRESS.includes(lc.status);
+    const markDelivered = async () => {
+        if (!window.confirm(`Mark ${lc.loadConNumber} as DELIVERED? It then awaits the signed POD.`)) return;
+        setAdvancing(true);
+        const upd: any = { status: 'Delivered' };
+        if (!lc.deliveryDate) upd.deliveryDate = new Date().toISOString().slice(0, 10);
+        const res = await handleUpdateLoadConfirmation(lc.id, upd);
+        setAdvancing(false);
+        if (res && res.ok === false) showToast(`Could not update: ${res.error}`); else showToast('Marked delivered — awaiting POD.');
+    };
 
     // Email the computer-generated waybill / POD to the supplier (print & sign).
     const [waybillBusy, setWaybillBusy] = useState(false);
@@ -480,6 +493,7 @@ const LoadDetailModal: React.FC = () => {
                         return <select value={lc.status} onChange={e => setStatus(e.target.value)} title="Change status" className="text-xs font-bold border border-slate-300 rounded-lg px-2 py-1 bg-white text-slate-700 hover:border-[#13294b] cursor-pointer">{STATUSES.map(s => <option key={s} value={s}>{optLabel(s)}</option>)}</select>;
                     })()}
                     {!editing && nextStep(lc) && <button onClick={quickAdvance} disabled={advancing} title="Move this load to the next status" className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-50">{advancing ? '…' : `${nextStep(lc)!.label} →`}</button>}
+                    {!editing && canMarkDelivered && <button onClick={markDelivered} disabled={advancing} title="Mark this load delivered now (skips the in-between steps)" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-50">✓ Mark delivered</button>}
                     {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">📄 View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>📷 Capture</button>}
                     {!editing && <button onClick={whatsappDriver} className={tbtn}>💬 WhatsApp</button>}

@@ -13,12 +13,20 @@ export interface MarketingContact {
     optedOut: boolean;
     optedOutAt?: string;
     source?: string;
+    unsubscribeToken?: string;
 }
 
 const map = (r: any): MarketingContact => ({
     id: r.id, email: r.email, name: r.name ?? undefined, company: r.company ?? undefined,
     kind: r.kind || 'prospect', tags: r.tags || [], optedOut: !!r.opted_out, optedOutAt: r.opted_out_at ?? undefined, source: r.source ?? undefined,
+    unsubscribeToken: r.unsubscribe_token ?? undefined,
 });
+
+// The public self-service link (opt out/in, update details, add colleagues).
+export const prefsLink = (c: MarketingContact): string => {
+    const origin = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+    return `${origin}?prefs=${c.id}&t=${c.unsubscribeToken || ''}`;
+};
 
 export async function fetchMarketingContacts(): Promise<MarketingContact[]> {
     const { data } = await directSelect('marketing_contacts?select=*&order=created_at.desc&limit=10000');

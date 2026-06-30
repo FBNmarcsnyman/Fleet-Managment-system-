@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUIState } from '../../contexts/AppContexts';
-import { fetchMarketingContacts, addMarketingContacts, setOptOut, MarketingContact } from '../../lib/marketingContacts';
+import { fetchMarketingContacts, addMarketingContacts, setOptOut, prefsLink, MarketingContact } from '../../lib/marketingContacts';
 
 // CRM Phase 1 — the marketing audience + opt-in/out. Import emails (clients,
 // carriers, prospects), segment by kind/tag, and manage opt-out. Campaigns +
@@ -76,7 +76,8 @@ const MarketingContactsView: React.FC = () => {
             {/* Import */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Import / add contacts</p>
-                <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder={'Paste one per line: email, name, company\ne.g. ops@acme.co.za, John, ACME Logistics'} className={`${inp} w-full font-mono text-xs`} />
+                <p className="text-[11px] text-slate-500">Paste straight from <strong>Google Sheets / Excel</strong> (copy the cells) or type one per line — email, name, company. Duplicates are skipped.</p>
+                <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder={'Paste from a sheet (email · name · company columns), or:\nops@acme.co.za, John, ACME Logistics'} className={`${inp} w-full font-mono text-xs`} />
                 <div className="flex flex-wrap items-center gap-2">
                     <select value={importKind} onChange={e => setImportKind(e.target.value)} className={inp}>{KINDS.map(k => <option key={k} value={k}>{k}</option>)}</select>
                     <input value={importTag} onChange={e => setImportTag(e.target.value)} placeholder="tag (optional, e.g. PE-prospects)" className={inp} />
@@ -107,7 +108,8 @@ const MarketingContactsView: React.FC = () => {
                                 <td className="py-2 px-2 text-slate-600">{c.company || '—'}</td>
                                 <td className="py-2 px-2"><span className="text-[10px] font-bold uppercase bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{c.kind}</span></td>
                                 <td className="py-2 px-2 text-slate-500 text-xs">{(c.tags || []).join(', ') || '—'}</td>
-                                <td className="py-2 px-2 text-right pr-3">
+                                <td className="py-2 px-2 text-right pr-3 whitespace-nowrap">
+                                    <button onClick={() => { navigator.clipboard?.writeText(prefsLink(c)); showToast('Self-service link copied — send it to them to update/opt-out.'); }} title="Copy a link they can click to update their details / add colleagues / opt out" className="text-[11px] font-bold text-blue-600 hover:underline mr-3">🔗 link</button>
                                     {c.optedOut
                                         ? <button onClick={() => toggleOpt(c)} className="text-[11px] font-bold text-rose-600">opted out · re-opt-in</button>
                                         : <button onClick={() => toggleOpt(c)} className="text-[11px] font-bold text-emerald-700 hover:underline">opted in · opt out</button>}

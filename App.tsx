@@ -12,6 +12,7 @@ import ClientQuoteView from './components/ClientQuoteView';
 import PublicPodUpload from './components/PublicPodUpload';
 import CompleteCargoDetails from './components/CompleteCargoDetails';
 import PublicLoad from './components/PublicLoad';
+import PublicMarketingPrefs from './components/PublicMarketingPrefs';
 import PublicTerms from './components/PublicTerms';
 import PublicRfqQuote from './components/PublicRfqQuote';
 import SupplierRegister from './components/supplier/SupplierRegister';
@@ -279,6 +280,7 @@ const App: React.FC = () => {
     const trackLoadId = urlParams.get('track');
     const acceptLoadId = urlParams.get('accept');
     const updateLoadId = urlParams.get('update');
+    const prefsContactId = urlParams.get('prefs');
     const showTerms = urlParams.get('tcs');
     const portal = urlParams.get('portal');
     const inviteToken = urlParams.get('invite');
@@ -333,6 +335,10 @@ const App: React.FC = () => {
     // Public supplier/controller update portal — push status updates through the trip.
     if (updateLoadId) {
         return <PublicLoad loadId={updateLoadId} mode="update" />;
+    }
+    // Public marketing self-service (opt out/in, update details, add colleagues).
+    if (prefsContactId) {
+        return <PublicMarketingPrefs contactId={prefsContactId} token={urlParams.get('t') || ''} />;
     }
 
     if (publicQuoteId) {

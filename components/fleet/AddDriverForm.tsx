@@ -19,6 +19,8 @@ const AddDriverForm: React.FC = () => {
     const { vehicles = [], handleAddDriver, handleUpdateDriver, handleBulkAddDrivers } = useVehicles();
     const editing: Driver | undefined = modal.payload?.driver;
     const bulk: boolean = !!modal.payload?.bulk;
+    // When opened from a vehicle's "Assign Driver", pre-link the new driver to it.
+    const presetVehicleId: string | undefined = modal.payload?.presetVehicleId;
 
     const [name, setName] = useState(editing?.name || '');
     const [cell, setCell] = useState(editing?.cell || '');
@@ -27,7 +29,7 @@ const AddDriverForm: React.FC = () => {
     const [licenceCode, setLicenceCode] = useState(editing?.licenceCode || '');
     const [licenceExpiry, setLicenceExpiry] = useState(editing?.licenceExpiry || '');
     const [pdpExpiry, setPdpExpiry] = useState(editing?.pdpExpiry || '');
-    const [assignedVehicleId, setAssignedVehicleId] = useState(editing?.assignedVehicleId || '');
+    const [assignedVehicleId, setAssignedVehicleId] = useState(editing?.assignedVehicleId || presetVehicleId || '');
     const [branch, setBranch] = useState(editing?.branch || '');
     const [isActive, setIsActive] = useState(editing?.isActive !== false);
     const [bulkText, setBulkText] = useState('');

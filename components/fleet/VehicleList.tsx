@@ -374,7 +374,7 @@ const VehicleList: React.FC = () => {
                                                                 <td className="p-3 text-slate-700">{fleetNo(a)} / {fleetNo(b)}</td>
                                                                 <td className="p-3 text-slate-500">Superlink <span className="text-[10px] text-slate-400">(6m + 12m)</span></td>
                                                                 <td className="p-3"><span className="text-emerald-700 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded-full">paired</span></td>
-                                                                <td className="p-3">{driverCell(a)}</td>
+                                                                <td className="p-3 text-slate-300">—</td>
                                                                 <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
                                                             </tr>
                                                         );
@@ -389,7 +389,7 @@ const VehicleList: React.FC = () => {
                                                                     ? <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-full text-xs">⚠ Not paired</span>
                                                                     : <span className="text-slate-300">—</span>}
                                                             </td>
-                                                            <td className="p-3">{driverCell(vehicle)}</td>
+                                                            <td className="p-3">{isTrailerCategory(vehicle.weightCategory) ? <span className="text-slate-300">—</span> : driverCell(vehicle)}</td>
                                                             <td className="p-3 text-slate-500">{vehicle.branch === 'LOADMASTER' ? 'LM' : (vehicle.branch || '').replace('FBN ', '')}</td>
                                                         </tr>
                                                     );

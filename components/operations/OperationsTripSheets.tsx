@@ -94,9 +94,9 @@ const OperationsTripSheets: React.FC = () => {
                         {floor.map(lc => (
                             <label key={lc.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer ${sel.has(lc.id) ? 'bg-amber-50' : 'hover:bg-amber-50/40'}`}>
                                 <input type="checkbox" checked={sel.has(lc.id)} onChange={() => toggle(lc.id)} className="h-4 w-4 accent-[#13294b]" />
-                                <span className="font-bold text-[#13294b] w-36">{lc.loadConNumber}</span>
-                                <span className="text-sm text-slate-700 flex-1 truncate">{clientName(lc)} — {lc.deliveryPoint || ''}</span>
-                                <span className="text-xs text-slate-500 w-44 text-right">{pkgsOf(lc) || '—'} pkgs · {lc.weightKg ? kg(Number(lc.weightKg)) + ' kg' : '—'} · {fmtDay(lc.deliveryDate)}</span>
+                                <span className="font-bold text-[#13294b] w-24 sm:w-36 shrink-0 truncate">{lc.loadConNumber}</span>
+                                <span className="text-sm text-slate-700 flex-1 min-w-0 truncate">{clientName(lc)} — {lc.deliveryPoint || ''}</span>
+                                <span className="text-xs text-slate-500 w-28 sm:w-44 shrink-0 text-right">{pkgsOf(lc) || '—'} pkgs · {lc.weightKg ? kg(Number(lc.weightKg)) + ' kg' : '—'} · {fmtDay(lc.deliveryDate)}</span>
                             </label>
                         ))}
                     </div>

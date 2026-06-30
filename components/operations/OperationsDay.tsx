@@ -547,8 +547,8 @@ const AssignUnitPanel: React.FC<{ mode: 'manifest' | 'trip'; loads: LoadConfirma
     const sel = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm';
     return (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-                <div className="px-5 py-3 rounded-t-2xl bg-[#13294b] text-white flex items-center justify-between">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-3 rounded-t-2xl bg-[#13294b] text-white flex items-center justify-between sticky top-0">
                     <h3 className="font-black text-lg">{isManifest ? 'Build line-haul manifest' : 'Assign delivery trip sheet'}</h3>
                     <span className="text-sm text-white/80">{isManifest ? `${code(origin)} → ${code(dest)}` : `${code(dest)} local`}</span>
                 </div>

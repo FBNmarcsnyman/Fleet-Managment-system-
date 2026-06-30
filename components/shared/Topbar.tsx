@@ -57,10 +57,13 @@ const Topbar: React.FC = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center space-x-3 sm:space-x-4 shrink-0">
-                    <TestModeToggle />
-                    <WhatsAppToggle />
-                    <ClientTrackToggle />
+                <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                    {/* Status pills are a desktop concern — hidden on phones to keep room for search + alerts. */}
+                    <div className="hidden md:flex items-center gap-3 sm:gap-4">
+                        <TestModeToggle />
+                        <WhatsAppToggle />
+                        <ClientTrackToggle />
+                    </div>
                     <OnlineStatus isOnline={isOnline} />
                     {isPushSupported() && !pushOn && (
                         <button onClick={turnOnPush} title="Get push notifications on this device"

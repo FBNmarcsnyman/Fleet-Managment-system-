@@ -167,67 +167,72 @@ const OperationsPortal: React.FC = () => {
         }
     };
     
+    const pillCls = `shrink-0 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${isOps ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800'}`;
+    const actionBtns = isOps ? (
+        <button onClick={handleNewCollection}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+            + Collection
+        </button>
+    ) : (
+        <>
+            <button onClick={() => showModal('brokingCollection', { onSubmit: async (data: any) => {
+                const result = await createLoadCon(data);
+                if (result.ok) showToast((result as any).warning ? `Collection ${result.value!.loadConNumber} logged — ⚠ ${(result as any).warning}` : `Broking collection ${result.value!.loadConNumber} logged.`);
+                else showToast(`Failed: ${result.error}`);
+                return result;
+            } })}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                + Collection
+            </button>
+            <button onClick={handleNewTransportOrder}
+                className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-3 md:px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
+                <span className="md:hidden">+ Order</span><span className="hidden md:inline">+ New Transport Order</span>
+            </button>
+        </>
+    );
+    const tabStrip = (
+        <div className="flex items-center gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl flex-1 md:flex-initial">
+            {stripTabs.map((item, idx) => {
+                const isHidden = hiddenTabs.includes(item.view);
+                const grp = (item as any).group;
+                const prevGrp = idx > 0 ? (stripTabs[idx - 1] as any).group : null;
+                const showDiv = !customise && idx > 0 && grp && grp !== prevGrp;
+                return (
+                    <React.Fragment key={item.view}>
+                    {showDiv && <span className="shrink-0 self-center ml-1 pl-2 border-l border-slate-300 text-[9px] font-black uppercase tracking-widest text-slate-400">{GROUP_LABEL[grp] || ''}</span>}
+                    <div className={`flex items-center rounded-lg ${customise ? 'border border-dashed border-slate-300 pr-1' : ''}`}>
+                        <button onClick={() => { if (!customise) handleOperationsSubViewChange(item.view as any); }}
+                            className={`px-4 py-2.5 md:px-3.5 md:py-2 text-sm font-bold rounded-lg whitespace-nowrap transition ${activeTab === item.view && !customise ? 'bg-[#13294b] text-white shadow' : isHidden ? 'text-slate-400 line-through' : 'text-slate-600 hover:bg-white'}`}>
+                            {item.label}
+                        </button>
+                        {customise && (
+                            <span className="flex items-center text-slate-400">
+                                <button onClick={() => moveTab(item.view, -1)} title="Move left" className="px-1 hover:text-slate-700">◀</button>
+                                <button onClick={() => moveTab(item.view, 1)} title="Move right" className="px-1 hover:text-slate-700">▶</button>
+                                <button onClick={() => toggleHide(item.view)} title={isHidden ? 'Show' : 'Hide'} className={`px-1 ${isHidden ? 'text-emerald-600 hover:text-emerald-700' : 'hover:text-rose-600'}`}>{isHidden ? '＋' : '✕'}</button>
+                            </span>
+                        )}
+                    </div>
+                    </React.Fragment>
+                );
+            })}
+            <button onClick={() => setCustomise(c => !c)} title="Show/hide & reorder your tabs" className={`ml-1 shrink-0 px-2.5 py-2 text-xs font-bold rounded-lg whitespace-nowrap ${customise ? 'bg-[#f5b700] text-[#13294b]' : 'text-slate-500 hover:bg-white'}`}>{customise ? 'Done' : 'Customise'}</button>
+        </div>
+    );
+
     return (
         <div className="bg-slate-50 text-slate-800 rounded-2xl p-5 -m-2 min-h-[calc(100vh-7rem)] border border-slate-200">
+            {/* Mobile: section + actions on their own row, so the tab strip gets full width below. */}
+            <div className="flex items-center justify-between gap-2 mb-3 md:hidden">
+                <span className={pillCls}>{isOps ? 'Operations' : 'Broking'}</span>
+                <div className="flex items-center gap-2 shrink-0">{actionBtns}</div>
+            </div>
             <div className="flex items-center justify-between gap-3 mb-6">
-                <div className="flex items-center gap-3 min-w-0">
-                    <span className={`shrink-0 text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${isOps ? 'bg-teal-100 text-teal-800' : 'bg-blue-100 text-blue-800'}`}>
-                        {isOps ? 'Operations' : 'Broking'}
-                    </span>
-                <div className="flex items-center gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl">
-                    {stripTabs.map((item, idx) => {
-                        const isHidden = hiddenTabs.includes(item.view);
-                        const grp = (item as any).group;
-                        const prevGrp = idx > 0 ? (stripTabs[idx - 1] as any).group : null;
-                        const showDiv = !customise && idx > 0 && grp && grp !== prevGrp;
-                        return (
-                            <React.Fragment key={item.view}>
-                            {showDiv && <span className="shrink-0 self-center ml-1 pl-2 border-l border-slate-300 text-[9px] font-black uppercase tracking-widest text-slate-400">{GROUP_LABEL[grp] || ''}</span>}
-                            <div className={`flex items-center rounded-lg ${customise ? 'border border-dashed border-slate-300 pr-1' : ''}`}>
-                                <button onClick={() => { if (!customise) handleOperationsSubViewChange(item.view as any); }}
-                                    className={`px-3.5 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition ${activeTab === item.view && !customise ? 'bg-[#13294b] text-white shadow' : isHidden ? 'text-slate-400 line-through' : 'text-slate-600 hover:bg-white'}`}>
-                                    {item.label}
-                                </button>
-                                {customise && (
-                                    <span className="flex items-center text-slate-400">
-                                        <button onClick={() => moveTab(item.view, -1)} title="Move left" className="px-1 hover:text-slate-700">◀</button>
-                                        <button onClick={() => moveTab(item.view, 1)} title="Move right" className="px-1 hover:text-slate-700">▶</button>
-                                        <button onClick={() => toggleHide(item.view)} title={isHidden ? 'Show' : 'Hide'} className={`px-1 ${isHidden ? 'text-emerald-600 hover:text-emerald-700' : 'hover:text-rose-600'}`}>{isHidden ? '＋' : '✕'}</button>
-                                    </span>
-                                )}
-                            </div>
-                            </React.Fragment>
-                        );
-                    })}
-                    <button onClick={() => setCustomise(c => !c)} title="Show/hide & reorder your tabs" className={`ml-1 px-2.5 py-2 text-xs font-bold rounded-lg whitespace-nowrap ${customise ? 'bg-[#f5b700] text-[#13294b]' : 'text-slate-500 hover:bg-white'}`}>{customise ? 'Done' : 'Customise'}</button>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className={`hidden md:inline-block ${pillCls}`}>{isOps ? 'Operations' : 'Broking'}</span>
+                    {tabStrip}
                 </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                    {isOps ? (
-                        <>
-                            <button onClick={handleNewCollection}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                                + Collection
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <button onClick={() => showModal('brokingCollection', { onSubmit: async (data: any) => {
-                                const result = await createLoadCon(data);
-                                if (result.ok) showToast((result as any).warning ? `Collection ${result.value!.loadConNumber} logged — ⚠ ${(result as any).warning}` : `Broking collection ${result.value!.loadConNumber} logged.`);
-                                else showToast(`Failed: ${result.error}`);
-                                return result;
-                            } })}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                                + Collection
-                            </button>
-                            <button onClick={handleNewTransportOrder}
-                                className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-2 px-4 rounded-lg text-sm whitespace-nowrap shadow transition active:scale-95">
-                                + New Transport Order
-                            </button>
-                        </>
-                    )}
-                </div>
+                <div className="hidden md:flex items-center gap-2 shrink-0">{actionBtns}</div>
             </div>
             {renderView()}
         </div>

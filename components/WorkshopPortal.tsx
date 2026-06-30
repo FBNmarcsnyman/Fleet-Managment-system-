@@ -179,8 +179,14 @@ const WorkshopPortal: React.FC = () => {
     
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-2 overflow-x-auto">
+            {/* Mobile: action on its own row so the tab strip gets full width below. */}
+            <div className="flex sm:hidden justify-end mb-3">
+                <button onClick={openCreateJobCardModal} className="flex items-center font-bold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white whitespace-nowrap">
+                    <PlusIcon className="h-5 w-5 mr-2" /> Create Job Card
+                </button>
+            </div>
+            <div className="flex justify-between items-center gap-3 mb-6">
+                <div className="flex items-center space-x-2 overflow-x-auto flex-1">
                     {visibleNav.map(item => (
                         <button
                             key={item.view}
@@ -191,7 +197,7 @@ const WorkshopPortal: React.FC = () => {
                         </button>
                     ))}
                 </div>
-                <button onClick={openCreateJobCardModal} className="flex items-center font-bold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white whitespace-nowrap">
+                <button onClick={openCreateJobCardModal} className="hidden sm:flex items-center font-bold py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white whitespace-nowrap">
                     <PlusIcon className="h-5 w-5 mr-2" /> Create Job Card
                 </button>
             </div>

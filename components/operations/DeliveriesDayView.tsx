@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState, useAuth } from '../../contexts/AppContexts';
-import { invokeFn } from '../../lib/supabase';
-import { brandedEmail, emailButton } from '../../lib/emailTemplate';
+import { sendPodRequest } from '../../lib/podRequest';
 
 // Delivered / POD — a day-by-day checklist instead of one giant column. Loads are
 // grouped by delivery date (newest first), each day collapsible with an
 // outstanding-POD count, compact one-line rows, and a one-tap Get POD.
 const dOnly = (s?: string) => (s || '').slice(0, 10);
-const podOut = (lc: LoadConfirmation) => lc.status === 'Delivered' && !(lc as any).podPhoto;
+// POD is outstanding only when one is actually EXPECTED (pod_required !== false).
+// A transfer / crane / non-delivery leg is marked pod_required=false and never chased.
+const podOut = (lc: LoadConfirmation) => lc.status === 'Delivered' && !(lc as any).podPhoto && (lc as any).podRequired !== false;
 // Brokered = a subbie is doing it (name OR supplier_id — never supplier_id alone, see
 // the brokered-load-visibility rule). Own-fleet = an FBN truck, no subcontractor.
 const isBrokered = (lc: any) => !!(lc.subcontractorName || lc.supplierId);
@@ -64,35 +65,11 @@ const DeliveriesDayView: React.FC<{ lens?: Lens }> = ({ lens: initialLens = 'all
     // public upload page). They upload -> submit-pod HOLDS it for admin authorisation
     // before it ever reaches the client (see the POD authorisation rule). loadcons@ CC'd.
     const requestPod = async (lc: any) => {
-        const to = (lc.subcontractorEmail || '').trim();
-        if (!to) { showToast('No subcontractor email on this load — add one in the load details first.'); return; }
-        const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
-        const link = `${base}?pod=${lc.id}`;
-        const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
-        // Follow-up note when this isn't the first request — so the reminder reads as a chase.
-        const prevCount = Number((lc as any).podRequestCount || 0);
-        const followUp = prevCount > 0
-            ? `<p style="background:#fff7ed;border-left:3px solid #f5b700;padding:8px 12px;border-radius:6px;font-size:13px;color:#92400e;margin:0 0 14px"><strong>Friendly follow-up</strong> — this POD has been requested ${prevCount} time${prevCount > 1 ? 's' : ''} already. Please upload it as soon as possible.</p>`
-            : '';
-        const html = brandedEmail(
-            `<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>`
-            + followUp
-            + `<p>Please upload the <strong>signed POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''}:</p>`
-            + emailButton(link, 'Upload signed POD &rarr;', '#16a34a')
-            + `<p style="font-size:13px;color:#334155;margin:6px 0 0"><strong>Please upload ONLY the signed delivery note / FBN POD / client backing documents.</strong></p>`
-            + `<p style="font-size:13px;color:#b91c1c;font-weight:800;margin:6px 0 0">DO NOT UPLOAD YOUR INVOICE HERE.</p>`
-            + `<p style="font-size:13px;color:#64748b;margin:14px 0 0">Tap the button on your phone to snap or attach the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>`
-        );
         setReqBusy(lc.id);
-        try {
-            const { data, error } = await invokeFn('send-email', { body: { to, cc: ['loadcons@fbn-transport.co.za', ...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean)], subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
-            if (error || (data as any)?.error) showToast(`Could not send: ${(data as any)?.error || error?.message}`);
-            else {
-                showToast(`POD request emailed to ${to}.`);
-                handleUpdateLoadConfirmation(lc.id, { podRequestedAt: new Date().toISOString(), podRequestedBy: currentUser?.name || currentUser?.email || 'Staff', podRequestCount: prevCount + 1 });
-            }
-        } catch (e) { showToast(`Could not send: ${e instanceof Error ? e.message : 'error'}`); }
-        finally { setReqBusy(null); }
+        const res = await sendPodRequest(lc, currentUser?.name || currentUser?.email || 'Staff');
+        if (!res.ok) showToast(`Could not send: ${res.error}`);
+        else { showToast(`POD request emailed to ${res.to}.`); handleUpdateLoadConfirmation(lc.id, res.update); }
+        setReqBusy(null);
     };
 
     const dayLabel = (k: string) => {

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { LoadConfirmation, LoadConfirmationStatus } from '../../types';
-import { useOperations, useUIState } from '../../contexts/AppContexts';
+import { useOperations, useUIState, useAuth } from '../../contexts/AppContexts';
 import { isAssigned, nextStep, STATUS_LABEL, statusChip, isInterBranch } from '../../lib/loadStatus';
+import { sendPodRequest } from '../../lib/podRequest';
 import { TruckIcon } from '../icons/TruckIcon';
 import LoadProgress from './LoadProgress';
 
@@ -44,7 +45,9 @@ const stageOf = (lc: LoadConfirmation): StageKey => {
 const LoadBoard: React.FC = () => {
     const { loadConfirmations = [], clients = [], suppliers = [], handleUpdateLoadConfirmation, handleRefreshLoads } = useOperations();
     const { showModal, showToast } = useUIState();
+    const { currentUser } = useAuth();
     const [busy, setBusy] = useState<string | null>(null);
+    const [podBusy, setPodBusy] = useState<string | null>(null);
     const [branch, setBranch] = useState<string>('All');
     const [q, setQ] = useState('');
     const [refreshing, setRefreshing] = useState(false);
@@ -134,6 +137,37 @@ const LoadBoard: React.FC = () => {
         onCancel: () => showModal('hide'),
     });
 
+    // Email the carrier to upload the POD — same branded mail + audit trail as the
+    // Deliveries board (one shared helper), so chasing from either screen is identical.
+    const requestPod = async (lc: LoadConfirmation) => {
+        setPodBusy(lc.id);
+        const res = await sendPodRequest(lc, currentUser?.name || currentUser?.email || 'Staff');
+        if (!res.ok) showToast(`Could not send: ${res.error}`);
+        else { showToast(`POD request emailed to ${res.to}.`); await handleUpdateLoadConfirmation(lc.id, res.update as any); }
+        setPodBusy(null);
+    };
+    // Mark a leg as not needing a POD (a transfer / crane / non-delivery leg in a
+    // multi-transporter job) — or put it back. Stops it being chased for a POD.
+    const setPodRequired = async (lc: LoadConfirmation, required: boolean) => {
+        setBusy(lc.id);
+        const res = await handleUpdateLoadConfirmation(lc.id, { podRequired: required } as any);
+        setBusy(null);
+        if (res && res.ok === false) showToast(`Could not update: ${res.error}`);
+        else showToast(required ? 'POD will be requested for this leg.' : 'Marked as no-POD (transfer leg).');
+    };
+
+    // Simple route label — "DBN - JHB" from the load's route or its branches, never
+    // the long street addresses (those stay on the detail view).
+    const ABBR: Record<string, string> = { 'FBN DBN': 'DBN', 'FBN JHB': 'JHB', 'FBN CPT': 'CPT', 'FBN PE': 'PE', 'FBN EL': 'EL', 'LOADMASTER': 'LM' };
+    const routeSimple = (lc: LoadConfirmation): string => {
+        if (lc.route && lc.route.trim()) return lc.route.trim();
+        const a = ABBR[lc.collectionBranch as string] || (lc.collectionBranch || '').replace('FBN ', '');
+        const b = ABBR[lc.destinationBranch as string] || (lc.destinationBranch || '').replace('FBN ', '');
+        return a && b ? `${a} - ${b}` : (a || b || '—');
+    };
+    const sizeOf = (lc: LoadConfirmation): string => lc.loadType || (lc as any).commodity || '—';
+    const weightOf = (lc: LoadConfirmation): string => (lc as any).weightKg ? `${Number((lc as any).weightKg).toLocaleString()} kg` : '—';
+
     // Any POD reference, whatever channel it arrived by (supplier/driver Drive
     // upload, manual photo, or extra doc pages).
     const podLink = (lc: LoadConfirmation): string | null =>
@@ -147,7 +181,9 @@ const LoadBoard: React.FC = () => {
         const step = nextStep(lc);
         const assigned = isAssigned(lc);
         const pod = podLink(lc);
-        const showPod = !pod && (lc.status === 'Out for Delivery' || lc.status === 'Delivered');
+        const podWaived = (lc as any).podRequired === false;
+        const delivered = lc.status === 'Out for Delivery' || lc.status === 'Delivered';
+        const showPod = !pod && delivered && !podWaived;
         const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
         const cls = (base: string) => `${compact ? 'flex-1 py-1.5 text-[10px]' : 'py-1 px-2.5 text-[11px]'} font-black rounded-lg uppercase tracking-wider text-white ${base}`;
         const viewPod = pod ? <button onClick={stop(() => window.open(pod, '_blank', 'noopener'))} title="View the uploaded POD" className={cls('bg-[#13294b] hover:bg-[#1d3a66]')}>📄 View POD</button> : null;
@@ -159,7 +195,15 @@ const LoadBoard: React.FC = () => {
                 <button onClick={stop(() => showModal('assignLoadCon', { loadCon: lc }))} className={cls('bg-amber-500 hover:bg-amber-400')}>Subbie</button>
             </div>
         );
-        if (showPod) return <button onClick={stop(() => getPod(lc))} className={cls('bg-green-600 hover:bg-green-500')}>Get POD</button>;
+        // A delivered leg explicitly marked no-POD (transfer/crane) — show it, allow undo.
+        if (delivered && podWaived) return <div className="flex gap-1.5 justify-end items-center">{viewPod}<span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded uppercase tracking-wide" title="This leg didn't do the end delivery — no POD needed">no POD · transfer</span><button onClick={stop(() => setPodRequired(lc, true))} disabled={busy === lc.id} title="This leg DOES need a POD after all" className="text-[10px] text-blue-600 font-bold hover:underline">needs POD?</button></div>;
+        if (showPod) return (
+            <div className="flex gap-1.5 justify-end items-center">
+                {lc.subcontractorName && <button onClick={stop(() => requestPod(lc))} disabled={podBusy === lc.id} title="Email the carrier to upload the signed POD" className={cls('bg-amber-500 hover:bg-amber-400 disabled:opacity-50')}>{podBusy === lc.id ? '…' : '✉ Request POD'}</button>}
+                <button onClick={stop(() => getPod(lc))} className={cls('bg-green-600 hover:bg-green-500')}>Get POD</button>
+                <button onClick={stop(() => setPodRequired(lc, false))} disabled={busy === lc.id} title="This leg didn't do the end delivery (transfer/crane) — don't chase a POD" className="text-[10px] text-slate-500 font-bold hover:underline whitespace-nowrap">no POD?</button>
+            </div>
+        );
         if (lc.status === 'POD Submitted') return <div className="flex gap-1.5 justify-end">{viewPod}{(lc as any).podAuthorisation === 'blocked'
             ? <button onClick={stop(() => showModal('loadDetail', { loadCon: lc }))} title="POD blocked — contained an invoice/incorrect doc; never send as-is" className={cls('bg-red-600 hover:bg-red-500')}>⛔ Blocked</button>
             : (lc as any).podAuthorisation === 'pending'
@@ -206,25 +250,22 @@ const LoadBoard: React.FC = () => {
                             {/* mobile cards */}
                             <div className="md:hidden divide-y divide-slate-100">
                                 {listRows.map(lc => {
-                                    const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
-                                    const marginPct = lc.totalAmount ? (margin / lc.totalAmount) * 100 : 0;
-                                    const marginColor = !lc.supplierRate ? 'text-slate-400' : marginPct <= 0 ? 'text-red-600' : marginPct < 10 ? 'text-amber-600' : 'text-emerald-600';
                                     const terminal = ['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(lc.status);
                                     const overdue = lc.collectionDate && !terminal && new Date(lc.collectionDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
                                     const st = STAGES.find(s => s.key === stageOf(lc))!;
                                     return (
                                         <div key={lc.id} onClick={() => showModal('loadDetail', { loadCon: lc })} className="p-3 active:bg-blue-50">
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className="font-bold text-blue-700 font-mono text-xs">{lc.loadConNumber}</span>
+                                                <span className={`text-xs truncate font-bold ${isAssigned(lc) ? 'text-slate-800' : 'text-amber-600'}`}>🚚 {transporterOf(lc) || 'Needs transporter'}</span>
                                                 <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${st.chip}`}>{st.label}</span>
                                             </div>
                                             {lc.clientRequestStatus === 'open' && <div className="text-[10px] font-black text-rose-600 animate-pulse">✉ client request — tap to respond</div>}
-                                            <div className="font-bold text-slate-800 truncate mt-0.5">{clientMap.get(lc.clientId || '') || lc.clientName}</div>
-                                            <div className="text-xs text-slate-500 truncate">{lc.collectionPoint} → {lc.deliveryPoint}</div>
-                                            <div className={`text-xs truncate ${isAssigned(lc) ? 'text-slate-600' : 'text-amber-600 font-bold'}`}>🚚 {transporterOf(lc) || 'Needs transporter'}{lc.subcontractorVehicleReg ? ` · ${lc.subcontractorVehicleReg}` : ''}</div>
-                                            <div className="flex items-center gap-3 flex-wrap text-[11px] mt-1">
-                                                <span className={overdue ? 'text-red-600 font-bold' : 'text-slate-500'}>Collect {fmtDay(lc.collectionDate)}{overdue ? ' ⚠' : ''}</span>
-                                                {lc.supplierRate ? <span className={`font-bold ${marginColor}`}>{fmtR(margin)} ({marginPct.toFixed(0)}%)</span> : null}
+                                            <div className="font-bold text-slate-800 truncate mt-0.5">{clientMap.get(lc.clientId || '') || lc.clientName} <span className="text-[11px] font-mono text-blue-700">· {lc.loadConNumber}</span></div>
+                                            <div className="text-xs text-slate-600 font-semibold">{routeSimple(lc)}</div>
+                                            <div className="flex items-center gap-3 flex-wrap text-[11px] mt-1 text-slate-500">
+                                                <span className={overdue ? 'text-red-600 font-bold' : ''}>Collect {fmtDay(lc.collectionDate)}{overdue ? ' ⚠' : ''}</span>
+                                                <span>{sizeOf(lc)}</span>
+                                                {weightOf(lc) !== '—' && <span>{weightOf(lc)}</span>}
                                             </div>
                                             <div className="mt-2" onClick={e => e.stopPropagation()}><RowActions lc={lc} /></div>
                                         </div>
@@ -236,30 +277,29 @@ const LoadBoard: React.FC = () => {
                                 <table className="w-full text-sm">
                                     <thead><tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
                                         <th className="py-2 pl-3 px-2">Load</th>
+                                        <th className="py-2 px-2">Transporter</th>
                                         <th className="py-2 px-2">Client</th>
                                         <th className="py-2 px-2">Route</th>
-                                        <th className="py-2 px-2">Transporter</th>
                                         <th className="py-2 px-2">Collect</th>
-                                        <th className="py-2 px-2 text-right">Margin</th>
+                                        <th className="py-2 px-2">Size</th>
+                                        <th className="py-2 px-2 text-right">Weight</th>
                                         <th className="py-2 px-2">Stage</th>
                                         <th className="py-2 px-2 text-right pr-3">Action</th>
                                     </tr></thead>
                                     <tbody>
                                         {listRows.map(lc => {
-                                            const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
-                                            const marginPct = lc.totalAmount ? (margin / lc.totalAmount) * 100 : 0;
-                                            const marginColor = !lc.supplierRate ? 'text-slate-400' : marginPct <= 0 ? 'text-red-600' : marginPct < 10 ? 'text-amber-600' : 'text-emerald-600';
                                             const terminal = ['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(lc.status);
                                             const overdue = lc.collectionDate && !terminal && new Date(lc.collectionDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
                                             const st = STAGES.find(s => s.key === stageOf(lc))!;
                                             return (
                                                 <tr key={lc.id} onClick={() => showModal('loadDetail', { loadCon: lc })} className="border-b border-slate-100 cursor-pointer hover:bg-blue-50/40">
                                                     <td className="py-2 pl-3 px-2"><span className="font-bold text-blue-700 font-mono text-xs">{lc.loadConNumber}</span>{lc.loadRefNo && <div className="text-[11px] text-slate-400">WB {lc.loadRefNo}</div>}{lc.clientRequestStatus === 'open' && <div className="text-[10px] font-black text-rose-600 animate-pulse">✉ client request</div>}</td>
+                                                    <td className="py-2 px-2"><div className={`truncate max-w-[150px] ${isAssigned(lc) ? 'text-slate-700 font-semibold' : 'text-amber-600 font-bold'}`}>{transporterOf(lc) || 'Needs transporter'}</div>{(lc.subcontractorVehicleReg || lc.loadingEta) && <div className="text-[10px] text-slate-400 truncate max-w-[150px]">{[lc.subcontractorVehicleReg].filter(Boolean).join(' ')}{lc.loadingEta ? ` · ETA ${fmtEta(lc.loadingEta)}` : ''}</div>}</td>
                                                     <td className="py-2 px-2 text-slate-700">{clientMap.get(lc.clientId || '') || lc.clientName}</td>
-                                                    <td className="py-2 px-2"><div className="text-slate-700 truncate max-w-[200px]">{lc.collectionPoint} → {lc.deliveryPoint}</div>{isInterBranch(lc) && <div className="text-[10px] font-black text-purple-600 uppercase">{lc.collectionBranch} → {lc.destinationBranch}</div>}</td>
-                                                    <td className="py-2 px-2"><div className={`truncate max-w-[150px] ${isAssigned(lc) ? 'text-slate-700' : 'text-amber-600 font-bold'}`}>{transporterOf(lc) || 'Needs transporter'}</div>{(lc.subcontractorVehicleReg || lc.loadingEta) && <div className="text-[10px] text-slate-400 truncate max-w-[150px]">{[lc.subcontractorVehicleReg].filter(Boolean).join(' ')}{lc.loadingEta ? ` · ETA ${fmtEta(lc.loadingEta)}` : ''}</div>}</td>
+                                                    <td className="py-2 px-2"><span className="font-bold text-slate-700 whitespace-nowrap">{routeSimple(lc)}</span></td>
                                                     <td className={`py-2 px-2 whitespace-nowrap ${overdue ? 'text-red-600 font-bold' : 'text-slate-600'}`}>{fmtDay(lc.collectionDate)}{overdue ? ' ⚠' : ''}</td>
-                                                    <td className={`py-2 px-2 text-right whitespace-nowrap ${marginColor}`}>{lc.supplierRate ? `${fmtR(margin)} (${marginPct.toFixed(0)}%)` : '—'}</td>
+                                                    <td className="py-2 px-2 text-slate-600 whitespace-nowrap">{sizeOf(lc)}</td>
+                                                    <td className="py-2 px-2 text-right text-slate-600 whitespace-nowrap">{weightOf(lc)}</td>
                                                     <td className="py-2 px-2"><span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${st.chip}`}>{st.label}</span></td>
                                                     <td className="py-2 px-2 text-right pr-3" onClick={e => e.stopPropagation()}><RowActions lc={lc} /></td>
                                                 </tr>
@@ -286,9 +326,6 @@ const LoadBoard: React.FC = () => {
                                 <div className="space-y-3 overflow-y-auto pr-1 flex-1">
                                     {jobs.map((lc: LoadConfirmation) => {
                                         const assigned = isAssigned(lc);
-                                        const margin = (lc.totalAmount || 0) - (lc.supplierRate || 0);
-                                        const marginPct = lc.totalAmount ? (margin / lc.totalAmount) * 100 : 0;
-                                        const marginColor = !lc.supplierRate ? 'text-slate-400' : marginPct <= 0 ? 'text-red-600' : marginPct < 10 ? 'text-amber-600' : 'text-emerald-600';
                                         const terminal = ['Delivered', 'POD Submitted', 'Invoiced'].includes(lc.status);
                                         let urgent: '' | 'over' | 'today' = '';
                                         if (lc.collectionDate && !terminal) {
@@ -308,7 +345,7 @@ const LoadBoard: React.FC = () => {
                                                 <LoadProgress lc={lc} />
                                                 <div className="flex justify-between items-center my-2 text-[9px] font-bold">
                                                     <span className={urgent === 'over' ? 'text-red-600' : urgent === 'today' ? 'text-amber-600' : 'text-slate-400'}>{lc.collectionDate ? (urgent === 'over' ? '⚠ Overdue' : urgent === 'today' ? '● Collect today' : 'Collect ' + fmtDay(lc.collectionDate)) : 'No date'}</span>
-                                                    {lc.supplierRate ? <span className={marginColor}>+{fmtR(margin)} ({marginPct.toFixed(0)}%)</span> : null}
+                                                    <span className="text-slate-500">{routeSimple(lc)}{weightOf(lc) !== '—' ? ` · ${weightOf(lc)}` : ''}</span>
                                                 </div>
                                                 <div className={`p-2 rounded-lg border mb-2.5 ${assigned ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
                                                     <div className="flex items-center gap-2">

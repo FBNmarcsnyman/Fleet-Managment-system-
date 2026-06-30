@@ -121,7 +121,7 @@ const OperationsManifests: React.FC = () => {
                                         {m.carrierName && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">BROKER</span>}
                                         <span className="text-xs text-slate-500">{m.carrierName ? `${m.carrierName}${m.carrierVehicleReg ? ' · ' + m.carrierVehicleReg : ''}` : (veh?.registration || 'truck')} · {loads.length} load{loads.length === 1 ? '' : 's'} · {tot.p} pkgs · {kg(tot.k)} kg</span>
                                         <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-700">{m.status || 'In Transit'}</span>
-                                        {(m as any).totalRate != null && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${margin < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>margin R {kg(margin)}</span>}
+                                        {isManager && (m as any).totalRate != null && <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${margin < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>margin R {kg(margin)}</span>}
                                         <button onClick={() => receive(m)} disabled={busy === m.id} className={`ml-auto font-bold py-1 px-3 rounded-lg text-[11px] uppercase text-white ${inbound ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-500 hover:bg-slate-400'} disabled:opacity-50`}>{busy === m.id ? '…' : `📦 Receive at ${code(m.destinationBranch)}`}</button>
                                     </div>
                                     {/* what's loaded on this trailer */}
@@ -135,7 +135,7 @@ const OperationsManifests: React.FC = () => {
                 )}
             </div>
 
-            {building && <BuildManifestPanel loads={building} origin={origin} vehicles={vehicles} users={users} suppliers={suppliers} clientName={clientName}
+            {building && <BuildManifestPanel loads={building} origin={origin} vehicles={vehicles} users={users} suppliers={suppliers} canSeeMargin={isManager} clientName={clientName}
                 onClose={() => setBuilding(null)}
                 onBuild={async (data) => {
                     const r = await handleCreateManifest({ ...data, loadConIds: building.map(l => l.id), originBranch: origin });
@@ -153,7 +153,7 @@ const TRAILER_CAP: Record<string, number> = { '6m': 12000, '12m': 22000 };
 const isTrailerVeh = (v: any) => /trailer|triaxle|skeleton|superlink/i.test(v.weightCategory || '');
 
 interface BuildData { vehicleId: string; driverId: string; trailerSize: string; trailerReg6m?: string; trailerReg12m?: string; trailerSplit?: Record<string, '6m' | '12m'>; startOdometer?: number; totalRate?: number; carrierName?: string; carrierVehicleReg?: string; carrierDriver?: string; carrierCell?: string; carrierEmail?: string; }
-const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; users: any[]; suppliers?: any[]; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ loads, origin, vehicles, users, suppliers = [], clientName, onClose, onBuild }) => {
+const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; users: any[]; suppliers?: any[]; canSeeMargin?: boolean; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ loads, origin, vehicles, users, suppliers = [], canSeeMargin = false, clientName, onClose, onBuild }) => {
     const [runner, setRunner] = useState<'own' | 'broker'>('own');
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
@@ -308,15 +308,17 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
                         {!isBroker && <div><label className={lbl}>Truck mileage (km)</label><input type="number" value={odometer} onChange={e => setOdometer(e.target.value)} className={inp} placeholder="current odo — manual if no tracker" /></div>}
                         <div><label className={lbl}>Line-haul cost this trip (excl VAT)</label><input type="number" step="0.01" value={totalRate} onChange={e => setTotalRate(e.target.value)} className={inp} placeholder="LM / broker cost — changes monthly with diesel" /></div>
                     </div>
-                    {/* Turnover (all waybill client charges) − line-haul cost = margin on the run. */}
-                    <div className="flex flex-wrap items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                        <span className="text-slate-600">Turnover (all {loads.length} waybills): <strong className="text-slate-800">R {kg(turnover)}</strong></span>
-                        <span className="text-slate-400">−</span>
-                        <span className="text-slate-600">Line-haul cost: <strong className="text-slate-800">R {kg(lineHaulCost)}</strong></span>
-                        <span className="text-slate-400">=</span>
-                        <span className={`font-bold ${turnover - lineHaulCost < 0 ? 'text-red-600' : 'text-emerald-700'}`}>Margin: R {kg(turnover - lineHaulCost)}</span>
-                        <span className="text-[11px] text-slate-400 ml-auto">each waybill is still invoiced to its own client</span>
-                    </div>
+                    {/* Turnover + margin = MANAGEMENT only. Ops view/enter the cost, not profit/revenue. */}
+                    {canSeeMargin && (
+                        <div className="flex flex-wrap items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                            <span className="text-slate-600">Turnover (all {loads.length} waybills): <strong className="text-slate-800">R {kg(turnover)}</strong></span>
+                            <span className="text-slate-400">−</span>
+                            <span className="text-slate-600">Line-haul cost: <strong className="text-slate-800">R {kg(lineHaulCost)}</strong></span>
+                            <span className="text-slate-400">=</span>
+                            <span className={`font-bold ${turnover - lineHaulCost < 0 ? 'text-red-600' : 'text-emerald-700'}`}>Margin: R {kg(turnover - lineHaulCost)}</span>
+                            <span className="text-[11px] text-slate-400 ml-auto">management view · each waybill invoiced to its own client</span>
+                        </div>
+                    )}
                     {isBroker && <p className="text-[11px] text-slate-500">Depot → depot transfer — no POD requested from the broker (the receiving-depot GRN is the proof). The manifest is emailed to the carrier.</p>}
                     {overloaded.length > 0 && <p className="text-[11px] font-bold text-red-600">⚠ Overloaded on {overloaded.join(' & ')} — remove stock or override on dispatch (recorded).</p>}
                 </div>

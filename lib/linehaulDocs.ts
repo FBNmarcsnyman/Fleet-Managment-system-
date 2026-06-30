@@ -61,7 +61,7 @@ export const manifestHtml = ({ manifest: m, loads, vehicleLabel, driverName, cli
         <tr><td style="padding:2px 14px 2px 0;font-weight:700">Trailer</td><td>${trailerLine}</td></tr>
         <tr><td style="padding:2px 14px 2px 0;font-weight:700">Vehicle</td><td>${vehicleLabel || '—'}${(m as any).startOdometer != null ? ` · odo ${kg(Number((m as any).startOdometer))} km` : ''}</td></tr>
         <tr><td style="padding:2px 14px 2px 0;font-weight:700">Driver</td><td>${driverName || '—'}</td></tr>
-        ${(m as any).totalRate != null ? (() => { const turnover = loads.reduce((s, l) => s + (Number((l as any).totalAmount) || 0), 0); const cost = Number((m as any).totalRate) || 0; const margin = turnover - cost; return `<tr><td style="padding:2px 14px 2px 0;font-weight:700">Turnover (all waybills)</td><td>R ${kg(turnover)}</td></tr><tr><td style="padding:2px 14px 2px 0;font-weight:700">Line-haul cost</td><td>R ${kg(cost)}</td></tr><tr><td style="padding:2px 14px 2px 0;font-weight:700">Margin</td><td style="color:${margin < 0 ? '#b91c1c' : '#047857'};font-weight:800">R ${kg(margin)}</td></tr>`; })() : ''}
+        ${(m as any).totalRate != null ? `<tr><td style="padding:2px 14px 2px 0;font-weight:700">Line-haul cost</td><td>R ${kg(Number((m as any).totalRate))}</td></tr>` : ''}
       </table>
       <table style="border-collapse:collapse;width:100%;font-size:12px">
         <thead><tr style="background:#13294b;color:#fff">

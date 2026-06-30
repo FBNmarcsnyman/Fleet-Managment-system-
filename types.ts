@@ -1023,7 +1023,12 @@ export interface Manifest {
     driverId: string;
     loadConfirmationIds: string[];
     status: 'In Transit' | 'Arrived';
-    trailerSize?: string; // line-haul trailer length, e.g. '6m' / '12m'
+    trailerSize?: string; // line-haul trailer length, e.g. '6m' / '12m' / '6m + 12m'
+    totalRate?: number;          // one rate for the run
+    startOdometer?: number;      // truck mileage at dispatch (manual if no tracker)
+    trailerReg6m?: string;       // 6m trailer registration
+    trailerReg12m?: string;      // 12m trailer registration
+    trailerSplit?: Record<string, '6m' | '12m'>; // loadId -> which trailer (superlink)
 }
 
 export interface TripSheet {

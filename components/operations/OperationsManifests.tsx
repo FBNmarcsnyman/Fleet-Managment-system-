@@ -133,8 +133,8 @@ const OperationsManifests: React.FC = () => {
 
             {building && <BuildManifestPanel loads={building} origin={origin} vehicles={vehicles} users={users} clientName={clientName}
                 onClose={() => setBuilding(null)}
-                onBuild={async (vehicleId, driverId, trailerSize) => {
-                    const r = await handleCreateManifest({ vehicleId, driverId, loadConIds: building.map(l => l.id), originBranch: origin, trailerSize });
+                onBuild={async (data) => {
+                    const r = await handleCreateManifest({ ...data, loadConIds: building.map(l => l.id), originBranch: origin });
                     if (r?.ok === false) { showToast(`Could not build: ${r.error}`); return; }
                     showToast('Manifest built — truck dispatched.');
                     if (r?.value) showModal('manifestDoc', { manifest: r.value });
@@ -144,55 +144,126 @@ const OperationsManifests: React.FC = () => {
     );
 };
 
-const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; users: any[]; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (vehicleId: string, driverId: string, trailerSize: string) => Promise<void> }> = ({ loads, origin, vehicles, users, clientName, onClose, onBuild }) => {
+// Per-trailer payload caps (kg) — see fleet-weight-overload-rules.
+const TRAILER_CAP: Record<string, number> = { '6m': 12000, '12m': 22000 };
+const isTrailerVeh = (v: any) => /trailer|triaxle|skeleton|superlink/i.test(v.weightCategory || '');
+
+interface BuildData { vehicleId: string; driverId: string; trailerSize: string; trailerReg6m?: string; trailerReg12m?: string; trailerSplit?: Record<string, '6m' | '12m'>; startOdometer?: number; totalRate?: number; }
+const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; users: any[]; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ loads, origin, vehicles, users, clientName, onClose, onBuild }) => {
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
     const [trailer, setTrailer] = useState('12m');
+    const [reg6m, setReg6m] = useState('');
+    const [reg12m, setReg12m] = useState('');
+    const [odometer, setOdometer] = useState('');
+    const [totalRate, setTotalRate] = useState('');
+    const [split, setSplit] = useState<Record<string, '6m' | '12m'>>({});
     const [saving, setSaving] = useState(false);
     const dest = loads[0]?.destinationBranch;
-    const horses = vehicles.filter((v: any) => v.status === 'On the road' && v.weightCategory === 'Horse');
+
+    // Any branch's truck can run a line-haul to help — show all on-road trucks
+    // (not trailers), labelled by branch. Trailers feed the reg pick-lists.
+    const trucks = useMemo(() => vehicles.filter((v: any) => v.status === 'On the road' && !isTrailerVeh(v)).sort((a: any, b: any) => (a.branch || '').localeCompare(b.branch || '')), [vehicles]);
+    const trailerRegs = useMemo(() => vehicles.filter(isTrailerVeh).map((v: any) => v.registration).filter(Boolean), [vehicles]);
     const drivers = users.filter((u: any) => ['Staff', 'Driver'].includes(u.role));
-    const submit = async () => { if (!vehicleId || !driverId) { alert('Pick a truck and a driver.'); return; } setSaving(true); await onBuild(vehicleId, driverId, trailer); setSaving(false); };
+    const isSuper = trailer === '6m + 12m';
+
+    const kgOf = (l: any) => Number(l.weightKg) || 0;
+    // Which trailer each load sits on. Single-trailer = all on it; superlink = per the split (default 12m).
+    const trailerOf = (l: any): '6m' | '12m' => isSuper ? (split[l.id] || '12m') : (trailer as '6m' | '12m');
+    const totals = useMemo(() => {
+        const t: Record<string, number> = { '6m': 0, '12m': 0 };
+        loads.forEach(l => { t[trailerOf(l)] = (t[trailerOf(l)] || 0) + kgOf(l); });
+        return t;
+    }, [loads, split, trailer]);
+    const legs = isSuper ? ['6m', '12m'] : [trailer];
+    const overloaded = legs.filter(leg => (totals[leg] || 0) > (TRAILER_CAP[leg] || Infinity));
+
+    const submit = async () => {
+        if (!vehicleId || !driverId) { alert('Pick a truck and a driver.'); return; }
+        if (overloaded.length) {
+            const msg = overloaded.map(leg => `${leg}: ${kg(totals[leg])} kg vs ${kg(TRAILER_CAP[leg])} kg cap (over by ${kg(totals[leg] - TRAILER_CAP[leg])} kg)`).join('\n');
+            if (!window.confirm(`⚠ OVERLOADED — dispatch anyway?\n\n${msg}\n\nThis override will be recorded.`)) return;
+        }
+        setSaving(true);
+        await onBuild({
+            vehicleId, driverId, trailerSize: trailer,
+            trailerReg6m: (isSuper || trailer === '6m') ? (reg6m || undefined) : undefined,
+            trailerReg12m: (isSuper || trailer === '12m') ? (reg12m || undefined) : undefined,
+            trailerSplit: isSuper ? loads.reduce((m, l) => ({ ...m, [l.id]: trailerOf(l) }), {} as Record<string, '6m' | '12m'>) : undefined,
+            startOdometer: odometer ? parseFloat(odometer) : undefined,
+            totalRate: totalRate ? parseFloat(totalRate) : undefined,
+        });
+        setSaving(false);
+    };
+    const inp = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm';
+    const lbl = 'block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1';
+    const capPill = (leg: string) => { const over = (totals[leg] || 0) > (TRAILER_CAP[leg] || Infinity); return <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${over ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{leg}: {kg(totals[leg] || 0)} / {kg(TRAILER_CAP[leg])} kg{over ? ` · OVER ${kg(totals[leg] - TRAILER_CAP[leg])}` : ''}</span>; };
+
     return (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
-                <div className="px-5 py-3 rounded-t-2xl bg-[#13294b] text-white flex items-center justify-between">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-3 rounded-t-2xl bg-[#13294b] text-white flex items-center justify-between sticky top-0">
                     <h3 className="font-black text-lg">Load line-haul truck</h3>
                     <span className="text-sm text-white/80">{code(origin)} → {code(dest)}</span>
                 </div>
                 <div className="p-5 space-y-4">
+                    {/* cargo + per-trailer assignment */}
                     <div>
-                        <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">{loads.length} shipment{loads.length === 1 ? '' : 's'} on this trailer</div>
-                        <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
-                            {loads.map(l => <div key={l.id} className="px-3 py-1.5 text-sm flex justify-between gap-2"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span><span className="text-slate-500 truncate">{clientName(l)} · {pkgsOf(l) || '?'} pkgs</span></div>)}
+                        <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{loads.length} shipment{loads.length === 1 ? '' : 's'}{isSuper ? ' — assign each to 6m / 12m' : ''}</div>
+                            <div className="flex gap-1.5 flex-wrap">{legs.map(capPill)}</div>
+                        </div>
+                        <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                            {loads.map(l => (
+                                <div key={l.id} className="px-3 py-1.5 text-sm flex items-center justify-between gap-2">
+                                    <span className="min-w-0 truncate"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span> <span className="text-slate-500">{clientName(l)} · {kgOf(l) ? kg(kgOf(l)) + ' kg' : '? kg'}</span></span>
+                                    {isSuper && (
+                                        <span className="flex gap-1 shrink-0">
+                                            {(['6m', '12m'] as const).map(leg => <button key={leg} type="button" onClick={() => setSplit(s => ({ ...s, [l.id]: leg }))} className={`text-[11px] font-bold px-2 py-0.5 rounded ${trailerOf(l) === leg ? 'bg-[#13294b] text-white' : 'bg-slate-100 text-slate-500'}`}>{leg}</button>)}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Trailer</label>
-                            <select value={trailer} onChange={e => setTrailer(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                            <label className={lbl}>Trailer config</label>
+                            <select value={trailer} onChange={e => setTrailer(e.target.value)} className={inp}>
                                 <option value="6m">6 m</option>
                                 <option value="12m">12 m</option>
                                 <option value="6m + 12m">6 m + 12 m (superlink)</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">LM truck</label>
-                            <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                            <label className={lbl}>Truck (any branch)</label>
+                            <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} className={inp}>
                                 <option value="">-- truck --</option>
-                                {horses.map((v: any) => <option key={v.id} value={v.id}>{v.registration}</option>)}
+                                {trucks.map((v: any) => <option key={v.id} value={v.id}>{v.registration} · {v.branch === 'LOADMASTER' ? 'LM' : (v.branch || '').replace('FBN ', '')}{v.name ? ` (${v.name})` : ''}</option>)}
                             </select>
                         </div>
+                        {(isSuper || trailer === '6m') && (
+                            <div><label className={lbl}>6m trailer reg</label><input list="trReg" value={reg6m} onChange={e => setReg6m(e.target.value)} className={inp} placeholder="reg" /></div>
+                        )}
+                        {(isSuper || trailer === '12m') && (
+                            <div><label className={lbl}>12m trailer reg</label><input list="trReg" value={reg12m} onChange={e => setReg12m(e.target.value)} className={inp} placeholder="reg" /></div>
+                        )}
+                        <datalist id="trReg">{trailerRegs.map((r: string) => <option key={r} value={r} />)}</datalist>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Driver</label>
-                            <select value={driverId} onChange={e => setDriverId(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                            <label className={lbl}>Driver</label>
+                            <select value={driverId} onChange={e => setDriverId(e.target.value)} className={inp}>
                                 <option value="">-- driver --</option>
                                 {drivers.map((d: any) => <option key={d.email} value={d.email}>{d.name}</option>)}
                             </select>
                         </div>
+                        <div><label className={lbl}>Truck mileage (km)</label><input type="number" value={odometer} onChange={e => setOdometer(e.target.value)} className={inp} placeholder="current odo — manual if no tracker" /></div>
+                        <div><label className={lbl}>Total rate (excl VAT)</label><input type="number" step="0.01" value={totalRate} onChange={e => setTotalRate(e.target.value)} className={inp} placeholder="R" /></div>
                     </div>
+                    {overloaded.length > 0 && <p className="text-[11px] font-bold text-red-600">⚠ Overloaded on {overloaded.join(' & ')} — remove stock or override on dispatch (recorded).</p>}
                 </div>
-                <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2">
+                <div className="px-5 py-3 border-t border-slate-200 flex justify-end gap-2 sticky bottom-0 bg-white">
                     <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
                     <button onClick={submit} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-black text-white bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50">{saving ? 'Building…' : 'Build & dispatch'}</button>
                 </div>

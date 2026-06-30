@@ -717,6 +717,11 @@ export const mapManifest = (row: Tables['manifests']['Row'], ctx: MapperCtx): Ma
     loadConfirmationIds: row.load_confirmation_ids || [],
     status: row.status,
     trailerSize: (row as any).trailer_size ?? undefined,
+    totalRate: (row as any).total_rate ?? undefined,
+    startOdometer: (row as any).start_odometer ?? undefined,
+    trailerReg6m: (row as any).trailer_reg_6m ?? undefined,
+    trailerReg12m: (row as any).trailer_reg_12m ?? undefined,
+    trailerSplit: (row as any).trailer_split ?? undefined,
 });
 
 // Waybill verification/media events (cargo-verification spine).

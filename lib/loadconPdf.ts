@@ -225,10 +225,12 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
 
     const base64 = (doc.output('datauristring') as string).split(',')[1] || '';
     // Filename = the waybill / DI number (loadRefNo) if we have one, else the LoadCon
-    // number — NOT a long "TRANSPORT_ORDER_…" string. Uniform across the system: every
-    // document downloads/attaches as its number, with a short suffix only for the
-    // non-LoadCon variants so the three docs for one load don't collide. (Marc's rule.)
+    // number, tagged by document CATEGORY so the various downloads are easy to tell
+    // apart (Marc's rule): LoadCon -> TRANSPORT_ORDER_<num>.pdf, Client Order ->
+    // <num> Order.pdf, POD -> <num> POD.pdf. Same name for download + email attachment.
     const docNum = String(lc.loadRefNo || lc.loadConNumber || 'document').trim().replace(/[^A-Za-z0-9._-]+/g, '-');
-    const suffix = type === 'clientOrder' ? ' Order' : type === 'deliveryNote' ? ' POD' : '';
-    return { doc, base64, filename: `${docNum}${suffix}.pdf` };
+    const fileName = type === 'clientOrder' ? `${docNum} Order.pdf`
+        : type === 'deliveryNote' ? `${docNum} POD.pdf`
+        : `TRANSPORT_ORDER_${docNum}.pdf`;
+    return { doc, base64, filename: fileName };
 };

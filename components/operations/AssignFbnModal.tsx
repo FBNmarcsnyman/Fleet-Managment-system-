@@ -26,6 +26,7 @@ const AssignFbnModal: React.FC = () => {
     const lc: LoadConfirmation = modal.payload?.loadCon;
     const collBranch = lc?.collectionBranch;
     const collTok = branchToken(collBranch);
+    const [allBranches, setAllBranches] = useState(false); // show every branch's fleet (e.g. a DBN truck sitting in JHB)
     // Branch-scoped if we recognise the collecting branch; LM (line-haul) is
     // always offered. If we don't recognise it, fall back to the whole fleet so
     // the list is never empty.
@@ -42,14 +43,14 @@ const AssignFbnModal: React.FC = () => {
     };
     const fleetVehicles = useMemo(() => {
         const all = (vehicles as any[]).filter(v => v.registration && v.status !== 'Sold');
-        const scoped = all.filter(v => inScope(v.branch));
+        const scoped = allBranches ? all : all.filter(v => inScope(v.branch));
         return (scoped.length ? scoped : all).sort((a, b) => sizeOf(a) - sizeOf(b));
-    }, [vehicles, collTok]);
+    }, [vehicles, collTok, allBranches]);
     const fleetDrivers = useMemo(() => {
         const all = (drivers as Driver[]).filter(d => d.isActive !== false && d.name);
-        const scoped = all.filter(d => inScope(d.branch));
+        const scoped = allBranches ? all : all.filter(d => inScope(d.branch));
         return (scoped.length ? scoped : all).sort((a, b) => String(a.name).localeCompare(String(b.name)));
-    }, [drivers, collTok]);
+    }, [drivers, collTok, allBranches]);
 
     const initDriver = useMemo(() => fleetDrivers.find(d => (d.name || '').toUpperCase() === (lc?.subcontractorDriverName || '').toUpperCase()), [fleetDrivers, lc]);
     const [driverId, setDriverId] = useState(initDriver?.id || '');
@@ -111,7 +112,11 @@ const AssignFbnModal: React.FC = () => {
     return (
         <div>
             <h2 className="text-xl font-black text-white mb-1">Assign to FBN fleet — {lc.loadConNumber}</h2>
-            <p className="text-xs text-gray-400 mb-4">Own driver &amp; vehicle ({branchLabel}). Pick a driver and their truck + cell fill in automatically.</p>
+            <p className="text-xs text-gray-400 mb-3">Own driver &amp; vehicle ({branchLabel}). Pick a driver and their truck + cell fill in automatically.</p>
+            <label className="flex items-center gap-2 mb-3 text-xs text-gray-300 cursor-pointer">
+                <input type="checkbox" checked={allBranches} onChange={e => setAllBranches(e.target.checked)} className="h-4 w-4 rounded" />
+                Show all branches' vehicles &amp; drivers (e.g. a {collBranch ? String(collBranch).replace('FBN ', '') : 'DBN'} truck sitting in another depot)
+            </label>
             <div className="space-y-3.5">
                 <div>
                     <label className={lbl}>Driver</label>

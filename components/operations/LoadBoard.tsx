@@ -93,18 +93,23 @@ const LoadBoard: React.FC = () => {
         });
     }, [loadConfirmations, branch, q, clientMap]);
 
-    // Active (board) = everything not closed and not archived. Closed = Invoiced /
-    // Cancelled; archived = filed away (e.g. bulk-imported from the LoadCon sheet).
-    const active = useMemo(() => filtered.filter((lc: LoadConfirmation) => !isArch(lc) && lc.status !== 'Invoiced' && lc.status !== 'Cancelled'), [filtered]);
+    // ACTIVE = genuinely in-progress only: to collect → collecting → loading → on
+    // route → arrived. A DELIVERED load (awaiting POD) is NOT "active" — it lives
+    // under the POD-outstanding chip / the Deliveries board. Closed + archived excluded.
+    const ACTIVE_STAGES = new Set<StageKey>(['collection', 'collecting', 'loading', 'onroute', 'arrived']);
+    const active = useMemo(() => filtered.filter((lc: LoadConfirmation) => !isArch(lc) && ACTIVE_STAGES.has(stageOf(lc))), [filtered]);
     const counts = useMemo(() => { const c: Record<string, number> = {}; filtered.forEach(lc => { if (isArch(lc)) return; const k = stageOf(lc); c[k] = (c[k] || 0) + 1; }); return c; }, [filtered]);
     const archivedCount = useMemo(() => filtered.filter(isArch).length, [filtered]);
     const listRows = useMemo(() => {
         const order: Record<StageKey, number> = { collection: 0, collecting: 1, loading: 2, onroute: 3, arrived: 4, delivered: 5, pod: 6, closed: 7 };
-        // Archived loads are hidden from the active stages unless the Archived chip is
-        // selected — but a search still reaches them so they stay findable.
+        // "All active" = the in-progress stages only (delivered/POD/closed have their own
+        // chips). A search still reaches everything non-archived so loads stay findable;
+        // the Archived chip reaches archived.
         const base = stageFilter === 'archived'
             ? filtered.filter(isArch)
-            : filtered.filter(lc => (searching || !isArch(lc)) && (stageFilter === 'all' ? lc.status !== 'Invoiced' && lc.status !== 'Cancelled' : stageOf(lc) === stageFilter));
+            : filtered.filter(lc => (searching || !isArch(lc)) && (stageFilter === 'all'
+                ? (ACTIVE_STAGES.has(stageOf(lc)) || (searching && !isArch(lc) && lc.status !== 'Invoiced' && lc.status !== 'Cancelled'))
+                : stageOf(lc) === stageFilter));
         return base.sort((a, b) => (order[stageOf(a)] - order[stageOf(b)]) || (new Date(a.collectionDate || a.date).getTime() - new Date(b.collectionDate || b.date).getTime()));
     }, [filtered, stageFilter, searching]);
 

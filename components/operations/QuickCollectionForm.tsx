@@ -8,6 +8,13 @@ import DateField from './DateField';
 
 const CONTAINER_SIZES = ['20FT', '40FT', '40HC', '45FT', 'REEFER 20FT', 'REEFER 40FT', 'FLAT RACK', 'OPEN TOP'];
 
+// Structured load-type selection (Marc, 2026-07-01).
+const LOAD_CATEGORIES = ['Consol', 'Part Load', 'Full Load'] as const;
+type LoadCategory = typeof LOAD_CATEGORIES[number];
+const DECK_SPACES = ['1m', '3m', '6m', '9m', '12m'];                                    // Part load
+const FULL_VEHICLES = ['5 Tonner', '8 Tonner', '12 Tonner', '15 Tonner', '12m', 'Tri-axle', 'Superlink']; // Full load
+const BODY_TYPES = ['Tautliner', 'Flat deck', 'Flat deck + uprights'];
+
 // Areas where FBN ops can action a collection. Value = Branch code stored on the load.
 const AREAS: { code: Branch; label: string }[] = [
     { code: 'FBN JHB', label: 'Johannesburg' },
@@ -48,12 +55,19 @@ const QuickCollectionForm: React.FC = () => {
     const [collArea, setCollArea] = useState<Branch>('FBN JHB');
     const [delArea, setDelArea] = useState<Branch>('FBN JHB');
     const [notes, setNotes] = useState('');
-    // Full cargo details (expandable).
-    const [showDetails, setShowDetails] = useState(false);
-    const [loadType, setLoadType] = useState('');
+    // Structured load type + the fields that depend on it.
+    const [loadCategory, setLoadCategory] = useState<LoadCategory | ''>('');
+    const [deckSpace, setDeckSpace] = useState('');   // Part load
+    const [fullVehicle, setFullVehicle] = useState(''); // Full load
+    const [bodyType, setBodyType] = useState('');       // Tautliner / Flat deck / Flat deck + uprights
+    const [pkgDims, setPkgDims] = useState('');         // Consol — dims per package if they differ
     const [weightKg, setWeightKg] = useState('');
-    const [dimensions, setDimensions] = useState('');
+    const [dimensions, setDimensions] = useState('');   // total cubes (m³)
+    // Rate (expandable).
+    const [showDetails, setShowDetails] = useState(false);
     const [rate, setRate] = useState('');
+    // Composed load-type label stored on the load (drives the board "Size" column).
+    const composedLoadType = [loadCategory, loadCategory === 'Part Load' ? deckSpace : loadCategory === 'Full Load' ? fullVehicle : '', bodyType].filter(Boolean).join(' · ');
     // Add a new person against the chosen client (saved for next time).
     const [addingPerson, setAddingPerson] = useState(false);
     const [np, setNp] = useState({ name: '', email: '' });
@@ -119,11 +133,12 @@ const QuickCollectionForm: React.FC = () => {
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint,
             collectionDate, commodity: commodity || undefined,
             loadRefNo: loadRefNo ? loadRefNo.toUpperCase() : undefined,
-            loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (loadType || undefined),
+            loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (composedLoadType || undefined),
+            loadSpec: (loadCategory === 'Part Load' ? deckSpace : loadCategory === 'Full Load' ? fullVehicle : bodyType) || undefined,
             packaging: packages ? `${packages}` : undefined,
             weightKg: weightKg || undefined,
             volume: dimensions || undefined,
-            specialInstructions: [notes, containerNote].filter(Boolean).join(' · ') || undefined,
+            specialInstructions: [notes, pkgDims ? `Package dims: ${pkgDims}` : '', containerNote].filter(Boolean).join(' · ') || undefined,
             arrangingBranch: collArea, collectionBranch: collArea, destinationBranch: delArea,
             priority: 'Medium', totalAmount: rate ? Number(rate) : 0, supplierRate: 0,
             isCollection: true, repEmail: currentUser?.email,
@@ -192,25 +207,64 @@ const QuickCollectionForm: React.FC = () => {
                     <label className={lbl}>Deliver to</label>
                     <AddressAutocompleteInput value={deliveryPoint} onChange={onDelPoint} placeholder="Search address…" className={inp} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                    <div><label className={lbl}>Commodity</label><input list="qcComm" value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. flour" /><datalist id="qcComm">{commodities.map(c => <option key={c} value={c} />)}</datalist></div>
-                    <div><label className={lbl}>Packages</label><input value={packages} onChange={e => setPackages(e.target.value)} className={inp} placeholder="e.g. 3 cases" /></div>
-                </div>
+                <div><label className={lbl}>Commodity</label><input list="qcComm" value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. flour" /><datalist id="qcComm">{commodities.map(c => <option key={c} value={c} />)}</datalist></div>
+
+                {/* Load type — Consol / Part load / Full load, each with its own fields. */}
+                {!isContainer && (
+                    <div>
+                        <label className={lbl}>Load type</label>
+                        <div className="flex gap-1.5 mb-2">
+                            {LOAD_CATEGORIES.map(c => (
+                                <button key={c} type="button" onClick={() => setLoadCategory(loadCategory === c ? '' : c)}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-bold border ${loadCategory === c ? 'bg-brand-secondary text-white border-brand-secondary' : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'}`}>{c}</button>
+                            ))}
+                        </div>
+                        {loadCategory && (
+                            <div className="grid grid-cols-2 gap-3 bg-gray-900/40 p-3 rounded-lg border border-gray-700">
+                                {loadCategory === 'Consol' && (
+                                    <>
+                                        <div><label className={lbl}>No. of packages</label><input value={packages} onChange={e => setPackages(e.target.value)} className={inp} placeholder="e.g. 12" /></div>
+                                        <div><label className={lbl}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="total kg" /></div>
+                                        <div><label className={lbl}>Total cubes (m³)</label><input value={dimensions} onChange={e => setDimensions(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 4.5" /></div>
+                                        <div className="col-span-2"><label className={lbl}>Dimensions per package (if they differ)</label><textarea value={pkgDims} onChange={e => setPkgDims(e.target.value)} rows={2} className={inp} placeholder="e.g. 2× 1.2×1.0×1.5m · 1× 0.8×0.6×0.9m" style={{ textTransform: 'none' }} /></div>
+                                    </>
+                                )}
+                                {loadCategory === 'Part Load' && (
+                                    <>
+                                        <div><label className={lbl}>Deck space</label><select value={deckSpace} onChange={e => setDeckSpace(e.target.value)} className={inp}><option value="">— select —</option>{DECK_SPACES.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                                        <div><label className={lbl}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="total kg" /></div>
+                                    </>
+                                )}
+                                {loadCategory === 'Full Load' && (
+                                    <>
+                                        <div><label className={lbl}>Vehicle size</label><select value={fullVehicle} onChange={e => setFullVehicle(e.target.value)} className={inp}><option value="">— select —</option>{FULL_VEHICLES.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+                                        <div><label className={lbl}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="total kg" /></div>
+                                    </>
+                                )}
+                                <div className="col-span-2"><label className={lbl}>Vehicle type</label>
+                                    <div className="flex gap-1.5">
+                                        {BODY_TYPES.map(b => (
+                                            <button key={b} type="button" onClick={() => setBodyType(bodyType === b ? '' : b)}
+                                                className={`flex-1 py-2 rounded-lg text-xs font-bold border ${bodyType === b ? 'bg-[#13294b] text-white border-[#13294b]' : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'}`}>{b}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                     <div><label className={lbl}>Collection area (ops)</label><select value={collArea} onChange={e => { setCollArea(e.target.value as Branch); setDelArea(e.target.value as Branch); }} className={inp}>{AREAS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}</select></div>
                     <div><label className={lbl}>Delivery area</label><select value={delArea} onChange={e => setDelArea(e.target.value as Branch)} className={inp}>{AREAS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}</select></div>
                 </div>
                 {collArea !== delArea && <p className="text-[11px] text-purple-300">Inter-branch: {collArea} → {delArea} (handed over at the depot).</p>}
                 <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>
-                {/* Full cargo details — optional, expandable */}
+                {/* Rate — optional, expandable */}
                 <div>
-                    <button type="button" onClick={() => setShowDetails(s => !s)} className="text-xs font-bold text-brand-secondary hover:underline">{showDetails ? '− Hide full details' : '+ Full details (load type, weight, dims, rate)'}</button>
+                    <button type="button" onClick={() => setShowDetails(s => !s)} className="text-xs font-bold text-brand-secondary hover:underline">{showDetails ? '− Hide rate' : '+ Add client rate (optional)'}</button>
                     {showDetails && (
-                        <div className="grid grid-cols-2 gap-3 mt-2 bg-gray-900/40 p-3 rounded-lg border border-gray-700">
-                            <div><label className={lbl}>Load type</label><input list="qcLoadTypes" value={loadType} onChange={e => setLoadType(e.target.value)} className={inp} placeholder="Full load / Part load / Deckspace" /><datalist id="qcLoadTypes">{['FULL LOAD', 'PART LOAD', 'DECKSPACE', 'GROUPAGE', 'ABNORMAL', 'TAUTLINER', 'FLAT DECK', 'FLAT DECK + UPRIGHTS', '6M FLAT DECK', '12M FLAT DECK', 'TRI-AXLE FLAT', 'SUPERLINK (34T)', 'TRI-AXLE (28T)', '15T', '12T', '8T', '5T', '2T'].map(o => <option key={o} value={o} />)}</datalist></div>
-                            <div><label className={lbl}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 8000" /></div>
-                            <div><label className={lbl}>Total cubes (m³)</label><input value={dimensions} onChange={e => setDimensions(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 12.5" /></div>
-                            <div><label className={lbl}>Rate (R, client)</label><input value={rate} onChange={e => setRate(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="optional" /></div>
+                        <div className="mt-2 bg-gray-900/40 p-3 rounded-lg border border-gray-700">
+                            <label className={lbl}>Rate (R, client)</label><input value={rate} onChange={e => setRate(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="optional" />
                         </div>
                     )}
                 </div>

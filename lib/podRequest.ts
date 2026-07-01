@@ -47,3 +47,30 @@ export async function sendPodRequest(lc: any, requestedBy: string, accountsCc: s
         return { ok: false, error: e instanceof Error ? e.message : 'error', to };
     }
 }
+
+// ONE interactive POD-request flow used by every surface (Deliveries board, LoadCons list,
+// load detail) so the behaviour is identical everywhere: prompt to CC the transporter's
+// ACCOUNTS (who usually hold the POD), send, stamp the load's audit fields, and REMEMBER
+// the accounts email(s) on the transporter (suppliers.pod_request_cc) so they pre-fill +
+// auto-CC next time. See the pod-request-accounts-cc rule.
+export async function requestPodInteractive(opts: {
+    lc: any;
+    suppliers?: any[];
+    requestedBy: string;
+    updateLoad?: (id: string, u: any) => any;
+    updateSupplier?: (id: string, u: any) => any;
+    toast: (m: string) => void;
+}): Promise<void> {
+    const { lc, suppliers = [], requestedBy, updateLoad, updateSupplier, toast } = opts;
+    if (!lc.subcontractorEmail) { toast('No transporter email on this load — add one first.'); return; }
+    const supplier = (suppliers as any[]).find(s => s.id === lc.supplierId);
+    const stored = (supplier?.podRequestCc || '').trim();
+    const entered = window.prompt(`Requesting the signed POD from ${lc.subcontractorName || 'the transporter'}.\n\nAlso CC their ACCOUNTS (who often hold the POD)? Email(s), comma-separated — saved for next time. Leave blank to skip.`, stored);
+    if (entered === null) return; // cancelled
+    const accountsCc = entered.split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
+    const res = await sendPodRequest(lc, requestedBy, accountsCc);
+    if (!res.ok) { toast(`Could not send: ${res.error}`); return; }
+    toast(`POD request emailed to ${res.to}${accountsCc.length ? ' (cc accounts)' : ''}.`);
+    if (res.update && updateLoad) updateLoad(lc.id, res.update);
+    if (supplier && updateSupplier && entered.trim() !== stored) void updateSupplier(supplier.id, { podRequestCc: entered.trim() });
+}

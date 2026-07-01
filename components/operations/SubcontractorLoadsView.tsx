@@ -1,13 +1,14 @@
 
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation, Supplier, Client, Attachment, PodAnalysisResult } from '../../types';
-import { useUIState } from '../../contexts/AppContexts';
+import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import { supabase, directInvoke, invokeFn } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { brandedEmail, emailButton } from '../../lib/emailTemplate';
 import { sendDriverWhatsApp } from '../../contexts/OperationsContext';
 import DateField from './DateField';
 import { sendOrderToClient, sendLoadConToSupplier } from '../../lib/loadEmails';
+import { requestPodInteractive } from '../../lib/podRequest';
 import { format } from 'date-fns';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
 import { UploadIcon } from '../icons/UploadIcon';
@@ -26,6 +27,8 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     onUpdateLoadConfirmation,
 }) => {
     const { showModal, showToast } = useUIState();
+    const { handleUpdateSupplier } = useOperations() as any;
+    const { currentUser } = useAuth();
     // Default to "needs action" so the desk sees only what's outstanding (a load to
     // send or a POD to chase), not a wall of already-delivered rows.
     type Filter = 'Needs Action' | 'To Send' | 'Awaiting POD' | 'POD In' | 'All' | 'History';
@@ -175,30 +178,15 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         } finally { setSendingLc(null); }
     };
 
-    // Ask the transporter to send the POD for a delivered load. Works today via
-    // email; the same trigger will fire a WhatsApp once a sender number is connected.
+    // Ask the transporter to send the POD for a delivered load — via the ONE shared flow
+    // (prompt to CC their accounts, remember them per-transporter). Same everywhere.
     const handleRequestPod = async (lc: LoadConfirmation) => {
-        const to = lc.subcontractorEmail;
-        if (!to) { showToast('No transporter email on this load — add one first.'); return; }
         setRequesting(lc.id);
-        try {
-            const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' to ' + lc.deliveryPoint : ''}`;
-            const uploadLink = `${window.location.origin}${window.location.pathname}?pod=${lc.id}`;
-            const html = brandedEmail(`<p>Good day ${lc.forAttention || lc.subcontractorName || ''},</p>
-              <p>Please send through the <strong>POD</strong> for load <strong>${lc.loadConNumber}</strong>${route ? ` (${route})` : ''} now that it has delivered.</p>
-              ${emailButton(uploadLink, 'Upload POD &rarr;', '#16a34a')}
-              <p style="font-size:13px;color:#5b6573">Tap the button on your phone to snap a photo of the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>
-              <p>Thank you,<br>FBN Transport</p>`);
-            const { data, error } = await invokeFn('send-email', {
-                body: { to, cc: lc.ccEmail || undefined, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' },
-            });
-            if (error || (data && (data as any).error)) { showToast(`Could not send request: ${(data as any)?.error || error?.message}`); return; }
-            showToast(`POD request sent to ${to}.`);
-        } catch (e) {
-            showToast(`Could not send request: ${e instanceof Error ? e.message : 'error'}`);
-        } finally {
-            setRequesting(null);
-        }
+        await requestPodInteractive({
+            lc, suppliers, requestedBy: currentUser?.name || currentUser?.email || 'Staff',
+            updateLoad: onUpdateLoadConfirmation, updateSupplier: handleUpdateSupplier, toast: showToast,
+        });
+        setRequesting(null);
     };
 
     // Send (or resend) the received POD to a recipient — defaults to the client,

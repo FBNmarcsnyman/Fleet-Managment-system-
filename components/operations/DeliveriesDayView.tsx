@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState, useAuth } from '../../contexts/AppContexts';
-import { sendPodRequest } from '../../lib/podRequest';
+import { requestPodInteractive } from '../../lib/podRequest';
 import { driveViewUrl } from '../../lib/driveView';
 
 // Delivered / POD — a day-by-day checklist instead of one giant column. Loads are
@@ -66,25 +66,11 @@ const DeliveriesDayView: React.FC<{ lens?: Lens }> = ({ lens: initialLens = 'all
     // public upload page). They upload -> submit-pod HOLDS it for admin authorisation
     // before it ever reaches the client (see the POD authorisation rule). loadcons@ CC'd.
     const requestPod = async (lc: any) => {
-        // If the transporter's controller doesn't have the POD, their ACCOUNTS usually do
-        // (it's attached to the carrier invoice). Let ops copy accounts in on the request,
-        // and REMEMBER those email(s) on the transporter so they're auto-CC'd next time.
-        const supplier = (suppliers as any[]).find(s => s.id === lc.supplierId);
-        const stored = (supplier?.podRequestCc || '').trim();
-        const entered = window.prompt(
-            `Requesting the signed POD from ${lc.subcontractorName || 'the transporter'}.\n\nAlso CC their ACCOUNTS (who often hold the POD)? Enter email(s), comma-separated — saved for next time. Leave blank to skip.`,
-            stored);
-        if (entered === null) return; // cancelled
-        const accountsCc = entered.split(/[,;]/).map((t: string) => t.trim()).filter(Boolean);
         setReqBusy(lc.id);
-        const res = await sendPodRequest(lc, currentUser?.name || currentUser?.email || 'Staff', accountsCc);
-        if (!res.ok) showToast(`Could not send: ${res.error}`);
-        else {
-            showToast(`POD request emailed to ${res.to}${accountsCc.length ? ' (cc accounts)' : ''}.`);
-            handleUpdateLoadConfirmation(lc.id, res.update);
-            // Save/refresh the accounts CC on this transporter for future POD requests.
-            if (supplier && entered.trim() !== stored) void handleUpdateSupplier?.(supplier.id, { podRequestCc: entered.trim() } as any);
-        }
+        await requestPodInteractive({
+            lc, suppliers, requestedBy: currentUser?.name || currentUser?.email || 'Staff',
+            updateLoad: handleUpdateLoadConfirmation, updateSupplier: handleUpdateSupplier, toast: showToast,
+        });
         setReqBusy(null);
     };
 

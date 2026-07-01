@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { driveViewUrl } from '../lib/driveView';
 
 const NAVY = '#13294b';
 const YELLOW = '#f5b700';
@@ -208,7 +209,7 @@ const PublicLoad: React.FC<{ loadId: string; mode: 'track' | 'accept' | 'update'
                                     )}
 
                                     {load.has_pod && load.pod_url && (
-                                        <a href={load.pod_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 14, background: '#16a34a', color: '#fff', textDecoration: 'none', fontWeight: 800, padding: '12px 20px', borderRadius: 8 }}>⬇ Download signed POD</a>
+                                        <a href={driveViewUrl(load.pod_url)} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: 14, background: '#16a34a', color: '#fff', textDecoration: 'none', fontWeight: 800, padding: '12px 20px', borderRadius: 8 }}>View signed POD</a>
                                     )}
 
                                     {/* Client → ops channel — ALWAYS available (add remarks / extra info / request an update). */}

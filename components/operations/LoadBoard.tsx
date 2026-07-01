@@ -3,6 +3,7 @@ import { LoadConfirmation, LoadConfirmationStatus } from '../../types';
 import { useOperations, useUIState, useAuth } from '../../contexts/AppContexts';
 import { isAssigned, nextStep, STATUS_LABEL, statusChip, isInterBranch } from '../../lib/loadStatus';
 import { sendPodRequest } from '../../lib/podRequest';
+import { driveViewUrl } from '../../lib/driveView';
 import { TruckIcon } from '../icons/TruckIcon';
 import LoadProgress from './LoadProgress';
 
@@ -230,7 +231,7 @@ const LoadBoard: React.FC = () => {
         const showPod = !pod && delivered && !podWaived;
         const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
         const cls = (base: string) => `${compact ? 'flex-1 py-1.5 text-[10px]' : 'py-1 px-2.5 text-[11px]'} font-black rounded-lg uppercase tracking-wider text-white ${base}`;
-        const viewPod = pod ? <button onClick={stop(() => window.open(pod, '_blank', 'noopener'))} title="View the uploaded POD" className={cls('bg-[#13294b] hover:bg-[#1d3a66]')}>View POD</button> : null;
+        const viewPod = pod ? <button onClick={stop(() => window.open(driveViewUrl(pod), '_blank', 'noopener'))} title="View the uploaded POD" className={cls('bg-[#13294b] hover:bg-[#1d3a66]')}>View POD</button> : null;
         if (isArch(lc)) return <div className="flex gap-1.5 justify-end">{viewPod}<button onClick={stop(() => setArchived(lc, false))} disabled={busy === lc.id} title="Move back onto the active board" className={cls('bg-slate-600 hover:bg-slate-500 disabled:opacity-50')}>{busy === lc.id ? '…' : 'Unarchive'}</button></div>;
         if (!assigned && lc.status === 'Booked') return (
             <div className="flex gap-1.5 justify-end">

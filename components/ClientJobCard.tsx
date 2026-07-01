@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LoadConfirmation, LoadConfirmationStatus } from '../types';
 import Modal from './Modal';
+import { driveViewUrl } from '../lib/driveView';
 
 interface ClientJobCardProps {
     loadConfirmation: LoadConfirmation;
@@ -39,7 +40,7 @@ const ClientJobCard: React.FC<ClientJobCardProps> = ({ loadConfirmation: lc }) =
                         <p className="text-xs text-slate-500 font-mono">{lc.loadConNumber}{lc.customerOrderNumber ? ` · Your ref: ${lc.customerOrderNumber}` : ''}</p>
                     </div>
                     {podUrl && (
-                        <a href={podUrl} target="_blank" rel="noreferrer" download className="shrink-0 bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-1.5 px-3 rounded-lg text-xs">⬇ Download POD</a>
+                        <a href={driveViewUrl(podUrl)} target="_blank" rel="noreferrer" className="shrink-0 bg-[#13294b] hover:bg-[#1d3a66] text-white font-bold py-1.5 px-3 rounded-lg text-xs">View POD</a>
                     )}
                 </div>
 

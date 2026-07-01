@@ -11,6 +11,7 @@ import { buildLoadConPdf } from '../../lib/loadconPdf';
 import { nextStep } from '../../lib/loadStatus';
 import { fetchHandlingRates, computeStorage, UNIT_LABEL, HandlingRate } from '../../lib/handlingRates';
 import { usePickOptions } from '../../hooks/usePickOptions';
+import { driveViewUrl } from '../../lib/driveView';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
 
@@ -595,7 +596,7 @@ const LoadDetailModal: React.FC = () => {
                     })()}
                     {!editing && nextStep(lc) && <button onClick={quickAdvance} disabled={advancing} title="Move this load to the next status" className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-50">{advancing ? '…' : `${nextStep(lc)!.label} →`}</button>}
                     {!editing && canMarkDelivered && <button onClick={markDelivered} disabled={advancing} title="Mark this load delivered now (skips the in-between steps)" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition disabled:opacity-50">✓ Mark delivered</button>}
-                    {!editing && podLink && <a href={podLink} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
+                    {!editing && podLink && <a href={driveViewUrl(podLink)} target="_blank" rel="noreferrer" title="Open the uploaded POD" className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition">View POD{lc.podAuthorisation === 'pending' ? ' ⚠' : ''}</a>}
                     {!editing && <button onClick={() => showModal('captureLoad', { loadCon: lc })} className={tbtn}>Capture</button>}
                     {!editing && <button onClick={whatsappDriver} className={tbtn}>WhatsApp</button>}
                     {!editing && <button onClick={shareDriverWhatsApp} title="Open WhatsApp with the job + accept/update link pre-filled (to the driver's number if we have it)." className={tbtn}>Share (WhatsApp)</button>}
@@ -851,7 +852,7 @@ const LoadDetailModal: React.FC = () => {
                         <F label="POD" value={podLink ? (lc.podAuthorisation === 'blocked' ? 'BLOCKED — do not send' : lc.podAuthorisation === 'pending' ? 'Received — awaiting authorisation' : lc.podAuthorisation === 'authorised' ? 'Sent to client ✓' : 'Received') : 'Awaiting'} />
                         {podLink && (
                             <div className="flex items-center gap-3">
-                                <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>
+                                <a href={driveViewUrl(podLink)} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-400 hover:underline">View POD →</a>
                                 {lc.podAuthorisation !== 'pending' && <button onClick={sendPod} disabled={sendingPod} className="text-xs font-bold text-emerald-400 hover:underline disabled:opacity-50">{sendingPod ? 'Sending…' : 'Send / Resend POD →'}</button>}
                             </div>
                         )}
@@ -872,7 +873,7 @@ const LoadDetailModal: React.FC = () => {
                             )}
                             {isSuperAdmin ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {podLink && <a href={podLink} target="_blank" rel="noreferrer" className="text-xs font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-2 px-3 rounded-lg">View / download original</a>}
+                                    {podLink && <a href={driveViewUrl(podLink)} target="_blank" rel="noreferrer" className="text-xs font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-2 px-3 rounded-lg">View / download original</a>}
                                     {lc.podAuthorisation !== 'blocked' && <button onClick={() => authorisePod()} disabled={authorising} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{authorising ? '…' : '✓ Authorise as-is & send to client'}</button>}
                                     <label className="text-xs font-bold bg-amber-500 hover:bg-amber-400 text-white py-2 px-3 rounded-lg cursor-pointer">⬆ Upload cleaned version &amp; send<input type="file" className="hidden" accept="application/pdf,image/*" onChange={e => { const f = e.target.files?.[0]; if (f) authorisePod(f); e.currentTarget.value = ''; }} /></label>
                                 </div>

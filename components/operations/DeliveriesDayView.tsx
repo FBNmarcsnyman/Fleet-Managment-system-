@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState, useAuth } from '../../contexts/AppContexts';
 import { sendPodRequest } from '../../lib/podRequest';
+import { driveViewUrl } from '../../lib/driveView';
 
 // Delivered / POD — a day-by-day checklist instead of one giant column. Loads are
 // grouped by delivery date (newest first), each day collapsible with an
@@ -119,6 +120,7 @@ const DeliveriesDayView: React.FC<{ lens?: Lens }> = ({ lens: initialLens = 'all
                                 <div className="divide-y divide-slate-100">
                                     {list.map(l => {
                                         const out = podOut(l);
+                                        const podLink = (l as any).podDriveUrl || (l as any).podPhoto?.data || ((l as any).podDocUrls || [])[0] || '';
                                         return (
                                             <div key={l.id} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50">
                                                 <button onClick={() => showModal('loadDetail', { loadCon: l })} className="flex-1 min-w-0 text-left flex items-center gap-2">
@@ -141,6 +143,7 @@ const DeliveriesDayView: React.FC<{ lens?: Lens }> = ({ lens: initialLens = 'all
                                                     );
                                                 })()}
                                                 {out && (l as any).subcontractorName && <button onClick={() => requestPod(l)} disabled={reqBusy === l.id} title="Email the subcontractor to upload the signed POD" className="shrink-0 text-[11px] font-bold bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white py-1 px-2.5 rounded-lg">{reqBusy === l.id ? '…' : '✉ Request POD'}</button>}
+                                                {!out && podLink && <a href={driveViewUrl(podLink)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} title="View the POD on file" className="shrink-0 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-1 px-2.5 rounded-lg">View POD</a>}
                                                 {out && <button onClick={() => getPod(l)} title="Upload the POD yourself" className="shrink-0 text-[11px] font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-1 px-2.5 rounded-lg">Get POD</button>}
                                             </div>
                                         );

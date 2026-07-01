@@ -15,6 +15,23 @@ import { User } from '../types';
 // internal team members.
 const EXTERNAL_ROLES = ['Client', 'Supplier'];
 
+// Roles whose visibility is limited to their assigned branch(es) — they MUST have
+// a branch ticked or they see almost nothing.
+const BRANCH_SCOPED = ['Ops', 'Staff', 'Accounts'];
+const misScoped = (u: User): boolean => BRANCH_SCOPED.includes(u.role as string) && !(u.assignedBranches || []).length;
+// Plain-English "what this person can see", for the who-sees-what check.
+const seesSummary = (u: User): string => {
+    const r = u.role as string;
+    if (r === 'Super Admin') return 'Everything + settings & system switches';
+    if (r === 'Manager') return 'Everything (no system switches / settings)';
+    if (r === 'Admin') return 'Fuel + Fleet only (limited)';
+    if (r === 'Workshop Manager') return 'Workshop + Fleet';
+    if (r === 'Driver') return 'Own loads & vehicle only';
+    const br = (u.assignedBranches || []);
+    if (BRANCH_SCOPED.includes(r)) return br.length ? `${r} · ${br.map(b => String(b).replace('FBN ', '')).join(', ')} (+ Loadmaster)` : '⚠ No branch — sees almost nothing';
+    return r;
+};
+
 // One-click access presets for the bulk "Apply access" action — set the same
 // role + permissions on several team members at once.
 const PRESETS: { key: string; label: string; role: string; permissions: string[] }[] = [
@@ -23,7 +40,8 @@ const PRESETS: { key: string; label: string; role: string; permissions: string[]
     { key: 'accounts', label: 'Accounts / Finance', role: 'Accounts', permissions: ['access_finance'] },
     { key: 'workshop', label: 'Workshop', role: 'Workshop Manager', permissions: ['access_workshop'] },
     { key: 'fleet', label: 'Fleet', role: 'Staff', permissions: ['access_fleet'] },
-    { key: 'admin', label: 'Admin — full access', role: 'Admin', permissions: [] },
+    { key: 'manager', label: 'Manager — sees everything (no settings/switches)', role: 'Manager', permissions: [] },
+    { key: 'fleetadmin', label: 'Admin — Fuel + Fleet only (limited)', role: 'Admin', permissions: ['access_fleet', 'access_fuel'] },
 ];
 
 const UserManagement: React.FC = () => {
@@ -94,6 +112,16 @@ const UserManagement: React.FC = () => {
 
             {tab === 'portal' ? <PortalLoginsView /> : (
             <>
+            {/* Who-sees-what health check — flag branch-scoped users with no branch. */}
+            {(() => {
+                const bad = staffUsers.filter(misScoped);
+                if (!bad.length) return null;
+                return (
+                    <div className="bg-amber-900/30 border border-amber-600/50 rounded-xl p-3 mb-3 text-sm text-amber-200">
+                        <strong className="text-amber-300">⚠ {bad.length} user{bad.length === 1 ? '' : 's'} can't see much</strong> — {bad.map((u: User) => u.name).join(', ')} {bad.length === 1 ? 'is' : 'are'} an Ops/Staff/Accounts role with <strong>no branch assigned</strong>. Edit them and tick their branch so their floor + collections show.
+                    </div>
+                );
+            })()}
             {/* Bulk apply-access toolbar — appears when people are ticked */}
             {selected.size > 0 && (
                 <div className="bg-[#13294b] border border-blue-900 rounded-xl p-3 mb-3 flex flex-wrap items-center gap-3">
@@ -115,6 +143,7 @@ const UserManagement: React.FC = () => {
                             <th className="p-4 text-gray-300">Name</th>
                             <th className="p-4 text-gray-300">Email</th>
                             <th className="p-4 text-gray-300">Role</th>
+                            <th className="p-4 text-gray-300">Sees</th>
                             <th className="p-4 text-gray-300">Access</th>
                             <th className="p-4 text-gray-300">Assigned Branches</th>
                             <th className="p-4 text-gray-300">Last active</th>
@@ -129,6 +158,7 @@ const UserManagement: React.FC = () => {
                                 <td className="p-4 font-medium text-white">{user.name}</td>
                                 <td className="p-4 text-gray-300">{user.email}</td>
                                 <td className="p-4"><span className="px-2 py-1 text-xs font-semibold bg-blue-900/50 text-blue-300 rounded-full">{user.role}</span></td>
+                                <td className={`p-4 text-xs ${misScoped(user) ? 'text-amber-400 font-bold' : 'text-gray-300'}`}>{seesSummary(user)}</td>
                                 <td className="p-4 text-gray-400 text-xs">{(user.permissions || []).includes('access_loadcons') ? 'LoadCons operator' : (user.permissions || []).length ? (user.permissions || []).join(', ') : 'Role default'}</td>
                                 <td className="p-4 text-gray-400">{user.assignedBranches.join(', ')}</td>
                                 <td className="p-4 text-gray-400 text-xs">{lastActive[(user as any).id] ? formatDistanceToNow(new Date(lastActive[(user as any).id]!), { addSuffix: true }) : 'Never'}</td>

@@ -1,24 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useUIState, useAuth, useOperations } from '../../contexts/AppContexts';
-import { supabase, invokeFn } from '../../lib/supabase';
 import { buildLoadConPdf } from '../../lib/loadconPdf';
-import { brandedEmail } from '../../lib/emailTemplate';
-import { isDelivered } from '../../lib/loadEmails';
+import { sendLoadConToSupplier, sendOrderToClient } from '../../lib/loadEmails';
 import { PrinterIcon } from '../icons/PrinterIcon';
 
 type DocType = 'loadcon' | 'clientOrder' | 'deliveryNote';
-
-// FBN brand palette
-const NAVY = '#13294b';
-const GREY = '#5b6573';
-
-const fmtDate = (d?: string) => {
-    if (!d) return '';
-    const dt = new Date(d);
-    if (isNaN(dt.getTime())) return d;
-    return dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 // Preview shows the EXACT PDF that gets emailed/printed (the FBN "Transport Order"
 // grid built in lib/loadconPdf.ts), so the screen and the document never drift.
@@ -43,24 +30,6 @@ const DocView: React.FC<{ lc: LoadConfirmation; type: DocType }> = ({ lc, type }
     if (err) return <div style={{ padding: 40, textAlign: 'center', color: '#fca5a5' }}>{err}</div>;
     if (!url) return <div style={{ padding: 40, textAlign: 'center', color: '#fff' }}>Building document…</div>;
     return <iframe src={url} title="document" style={{ width: '100%', height: '76vh', border: 'none', background: '#fff', borderRadius: 6 }} />;
-};
-
-// A short covering message above the document in the email.
-const coverNote = (lc: LoadConfirmation, type: DocType, sender: string): string => {
-    const route = `${lc.collectionPoint || ''}${lc.deliveryPoint ? ' → ' + lc.deliveryPoint : ''}`;
-    const when = fmtDate(lc.collectionDate);
-    const p = (s: string) => `<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;margin:0 0 10px">${s}</p>`;
-    if (type === 'clientOrder') {
-        return `<div style="margin-bottom:18px">${p(`Good day ${lc.clientContact || lc.clientName || ''},`)}${p(`Please find your FBN Transport Order <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''}.`)}${p('Kindly confirm and reply with your order number if not already supplied.')}${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}</div>`;
-    }
-    // Back-dated LoadCon (sent after the trip started/finished): do NOT ask the subbie
-    // to accept & send driver details — just present the attached LoadCon and request
-    // the signed POD. Same rule as sendLoadConToSupplier (shared isDelivered). See the
-    // back-dated-loadcon-rule memory.
-    if (isDelivered(lc)) {
-        return `<div style="margin-bottom:18px">${p(`Good day ${lc.forAttention || lc.subcontractorName || ''},`)}${p(`Please find attached FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''} for your records.`)}${p('This load has already been <strong>collected/delivered</strong> — kindly <strong>upload the signed POD</strong> to close it off (delivery note / POD only, <strong>no invoice</strong>).')}${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}</div>`;
-    }
-    return `<div style="margin-bottom:18px">${p(`Good day ${lc.forAttention || lc.subcontractorName || ''},`)}${p(`Please find attached FBN Load Confirmation <strong>${lc.loadConNumber}</strong>${route ? ` for <strong>${route}</strong>` : ''}${when ? `, collection ${when}` : ''}.`)}${p('Please <strong>confirm acceptance</strong> and reply with your <strong>driver name, vehicle registration and driver cell</strong>. POD to be returned on delivery.')}${p(`Regards,<br>${sender}<br>FBN Transport · tracking@fbn-transport.co.za`)}</div>`;
 };
 
 const TABS: { key: DocType; label: string }[] = [
@@ -108,53 +77,23 @@ const LoadDocumentsModal: React.FC = () => {
         if (to !== existing) {
             handleUpdateLoadConfirmation(lc.id, tab === 'clientOrder' ? { clientEmail: to } : { subcontractorEmail: to });
         }
-        const collection = lc.collectionPoint || '';
-        const delivery = lc.deliveryPoint || '';
-        // Keep the subject plain ASCII — special chars (em-dash / arrow) get
-        // mis-encoded by some mail stacks and break the whole email's headers.
-        const subject = tab === 'clientOrder'
-            ? `FBN Transport Order ${lc.loadConNumber} - ${collection} to ${delivery}`
-            : tab === 'deliveryNote'
-            ? `FBN Delivery Note ${lc.loadConNumber}`
-            : `FBN Load Confirmation ${lc.loadConNumber} - ${collection} to ${delivery}`;
         setSending(true);
         try {
-            // Attach the document as a proper PDF and keep the email body short and
-            // branded — a wall of inline tables reads as spam to most mail clients.
-            const { base64, filename } = await buildLoadConPdf(lc, tab);
-            const sender = currentUser?.name || 'FBN Transport';
-            const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
+            // Route through the ONE canonical sender in lib/loadEmails.ts so this modal's
+            // email is byte-identical to the standard path — same branded shell + detail
+            // table, plain-ASCII subject, COD/transit-depot warnings, the client/subbie
+            // cc wall (dropAddrs), Drive filing, and the back-dated "upload POD" rule.
+            // Never inline a duplicate email body here (see back-dated-loadcon-rule).
             const label = docLabel(tab);
-            // LoadCon -> carrier "Accept this load" link; Client Order -> client "Track" link.
-            // Back-dated LoadCon (trip already run) -> "Upload signed POD" link instead of
-            // accept, matching the coverNote wording above (shared isDelivered rule).
-            const cta = tab === 'loadcon'
-                ? (isDelivered(lc)
-                    ? `<p style="text-align:center;margin:20px 0"><a href="${base}?pod=${lc.id}" style="background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Upload signed POD &rarr;</a></p>`
-                    : `<p style="text-align:center;margin:20px 0"><a href="${base}?accept=${lc.id}" style="background:#16a34a;color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Accept this load &amp; send driver details &rarr;</a></p>`)
-                : tab === 'clientOrder'
-                ? `<p style="text-align:center;margin:20px 0"><a href="${base}?track=${lc.id}" style="background:${NAVY};color:#fff;text-decoration:none;font-weight:bold;padding:12px 26px;border-radius:8px;display:inline-block">Track this shipment &rarr;</a></p>`
-                : '';
-            const html = brandedEmail(`${coverNote(lc, tab, sender)}<p style="font-size:13px;color:${GREY};margin-top:6px">Your ${label} (Ref ${lc.loadConNumber}) is attached to this email as a PDF.</p>${cta}`);
-            const { data, error } = await invokeFn('send-email', {
-                body: {
-                    // LoadCons are always copied to loadcons@ for the monitoring team.
-                    to,
-                    cc: tab === 'loadcon'
-                        ? ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])]
-                        : (tab === 'clientOrder' ? (lc.ccEmail || undefined) : undefined),
-                    subject,
-                    html,
-                    fromName: sender,
-                    attachments: [{ filename, content: base64, contentType: 'application/pdf' }],
-                },
-            });
-            if (error || (data && (data as any).error)) {
-                showToast(`Email failed: ${(data as any)?.error || error?.message || 'unknown error'}`);
+            const res = tab === 'clientOrder'
+                ? await sendOrderToClient(lc, to)
+                : await sendLoadConToSupplier(lc, to);
+            if (!res.ok) {
+                showToast(`Email failed: ${res.error || 'unknown error'}`);
                 return;
             }
             if (tab === 'loadcon') handleUpdateLoadConfirmation(lc.id, { sentToSupplierDate: new Date().toISOString() });
-            showToast(`Sent to ${to} with the ${label} attached.`);
+            showToast(`Sent to ${to} with the ${label} attached.${res.pdfFailed ? ' (PDF could not be attached.)' : ''}`);
         } catch (e) {
             showToast(`Email failed: ${e instanceof Error ? e.message : 'unknown error'}`);
         } finally {

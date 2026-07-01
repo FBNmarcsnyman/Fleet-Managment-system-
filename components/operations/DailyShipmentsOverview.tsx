@@ -2,7 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState } from '../../contexts/AppContexts';
 import { STATUS_LABEL, statusChip } from '../../lib/loadStatus';
-import { directSelect } from '../../lib/supabase';
+import { directSelect, supabase } from '../../lib/supabase';
+
+// A live truck position from the Pulsit feed (same `track` edge fn the Live Map uses).
+interface LivePos { reg: string; lat: number; lng: number; speed: number; ignition: number; address: string; at: string; driver: string | null; }
+const alnum = (s?: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const fmtSeen = (s?: string) => { if (!s) return ''; const d = new Date(s); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }); };
 
 // FBN daily operations overview: the whole live pipeline at a glance — what's
 // booked / loading / collected / in transit / at depot / delivered / awaiting POD,
@@ -50,6 +55,28 @@ const DailyShipmentsOverview: React.FC = () => {
     const collectingToday = useMemo(() => loads.filter(l => dOnly(l.collectionDate) === today && ['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'].includes(l.status)), [loads, today]);
     const deliveringToday = useMemo(() => loads.filter(l => dOnly((l as any).deliveryDate) === today && !['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(l.status)), [loads, today]);
 
+    // Live truck positions (Pulsit) so ops can see where today's collection/delivery
+    // trucks are right now — same 30s feed as the Live Map. Keyed by registration; the
+    // assigned reg (own-fleet OR subbie) is stored on subcontractorVehicleReg.
+    const [positions, setPositions] = useState<LivePos[]>([]);
+    useEffect(() => {
+        let active = true;
+        const pull = async () => {
+            try {
+                const { data } = await supabase.functions.invoke('track', { body: { action: 'feed' } });
+                if (active && Array.isArray((data as any)?.vehicles)) setPositions((data as any).vehicles as LivePos[]);
+            } catch { /* tracking is best-effort here — silent if unavailable */ }
+        };
+        pull();
+        const t = setInterval(pull, 30000);
+        return () => { active = false; clearInterval(t); };
+    }, []);
+    const posByReg = useMemo(() => {
+        const m = new Map<string, LivePos>();
+        positions.forEach(p => { if (p.reg && p.lat != null && p.lng != null) m.set(alnum(p.reg), p); });
+        return m;
+    }, [positions]);
+
     // FCL containers live in their own table — pull active ones for the overview.
     const [containers, setContainers] = useState<any[]>([]);
     useEffect(() => {
@@ -82,7 +109,25 @@ const DailyShipmentsOverview: React.FC = () => {
         </button>
     );
 
-    const List: React.FC<{ items: LoadConfirmation[] }> = ({ items }) => (
+    // One-line live position for a load's assigned truck (green=moving, amber=stopped,
+    // slate=ignition off). Only rendered when `live` and we have a fresh feed match.
+    const LiveLine: React.FC<{ lc: LoadConfirmation }> = ({ lc }) => {
+        const pos = posByReg.get(alnum((lc as any).subcontractorVehicleReg));
+        if (!pos) return null;
+        const moving = (pos.speed || 0) > 5;
+        const colour = moving ? 'bg-emerald-500' : pos.ignition ? 'bg-amber-500' : 'bg-slate-400';
+        const state = moving ? `${Math.round(pos.speed)} km/h` : pos.ignition ? 'stopped' : 'off';
+        return (
+            <p className="text-[11px] text-slate-600 truncate mt-0.5 flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${colour}`} />
+                <span className="font-mono font-bold text-slate-700">{pos.reg}</span>
+                {pos.address && <span className="text-slate-500 truncate">· {pos.address}</span>}
+                <span className="text-slate-400 shrink-0">· {state}{pos.at ? ` · ${fmtSeen(pos.at)}` : ''}</span>
+            </p>
+        );
+    };
+
+    const List: React.FC<{ items: LoadConfirmation[]; live?: boolean }> = ({ items, live }) => (
         <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
             {items.length === 0 && <p className="p-4 text-sm text-slate-400 text-center">None.</p>}
             {items.slice(0, 60).map(l => (
@@ -90,6 +135,7 @@ const DailyShipmentsOverview: React.FC = () => {
                     <div className="min-w-0">
                         <p className="text-sm font-bold text-slate-900 truncate">{l.loadConNumber} · {clientName(l)}</p>
                         <p className="text-[11px] text-slate-500 truncate">{l.collectionPoint} → {l.deliveryPoint}{(l as any).subcontractorName ? ` · ${(l as any).subcontractorName}` : ''}</p>
+                        {live && <LiveLine lc={l} />}
                     </div>
                     <span className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded uppercase ${statusChip(l.status)}`}>{STATUS_LABEL[l.status]}</span>
                 </button>
@@ -133,11 +179,11 @@ const DailyShipmentsOverview: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <div>
                     <button onClick={() => goTab('opsDay')} className="text-sm font-black text-slate-700 hover:text-blue-600 uppercase tracking-wider mb-2">Collecting today ({collectingToday.length}) →</button>
-                    <List items={collectingToday} />
+                    <List items={collectingToday} live />
                 </div>
                 <div>
                     <button onClick={() => goTab('opsDay')} className="text-sm font-black text-slate-700 hover:text-blue-600 uppercase tracking-wider mb-2">Delivering today ({deliveringToday.length}) →</button>
-                    <List items={deliveringToday} />
+                    <List items={deliveringToday} live />
                 </div>
                 <div>
                     <button onClick={() => goTab('opsManifests')} className="text-sm font-black text-slate-700 hover:text-purple-600 uppercase tracking-wider mb-2">Inbound between depots →</button>

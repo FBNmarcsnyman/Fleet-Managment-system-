@@ -4,6 +4,7 @@ import { extractFromDocument, LICENCE_DISC_PROMPT, LICENCE_DISC_SCHEMA, base64To
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import { useUIState } from '../../contexts/AppContexts';
 import DateField from '../operations/DateField';
+import { driveViewUrl } from '../../lib/driveView';
 
 const DOC_TYPES: [string, string][] = [
     ['LICENSE_DISC', 'Licence Disc'], ['LOGBOOK', 'Logbook'], ['FIRE_PERMIT', 'Fire Permit'], ['INSURANCE', 'Insurance'],
@@ -163,7 +164,7 @@ const VehicleDocuments: React.FC<{ vehicleId: string; vehicleName?: string; regi
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge(d.status, d.expiry_date)}`}>{d.expiry_date ? (d.expiry_date < today() ? 'Expired' : 'Valid') : 'No expiry'}</span>
                                     <p className="text-[11px] text-gray-400 font-mono mt-0.5">{d.expiry_date || '—'}</p>
                                 </div>
-                                {d.file_url && <a href={d.file_url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-400 hover:text-white">View</a>}
+                                {d.file_url && <a href={driveViewUrl(d.file_url)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-400 hover:text-white">View</a>}
                                 {d.file_url && <button onClick={() => readExpiry(d)} disabled={!!busy || bulk} className="text-xs font-semibold text-emerald-400 hover:text-white disabled:opacity-50">{busy === d.id ? '…' : 'Read expiry'}</button>}
                             </div>
                         </div>

@@ -6,6 +6,7 @@ import { uploadFile } from '../../lib/supabase';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
 import { SparklesIcon } from '../icons/SparklesIcon';
 import DateField from '../operations/DateField';
+import { driveViewUrl } from '../../lib/driveView';
 
 // Bound any promise so a stalled network call can't hang the UI forever.
 const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> =>
@@ -196,7 +197,7 @@ const AddDriverForm: React.FC = () => {
                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onLicenceSelect} />
                     </label>
                 </div>
-                {editing?.licenceDocUrl && <a href={editing.licenceDocUrl} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:underline mt-2 inline-block">View licence on file →</a>}
+                {editing?.licenceDocUrl && <a href={driveViewUrl(editing.licenceDocUrl)} target="_blank" rel="noreferrer" className="text-[11px] text-blue-400 hover:underline mt-2 inline-block">View licence on file →</a>}
             </div>
 
             <div className="space-y-4">

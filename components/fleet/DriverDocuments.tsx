@@ -3,6 +3,7 @@ import { directSelect, directInsert, invokeFn } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import { useUIState } from '../../contexts/AppContexts';
 import DateField from '../operations/DateField';
+import { driveViewUrl } from '../../lib/driveView';
 
 // Driver documents — files into the FBN CONTROL CENTER drive under
 // Drivers/<name>/<Category>/ and records a driver_documents row. Mirrors the
@@ -90,7 +91,7 @@ const DriverDocuments: React.FC = () => {
                             <div className="min-w-0"><p className="font-semibold text-white text-sm truncate">{label(d.type)}</p><p className="text-[11px] text-gray-400 truncate">{d.file_name || '—'}</p></div>
                             <div className="flex items-center gap-3 shrink-0">
                                 <div className="text-right"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${badge(d)}`}>{d.expiry_date ? (d.expiry_date < today() ? 'Expired' : 'Valid') : 'No expiry'}</span><p className="text-[11px] text-gray-400 font-mono mt-0.5">{d.expiry_date || '—'}</p></div>
-                                {d.file_url && <a href={d.file_url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-400 hover:text-white">View</a>}
+                                {d.file_url && <a href={driveViewUrl(d.file_url)} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-400 hover:text-white">View</a>}
                             </div>
                         </div>
                     ))}

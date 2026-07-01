@@ -32,7 +32,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
     const { showModal, hideModal, showToast } = useUIState();
     const { jobCards = [], handleCreateJobCard } = useWorkshop();
     const { currentUser } = useAuth();
-    const isAdmin = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdmin = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     const toggleHidden = async (e: React.MouseEvent) => {
         e.stopPropagation();
         const r = await handleUpdateVehicle(vehicle.id, { hidden: !vehicle.hidden } as any);

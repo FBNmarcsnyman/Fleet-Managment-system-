@@ -19,8 +19,10 @@ const MODULES: { key: string; label: string }[] = [
     { key: 'access_settings', label: 'Settings' },
 ];
 
-// Roles you actually configure here (Admin/Super Admin are full-access by design).
+// Roles you configure here. Super Admin + Manager are full-access by design (not listed).
+// Admin is now a LIMITED role (fuel + trucks + docs by default) — tick what it can access.
 const EDITABLE: { role: string; label: string }[] = [
+    { role: 'Admin', label: 'Admin (fuel + trucks)' },
     { role: 'Accounts', label: 'Accounts' },
     { role: 'Ops', label: 'Ops' },
     { role: 'Workshop Manager', label: 'Workshop' },

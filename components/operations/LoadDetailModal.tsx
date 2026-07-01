@@ -268,7 +268,7 @@ const LoadDetailModal: React.FC = () => {
     const clientNameOpts = React.useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
     const transporterOpts = React.useMemo(() => [...new Set((suppliers as any[]).filter(s => s.type === 'Transport').map(s => s.name).filter(Boolean))].sort(), [suppliers]);
     const { currentUser } = useAuth();
-    const isSuperAdmin = (currentUser as any)?.role === 'Super Admin' || (currentUser as any)?.role === 'Admin';
+    const isSuperAdmin = (currentUser as any)?.role === 'Super Admin' || (currentUser as any)?.role === 'Manager';
     const lc: LoadConfirmation | undefined = modal.payload?.loadCon;
     // The quote this load was won from — shown so pricing is traceable end-to-end.
     const sourceQuote = (quotes as any[]).find(qq => qq.id === lc?.quoteId);

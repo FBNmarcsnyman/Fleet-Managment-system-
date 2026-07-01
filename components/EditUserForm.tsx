@@ -61,7 +61,7 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onClose }) => {
         };
         const res = await handleUpdateUser(user, updates, doResetPassword ? { resetPassword: true, newPassword: newPassword || undefined } : undefined);
         // Persist the per-user access override directly (empty = inherit role).
-        const finalPerms = (role === 'Super Admin' || role === 'Admin') ? [] : (customAccess ? perms : []);
+        const finalPerms = (role === 'Super Admin' || role === 'Manager') ? [] : (customAccess ? perms : []);
         await directUpdate('profiles', { id: user.id }, { permissions: finalPerms as any });
         setSaving(false);
         if (!res.ok) { alert(`Could not update the user: ${res.error || 'unknown error'}`); return; }
@@ -78,8 +78,9 @@ const EditUserForm: React.FC<EditUserFormProps> = ({ user, onClose }) => {
             <div className="space-y-4">
                 <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} className={inputCls} required />
                 <select value={role} onChange={e => setRole(e.target.value as Role)} className={inputCls}>
-                    <option value="Super Admin">Super Admin</option>
-                    <option value="Admin">Admin</option>
+                    <option value="Super Admin">Super Admin — everything + settings</option>
+                    <option value="Manager">Manager — view everything, no settings</option>
+                    <option value="Admin">Admin — fuel + trucks + docs (limited)</option>
                     <option value="Accounts">Accounts</option>
                     <option value="Ops">Ops</option>
                     <option value="Workshop Manager">Workshop</option>

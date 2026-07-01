@@ -1216,7 +1216,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     void directInvoke('send-push', { title: `Cargo in at ${depot} - complete details`, body: `${m.loadConNumber}: ${miss.length} item(s) to confirm`, url: `?complete=${id}` });
                     // No rate captured → ping management to enter it.
                     if (!m.totalAmount) {
-                        const admins = (users || []).filter((u: any) => ['Admin', 'Super Admin'].includes(u.role) && u.isActive !== false).map((u: any) => u.email).filter(Boolean);
+                        const admins = (users || []).filter((u: any) => ['Super Admin', 'Manager'].includes(u.role) && u.isActive !== false).map((u: any) => u.email).filter(Boolean);
                         if (admins.length) {
                             const rhtml = brandedEmail(`<p><strong>Rate needed - ${m.loadConNumber}.</strong></p><p>${m.clientName || 'A load'} arrived at the ${depot} depot with <strong>no rate captured</strong>. Please enter the client rate.</p>${emailButton(link, 'Open the load &rarr;', '#13294b')}`);
                             void invokeFn('send-email', { body: { to: admins.join(','), cc: [OPS_GENERAL], subject: `RATE NEEDED - ${m.loadConNumber} (${depot})`, html: rhtml, fromName: 'FBN Control Centre' } });

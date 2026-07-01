@@ -57,7 +57,7 @@ const LiveFleetMap: React.FC<LiveFleetMapProps> = ({ vehicles = [], users = [], 
     const [updatedAt, setUpdatedAt] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const { currentUser } = useAuth();
-    const isAdmin = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdmin = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     // Regs an admin has chosen to hide from the map (covers tracked units that aren't
     // in the fleet register). Stored server-side on email_settings.map_hidden_regs.
     // The exact reg strings the admin chose to hide (stored server-side). hiddenSet

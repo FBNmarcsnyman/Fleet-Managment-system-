@@ -96,7 +96,7 @@ const VehicleList: React.FC = () => {
     } = useVehicles();
     const { showModal, hideModal, showToast } = useUIState();
     const { currentUser } = useAuth();
-    const isAdmin = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdmin = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     const [groupBy, setGroupBy] = useState<GroupByType>('branch');
     const [branchFilter, setBranchFilter] = useState<BranchFilter>('All');
     // Management can hide personal / off-book vehicles. Hidden ones never show for

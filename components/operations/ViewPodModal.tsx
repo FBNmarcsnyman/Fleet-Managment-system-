@@ -13,7 +13,7 @@ const ViewPodModal: React.FC = () => {
         return <div className="p-4 text-white">Error: POD data not found.</div>;
     }
 
-    const canApprove = (currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin') && currentUser.permissions.includes('access_finance');
+    const canApprove = (currentUser?.role === 'Super Admin' || currentUser?.role === 'Manager') && currentUser.permissions.includes('access_finance');
 
     const handleApprove = () => {
         handleApprovePayment(loadCon.id);

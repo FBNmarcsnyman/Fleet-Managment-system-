@@ -12,7 +12,7 @@ const WhatsAppToggle: React.FC = () => {
     const [on, setOn] = useState<boolean>(true);
     const [busy, setBusy] = useState(false);
     const role = (currentUser as any)?.role;
-    const isManager = role === 'Admin' || role === 'Super Admin';
+    const isManager = role === 'Super Admin' || role === 'Manager';
 
     useEffect(() => {
         let active = true;

@@ -24,7 +24,7 @@ const ContainersView: React.FC = () => {
     const { currentUser } = useAuth();
     // Branch scope: a depot user (single DBN/JHB/CPT branch, non-admin) is locked to
     // their depot; admins see all + can switch.
-    const isAdmin = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdmin = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     const opsBranches = (currentUser?.assignedBranches || []).filter((b: string) => branchCode(b));
     const lockBranch = !isAdmin && opsBranches.length === 1;
     const [branch, setBranch] = useState<string>(lockBranch ? branchCode(opsBranches[0]) : 'All');

@@ -60,7 +60,7 @@ const ShipmentsBoard: React.FC = () => {
     const myBranch = (currentUser?.assignedBranches || []).find((b: string) => ['FBN DBN', 'FBN JHB', 'FBN CPT'].includes(b));
     // Floor lock: a single-branch operator (not an admin/manager) is pinned to
     // their own floor — JHB sees JHB, DBN sees DBN, no switching.
-    const branchLocked = !!myBranch && !['Admin', 'Super Admin'].includes(currentUser?.role as string)
+    const branchLocked = !!myBranch && !['Super Admin', 'Manager'].includes(currentUser?.role as string)
         && (currentUser?.assignedBranches || []).filter((b: string) => ['FBN DBN', 'FBN JHB', 'FBN CPT'].includes(b)).length === 1;
     const [branch, setBranch] = useState<string>(myBranch || 'All');
     // Show ONE floor at a time at full height so the desk never has to scroll —

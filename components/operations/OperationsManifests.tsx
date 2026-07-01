@@ -23,7 +23,7 @@ const OperationsManifests: React.FC = () => {
     const { currentUser } = useAuth();
 
     const opsBranches: string[] = (currentUser?.assignedBranches || []).filter((b: string) => BRANCHES.includes(b));
-    const isManager = ['Admin', 'Super Admin'].includes(currentUser?.role);
+    const isManager = ['Super Admin', 'Manager'].includes(currentUser?.role);
     const locked = !isManager && opsBranches.length === 1;
     const [origin, setOrigin] = useState<string>(locked ? opsBranches[0] : (opsBranches[0] || 'FBN JHB'));
     const [building, setBuilding] = useState<LoadConfirmation[] | null>(null);

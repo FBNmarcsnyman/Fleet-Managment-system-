@@ -136,7 +136,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // The current user's effective hidden tabs: role baseline (branch '') ∪ their depot's set.
     const myHiddenTabs = useMemo(() => {
         const u = state.currentUser;
-        if (!u || ['Admin', 'Super Admin'].includes(u.role as string)) return [] as string[];
+        if (!u || ['Super Admin', 'Manager'].includes(u.role as string)) return [] as string[];
         const code = (u.assignedBranches || []).map(b => /DBN|DURBAN/i.test(b) ? 'DBN' : /JHB|JOHAN/i.test(b) ? 'JHB' : /CPT|CAPE/i.test(b) ? 'CPT' : '').find(Boolean) || '';
         return Array.from(new Set([...(roleHiddenTabs[`${u.role}|`] || []), ...(code ? (roleHiddenTabs[`${u.role}|${code}`] || []) : [])]));
     }, [roleHiddenTabs, state.currentUser]);
@@ -273,7 +273,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // array is empty in the DB (which is the current bootstrap state for
         // Marc) gets zero nav items in the Header even though their role
         // should grant full access.
-        if (state.currentUser.role === 'Super Admin' || state.currentUser.role === 'Admin') {
+        // Super Admin + Manager see everything. Admin is now a LIMITED role — it
+        // falls through to its configured role_permissions (fuel/fleet by default).
+        if (state.currentUser.role === 'Super Admin' || state.currentUser.role === 'Manager') {
             return true;
         }
         // A user's OWN permissions list (per-user override) wins if set; otherwise

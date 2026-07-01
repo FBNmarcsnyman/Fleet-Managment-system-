@@ -63,7 +63,7 @@ const WorkshopPortal: React.FC = () => {
         { view: 'suppliers', label: 'Suppliers' },
     ];
     // Hide tabs an admin has switched off for this role (Users → Tab Access). Admins see all.
-    const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdminRole = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     const visibleNav = navItems.filter(t => isAdminRole || !(myHiddenTabs || []).includes(`workshop:${t.view}`));
     useEffect(() => {
         if (!isAdminRole && (myHiddenTabs || []).includes(`workshop:${workshopSubView}`) && visibleNav[0]) {

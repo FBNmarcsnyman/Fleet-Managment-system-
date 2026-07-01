@@ -175,7 +175,10 @@ export interface Message {
     text: string;
 }
 
-export type Role = 'Staff' | 'Driver' | 'Admin' | 'Super Admin' | 'Client' | 'Supplier' | 'Workshop Manager' | 'Accounts' | 'Ops';
+// Role model (2026-07-01): Super Admin = everything incl. settings + approves logins.
+// Manager = sees everything but cannot change settings/users. Admin = LIMITED, configurable
+// (typically Fuel + Vehicles/Trailers + docs) via role_permissions + tab access.
+export type Role = 'Staff' | 'Driver' | 'Admin' | 'Manager' | 'Super Admin' | 'Client' | 'Supplier' | 'Workshop Manager' | 'Accounts' | 'Ops';
 
 export interface User {
     id?: string;

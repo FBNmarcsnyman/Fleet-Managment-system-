@@ -41,7 +41,7 @@ const FleetPortal: React.FC = () => {
         { view: 'operationsLog', label: 'Operations Log' },
     ];
     // Hide tabs an admin has switched off for this role (Users → Tab Access). Admins see all.
-    const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdminRole = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     const visibleNav = navItems.filter(t => isAdminRole || !(myHiddenTabs || []).includes(`fleet:${t.view}`));
     useEffect(() => {
         if (!isAdminRole && (myHiddenTabs || []).includes(`fleet:${fleetSubView}`) && visibleNav[0]) {

@@ -41,7 +41,8 @@ import { LIGHT_DUTY_CHECKLIST, HEAVY_DUTY_RIGID_CHECKLIST, TRUCK_TRACTOR_CHECKLI
 
 const PERMISSIONS_CONFIG: { [key in User['role']]: Permission[] } = {
     'Super Admin': ['access_management', 'access_fleet', 'access_fuel', 'access_operations', 'access_workshop', 'access_finance', 'access_incidents', 'access_hr', 'access_user_management', 'access_settings'],
-    'Admin': ['access_management', 'access_fleet', 'access_fuel', 'access_operations', 'access_workshop', 'access_finance', 'access_incidents', 'access_hr', 'access_user_management', 'access_settings'],
+    'Manager': ['access_management', 'access_fleet', 'access_fuel', 'access_operations', 'access_workshop', 'access_finance', 'access_incidents', 'access_hr'],
+    'Admin': ['access_fleet', 'access_fuel'],
     'Workshop Manager': ['access_workshop', 'access_fleet'],
     'Accounts': ['access_finance', 'access_operations', 'access_management'],
     'Ops': ['access_operations', 'access_fleet', 'access_fuel', 'access_incidents'],

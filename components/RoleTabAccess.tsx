@@ -6,7 +6,8 @@ import { TAB_SECTIONS, tabKey } from '../lib/tabCatalog';
 // Super-Admin screen: hide/show any section's tabs for a role, optionally for one depot.
 // Writes section-namespaced keys to role_tab_visibility (role + branch). Each user's
 // effective hidden set is computed in AuthContext (myHiddenTabs) and applied per portal.
-const ROLES = ['Ops', 'Staff', 'Manager', 'Workshop Manager', 'Accounts'];
+// Super Admin + Manager see all tabs (not restricted here). Admin is the limited role.
+const ROLES = ['Admin', 'Ops', 'Staff', 'Workshop Manager', 'Accounts'];
 const BRANCHES = [{ v: '', l: 'All depots' }, { v: 'DBN', l: 'DBN only' }, { v: 'JHB', l: 'JHB only' }, { v: 'CPT', l: 'CPT only' }];
 
 const RoleTabAccess: React.FC = () => {

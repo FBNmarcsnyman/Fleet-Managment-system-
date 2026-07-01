@@ -21,7 +21,7 @@ const NAV: { view: TransTab; key: string; label: string }[] = [
 
 const TransportersPortal: React.FC = () => {
     const { myHiddenTabs, currentUser } = useAuth();
-    const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdminRole = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     const nav = NAV.filter(n => isAdminRole || !(myHiddenTabs || []).includes(`accounts:${n.key}`));
     const [view, setView] = useState<TransTab>(nav[0]?.view || 'list');
     const render = () => {

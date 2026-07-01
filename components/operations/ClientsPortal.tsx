@@ -12,7 +12,7 @@ type ClientsTab = 'crm' | 'contacts' | 'comms';
 
 const ClientsPortal: React.FC = () => {
     const { myHiddenTabs, currentUser } = useAuth();
-    const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdminRole = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     const hidden = (v: string) => !isAdminRole && (myHiddenTabs || []).includes(`accounts:${v}`);
     const showCrm = !hidden('clients');
     const showContacts = !hidden('contacts');

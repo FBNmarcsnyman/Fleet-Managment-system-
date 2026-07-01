@@ -92,7 +92,7 @@ const OperationsPortal: React.FC = () => {
     // Admin-set, server-stored tabs hidden for this role/depot (Admins/Super Admins see all).
     // Keys are section-namespaced; managed centrally in Users → Tab Access.
     const section = isOps ? 'operations' : 'broking';
-    const isAdminRole = ['Admin', 'Super Admin'].includes(currentUser?.role as string);
+    const isAdminRole = ['Super Admin', 'Manager'].includes(currentUser?.role as string);
     const isRoleHidden = (view: string) => !isAdminRole && (myHiddenTabs || []).includes(`${section}:${view}`);
     const visibleNav = navItems.filter(t => !isRoleHidden(t.view));
     const activeTab = visibleNav.some(t => t.view === operationsSubView) ? operationsSubView : (visibleNav[0]?.view || navItems[0].view);

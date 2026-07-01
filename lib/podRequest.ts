@@ -12,7 +12,7 @@ export interface PodRequestResult {
     update?: { podRequestedAt: string; podRequestedBy: string; podRequestCount: number };
 }
 
-export async function sendPodRequest(lc: any, requestedBy: string): Promise<PodRequestResult> {
+export async function sendPodRequest(lc: any, requestedBy: string, accountsCc: string[] = []): Promise<PodRequestResult> {
     const to = (lc.subcontractorEmail || '').trim();
     if (!to) return { ok: false, error: 'No subcontractor email on this load — add one in the load details first.' };
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
@@ -31,7 +31,14 @@ export async function sendPodRequest(lc: any, requestedBy: string): Promise<PodR
         + `<p style="font-size:13px;color:#b91c1c;font-weight:800;margin:6px 0 0">DO NOT UPLOAD YOUR INVOICE HERE.</p>`
         + `<p style="font-size:13px;color:#64748b;margin:14px 0 0">Tap the button on your phone to snap or attach the signed POD — no login needed. Or simply reply to this email with the POD attached.</p>`
     );
-    const cc = ['loadcons@fbn-transport.co.za', ...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()).filter(Boolean)];
+    // CC loadcons@ (always), the load's own CC, and the transporter's ACCOUNTS email(s) —
+    // their accounts usually hold the signed POD (attached to the carrier invoice), so
+    // copying them in means whoever actually has it can upload. Deduped.
+    const cc = Array.from(new Set([
+        'loadcons@fbn-transport.co.za',
+        ...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()),
+        ...accountsCc.map((t: string) => t.trim()),
+    ].filter(Boolean).filter(e => e.toLowerCase() !== to.toLowerCase())));
     try {
         const { data, error } = await invokeFn('send-email', { body: { to, cc, subject: `POD required - Load ${lc.loadConNumber}`, html, fromName: 'FBN Transport' } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message || 'send failed', to };

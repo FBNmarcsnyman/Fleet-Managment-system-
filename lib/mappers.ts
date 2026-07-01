@@ -554,6 +554,7 @@ export const mapSupplier = (
     fleetSize: row.fleet_size ?? undefined,
     controllerContact: row.controller_contact ?? undefined,
     accountsContact: row.accounts_contact ?? undefined,
+    podRequestCc: (row as any).pod_request_cc ?? undefined,
     complianceDocs: complianceDocsBySupplier.get(row.id) || [],
     rateCards: rateCardsBySupplier.get(row.id) || [],
     isActive: (row as any).is_active ?? true,
@@ -1199,6 +1200,7 @@ export const toSupplierUpdate = (u: Partial<Supplier>): Tables['suppliers']['Upd
     if (u.address !== undefined) row.address = u.address || null;
     if (u.controllerContact !== undefined) row.controller_contact = u.controllerContact || null;
     if (u.accountsContact !== undefined) row.accounts_contact = u.accountsContact || null;
+    if ((u as any).podRequestCc !== undefined) (row as any).pod_request_cc = (u as any).podRequestCc || null;
     if (u.beeStatus !== undefined) row.bee_status = u.beeStatus || null;
     if (u.regions !== undefined) row.regions = u.regions || null;
     if (u.fleetSize !== undefined) row.fleet_size = u.fleetSize || null;

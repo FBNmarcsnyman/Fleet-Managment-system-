@@ -463,6 +463,8 @@ export interface Supplier {
     trailerTypes?: string[];
     controllerContact?: string;
     accountsContact?: string;
+    /** Comma-separated accounts/POD email(s) auto-CC'd on POD requests for this transporter. */
+    podRequestCc?: string;
     complianceDocs: ComplianceDoc[];
     rateCards: Attachment[];
     isActive?: boolean;

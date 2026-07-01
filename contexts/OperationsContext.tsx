@@ -905,6 +905,9 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 if (data.collectionRef) (row as any).collection_ref = data.collectionRef;
                 if (data.unpackDepot) (row as any).unpack_depot = data.unpackDepot;
                 if (data.importStage) (row as any).import_stage = data.importStage;
+                // One-off / COD customer captured on the collection form (not saved as a
+                // client) — hold the cargo as COD until paid, same as a COD client.
+                if (data.codHold) (row as any).cod_hold = true;
                 // COD auto-hold: a COD client's cargo is HELD by default — it must not be
                 // delivered until payment is received and released (cod-release lifts it).
                 // Only auto-set on a live (not back-dated/already-delivered) load.
@@ -967,8 +970,11 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                 // The load is saved — return success NOW so the form closes instantly.
                 // Remembering the client in the client database is a nice-to-have that
                 // runs in the background; it must never delay or block creating the load.
+                // A one-off / COD customer (skipClientDirectory) is NOT added to the client
+                // directory — the name/email stay on the load only, so casual COD jobs don't
+                // pollute the Clients list (Marc's rule). The load carries codHold via data.
                 const cName = (data.clientName || '').trim();
-                if (cName) {
+                if (cName && !data.skipClientDirectory) {
                     void (async () => {
                         try {
                             const cContact = { name: data.clientContact || '', email: data.clientEmail || '' };

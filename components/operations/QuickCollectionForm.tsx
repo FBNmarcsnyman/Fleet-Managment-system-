@@ -80,6 +80,8 @@ const QuickCollectionForm: React.FC = () => {
     // (client people, a loading-point or delivery-point contact, etc.). Marc's rule.
     const [ccEmails, setCcEmails] = useState<string[]>([]);
     const [addCc, setAddCc] = useState('');
+    // One-off / COD customer — do NOT save to the client directory; hold cargo as COD.
+    const [oneOffCod, setOneOffCod] = useState(false);
     const [isContainer, setIsContainer] = useState(false);
     const [ctrNo, setCtrNo] = useState('');
     const [seal, setSeal] = useState('');
@@ -186,6 +188,8 @@ const QuickCollectionForm: React.FC = () => {
         const data: any = {
             clientId: clientId || '', clientName, clientBranch: billBranch || undefined, collectionBranchSite: collectBranch || undefined, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined,
             ccEmail: ccEmails.filter(e => e && e.toLowerCase() !== (clientEmail || '').toLowerCase()).join(', ') || undefined,
+            // One-off / COD: don't add to the client directory, hold the cargo as COD.
+            skipClientDirectory: oneOffCod || undefined, codHold: oneOffCod || undefined,
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Collection' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint,
             collectionDate, commodity: commodity || undefined,
@@ -229,6 +233,11 @@ const QuickCollectionForm: React.FC = () => {
                     <label className={lbl}>Client *</label>
                     <input list="qcClients" value={clientName} onChange={e => onClient(e.target.value)} className={inp} placeholder="start typing the client" required />
                     <datalist id="qcClients">{clientNames.map(n => <option key={n} value={n} />)}</datalist>
+                    {/* One-off / COD: keep casual cash customers OUT of the client directory. */}
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-amber-300 mt-2">
+                        <input type="checkbox" checked={oneOffCod} onChange={e => setOneOffCod(e.target.checked)} />
+                        One-off / COD customer — don't save to Clients (hold cargo as COD until paid)
+                    </label>
                 </div>
                 {branchList.length > 0 && (
                     <div className="bg-gray-900/40 rounded-lg p-3 border border-gray-700 space-y-2">
@@ -273,7 +282,23 @@ const QuickCollectionForm: React.FC = () => {
                     </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
-                    <div><label className={lbl}>Contact (main — goes on To)</label><input value={clientContact} onChange={e => setClientContact(e.target.value)} className={inp} /></div>
+                    <div>
+                        <label className={lbl}>Contact (main — goes on To)</label>
+                        {/* A branch's people change per site (e.g. PERI JHB vs DBN), so the main
+                            contact is a dropdown of THIS site's saved people — pick one and the
+                            email fills. Choose "＋ type a new name" to enter one by hand. */}
+                        {clientContacts.length > 0 ? (
+                            <select value={clientContacts.some(c => c.name === clientContact) ? clientContact : '__manual__'} onChange={e => { if (e.target.value === '__manual__') { setClientContact(''); } else pickContact(e.target.value); }} className={inp}>
+                                {clientContacts.map((c, i) => <option key={i} value={c.name}>{c.name}{c.email ? ` · ${c.email}` : ''}</option>)}
+                                <option value="__manual__">＋ type a new name…</option>
+                            </select>
+                        ) : (
+                            <input value={clientContact} onChange={e => setClientContact(e.target.value)} className={inp} />
+                        )}
+                        {clientContacts.length > 0 && !clientContacts.some(c => c.name === clientContact) && (
+                            <input value={clientContact} onChange={e => setClientContact(e.target.value)} placeholder="contact name" className={inp + ' mt-1.5'} />
+                        )}
+                    </div>
                     <div><label className={lbl}>Client email (main — goes on To)</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} /></div>
                 </div>
                 {/* Keep-in-copy recipients: main contact goes on To, everyone here is CC'd so

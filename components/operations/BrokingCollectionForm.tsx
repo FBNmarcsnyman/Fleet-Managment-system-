@@ -29,6 +29,11 @@ const BrokingCollectionForm: React.FC = () => {
     const [clientEmail, setClientEmail] = useState('');
     const [clientContact, setClientContact] = useState('');
     const [clientCc, setClientCc] = useState('');
+    // Selectable keep-in-copy recipients (client people) + one-off/COD flag — mirrors
+    // the ops Quick Collection so the whole client group stays on one email thread.
+    const [ccEmails, setCcEmails] = useState<string[]>([]);
+    const [addCc, setAddCc] = useState('');
+    const [oneOffCod, setOneOffCod] = useState(false);
     const [loadRefNo, setLoadRefNo] = useState('');
     const [collectionPoint, setCollectionPoint] = useState('');
     const [deliveryPoint, setDeliveryPoint] = useState('');
@@ -65,6 +70,20 @@ const BrokingCollectionForm: React.FC = () => {
 
     const clientNames = useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
     const supplierNames = useMemo(() => [...new Set((suppliers as any[]).map(s => s.name).filter(Boolean))].sort(), [suppliers]);
+    const selClient = useMemo(() => (clients as any[]).find(c => c.id === clientId), [clients, clientId]);
+    // This client's people (company + every branch), for the contact dropdown + CC picker.
+    const clientContacts: Contact[] = useMemo(() => {
+        const seen = new Set<string>(); const out: Contact[] = [];
+        const add = (c: any) => { const key = `${c?.name || ''}|${c?.email || ''}`.toLowerCase(); if ((c?.name || c?.email) && !seen.has(key)) { seen.add(key); out.push(c); } };
+        (selClient?.contacts || []).forEach(add);
+        if (selClient?.contactEmail || selClient?.contactPerson) add({ name: selClient?.contactPerson, email: selClient?.contactEmail });
+        (selClient?.branches || []).forEach((b: any) => { (b.contacts || []).forEach(add); if (b.contactEmail || b.contactPerson) add({ name: b.contactPerson, email: b.contactEmail }); });
+        return out;
+    }, [selClient]);
+    const ccCandidates = useMemo(() => clientContacts.filter(c => c.email && c.email.toLowerCase() !== (clientEmail || '').toLowerCase()), [clientContacts, clientEmail]);
+    const pickContact = (name: string) => { const c = clientContacts.find(x => x.name === name); if (c) { setClientContact(c.name || ''); if (c.email) setClientEmail(c.email); } };
+    const toggleCc = (email: string) => setCcEmails(list => list.includes(email) ? list.filter(e => e !== email) : [...list, email]);
+    const addCcEmail = () => { const e = addCc.trim(); if (e && !ccEmails.some(x => x.toLowerCase() === e.toLowerCase())) setCcEmails([...ccEmails, e]); setAddCc(''); };
 
     const onClient = (name: string) => {
         setClientName(name);
@@ -102,7 +121,10 @@ const BrokingCollectionForm: React.FC = () => {
             ? `CONTAINER #${ctrNo.toUpperCase()}${seal ? ` · Seal ${seal.toUpperCase()}` : ''}${ctrSize ? ` · ${ctrSize}` : ''}${operator ? ` · Operator ${operator.toUpperCase()}` : ''}${turnIn ? ` · Empty turn-in: ${turnIn.toUpperCase()}` : ''}`
             : '';
         const data: any = {
-            clientId: clientId || '', clientName, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined, clientCc: clientCc || undefined,
+            clientId: clientId || '', clientName, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined,
+            clientCc: (ccEmails.length ? ccEmails.filter(e => e && e.toLowerCase() !== (clientEmail || '').toLowerCase()).join(', ') : clientCc) || undefined,
+            // One-off / COD: don't add to the client directory, hold the cargo as COD.
+            skipClientDirectory: oneOffCod || undefined, codHold: oneOffCod || undefined,
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Delivery' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint, collectionDate,
             loadRefNo: loadRefNo ? loadRefNo.toUpperCase() : undefined,
@@ -155,10 +177,50 @@ const BrokingCollectionForm: React.FC = () => {
                     <label className={lbl}>Client *</label>
                     <input list="bkClients" value={clientName} onChange={e => onClient(e.target.value)} className={inp} placeholder="start typing the client" required />
                     <datalist id="bkClients">{clientNames.map(n => <option key={n} value={n} />)}</datalist>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-amber-300 mt-2">
+                        <input type="checkbox" checked={oneOffCod} onChange={e => setOneOffCod(e.target.checked)} />
+                        One-off / COD customer — don't save to Clients (hold cargo as COD until paid)
+                    </label>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                    <div><label className={lbl}>Contact</label><input value={clientContact} onChange={e => setClientContact(e.target.value)} className={inp} /></div>
-                    <div><label className={lbl}>Client email</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp} /></div>
+                    <div>
+                        <label className={lbl}>Contact (main — goes on To)</label>
+                        {clientContacts.length > 0 ? (
+                            <select value={clientContacts.some(c => c.name === clientContact) ? clientContact : '__manual__'} onChange={e => { if (e.target.value === '__manual__') setClientContact(''); else pickContact(e.target.value); }} className={inp}>
+                                {clientContacts.map((c, i) => <option key={i} value={c.name}>{c.name}{c.email ? ` · ${c.email}` : ''}</option>)}
+                                <option value="__manual__">＋ type a new name…</option>
+                            </select>
+                        ) : (
+                            <input value={clientContact} onChange={e => setClientContact(e.target.value)} className={inp} />
+                        )}
+                        {clientContacts.length > 0 && !clientContacts.some(c => c.name === clientContact) && (
+                            <input value={clientContact} onChange={e => setClientContact(e.target.value)} placeholder="contact name" className={inp + ' mt-1.5'} />
+                        )}
+                    </div>
+                    <div><label className={lbl}>Client email (main — goes on To)</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} /></div>
+                </div>
+                {/* Keep-in-copy recipients — one email, everyone (loader/receiver/etc.) in the loop. */}
+                <div className="bg-gray-900/40 rounded-lg p-3 border border-gray-700 space-y-2">
+                    <label className={lbl}>Also keep in copy (CC) — one email, everyone in the loop</label>
+                    {ccCandidates.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {ccCandidates.map((c, i) => {
+                                const on = ccEmails.some(e => e.toLowerCase() === (c.email || '').toLowerCase());
+                                return <button type="button" key={i} onClick={() => toggleCc(c.email!)} title={c.email} className={`text-xs font-bold px-2.5 py-1 rounded-full border ${on ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'}`}>{on ? '✓ ' : ''}{c.name || c.email}</button>;
+                            })}
+                        </div>
+                    )}
+                    <div className="flex gap-2">
+                        <input value={addCc} onChange={e => setAddCc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCcEmail(); } }} placeholder="add another email — loading / delivery contact, etc." type="email" className={inp + ' normal-case flex-1'} style={{ textTransform: 'none' }} />
+                        <button type="button" onClick={addCcEmail} disabled={!addCc.trim()} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold px-4 rounded-lg text-sm">Add</button>
+                    </div>
+                    {ccEmails.filter(e => !ccCandidates.some(c => (c.email || '').toLowerCase() === e.toLowerCase())).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {ccEmails.filter(e => !ccCandidates.some(c => (c.email || '').toLowerCase() === e.toLowerCase())).map((e, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-600 text-white px-2.5 py-1 rounded-full">{e}<button type="button" onClick={() => toggleCc(e)} className="hover:text-rose-200">×</button></span>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <div><label className={lbl}>FBN DI / Waybill no</label><input value={loadRefNo} onChange={e => setLoadRefNo(e.target.value)} className={inp} placeholder="manual waybill / DI no (for tracking + invoicing)" /></div>
                 <div><label className={lbl}>Collect from *</label><AddressAutocompleteInput value={collectionPoint} onChange={setCollectionPoint} placeholder="Search address…" required className={inp} /></div>

@@ -266,7 +266,7 @@ const ModalSizeRegistry: { [key: string]: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '
 
 
 const App: React.FC = () => {
-    const { currentUser, currentViewOverride, hasPermission, viewingClientAsAdmin, viewingSupplierAsAdmin } = useAuth();
+    const { currentUser, currentViewOverride, hasPermission, viewingClientAsAdmin, viewingSupplierAsAdmin, accessPending, pendingEmail, handleLogout } = useAuth();
     const { currentView, isLiveAssistantOpen, setIsLiveAssistantOpen, modal, hideModal, toastMessage, dismissToast, showToast, handleViewChange } = useUIState();
     const { quotes, clients, handleAcceptQuote, handleRejectQuote, handleAddChecklistSubmission } = useOperations();
     const { vehicles, users, checklistTemplates, drivers } = useVehicles();
@@ -390,6 +390,19 @@ const App: React.FC = () => {
     }
 
     if (!currentUser) {
+        // Signed in with Google but no active profile → awaiting super-admin approval.
+        if (accessPending) {
+            return (
+                <div style={{ minHeight: '100vh', background: '#0a0f1a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                    <div style={{ maxWidth: 460, width: '100%', background: '#fff', borderRadius: 16, padding: 34, textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' }}>
+                        <div style={{ margin: '0 auto 14px', width: 52, height: 52, borderRadius: '50%', background: '#fef3c7', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 900 }}>⏳</div>
+                        <h2 style={{ color: '#13294b', margin: '0 0 8px', fontSize: 22 }}>Access pending approval</h2>
+                        <p style={{ color: '#4b5563', fontSize: 14, lineHeight: 1.6 }}>Thanks{pendingEmail ? `, ${pendingEmail}` : ''}. Your sign-in has been sent to the manager for approval. You'll be able to log in once your access is activated.</p>
+                        <button onClick={handleLogout} style={{ marginTop: 18, background: '#13294b', color: '#fff', border: 'none', padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>Back to sign in</button>
+                    </div>
+                </div>
+            );
+        }
         if (portal === 'client') return <ClientLogin />;
         if (portal === 'supplier') return <SupplierLogin />;
         return <Login />;

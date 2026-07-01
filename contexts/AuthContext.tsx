@@ -25,6 +25,9 @@ interface AuthContextType extends AuthState {
   updateNavPreferences: (prefs: User['navigationPreferences']) => void;
   resetPassword: (email: string) => Promise<LoginResult>;
   isAuthReady: boolean;
+  // A signed-in Google user with no active profile — awaiting super-admin approval.
+  accessPending: boolean;
+  pendingEmail: string | null;
   // Admin-set tabs hidden, keyed `${role}|${branch}` (branch ''=whole role). For the editor.
   roleHiddenTabs: Record<string, string[]>;
   // The current user's effective hidden tabs (role baseline ∪ their depot). For filtering.
@@ -95,6 +98,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
     const [currentViewOverride] = useState<string | null>(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
+    const [accessPending, setAccessPending] = useState(false);
+    const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+    const accessReqRef = useRef(false);
+    // A signed-in session with no active profile → not approved yet. Create a pending
+    // profile + notify the super admins (once), and flag the app to show a wait screen.
+    const flagPendingAccess = async (sessUser: { id: string; email?: string | null }) => {
+        setPendingEmail(sessUser.email || null);
+        setAccessPending(true);
+        if (accessReqRef.current) return;
+        accessReqRef.current = true;
+        try { await supabase.functions.invoke('access-request', { body: {} }); } catch { /* non-blocking */ }
+    };
     // The role → visible-modules matrix (editable in Users → Role Access).
     // Used by hasPermission so a role's default visibility can be changed without
     // a code deploy. A user's OWN permissions list (if set) overrides the role.
@@ -357,12 +372,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             resolve(null);
                         }, 10000)),
                     ]);
-                    if (active && mapped) {
-                        if (mapped.isActive === false) {
-                            void supabase.auth.signOut();
-                        } else {
-                            setState(prev => ({ ...prev, currentUser: mapped }));
-                        }
+                    if (active) {
+                        if (mapped && mapped.isActive !== false) setState(prev => ({ ...prev, currentUser: mapped }));
+                        else if (session?.user) void flagPendingAccess(session.user);
                     }
                 }
                 if (active) setIsAuthReady(true);
@@ -376,12 +388,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // to avoid duplicate calls wedging the auth lock.
                 if (session?.user && !currentUserRef.current) {
                     const mapped = await fetchUserContext(session.user.id);
-                    if (active && mapped) {
-                        if (mapped.isActive === false) {
-                            void supabase.auth.signOut();
-                        } else {
-                            setState(prev => ({ ...prev, currentUser: mapped }));
-                        }
+                    if (active) {
+                        if (mapped && mapped.isActive !== false) setState(prev => ({ ...prev, currentUser: mapped }));
+                        else if (session?.user) void flagPendingAccess(session.user);
                     }
                 }
                 return;
@@ -396,6 +405,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // supabase-js auth lock) is fixed by the noop lock in
                 // lib/supabase.ts, so the reload is no longer needed.
                 setState({ currentUser: null, viewingClientAsAdmin: null, viewingSupplierAsAdmin: null });
+                setAccessPending(false); setPendingEmail(null); accessReqRef.current = false;
                 intentionalLogoutRef.current = false;
             }
         });
@@ -419,9 +429,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateNavPreferences,
         resetPassword,
         isAuthReady,
+        accessPending,
+        pendingEmail,
         roleHiddenTabs,
         myHiddenTabs,
-    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, setViewSupplierAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady, roleHiddenTabs, myHiddenTabs]);
+    }), [state, handleLogin, signInWithGoogle, handleLogout, hasPermission, setViewClientAsAdmin, setViewSupplierAsAdmin, currentViewOverride, updateNavPreferences, resetPassword, isAuthReady, accessPending, pendingEmail, roleHiddenTabs, myHiddenTabs]);
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -76,6 +76,15 @@ export const isDelivered = (lc: any): boolean => {
 
 type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };
 
+// HARD RULE (Marc, 2026-07-01, after a mass re-fire): never (re-)send a LoadCon or client
+// Order for a HISTORICAL load. Sheet-imported / back-captured loads land archived and/or
+// Invoiced — they are records only and must NEVER trigger an email to a carrier or client.
+// This is the single choke-point: no matter what calls a sender (a button, a cron, a bulk
+// import, the amended-resend), a historical load is refused here. `force:true` (a real,
+// deliberate human resend of a still-live load) is the only override.
+export const isHistoricalLoad = (lc: any): boolean =>
+    lc?.archived === true || lc?.archived === 'true' || String(lc?.status || '') === 'Invoiced';
+
 // FBN depot addresses for transit-depot legs (subbie drops here, FBN runs onward).
 const DEPOT_ADDR: Record<string, string> = {
     'FBN JHB': 'FBN TRANSPORT, 307 KREUPELHOUT STREET, WADEVILLE, GERMISTON',
@@ -87,6 +96,7 @@ const subbieDeliveryPoint = (lc: any): string => lc.transitDepot ? (DEPOT_ADDR[l
 
 // LoadCon → subcontractor (their copy, with the transport rate + accept link).
 export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent> {
+    if (isHistoricalLoad(lc)) return { ok: false, error: 'Historical/archived load — LoadCon email suppressed (rule).' };
     const dest = (to ?? lc.subcontractorEmail ?? '').trim();
     if (!dest) return { ok: false, error: 'No transporter email.' };
     // For a transit-depot leg the subbie's job ENDS at the depot — show that as
@@ -130,6 +140,7 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
 // "accept & send driver details" link, so they enter each truck's reg/driver.
 export async function sendGroupLoadConToSupplier(loads: any[], to?: string): Promise<Sent> {
     if (!loads || loads.length === 0) return { ok: false, error: 'No loads.' };
+    if (isHistoricalLoad(loads[0])) return { ok: false, error: 'Historical/archived load — LoadCon email suppressed (rule).' };
     if (loads.length === 1) return sendLoadConToSupplier(loads[0], to); // single truck → normal loadcon (with PDF)
     const lc0 = loads[0];
     const dest = (to ?? lc0.subcontractorEmail ?? '').trim();
@@ -189,6 +200,7 @@ export async function sendLoadOfferToCarrier(lc: any, to: string, name?: string)
 
 // Client Order → client (no rates; thank-you + booked + regular-updates promise).
 export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
+    if (isHistoricalLoad(lc)) return { ok: false, error: 'Historical/archived load — client order email suppressed (rule).' };
     const dest = (to ?? lc.clientEmail ?? '').trim();
     if (!dest) return { ok: false, error: 'No client email.' };
     let attachments: any[] | undefined; let b64: string | undefined; let pdfFailed = false;

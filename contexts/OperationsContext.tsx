@@ -16,7 +16,7 @@ import {
 } from '../lib/mappers';
 
 import { brandedEmail, emailButton } from '../lib/emailTemplate';
-import { sendLoadConToSupplier, sendOrderToClient, clientSubject, sendClientGroupUpdate, sendLoadOfferToCarrier } from '../lib/loadEmails';
+import { sendLoadConToSupplier, sendOrderToClient, clientSubject, sendClientGroupUpdate, sendLoadOfferToCarrier, isHistoricalLoad } from '../lib/loadEmails';
 import { phoneZA, fmtDate } from '../lib/format';
 
 const FBN_ORG_ID = '00000000-0000-0000-0000-000000000001';
@@ -253,6 +253,8 @@ export const sendSupplierPodEmail = async (lc: any): Promise<void> => {
 // clearly flagged as AMENDED, with the accept link so they re-confirm the new
 // terms. `changed` is a short human list of what changed.
 export const sendAmendedLoadConEmail = async (lc: any, changed: string[]): Promise<void> => {
+    // Never email a historical/archived load, even on an amendment (see the mass re-fire rule).
+    if (isHistoricalLoad(lc)) return;
     const to = lc?.subcontractorEmail;
     if (!to) return;
     const base = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';

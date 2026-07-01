@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useUIState, useAuth } from '../contexts/AppContexts';
 import { directSelect, directInsert, uploadFile } from '../lib/supabase';
 import DateField from './operations/DateField';
+import { driveViewUrl } from '../lib/driveView';
 
 // Compliance & Documents hub.
 //
@@ -25,6 +26,10 @@ type Gap = {
     days_left: number | null;
     entity_id: string;
     status: string;
+    // The latest document on file for this entity + doc type (null when truly missing) —
+    // so the row can link straight to it via the drive-view proxy / storage URL.
+    doc_url: string | null;
+    doc_name: string | null;
 };
 
 const STATUS_RANK: Record<string, number> = {
@@ -35,11 +40,12 @@ const STATUS_RANK: Record<string, number> = {
     'Pending review (verify)': 3,
 };
 
+// Light, high-contrast status pills (readable-links standard — no dark-tint + light text).
 const statusBadge = (status: string): string => {
-    if (status === 'Expired') return 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30';
-    if (status.startsWith('Missing')) return 'bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30';
-    if (status === 'Expiring soon') return 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30';
-    return 'bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/30';
+    if (status === 'Expired') return 'bg-rose-100 text-rose-700 ring-1 ring-rose-200';
+    if (status.startsWith('Missing')) return 'bg-orange-100 text-orange-700 ring-1 ring-orange-200';
+    if (status === 'Expiring soon') return 'bg-amber-100 text-amber-800 ring-1 ring-amber-200';
+    return 'bg-blue-100 text-blue-800 ring-1 ring-blue-200';
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -241,8 +247,11 @@ const ComplianceHub: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="p-3 text-right whitespace-nowrap">
-                                        <button onClick={() => openUpload(g)} className="text-sm font-semibold text-emerald-400 hover:text-white mr-3">Upload</button>
-                                        <button onClick={() => chase(g)} className="text-sm font-semibold text-blue-400 hover:text-white">Chase</button>
+                                        {g.doc_url && (
+                                            <a href={driveViewUrl(g.doc_url)} target="_blank" rel="noreferrer" title={g.doc_name || 'View the document on file'} className="text-sm font-semibold text-blue-600 hover:text-blue-800 mr-3">View</a>
+                                        )}
+                                        <button onClick={() => openUpload(g)} className="text-sm font-semibold text-emerald-600 hover:text-emerald-800 mr-3">Upload</button>
+                                        <button onClick={() => chase(g)} className="text-sm font-semibold text-slate-600 hover:text-slate-900">Chase</button>
                                     </td>
                                 </tr>
                             ))}

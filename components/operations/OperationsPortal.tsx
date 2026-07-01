@@ -59,16 +59,18 @@ const OperationsPortal: React.FC = () => {
     // Operations (own consolidation / line-haul). They stay distinct and are
     // monitored separately. Within each, tabs are grouped by what you're doing:
     // DASHBOARD (KPIs) · WORK (operate) · TRACK (snapshots) · REPORTS (tables).
+    // `more: true` tabs live under a "More ▾" overflow menu (the less-frequent
+    // report/snapshot tabs) so the daily-use tabs fit without a sideways scrollbar.
     const BROKING_TABS = [
         { view: 'dashboard', label: 'Dashboard', group: 'dashboard' },
         { view: 'loadBoard', label: 'Load Board', group: 'work' },
         { view: 'subcontractorLoads', label: 'LoadCons', group: 'work' },
         { view: 'driverChats', label: 'Driver Chats', group: 'work' },
         { view: 'deliveries', label: 'Deliveries / POD', group: 'track' },
-        { view: 'transporterLoads', label: 'By Transporter', group: 'reports' },
-        { view: 'monthlyLoadcons', label: 'Month View', group: 'reports' },
-        { view: 'emailLog', label: 'Emails', group: 'reports' },
-        { view: 'docSettings', label: 'Doc Settings', group: 'reports' },
+        { view: 'transporterLoads', label: 'By Transporter', group: 'reports', more: true },
+        { view: 'monthlyLoadcons', label: 'Month View', group: 'reports', more: true },
+        { view: 'emailLog', label: 'Emails', group: 'reports', more: true },
+        { view: 'docSettings', label: 'Doc Settings', group: 'reports', more: true },
     ];
     const OPS_TABS = [
         { view: 'opsDashboard', label: 'Daily Overview', group: 'dashboard' },
@@ -76,11 +78,11 @@ const OperationsPortal: React.FC = () => {
         { view: 'opsManifests', label: 'Manifests', group: 'work' },
         { view: 'opsTripSheets', label: 'Trip Sheets', group: 'work' },
         { view: 'deliveries', label: 'Deliveries / POD', group: 'track' },
-        { view: 'liveMap', label: 'Live Map', group: 'track' },
         { view: 'shipments', label: 'Shipments', group: 'work' },
         { view: 'imports', label: 'Imports', group: 'work' },
-        { view: 'lclStatus', label: 'Status Report', group: 'work' },
         { view: 'containers', label: 'Containers', group: 'work' },
+        { view: 'liveMap', label: 'Live Map', group: 'track', more: true },
+        { view: 'lclStatus', label: 'Status Report', group: 'reports', more: true },
     ];
     // The sidebar has two flat tabs — Broking and Operations — that both open
     // this portal. The current view decides which area's tab strip to show; the
@@ -105,6 +107,7 @@ const OperationsPortal: React.FC = () => {
     const [customise, setCustomise] = useState(false);
     const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
     const [tabOrder, setTabOrder] = useState<string[]>([]);
+    const [moreMenu, setMoreMenu] = useState<{ x: number; y: number } | null>(null);
     useEffect(() => {
         try { const p = JSON.parse(localStorage.getItem(prefKey) || '{}'); setHiddenTabs(p.hidden || []); setTabOrder(p.order || []); }
         catch { setHiddenTabs([]); setTabOrder([]); }
@@ -190,12 +193,23 @@ const OperationsPortal: React.FC = () => {
             </button>
         </>
     );
+    // Daily tabs stay inline; the `more` (report/snapshot) tabs collapse into a
+    // "More ▾" menu so the strip never needs a sideways scrollbar. In Customise mode
+    // everything is shown inline so you can reorder / hide any of them.
+    const inlineTabs = customise ? stripTabs : stripTabs.filter(t => !(t as any).more);
+    const moreTabs = customise ? [] : stripTabs.filter(t => (t as any).more);
+    const moreActive = moreTabs.some(t => t.view === activeTab);
+    const openMoreMenu = (e: React.MouseEvent) => {
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setMoreMenu(m => (m ? null : { x: Math.max(8, r.right - 224), y: r.bottom + 6 }));
+    };
+
     const tabStrip = (
         <div className="flex items-center gap-1 overflow-x-auto bg-slate-200/70 p-1 rounded-xl flex-1 md:flex-initial">
-            {stripTabs.map((item, idx) => {
+            {inlineTabs.map((item, idx) => {
                 const isHidden = hiddenTabs.includes(item.view);
                 const grp = (item as any).group;
-                const prevGrp = idx > 0 ? (stripTabs[idx - 1] as any).group : null;
+                const prevGrp = idx > 0 ? (inlineTabs[idx - 1] as any).group : null;
                 const showDiv = !customise && idx > 0 && grp && grp !== prevGrp;
                 return (
                     <React.Fragment key={item.view}>
@@ -216,8 +230,26 @@ const OperationsPortal: React.FC = () => {
                     </React.Fragment>
                 );
             })}
+            {moreTabs.length > 0 && (
+                <button onClick={openMoreMenu} title="More tabs" className={`ml-1 shrink-0 px-3 py-2 text-sm font-bold rounded-lg whitespace-nowrap ${moreActive || moreMenu ? 'bg-[#13294b] text-white shadow' : 'text-slate-600 hover:bg-white'}`}>More ▾</button>
+            )}
             <button onClick={() => setCustomise(c => !c)} title="Show/hide & reorder your tabs" className={`ml-1 shrink-0 px-2.5 py-2 text-xs font-bold rounded-lg whitespace-nowrap ${customise ? 'bg-[#f5b700] text-[#13294b]' : 'text-slate-500 hover:bg-white'}`}>{customise ? 'Done' : 'Customise'}</button>
         </div>
+    );
+
+    // The "More ▾" dropdown — fixed-positioned so the strip's overflow can't clip it.
+    const moreMenuEl = moreMenu && moreTabs.length > 0 && (
+        <>
+            <div className="fixed inset-0 z-40" onClick={() => setMoreMenu(null)} />
+            <div className="fixed z-50 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1" style={{ left: moreMenu.x, top: moreMenu.y }}>
+                {moreTabs.map(item => (
+                    <button key={item.view} onClick={() => { setMoreMenu(null); handleOperationsSubViewChange(item.view as any); }}
+                        className={`w-full text-left text-sm px-3 py-2 hover:bg-slate-50 ${activeTab === item.view ? 'font-bold text-[#13294b]' : 'text-slate-700'}`}>
+                        {item.label}
+                    </button>
+                ))}
+            </div>
+        </>
     );
 
     return (
@@ -234,6 +266,7 @@ const OperationsPortal: React.FC = () => {
                 </div>
                 <div className="hidden md:flex items-center gap-2 shrink-0">{actionBtns}</div>
             </div>
+            {moreMenuEl}
             {renderView()}
         </div>
     );

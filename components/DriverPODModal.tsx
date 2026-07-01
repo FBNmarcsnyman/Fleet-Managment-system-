@@ -5,6 +5,8 @@ import { PaperClipIcon } from './icons/PaperClipIcon';
 import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { UploadIcon } from './icons/UploadIcon';
+import { invokeFn } from '../lib/supabase';
+import { useOperations } from '../contexts/AppContexts';
 
 // SignaturePad component embedded for simplicity
 const SignaturePad: React.FC<{ onSave: (dataUrl: string) => void }> = ({ onSave }) => {
@@ -108,30 +110,35 @@ const SignaturePad: React.FC<{ onSave: (dataUrl: string) => void }> = ({ onSave 
 interface DriverPODModalProps {
     loadCon: LoadConfirmation;
     isManualUpload?: boolean;
-    onSubmit: (loadConId: string, podData: { 
-        photo: Attachment, 
+    // Optional — persistence now happens inside the modal via submit-pod. Kept so existing
+    // callers don't break; called (if provided) after a successful upload for any extra refresh.
+    onSubmit?: (loadConId: string, podData: {
+        photo: Attachment,
         signature: string,
         analysisResult?: PodAnalysisResult
     }) => void;
     onCancel: () => void;
 }
 
-const DriverPODModal: React.FC<DriverPODModalProps> = ({ loadCon, isManualUpload = false, onSubmit, onCancel }) => {
+const DriverPODModal: React.FC<DriverPODModalProps> = ({ loadCon, isManualUpload = false, onCancel }) => {
     const [step, setStep] = useState<'photo' | 'signature' | 'analyzing' | 'confirm'>('photo');
     const [photo, setPhoto] = useState<Attachment | null>(null);
     const [signature, setSignature] = useState<string | null>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<PodAnalysisResult | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
-    
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const { handleUpdateLoadConfirmation } = useOperations() as any;
+
     const handlePhotoCapture = (dataUrl: string) => {
-        setPhoto({
-            name: `POD_${loadCon.loadConNumber}.jpg`,
-            type: 'image/jpeg',
-            data: dataUrl,
-        });
+        const captured: Attachment = { name: `POD_${loadCon.loadConNumber}.jpg`, type: 'image/jpeg', data: dataUrl };
+        setPhoto(captured);
         setIsCameraOpen(false);
-        setStep('signature');
+        // A MANUAL upload is an already-signed POD document — don't force a fresh signature.
+        // Go straight to analysis/confirm. A driver capturing on delivery still signs.
+        if (isManualUpload) handleAnalyzePOD(captured, '');
+        else setStep('signature');
     };
     
     const handleManualUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,7 +165,8 @@ const DriverPODModal: React.FC<DriverPODModalProps> = ({ loadCon, isManualUpload
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const podPhotoPart = { inlineData: { mimeType: 'image/jpeg', data: podPhoto.data.split(',')[1] } };
-            const signaturePart = { inlineData: { mimeType: 'image/png', data: podSignature.split(',')[1] } };
+            // Signature is optional (manual uploads have no separate signature capture).
+            const signaturePart = podSignature ? { inlineData: { mimeType: 'image/png', data: podSignature.split(',')[1] } } : null;
             const prompt = `You are an expert logistics document analyst. Your task is to analyze two images: a Proof of Delivery (POD) document and a captured signature.
 
 Image 1: Proof of Delivery (POD) Document
@@ -193,7 +201,7 @@ Return a JSON object with the following structure:
             // Fix: Changed model to 'gemini-3-pro-preview' for complex multimodal analysis
             const response: GenerateContentResponse = await ai.models.generateContent({
                 model: 'gemini-3-pro-preview',
-                contents: { parts: [{text: prompt}, podPhotoPart, signaturePart] },
+                contents: { parts: [{ text: prompt }, podPhotoPart, ...(signaturePart ? [signaturePart] : [])] },
                 config: {
                     responseMimeType: 'application/json',
                     responseSchema: {
@@ -228,9 +236,31 @@ Return a JSON object with the following structure:
         }
     };
 
-    const handleSubmit = () => {
-        if (photo && signature) {
-            onSubmit(loadCon.id, { photo, signature, analysisResult: analysisResult || undefined });
+    // Submit through the submit-pod edge function — the SAME path as the public upload
+    // link: it stores the file to Storage + files it into the load's Drive folder, sets
+    // pod_photo_url/pod_drive_url + status 'POD Submitted', and holds it for authorisation
+    // (loadcons@ emailed). We no longer write the giant base64 image into the DB (that was
+    // the hang). Signature is OPTIONAL. See pod-authorisation-workflow.
+    const handleSubmit = async () => {
+        if (!photo || submitting) return;
+        setSubmitting(true); setSubmitError(null);
+        try {
+            const fileBase64 = (photo.data || '').split(',')[1] || '';
+            const signatureBase64 = signature ? (signature.split(',')[1] || '') : '';
+            const { data, error } = await invokeFn('submit-pod', {
+                body: { loadId: loadCon.id, fileBase64, fileName: photo.name, contentType: photo.type || 'image/jpeg', signatureBase64 },
+            });
+            if (error || (data as any)?.error) { setSubmitError(`Upload failed: ${(data as any)?.error || error?.message || 'unknown error'}`); return; }
+            // Reflect it locally (status only — no base64) so the board updates immediately.
+            // NB: we deliberately do NOT call the caller's onSubmit — the legacy callers
+            // wrote the whole base64 image into the DB, which is exactly what hung. submit-pod
+            // owns persistence now. onSubmit is kept optional only for backward compatibility.
+            try { await handleUpdateLoadConfirmation?.(loadCon.id, { status: 'POD Submitted', paymentStatus: 'Awaiting POD' }); } catch { /* non-blocking */ }
+            onCancel(); // close the modal
+        } catch (e) {
+            setSubmitError(`Upload failed: ${e instanceof Error ? e.message : 'error'}`);
+        } finally {
+            setSubmitting(false);
         }
     };
     
@@ -256,8 +286,9 @@ Return a JSON object with the following structure:
 
             {step === 'signature' && (
                 <div>
-                     <p className="mb-2">Please ask the recipient to sign below.</p>
+                     <p className="mb-2">Please ask the recipient to sign below — or skip if the uploaded POD is already signed.</p>
                      <SignaturePad onSave={handleSignatureSave} />
+                     <button type="button" onClick={() => photo ? handleAnalyzePOD(photo, '') : setStep('confirm')} className="mt-2 text-sm text-gray-400 hover:text-white underline">Skip — POD already signed</button>
                 </div>
             )}
 
@@ -296,7 +327,9 @@ Return a JSON object with the following structure:
                         ) : !analysisError && <p className="text-sm text-gray-500">AI analysis was not performed.</p>}
                     </div>
 
-                    <button onClick={handleSubmit} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg">Confirm & Submit POD</button>
+                    {submitError && <p className="text-red-400 text-sm font-semibold">{submitError}</p>}
+                    <button onClick={handleSubmit} disabled={submitting || !photo} className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-lg">{submitting ? 'Uploading POD…' : 'Confirm & Submit POD'}</button>
+                    <p className="text-[11px] text-gray-500 text-center">Stored to the load's Drive folder and held for authorisation before it reaches the client.</p>
                 </div>
             )}
             

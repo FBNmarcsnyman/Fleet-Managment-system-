@@ -466,6 +466,24 @@ const LoadDetailModal: React.FC = () => {
         } catch (e) { showToast(`Could not release: ${e instanceof Error ? e.message : 'error'}`); }
         finally { setCodBusy(false); }
     };
+    // Email the client a COD proforma invoice (banking + VAT + amount, cc debtors) so
+    // they can pay before the cargo is released. Reuses the quote-proforma edge fn with
+    // this load's id (works even for a one-off COD load that has no quote/client record).
+    const [proformaBusy, setProformaBusy] = useState(false);
+    const sendCodProforma = async () => {
+        const to = lc.clientEmail;
+        if (!to) { showToast('No client email on this load — add one first.'); return; }
+        if (!Number(lc.totalAmount)) { showToast('Add the client rate first so the invoice has an amount.'); return; }
+        const amt = `R ${Number(lc.totalAmount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+        if (!window.confirm(`Email a COD proforma invoice for ${lc.loadConNumber} (${amt} excl VAT, ${(Number(lc.totalAmount) * 1.15).toLocaleString('en-ZA', { minimumFractionDigits: 2 })} incl) to ${to}? Debtors will be cc'd.`)) return;
+        setProformaBusy(true);
+        try {
+            const { data, error } = await invokeFn('quote-proforma', { body: { load_id: lc.id } });
+            if (error || (data as any)?.error) showToast(`Could not send invoice: ${(data as any)?.error || error?.message}`);
+            else showToast(`COD proforma invoice emailed to ${(data as any)?.sent_to || to} (cc debtors).`);
+        } catch (e) { showToast(`Could not send invoice: ${e instanceof Error ? e.message : 'error'}`); }
+        finally { setProformaBusy(false); }
+    };
 
     // Inline rate editing — click a rate card, it becomes an input in place (no pop-up).
     const [rateEdit, setRateEdit] = useState<null | 'totalAmount' | 'supplierRate'>(null);
@@ -896,7 +914,10 @@ const LoadDetailModal: React.FC = () => {
                             <div className="p-3 rounded-lg border border-red-500/50 bg-red-500/10">
                                 <p className="text-[11px] font-black text-red-400 uppercase tracking-widest">COD — cargo HELD pending payment</p>
                                 <p className="text-xs text-slate-300 mt-1 mb-2">Ops &amp; the subcontractor must <strong>NOT deliver</strong> until payment is received and the cargo is released.</p>
-                                {isSuperAdmin && <button onClick={codReleasePay} disabled={codBusy} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{codBusy ? '…' : '✓ Payment received — release cargo'}</button>}
+                                <div className="flex flex-wrap gap-2">
+                                    <button onClick={sendCodProforma} disabled={proformaBusy} title="Email the client a proforma invoice (banking + VAT + amount) to pay, cc debtors" className="text-xs font-bold bg-[#13294b] hover:bg-[#1d3a66] text-white py-2 px-3 rounded-lg disabled:opacity-50">{proformaBusy ? 'Sending…' : 'Email COD invoice to client'}</button>
+                                    {isSuperAdmin && <button onClick={codReleasePay} disabled={codBusy} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white py-2 px-3 rounded-lg disabled:opacity-50">{codBusy ? '…' : '✓ Payment received — release cargo'}</button>}
+                                </div>
                             </div>
                         ) : (
                             <label className="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">

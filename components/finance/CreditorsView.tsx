@@ -29,11 +29,11 @@ const CreditorsView: React.FC<CreditorsViewProps> = ({ loadConfirmations = [], s
             case 'Awaiting POD':
                 return 'bg-gray-700 text-gray-300';
             case 'Awaiting Review':
-                return 'bg-yellow-900/50 text-yellow-300';
+                return 'bg-yellow-100 text-yellow-800';
             case 'Ready for Payment':
-                return 'bg-blue-900/50 text-blue-300';
+                return 'bg-blue-100 text-blue-800';
             case 'Paid':
-                return 'bg-green-900/50 text-green-300';
+                return 'bg-green-100 text-green-800';
             default:
                 return 'bg-gray-700 text-gray-400';
         }

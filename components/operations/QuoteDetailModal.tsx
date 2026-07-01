@@ -71,8 +71,8 @@ const QuoteDetailModal: React.FC<{
         crane_truck: 'Crane truck',
         forklift: 'Forklift',
         driver_hire: 'Driver hire',
-        taillift_collection: '⬆️ Tail-lift (collection)',
-        taillift_delivery: '⬇️ Tail-lift (delivery)',
+        taillift_collection: 'Tail-lift (collection)',
+        taillift_delivery: 'Tail-lift (delivery)',
         labour: 'Labour',
     };
 
@@ -92,10 +92,10 @@ const QuoteDetailModal: React.FC<{
                         {client && <p className="text-gray-400 text-sm mt-1">{client.name}</p>}
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        quote.status === 'Requested' ? 'bg-amber-900/50 text-amber-300' :
-                        quote.status === 'More Info Requested' ? 'bg-purple-900/50 text-purple-300' :
+                        quote.status === 'Requested' ? 'bg-amber-100 text-amber-800' :
+                        quote.status === 'More Info Requested' ? 'bg-purple-100 text-purple-800' :
                         quote.status === 'Draft' ? 'bg-gray-700 text-gray-300' :
-                        'bg-blue-900/50 text-blue-300'
+                        'bg-blue-100 text-blue-800'
                     }`}>{quote.status}</span>
                 </div>
                 <div className="h-1 rounded mt-4" style={{ background: YELLOW }} />
@@ -170,7 +170,7 @@ const QuoteDetailModal: React.FC<{
                             <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Equipment Required</div>
                             <div className="flex flex-wrap gap-2">
                                 {Object.entries(mi.equipment).filter(([, v]) => v).map(([k]) => (
-                                    <span key={k} className="bg-green-900/30 text-green-300 text-xs font-bold px-2 py-1 rounded">
+                                    <span key={k} className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">
                                         {equipLabels[k] || k}
                                     </span>
                                 ))}
@@ -261,19 +261,19 @@ const QuoteDetailModal: React.FC<{
             )}
 
             {quote.status === 'Sent' && (
-                <div className="mt-6 text-center py-3 rounded-lg bg-blue-900/30 text-blue-300 text-sm font-bold uppercase tracking-wide">
+                <div className="mt-6 text-center py-3 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 text-sm font-bold uppercase tracking-wide">
                     Quote sent — awaiting client response
                 </div>
             )}
 
             {quote.status === 'Accepted' && (
-                <div className="mt-6 text-center py-3 rounded-lg bg-green-900/30 text-green-300 text-sm font-bold uppercase tracking-wide">
+                <div className="mt-6 text-center py-3 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 text-sm font-bold uppercase tracking-wide">
                     Client accepted this quote
                 </div>
             )}
 
             {quote.status === 'Rejected' && (
-                <div className="mt-6 text-center py-3 rounded-lg bg-red-900/30 text-red-300 text-sm font-bold uppercase tracking-wide">
+                <div className="mt-6 text-center py-3 rounded-lg bg-rose-100 text-rose-700 border border-rose-200 text-sm font-bold uppercase tracking-wide">
                     Client declined this quote
                 </div>
             )}
@@ -304,7 +304,7 @@ const QuoteDetailModal: React.FC<{
                 );
             })()}
 
-            <button onClick={onClose} className="w-full mt-3 py-2 text-gray-400 hover:text-white text-sm font-bold uppercase tracking-wide">
+            <button onClick={onClose} className="w-full mt-3 py-2 text-slate-500 hover:text-slate-800 text-sm font-bold uppercase tracking-wide">
                 Close
             </button>
         </div>

@@ -41,7 +41,7 @@ const FleetMaintenanceView: React.FC = () => {
                                         <p className="text-[11px] text-amber-200/80 truncate">{statuses.map(s => `${s.description} — ${s.details}`).join(' · ')}</p>
                                         {vehicle.maintenancePlanProvider && <p className="text-[11px] text-gray-400">Plan: {vehicle.maintenancePlanProvider}</p>}
                                     </div>
-                                    <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-full uppercase ${overdue ? 'bg-red-900/50 text-red-300' : 'bg-amber-900/50 text-amber-300'}`}>
+                                    <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-full uppercase ${overdue ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
                                         {overdue ? 'Overdue — book now' : 'Book in soon'}
                                     </span>
                                 </div>

@@ -13,7 +13,7 @@ const daysUntil = (d?: string): number | null => {
 const ExpiryPill: React.FC<{ label: string; date?: string }> = ({ label, date }) => {
     const days = daysUntil(date);
     if (days === null) return <span className="text-gray-600 text-xs">—</span>;
-    const color = days < 0 ? 'bg-red-900/40 text-red-300' : days < 30 ? 'bg-amber-900/40 text-amber-300' : 'bg-gray-700/50 text-gray-300';
+    const color = days < 0 ? 'bg-red-100 text-red-800' : days < 30 ? 'bg-amber-100 text-amber-800' : 'bg-gray-700/50 text-gray-300';
     return <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${color}`}>{label} {days < 0 ? `expired` : `${days}d`}</span>;
 };
 

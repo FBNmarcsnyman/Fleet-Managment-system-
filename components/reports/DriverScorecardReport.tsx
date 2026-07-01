@@ -68,7 +68,7 @@ const DriverScorecardReport: React.FC = () => {
                                         <div className="flex items-center">
                                             <span>{driver.name}</span>
                                             {driver.isTopPerformer && (
-                                                <span title="Top Performer" className="ml-2 flex items-center text-xs font-bold px-2 py-1 rounded-full bg-yellow-900/50 text-yellow-300">
+                                                <span title="Top Performer" className="ml-2 flex items-center text-xs font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
                                                     <SparklesIcon className="h-4 w-4 mr-1"/> Top Performer
                                                 </span>
                                             )}

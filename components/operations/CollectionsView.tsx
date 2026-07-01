@@ -63,7 +63,7 @@ const CollectionsView: React.FC<CollectionsViewProps> = ({ loadConfirmations = [
                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                                         <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-sm uppercase tracking-wider">{lc.loadConNumber}</button>
                                         <button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-gray-300 hover:text-white font-bold truncate">{clientMap.get(lc.clientId)}</button>
-                                        {depot && <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 uppercase">Depot route</span>}
+                                        {depot && <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 uppercase">Depot route</span>}
                                     </div>
                                     <div className="flex items-center text-gray-500 text-xs">
                                         <MapPinIcon className="h-3 w-3 mr-1" />

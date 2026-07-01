@@ -127,7 +127,7 @@ const PortalLoginsView: React.FC = () => {
                                 <tr key={u.email} className="border-b border-gray-700/70">
                                     <td className="p-3 font-medium text-white">{u.name}</td>
                                     <td className="p-3 text-gray-300">{u.email}</td>
-                                    <td className="p-3"><span className={`px-2 py-0.5 text-xs font-bold rounded-full ${u.role === 'Client' ? 'bg-blue-900/50 text-blue-300' : 'bg-amber-900/40 text-amber-300'}`}>{u.role}</span></td>
+                                    <td className="p-3"><span className={`px-2 py-0.5 text-xs font-bold rounded-full ${u.role === 'Client' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>{u.role}</span></td>
                                     <td className="p-3">{active ? <span className="text-xs font-semibold text-emerald-400">Active</span> : <span className="text-xs font-semibold text-gray-500">Inactive</span>}</td>
                                     <td className="p-3 text-right whitespace-nowrap">
                                         <button onClick={() => viewPortal(u)} className="text-xs font-semibold text-purple-300 hover:text-white mr-3" title="See exactly what this account sees">View portal</button>

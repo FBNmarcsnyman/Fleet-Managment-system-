@@ -104,6 +104,14 @@ issues (hidden brokered loads, missing delivery date, stalled transit, storage-c
   truth). Buttons have **3 roles only** — navy = primary, emerald = positive/confirm,
   slate/ghost = neutral. No rainbow one-offs (purple/teal/amber blocks). New screens are
   light-themed; convert legacy dark (`gray-800/900`, `text-white`) screens as touched.
+- **Readable links / contrast (unify standard)**: every clickable link/button/pill must be
+  high-contrast on the light theme. Solid-fill buttons = brand colour + **white** text
+  (navy primary / emerald positive / slate neutral); text links = navy on white. Status
+  pills use a **light** tint + dark text (`bg-<c>-100 text-<c>-800`) — NEVER a dark tint
+  with light text (`bg-<c>-900/NN text-<c>-300`, which renders light-on-light and is
+  unreadable), and never `text-gray-400 hover:text-white` on a light surface. **In emails,
+  every call-to-action is an `emailButton()`** (solid fill + white text) — never a bare,
+  low-contrast text link. (Guard hook flags the dark-tint pill pattern.)
 - **Emails (unify standard)**: one branded shell + tone; route through `lib/loadEmails.ts`
   / `lib/emailTemplate.ts`; detail-table layout (date, cargo, remarks); subjects are
   **plain ASCII** (the `send-email` fn strips em-dashes/smart-quotes — non-ASCII subjects

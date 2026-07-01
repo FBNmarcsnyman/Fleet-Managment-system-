@@ -157,7 +157,7 @@ const UserManagement: React.FC = () => {
                                 <td className="p-4"><input type="checkbox" checked={selected.has(user.email)} onChange={() => toggle(user.email)} className="h-4 w-4 accent-brand-secondary" /></td>
                                 <td className="p-4 font-medium text-white">{user.name}</td>
                                 <td className="p-4 text-gray-300">{user.email}</td>
-                                <td className="p-4"><span className="px-2 py-1 text-xs font-semibold bg-blue-900/50 text-blue-300 rounded-full">{user.role}</span></td>
+                                <td className="p-4"><span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">{user.role}</span></td>
                                 <td className={`p-4 text-xs ${misScoped(user) ? 'text-amber-400 font-bold' : 'text-gray-300'}`}>{seesSummary(user)}</td>
                                 <td className="p-4 text-gray-400 text-xs">{(user.permissions || []).includes('access_loadcons') ? 'LoadCons operator' : (user.permissions || []).length ? (user.permissions || []).join(', ') : 'Role default'}</td>
                                 <td className="p-4 text-gray-400">{user.assignedBranches.join(', ')}</td>

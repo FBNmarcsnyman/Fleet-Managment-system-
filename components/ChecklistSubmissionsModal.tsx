@@ -78,7 +78,7 @@ const ChecklistSubmissionsModal: React.FC<ChecklistSubmissionsModalProps> = ({ i
                                 >
                                     <div className="flex justify-between items-center">
                                         <p className="font-semibold text-white">{vehicle?.registration || 'Unknown Vehicle'}</p>
-                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${hasIssues(sub) ? 'bg-red-900/50 text-red-300' : 'bg-green-900/50 text-green-300'}`}>
+                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${hasIssues(sub) ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
                                             {hasIssues(sub) ? 'Issues' : 'Passed'}
                                         </span>
                                     </div>

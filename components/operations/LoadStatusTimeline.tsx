@@ -21,9 +21,9 @@ const LoadStatusTimeline: React.FC<{ loadId: string }> = ({ loadId }) => {
     const label = (s: string) => (STATUS_LABEL as any)[s] || s;
     const srcBadge = (src: string | null) => {
         const map: Record<string, { t: string; c: string }> = {
-            driver: { t: 'Driver', c: 'bg-emerald-900/40 text-emerald-300' },
-            staff: { t: 'Staff', c: 'bg-blue-900/40 text-blue-300' },
-            booking: { t: 'Booked', c: 'bg-amber-900/40 text-amber-300' },
+            driver: { t: 'Driver', c: 'bg-emerald-100 text-emerald-800' },
+            staff: { t: 'Staff', c: 'bg-blue-100 text-blue-800' },
+            booking: { t: 'Booked', c: 'bg-amber-100 text-amber-800' },
             seed: { t: 'Current', c: 'bg-gray-700 text-gray-300' },
         };
         const m = map[src || ''] || { t: src || 'System', c: 'bg-gray-700 text-gray-300' };

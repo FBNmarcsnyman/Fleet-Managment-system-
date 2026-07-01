@@ -439,7 +439,7 @@ const RfqCard: React.FC<{ rfq: RfqRequest }> = ({ rfq }) => {
     // assist AND gave a price.
     const quotesCompared = useMemo(() => ranked.filter(q => q.canAssist && q.price != null).length, [ranked]);
 
-    const statusColor = { Open: 'bg-blue-900/50 text-blue-300', Awarded: 'bg-green-900/50 text-green-300', Closed: 'bg-gray-700 text-gray-300', Cancelled: 'bg-red-900/50 text-red-300' }[rfq.status];
+    const statusColor = { Open: 'bg-blue-100 text-blue-800', Awarded: 'bg-green-100 text-green-800', Closed: 'bg-gray-700 text-gray-300', Cancelled: 'bg-red-100 text-red-800' }[rfq.status];
 
     return (
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">

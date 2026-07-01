@@ -204,13 +204,13 @@ const QuotesView: React.FC<{
     };
 
     const getStatusColor = (status: QuoteStatus) => ({
-        'Requested': 'bg-amber-900/50 text-amber-300',
-        'More Info Requested': 'bg-purple-900/50 text-purple-300',
+        'Requested': 'bg-amber-100 text-amber-800',
+        'More Info Requested': 'bg-purple-100 text-purple-800',
         'Draft': 'bg-gray-700 text-gray-300',
-        'Sent': 'bg-blue-900/50 text-blue-300',
-        'Accepted': 'bg-green-900/50 text-green-300',
-        'Rejected': 'bg-red-900/50 text-red-300',
-        'Expired': 'bg-yellow-900/50 text-yellow-300',
+        'Sent': 'bg-blue-100 text-blue-800',
+        'Accepted': 'bg-green-100 text-green-800',
+        'Rejected': 'bg-red-100 text-red-800',
+        'Expired': 'bg-yellow-100 text-yellow-800',
     })[status];
 
     return (

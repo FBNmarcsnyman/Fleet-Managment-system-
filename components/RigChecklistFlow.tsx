@@ -59,7 +59,7 @@ const RigChecklistFlow: React.FC<RigChecklistFlowProps> = ({ startVehicle, user,
                             const done = doneIds.includes(u.id);
                             const active = idx === i;
                             return (
-                                <div key={u.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${done ? 'bg-emerald-900/40 text-emerald-300' : active ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400'}`}>
+                                <div key={u.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${done ? 'bg-emerald-100 text-emerald-800' : active ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400'}`}>
                                     {done && <CheckCircleIcon className="h-4 w-4" />}
                                     {u.registration} <span className="opacity-60">({u.weightCategory})</span>
                                 </div>

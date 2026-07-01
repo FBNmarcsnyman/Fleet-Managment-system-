@@ -75,6 +75,11 @@ const QuickCollectionForm: React.FC = () => {
     // Add a new person against the chosen client (saved for next time).
     const [addingPerson, setAddingPerson] = useState(false);
     const [np, setNp] = useState({ name: '', email: '' });
+    // Everyone else to keep in copy (CC) on this load's comms — the primary contact
+    // goes on To, all of these are CC'd so the whole group stays on one email thread
+    // (client people, a loading-point or delivery-point contact, etc.). Marc's rule.
+    const [ccEmails, setCcEmails] = useState<string[]>([]);
+    const [addCc, setAddCc] = useState('');
     const [isContainer, setIsContainer] = useState(false);
     const [ctrNo, setCtrNo] = useState('');
     const [seal, setSeal] = useState('');
@@ -107,18 +112,25 @@ const QuickCollectionForm: React.FC = () => {
     const selBillBranch = branchList.find(b => b.name === billBranch);
     // Contacts to pick from = the ordering/paying branch's people if picked, else the company's.
     const clientContacts: Contact[] = ((selBillBranch ? selBillBranch.contacts : selClient?.contacts) || []) as Contact[];
-    // Collect-from site → fills the collection address + FBN collection area.
+    // Collect-from site → fills the collection address + FBN collection area. The area
+    // is read from the address, and — because a branch address is often just the company
+    // name with no city (e.g. PERI) — falls back to the BRANCH NAME (JHB/DBN/CPT), which
+    // is the reliable signal. That fixes "the routing didn't pull the area" (Marc).
     const onCollectBranch = (name: string) => {
         setCollectBranch(name);
         const b = branchList.find(x => x.name === name);
-        if (b?.address) { setCollectionPoint(b.address); const a = classifyArea(b.address); if (a) setCollArea(a); }
+        if (b?.address) setCollectionPoint(b.address);
+        const a = classifyArea(b?.address || '') || classifyArea(name);
+        if (a) setCollArea(a);
     };
     // Ordering / paying site → deliver-to address + FBN delivery area + the billing contact.
     const onBillBranch = (name: string) => {
         setBillBranch(name);
         const b = branchList.find(x => x.name === name);
         if (!b) return;
-        if (b.address) { setDeliveryPoint(b.address); const a = classifyArea(b.address); if (a) setDelArea(a); }
+        if (b.address) setDeliveryPoint(b.address);
+        const a = classifyArea(b.address || '') || classifyArea(name);
+        if (a) setDelArea(a);
         const bc = (b.contacts || [])[0];
         const cName = bc?.name || b.contactPerson; const cEmail = bc?.email || b.contactEmail;
         if (cName) setClientContact(cName); if (cEmail) setClientEmail(cEmail);
@@ -128,6 +140,18 @@ const QuickCollectionForm: React.FC = () => {
         const c = clientContacts.find(x => x.name === name);
         if (c) { setClientContact(c.name || ''); if (c.email) setClientEmail(c.email); }
     };
+    // Everyone with an email we could keep in copy: the company's people + every
+    // branch's people (deduped). Shown as CC toggles below the primary contact.
+    const ccCandidates = useMemo(() => {
+        const seen = new Set<string>(); const out: { name?: string; email: string }[] = [];
+        const add = (name?: string, email?: string) => { const e = (email || '').trim(); if (e && !seen.has(e.toLowerCase())) { seen.add(e.toLowerCase()); out.push({ name, email: e }); } };
+        ((selClient?.contacts || []) as Contact[]).forEach(c => add(c.name, c.email));
+        if ((selClient as any)?.contactEmail) add((selClient as any)?.contactPerson, (selClient as any)?.contactEmail);
+        (branchList || []).forEach(b => { (b.contacts || []).forEach((c: any) => add(c.name, c.email)); if ((b as any).contactEmail) add((b as any).contactPerson, (b as any).contactEmail); });
+        return out;
+    }, [selClient, branchList]);
+    const toggleCc = (email: string) => setCcEmails(list => list.includes(email) ? list.filter(e => e !== email) : [...list, email]);
+    const addCcEmail = () => { const e = addCc.trim(); if (e && !ccEmails.some(x => x.toLowerCase() === e.toLowerCase())) setCcEmails([...ccEmails, e]); setAddCc(''); };
     // Add a NEW person and save it against the client for next time.
     const addPerson = async () => {
         if (!np.name.trim() || !selClient) return;
@@ -161,6 +185,7 @@ const QuickCollectionForm: React.FC = () => {
             : '';
         const data: any = {
             clientId: clientId || '', clientName, clientBranch: billBranch || undefined, collectionBranchSite: collectBranch || undefined, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined,
+            ccEmail: ccEmails.filter(e => e && e.toLowerCase() !== (clientEmail || '').toLowerCase()).join(', ') || undefined,
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Collection' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint,
             collectionDate, commodity: commodity || undefined,
@@ -248,8 +273,32 @@ const QuickCollectionForm: React.FC = () => {
                     </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
-                    <div><label className={lbl}>Contact</label><input value={clientContact} onChange={e => setClientContact(e.target.value)} className={inp} /></div>
-                    <div><label className={lbl}>Client email</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} /></div>
+                    <div><label className={lbl}>Contact (main — goes on To)</label><input value={clientContact} onChange={e => setClientContact(e.target.value)} className={inp} /></div>
+                    <div><label className={lbl}>Client email (main — goes on To)</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} /></div>
+                </div>
+                {/* Keep-in-copy recipients: main contact goes on To, everyone here is CC'd so
+                    the whole group stays together on one email thread (Marc's rule). */}
+                <div className="bg-gray-900/40 rounded-lg p-3 border border-gray-700 space-y-2">
+                    <label className={lbl}>Also keep in copy (CC) — one email, everyone in the loop</label>
+                    {ccCandidates.filter(c => c.email.toLowerCase() !== (clientEmail || '').toLowerCase()).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {ccCandidates.filter(c => c.email.toLowerCase() !== (clientEmail || '').toLowerCase()).map((c, i) => {
+                                const on = ccEmails.some(e => e.toLowerCase() === c.email.toLowerCase());
+                                return <button type="button" key={i} onClick={() => toggleCc(c.email)} title={c.email} className={`text-xs font-bold px-2.5 py-1 rounded-full border ${on ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'}`}>{on ? '✓ ' : ''}{c.name || c.email}</button>;
+                            })}
+                        </div>
+                    )}
+                    <div className="flex gap-2">
+                        <input value={addCc} onChange={e => setAddCc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCcEmail(); } }} placeholder="add another email — loading / delivery contact, etc." type="email" className={inp + ' normal-case flex-1'} style={{ textTransform: 'none' }} />
+                        <button type="button" onClick={addCcEmail} disabled={!addCc.trim()} className="bg-[#13294b] hover:bg-[#1d3a66] disabled:opacity-50 text-white font-bold px-4 rounded-lg text-sm">Add</button>
+                    </div>
+                    {ccEmails.filter(e => !ccCandidates.some(c => c.email.toLowerCase() === e.toLowerCase())).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {ccEmails.filter(e => !ccCandidates.some(c => c.email.toLowerCase() === e.toLowerCase())).map((e, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-600 text-white px-2.5 py-1 rounded-full">{e}<button type="button" onClick={() => toggleCc(e)} className="hover:text-rose-200">×</button></span>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 <div>
                     <label className={lbl}>FBN DI / Waybill no</label>

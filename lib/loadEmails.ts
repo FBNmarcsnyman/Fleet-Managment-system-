@@ -55,15 +55,22 @@ const lc_clientAddrs = (lc: any): string[] => [lc?.clientEmail, ...splitEmails(l
 const dropAddrs = (list: string[], forbidden: string[]): string[] => list.filter(e => e && !forbidden.includes(e.toLowerCase()));
 const base = () => (typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '');
 
-// Is this load ALREADY delivered when we send the doc? A LoadCon/Order created or
-// resent after the trip is done must NOT ask the subbie to "accept & send driver
-// details" or tell the client it's "booked". We check the STATUS and — because the
-// status may not have been updated — also treat a past delivery date as delivered.
-const isDelivered = (lc: any): boolean => {
+// Is this load ALREADY under way / delivered when we send the doc? A LoadCon/Order
+// created or resent AFTER the trip started must NOT ask the subbie to "accept & send
+// driver details" or tell the client it's "booked" — it must say "please find attached
+// … and upload the signed POD". We check the STATUS and — because the status may not
+// have been updated on a back-captured load — also treat a PAST collection OR delivery
+// date as already-under-way. Exported so every email path (loadEmails + the Documents
+// modal) shares ONE definition and can never drift. See back-dated-loadcon-rule memory.
+export const isDelivered = (lc: any): boolean => {
     const s = String(lc?.status || '');
     if (['Delivered', 'POD Submitted', 'Invoiced'].includes(s)) return true;
     if (lc?.backDated || lc?.back_dated) return true;
-    const dd = lc?.deliveryDate; if (dd) { const d = new Date(dd); const t = new Date(); t.setHours(0, 0, 0, 0); if (!isNaN(d.getTime()) && d < t) return true; }
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const past = (v: any) => { if (!v) return false; const d = new Date(v); return !isNaN(d.getTime()) && d < t; };
+    // A collection date in the past means the load has already been collected/run —
+    // even if the delivery date is blank or later — so it's a back-dated send.
+    if (past(lc?.collectionDate) || past(lc?.deliveryDate)) return true;
     return false;
 };
 

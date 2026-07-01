@@ -26,7 +26,17 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
     onUpdateLoadConfirmation,
 }) => {
     const { showModal, showToast } = useUIState();
-    const [filter, setFilter] = useState<'All' | 'To Send' | 'Sent' | 'Awaiting POD' | 'History'>('All');
+    // Default to "needs action" so the desk sees only what's outstanding (a load to
+    // send or a POD to chase), not a wall of already-delivered rows.
+    type Filter = 'Needs Action' | 'To Send' | 'Awaiting POD' | 'POD In' | 'All' | 'History';
+    const [filter, setFilter] = useState<Filter>('Needs Action');
+    // Which row's ⋯ menu is open, and where to draw it (fixed position so the table's
+    // own scroll/overflow can't clip it).
+    const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+    const openMenu = (e: React.MouseEvent, id: string) => {
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setMenu(m => (m?.id === id ? null : { id, x: Math.max(8, r.right - 208), y: r.bottom + 4 }));
+    };
     // Optional "created on" date filter — see what was captured today or on a chosen day.
     const [createdDate, setCreatedDate] = useState('');
     // Click a column header to sort by it; click again to flip direction.
@@ -69,10 +79,14 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 // board (you only send current loads); see it under History.
                 if (filter === 'History') return lc.status === 'Invoiced';
                 if (lc.status === 'Invoiced') return false;
-                if (filter === 'To Send') return !lc.sentToSupplierDate;
-                if (filter === 'Sent') return !!lc.sentToSupplierDate;
-                if (filter === 'Awaiting POD') return ['Delivered', 'Out for Delivery'].includes(lc.status) && !lc.podPhoto;
-                return true;
+                const toSend = !lc.sentToSupplierDate;
+                const awaitingPod = ['Delivered', 'Out for Delivery'].includes(lc.status) && !lc.podPhoto;
+                if (filter === 'To Send') return toSend;
+                if (filter === 'Awaiting POD') return awaitingPod;
+                if (filter === 'POD In') return !!lc.podPhoto;
+                // Needs action = still to send, or delivered with the POD outstanding.
+                if (filter === 'Needs Action') return toSend || awaitingPod;
+                return true; // 'All'
             })
             .sort((a, b) => {
                 const av = sortVal(a), bv = sortVal(b);
@@ -80,6 +94,15 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
                 return sortDir === 'asc' ? c : -c;
             });
     }, [loadConfirmations, filter, createdDate, supplierMap, sortKey, sortDir]);
+
+    // Counts for the quick-filter chips (all brokered, current loads — excludes imported history).
+    const counts = useMemo(() => {
+        const brokered = (loadConfirmations || []).filter(lc => ((lc.supplierId && supplierMap.has(lc.supplierId)) || (lc.subcontractorName && lc.subcontractorName.trim())) && lc.status !== 'Invoiced');
+        const toSend = brokered.filter(lc => !lc.sentToSupplierDate).length;
+        const awaitingPod = brokered.filter(lc => ['Delivered', 'Out for Delivery'].includes(lc.status) && !lc.podPhoto).length;
+        const podIn = brokered.filter(lc => !!lc.podPhoto).length;
+        return { needs: toSend + awaitingPod, toSend, awaitingPod, podIn, all: brokered.length };
+    }, [loadConfirmations, supplierMap]);
 
     const [requesting, setRequesting] = useState<string | null>(null);
     const [sendingLc, setSendingLc] = useState<string | null>(null);
@@ -256,90 +279,124 @@ const SubcontractorLoadsView: React.FC<SubcontractorLoadsViewProps> = ({
         });
     };
 
+    // The single primary action for a row, chosen by where the load actually is.
+    const primaryFor = (lc: LoadConfirmation): { label: string; tone: 'navy' | 'emerald' | 'slate'; onClick: () => void; icon?: 'upload' } => {
+        if (!lc.sentToSupplierDate) return { label: sendingLc === lc.id ? 'Sending…' : 'Send LoadCon', tone: 'navy', onClick: () => handleSendLoadCon(lc) };
+        if (lc.podPhoto) return { label: 'View POD', tone: 'emerald', onClick: () => handleViewPod(lc.podPhoto!) };
+        if (['Delivered', 'Out for Delivery'].includes(lc.status)) return { label: 'Upload POD', tone: 'emerald', onClick: () => handleUploadPodClick(lc), icon: 'upload' };
+        return { label: 'Documents', tone: 'slate', onClick: () => handleViewPdf(lc) };
+    };
+    const toneCls = (t: 'navy' | 'emerald' | 'slate') =>
+        t === 'navy' ? 'bg-[#13294b] hover:bg-[#1d3a66] text-white'
+        : t === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+        : 'bg-slate-200 hover:bg-slate-300 text-slate-700';
+
+    // Everything else lives behind the ⋯ menu, contextual to the row.
+    const menuItemsFor = (lc: LoadConfirmation): { label: string; onClick: () => void }[] => {
+        const items: { label: string; onClick: () => void }[] = [];
+        if (lc.sentToSupplierDate) items.push({ label: 'Resend LoadCon', onClick: () => handleSendLoadCon(lc) });
+        items.push({ label: 'Email client order', onClick: () => handleSendClientOrder(lc) });
+        items.push({ label: 'WhatsApp driver', onClick: () => handleWhatsAppDriver(lc) });
+        if (['Delivered', 'Out for Delivery'].includes(lc.status) && !lc.podPhoto) items.push({ label: 'Request POD from transporter', onClick: () => handleRequestPod(lc) });
+        if (lc.podPhoto) { items.push({ label: 'Upload a new POD', onClick: () => handleUploadPodClick(lc) }); items.push({ label: 'Send / resend POD', onClick: () => handleSendPod(lc) }); }
+        items.push({ label: 'Open documents', onClick: () => handleViewPdf(lc) });
+        return items;
+    };
+
+    const Chip: React.FC<{ f: Filter; label: string; n?: number; tone?: string }> = ({ f, label, n, tone }) => (
+        <button onClick={() => setFilter(f)} className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${filter === f ? 'bg-[#13294b] text-white border-[#13294b]' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+            {label}{typeof n === 'number' && <span className={`ml-1.5 ${filter === f ? 'text-blue-200' : tone || 'text-slate-400'}`}>{n}</span>}
+        </button>
+    );
+
+    const activeMenu = menu ? brokeredLoads.find(l => l.id === menu.id) : null;
+
     return (
         <div className="bg-white border border-slate-200 p-6 rounded-lg shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-slate-900">Subcontractor Loads</h3>
-                <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Created</span>
-                        <button onClick={() => setCreatedDate(new Date().toISOString().slice(0, 10))} className={`text-xs font-bold px-2.5 py-1.5 rounded-md ${createdDate === new Date().toISOString().slice(0, 10) ? 'bg-[#13294b] text-white' : 'bg-slate-100 text-slate-600'}`}>Today</button>
-                        <div className="w-36"><DateField value={createdDate} onChange={setCreatedDate} /></div>
-                        {createdDate && <button onClick={() => setCreatedDate('')} title="Clear" className="text-xs font-bold text-slate-400 hover:text-slate-700 px-1">✕</button>}
-                    </div>
-                    <select value={filter} onChange={e => setFilter(e.target.value as any)} className="bg-white text-slate-800 p-2 rounded-md border border-slate-300">
-                        <option value="All">All active</option>
-                        <option value="To Send">To send (email confirmation)</option>
-                        <option value="Sent">Sent to subcontractor</option>
-                        <option value="Awaiting POD">Awaiting PODs</option>
-                        <option value="History">History (imported)</option>
-                    </select>
+            <div className="flex justify-between items-start mb-4 gap-3 flex-wrap">
+                <div>
+                    <h3 className="text-xl font-bold text-slate-900">Subcontractor Loads</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">One click per row does the next thing that's due — the rest is under ⋯.</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Created</span>
+                    <button onClick={() => setCreatedDate(new Date().toISOString().slice(0, 10))} className={`text-xs font-bold px-2.5 py-1.5 rounded-md ${createdDate === new Date().toISOString().slice(0, 10) ? 'bg-[#13294b] text-white' : 'bg-slate-100 text-slate-600'}`}>Today</button>
+                    <div className="w-36"><DateField value={createdDate} onChange={setCreatedDate} /></div>
+                    {createdDate && <button onClick={() => setCreatedDate('')} title="Clear" className="text-xs font-bold text-slate-400 hover:text-slate-700 px-1">✕</button>}
                 </div>
             </div>
+
+            {/* Quick-filter chips — default lands on "Needs action" so the desk sees only outstanding work. */}
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+                <Chip f="Needs Action" label="Needs action" n={counts.needs} tone="text-rose-500" />
+                <Chip f="To Send" label="To send" n={counts.toSend} tone="text-rose-500" />
+                <Chip f="Awaiting POD" label="Awaiting POD" n={counts.awaitingPod} tone="text-amber-500" />
+                <Chip f="POD In" label="POD in" n={counts.podIn} tone="text-emerald-600" />
+                <Chip f="All" label="All" n={counts.all} />
+                <Chip f="History" label="History" />
+            </div>
+
             <div className="overflow-x-auto max-h-[60vh]">
                 <table className="w-full text-left text-sm">
                     <thead className="sticky top-0 bg-slate-100">
                         <tr className="border-b border-slate-200">
                             {([
                                 ['number', 'LoadCon #'], ['supplier', 'Supplier'], ['date', 'Loading Date'],
-                                ['route', 'Route'], ['status', 'Status'], ['sent', 'Sent to Supplier'], ['pod', 'POD Status'],
+                                ['route', 'Route'], ['status', 'Status'], ['sent', 'Sent'],
                             ] as [SortKey, string][]).map(([k, label]) => (
                                 <th key={k} onClick={() => toggleSort(k)}
                                     className="p-2 text-slate-500 cursor-pointer select-none hover:text-slate-800 whitespace-nowrap">
                                     {label}<span className="ml-1 text-slate-400">{sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
                                 </th>
                             ))}
-                            <th className="p-2 text-slate-500 text-right">Actions</th>
+                            <th className="p-2 text-slate-500 text-right">Next action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {brokeredLoads.map(lc => {
                             const supplier = supplierMap.get(lc.supplierId!);
                             const supplierName = supplier?.name || lc.subcontractorName || '—';
+                            const route = `${lc.collectionPoint || ''} → ${lc.deliveryPoint || ''}`;
+                            const primary = primaryFor(lc);
                             return (
                                 <tr key={lc.id} className="border-b border-slate-100 hover:bg-slate-50 text-slate-700">
                                     <td className="p-2 font-mono"><button onClick={() => showModal('loadDetail', { loadCon: lc })} className="text-blue-600 hover:text-blue-700 hover:underline font-bold">{lc.loadConNumber}</button></td>
-                                    <td className="p-2 font-semibold text-slate-900">{supplierName}</td>
-                                    <td className="p-2 text-slate-500">{lc.collectionDate ? format(new Date(lc.collectionDate), 'dd MMM yyyy') : '—'}</td>
-                                    <td className="p-2">{lc.collectionPoint} &rarr; {lc.deliveryPoint}</td>
-                                    <td className="p-2">{lc.status}</td>
-                                    <td className="p-2">
-                                        <div className="flex items-center gap-2">
-                                            {lc.sentToSupplierDate && (
-                                                <span className="flex items-center text-green-400 text-xs"><CheckCircleIcon className="h-4 w-4 mr-1" />{format(new Date(lc.sentToSupplierDate), 'dd MMM')}</span>
-                                            )}
-                                            <button onClick={() => handleSendLoadCon(lc)} disabled={sendingLc === lc.id} className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-1 px-2 rounded-lg">
-                                                {sendingLc === lc.id ? 'Sending…' : lc.sentToSupplierDate ? 'Resend' : 'Email LoadCon'}
+                                    <td className="p-2 font-semibold text-slate-900 whitespace-nowrap">{supplierName}</td>
+                                    <td className="p-2 text-slate-500 whitespace-nowrap">{lc.collectionDate ? format(new Date(lc.collectionDate), 'dd MMM yyyy') : '—'}</td>
+                                    <td className="p-2 max-w-[280px] truncate" title={route}>{route}</td>
+                                    <td className="p-2 whitespace-nowrap">{lc.status}</td>
+                                    <td className="p-2 whitespace-nowrap">
+                                        {lc.sentToSupplierDate
+                                            ? <span className="inline-flex items-center text-emerald-700 text-xs font-semibold"><CheckCircleIcon className="h-4 w-4 mr-1" />{format(new Date(lc.sentToSupplierDate), 'dd MMM')}</span>
+                                            : <span className="text-xs font-semibold text-rose-500">Not sent</span>}
+                                    </td>
+                                    <td className="p-2 text-right whitespace-nowrap">
+                                        <div className="inline-flex items-center gap-1.5">
+                                            <button onClick={primary.onClick} disabled={sendingLc === lc.id} className={`inline-flex items-center text-xs font-bold py-1.5 px-3 rounded-lg disabled:opacity-50 ${toneCls(primary.tone)}`}>
+                                                {primary.icon === 'upload' && <UploadIcon className="h-4 w-4 mr-1" />}{primary.label}
                                             </button>
-                                            <button onClick={() => handleSendClientOrder(lc)} disabled={sendingLc === lc.id} title="Email the client their order confirmation" className="text-xs font-semibold bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-700 py-1 px-2 rounded-lg">Email Order</button>
-                                            <button onClick={() => handleWhatsAppDriver(lc)} title="WhatsApp the driver the load brief" className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white py-1 px-2 rounded-lg">WhatsApp</button>
+                                            <button onClick={e => openMenu(e, lc.id)} title="More actions" className={`text-sm font-black px-2 py-1 rounded-lg border ${menu?.id === lc.id ? 'bg-[#13294b] text-white border-[#13294b]' : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-50'}`}>⋯</button>
                                         </div>
-                                    </td>
-                                    <td className="p-2">
-                                        {lc.podPhoto ? (
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleViewPod(lc.podPhoto!)} className="inline-flex items-center text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 py-1 px-2 rounded-lg">View POD</button>
-                                                <button onClick={() => handleSendPod(lc)} disabled={requesting === lc.id} title="Email the POD to the client or anyone (WhatsApp to driver coming soon)" className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">{requesting === lc.id ? 'Sending…' : 'Send / Resend'}</button>
-                                            </div>
-                                        ) : lc.status === 'Delivered' ? (
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => handleUploadPodClick(lc)} className="inline-flex items-center text-xs font-semibold bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded-lg"><UploadIcon className="h-4 w-4 mr-1"/> Upload POD</button>
-                                                <button onClick={() => handleRequestPod(lc)} disabled={requesting === lc.id} title="Email the transporter to send the POD" className="text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50">{requesting === lc.id ? 'Sending…' : 'Request'}</button>
-                                            </div>
-                                        ) : (
-                                            <span className="text-amber-600 text-xs">Awaiting delivery</span>
-                                        )}
-                                    </td>
-                                    <td className="p-2 text-right">
-                                        <button onClick={() => handleViewPdf(lc)} className="text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 py-1 px-3 rounded-lg">Documents</button>
                                     </td>
                                 </tr>
                             );
                         })}
                     </tbody>
                 </table>
-                {brokeredLoads.length === 0 && <p className="text-center text-slate-400 py-16">No subcontractor loads found.</p>}
+                {brokeredLoads.length === 0 && <p className="text-center text-slate-400 py-16">Nothing here — try another filter.</p>}
             </div>
+
+            {/* ⋯ action menu — fixed-positioned so the table's scroll can't clip it. */}
+            {menu && activeMenu && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
+                    <div className="fixed z-50 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-1" style={{ left: menu.x, top: menu.y }}>
+                        {menuItemsFor(activeMenu).map((it, i) => (
+                            <button key={i} onClick={() => { setMenu(null); it.onClick(); }} disabled={(requesting === activeMenu.id || sendingLc === activeMenu.id)} className="w-full text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 px-3 py-2">{it.label}</button>
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     );
 };

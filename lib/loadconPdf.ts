@@ -224,5 +224,11 @@ export const buildLoadConPdf = async (lc: LoadConfirmation, type: DocType): Prom
     doc.text(ds.footer, W / 2, y, { align: 'center' });
 
     const base64 = (doc.output('datauristring') as string).split(',')[1] || '';
-    return { doc, base64, filename: `${title.replace(/[^A-Za-z0-9]+/g, '_')}_${lc.loadConNumber}.pdf` };
+    // Filename = the waybill / DI number (loadRefNo) if we have one, else the LoadCon
+    // number — NOT a long "TRANSPORT_ORDER_…" string. Uniform across the system: every
+    // document downloads/attaches as its number, with a short suffix only for the
+    // non-LoadCon variants so the three docs for one load don't collide. (Marc's rule.)
+    const docNum = String(lc.loadRefNo || lc.loadConNumber || 'document').trim().replace(/[^A-Za-z0-9._-]+/g, '-');
+    const suffix = type === 'clientOrder' ? ' Order' : type === 'deliveryNote' ? ' POD' : '';
+    return { doc, base64, filename: `${docNum}${suffix}.pdf` };
 };

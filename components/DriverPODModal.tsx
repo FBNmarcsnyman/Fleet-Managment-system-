@@ -7,6 +7,7 @@ import { SparklesIcon } from './icons/SparklesIcon';
 import { UploadIcon } from './icons/UploadIcon';
 import { invokeFn } from '../lib/supabase';
 import { useOperations } from '../contexts/AppContexts';
+import { compressImage } from '../lib/imageCompress';
 
 // SignaturePad component embedded for simplicity
 const SignaturePad: React.FC<{ onSave: (dataUrl: string) => void }> = ({ onSave }) => {
@@ -131,13 +132,18 @@ const DriverPODModal: React.FC<DriverPODModalProps> = ({ loadCon, isManualUpload
     const [submitError, setSubmitError] = useState<string | null>(null);
     const { handleUpdateLoadConfirmation } = useOperations() as any;
 
-    const handlePhotoCapture = (dataUrl: string) => {
-        const captured: Attachment = { name: `POD_${loadCon.loadConNumber}.jpg`, type: 'image/jpeg', data: dataUrl };
+    const handlePhotoCapture = async (dataUrl: string) => {
+        const isPdf = dataUrl.startsWith('data:application/pdf');
+        // Downsize images before upload (camera photos are huge); leave PDFs as-is.
+        let finalUrl = dataUrl, type = 'image/jpeg', ext = 'jpg';
+        if (isPdf) { type = 'application/pdf'; ext = 'pdf'; }
+        else { const c = await compressImage(dataUrl); finalUrl = c.dataUrl; type = c.type || 'image/jpeg'; }
+        const captured: Attachment = { name: `POD_${loadCon.loadConNumber}.${ext}`, type, data: finalUrl };
         setPhoto(captured);
         setIsCameraOpen(false);
         // A MANUAL upload is an already-signed POD document — don't force a fresh signature.
-        // Go straight to analysis/confirm. A driver capturing on delivery still signs.
-        if (isManualUpload) handleAnalyzePOD(captured, '');
+        // A PDF can't be AI-analysed as an image, so go straight to confirm.
+        if (isManualUpload) { if (isPdf) setStep('confirm'); else handleAnalyzePOD(captured, ''); }
         else setStep('signature');
     };
     

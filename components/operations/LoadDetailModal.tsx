@@ -270,7 +270,11 @@ const LoadDetailModal: React.FC = () => {
     const transporterOpts = React.useMemo(() => [...new Set((suppliers as any[]).filter(s => s.type === 'Transport').map(s => s.name).filter(Boolean))].sort(), [suppliers]);
     const { currentUser } = useAuth();
     const isSuperAdmin = (currentUser as any)?.role === 'Super Admin' || (currentUser as any)?.role === 'Manager';
-    const lc: LoadConfirmation | undefined = modal.payload?.loadCon;
+    // Read the LIVE record from context (by id), falling back to the payload snapshot.
+    // This is what makes a "tap to edit" inline save show IMMEDIATELY — the field wrote
+    // to the context via handleUpdateLoadConfirmation, so re-reading from context here
+    // re-renders with the new value instead of the stale snapshot the modal opened with.
+    const lc: LoadConfirmation | undefined = (loadConfirmations as any[]).find(l => l.id === modal.payload?.loadCon?.id) || modal.payload?.loadCon;
     // The quote this load was won from — shown so pricing is traceable end-to-end.
     const sourceQuote = (quotes as any[]).find(qq => qq.id === lc?.quoteId);
     const [editing, setEditing] = useState(false);

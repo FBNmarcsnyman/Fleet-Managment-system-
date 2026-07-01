@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Client, Contact, Branch } from '../../types';
+import { Client, Contact, Branch, ClientBranch } from '../../types';
 import { useUIState, useOperations, useAuth } from '../../contexts/AppContexts';
 import { directInsert } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
@@ -46,6 +46,7 @@ const QuickCollectionForm: React.FC = () => {
     const [clientId, setClientId] = useState('');
     const [clientEmail, setClientEmail] = useState('');
     const [clientContact, setClientContact] = useState('');
+    const [branchName, setBranchName] = useState(''); // chosen site/branch of a multi-branch client
     const [loadRefNo, setLoadRefNo] = useState('');
     const [collectionPoint, setCollectionPoint] = useState('');
     const [deliveryPoint, setDeliveryPoint] = useState('');
@@ -95,10 +96,24 @@ const QuickCollectionForm: React.FC = () => {
                 .sort((a, b) => new Date(b.date || b.collectionDate || 0).getTime() - new Date(a.date || a.collectionDate || 0).getTime());
             if (past[0]?.collectionPoint && !collectionPoint) setCollectionPoint(past[0].collectionPoint);
         } else { setClientId(''); }
+        setBranchName(''); // reset branch when the client changes
     };
 
     const selClient = useMemo(() => (clients as any[]).find(c => c.id === clientId), [clients, clientId]);
-    const clientContacts: Contact[] = (selClient?.contacts || []) as Contact[];
+    const branchList: ClientBranch[] = (selClient?.branches || []) as ClientBranch[];
+    const selBranch = branchList.find(b => b.name === branchName);
+    // Contacts to pick from = the chosen branch's people if a branch is selected, else the company's.
+    const clientContacts: Contact[] = ((selBranch ? selBranch.contacts : selClient?.contacts) || []) as Contact[];
+    // Pick a branch/site → fills the collection point + that branch's primary contact.
+    const onBranch = (name: string) => {
+        setBranchName(name);
+        const b = branchList.find(x => x.name === name);
+        if (!b) return;
+        if (b.address) { setCollectionPoint(b.address); const a = classifyArea(b.address); if (a) setCollArea(a); }
+        const bc = (b.contacts || [])[0];
+        const cName = bc?.name || b.contactPerson; const cEmail = bc?.email || b.contactEmail;
+        if (cName) setClientContact(cName); if (cEmail) setClientEmail(cEmail);
+    };
     // Pick a saved person for this company → fills contact + email.
     const pickContact = (name: string) => {
         const c = clientContacts.find(x => x.name === name);
@@ -108,11 +123,19 @@ const QuickCollectionForm: React.FC = () => {
     const addPerson = async () => {
         if (!np.name.trim() || !selClient) return;
         const contact: any = { name: np.name.trim().toUpperCase(), email: np.email.trim() || undefined };
-        const next = [...clientContacts, contact];
         setClientContact(contact.name); if (contact.email) setClientEmail(contact.email);
         setAddingPerson(false); setNp({ name: '', email: '' });
-        try { await handleUpdateClient?.(selClient.id, { contacts: next } as any); showToast('Person saved to this client.'); }
-        catch { showToast('Selected for this load (could not save to client).'); }
+        try {
+            if (selBranch) {
+                // Save the person against the chosen branch, not the whole company.
+                const nextBranches = branchList.map(b => b.name === selBranch.name ? { ...b, contacts: [...(b.contacts || []), contact] } : b);
+                await handleUpdateClient?.(selClient.id, { branches: nextBranches } as any);
+                showToast(`Person saved to ${selBranch.name}.`);
+            } else {
+                await handleUpdateClient?.(selClient.id, { contacts: [...clientContacts, contact] } as any);
+                showToast('Person saved to this client.');
+            }
+        } catch { showToast('Selected for this load (could not save).'); }
     };
 
     // Area dropdowns follow the address typed (override still possible afterwards).
@@ -128,7 +151,7 @@ const QuickCollectionForm: React.FC = () => {
             ? `CONTAINER #${ctrNo.toUpperCase()}${seal ? ` · Seal ${seal.toUpperCase()}` : ''}${ctrSize ? ` · ${ctrSize}` : ''}${operator ? ` · Operator ${operator.toUpperCase()}` : ''}${turnIn ? ` · Empty turn-in: ${turnIn.toUpperCase()}` : ''}`
             : '';
         const data: any = {
-            clientId: clientId || '', clientName, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined,
+            clientId: clientId || '', clientName, clientBranch: branchName || undefined, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined,
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Collection' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint,
             collectionDate, commodity: commodity || undefined,
@@ -173,6 +196,15 @@ const QuickCollectionForm: React.FC = () => {
                     <input list="qcClients" value={clientName} onChange={e => onClient(e.target.value)} className={inp} placeholder="start typing the client" required />
                     <datalist id="qcClients">{clientNames.map(n => <option key={n} value={n} />)}</datalist>
                 </div>
+                {branchList.length > 0 && (
+                    <div>
+                        <label className={lbl}>Branch / site <span className="text-blue-400 normal-case">· {selClient?.name} has {branchList.length} site{branchList.length === 1 ? '' : 's'}</span></label>
+                        <select value={branchName} onChange={e => onBranch(e.target.value)} className={inp}>
+                            <option value="">— pick the branch we're collecting from —</option>
+                            {branchList.map((b, i) => <option key={i} value={b.name}>{b.name}{b.address ? ` · ${b.address.split(',')[0]}` : ''}</option>)}
+                        </select>
+                    </div>
+                )}
                 {clientId && (clientContacts.length > 0 || true) && (
                     <div className="flex items-center gap-2 flex-wrap">
                         {clientContacts.length > 0 && (

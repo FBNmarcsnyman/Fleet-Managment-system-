@@ -13,6 +13,7 @@ const BRANCHES = ['FBN JHB', 'FBN DBN', 'FBN CPT'];
 const CITY: Record<string, string> = { 'FBN JHB': 'JHB', 'FBN DBN': 'DBN', 'FBN CPT': 'CPT' };
 const code = (b?: string) => (b && CITY[b]) || (b ? b.replace(/^FBN\s*/, '') : '—');
 const pkgsOf = (l: any): number => Number(l.loadedPackages) || (l.quantity && !isNaN(parseInt(l.quantity)) ? parseInt(l.quantity) : 0) || (Array.isArray(l.items) ? l.items.reduce((s: number, i: any) => s + (Number(i.quantity) || 0), 0) : 0);
+const cubeOf = (l: any): number => Number(l.cubeM3) || (l.volume && !isNaN(parseFloat(l.volume)) ? parseFloat(l.volume) : 0);
 const kg = (n: number) => Math.round(n).toLocaleString('en-ZA');
 const READY = new Set(['Collected', 'At Collection Depot']); // ready to load on the line-haul
 
@@ -95,7 +96,7 @@ const OperationsManifests: React.FC = () => {
                                 <span className="font-bold text-[#13294b] w-24 sm:w-36 shrink-0 truncate">{lc.loadConNumber}</span>
                                 <span className="text-sm text-slate-700 flex-1 min-w-0 truncate">{clientName(lc)}</span>
                                 <span className="text-xs font-bold text-slate-600 shrink-0">{code(lc.collectionBranch)} → {code(lc.destinationBranch)}</span>
-                                <span className="text-xs text-slate-500 w-28 sm:w-40 shrink-0 text-right">{pkgsOf(lc) || '—'} pkgs · {lc.weightKg ? kg(Number(lc.weightKg)) + ' kg' : '—'}</span>
+                                <span className="text-xs text-slate-500 w-36 sm:w-52 shrink-0 text-right">{pkgsOf(lc) || '—'} pkgs · {lc.weightKg ? kg(Number(lc.weightKg)) + ' kg' : '—'}{cubeOf(lc) ? ` · ${cubeOf(lc)} m³` : ''}</span>
                             </label>
                         ))}
                     </div>
@@ -177,7 +178,7 @@ const BuildManifestPanel: React.FC<{ initialLoads: LoadConfirmation[]; floorAll:
     const floor = useMemo(() => floorAll.filter(l => !assignedIds.has(l.id) && (!lockedDest || l.destinationBranch === lockedDest)), [floorAll, assignedIds, lockedDest]);
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
-    const [trailer, setTrailer] = useState('12m');
+    const [trailer, setTrailer] = useState('6m + 12m'); // line-haul default = superlink (6m + 12m)
     const [reg6m, setReg6m] = useState('');
     const [reg12m, setReg12m] = useState('');
     const [odometer, setOdometer] = useState('');
@@ -253,6 +254,13 @@ const BuildManifestPanel: React.FC<{ initialLoads: LoadConfirmation[]; floorAll:
     const lineHaulCost = parseFloat(totalRate) || 0;
 
     const kgOf = (l: any) => Number(l.weightKg) || 0;
+    // Two-line load summary: number + client, then route / packages / weight / cube (Marc).
+    const LoadInfo = (l: any) => (
+        <span className="min-w-0 flex-1">
+            <span className="block truncate"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span> <span className="text-slate-600">{clientName(l)}</span></span>
+            <span className="block text-[11px] text-slate-500 truncate">{code(l.collectionBranch)} → {code(l.destinationBranch)} · {pkgsOf(l) || '?'} pkgs · {kgOf(l) ? kg(kgOf(l)) + ' kg' : '? kg'}{cubeOf(l) ? ` · ${cubeOf(l)} m³` : ''}</span>
+        </span>
+    );
     // Which trailer each load sits on. Single-trailer = all on it; superlink = per the split (default 12m).
     const trailerOf = (l: any): '6m' | '12m' => isSuper ? (split[l.id] || '12m') : (trailer as '6m' | '12m');
     // Add a floor load onto the truck (optionally straight onto a chosen trailer); send one back.
@@ -312,9 +320,9 @@ const BuildManifestPanel: React.FC<{ initialLoads: LoadConfirmation[]; floorAll:
                         <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
                             {loads.length === 0 && <div className="px-3 py-4 text-center text-xs text-slate-400">Nothing loaded yet — add cargo from the floor below.</div>}
                             {loads.map(l => (
-                                <div key={l.id} className="px-3 py-1.5 text-sm flex items-center justify-between gap-2">
-                                    <span className="min-w-0 truncate"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span> <span className="text-slate-500">{clientName(l)} · {kgOf(l) ? kg(kgOf(l)) + ' kg' : '? kg'}</span></span>
-                                    <span className="flex gap-1 shrink-0 items-center">
+                                <div key={l.id} className="px-3 py-1.5 text-sm flex items-start justify-between gap-2">
+                                    {LoadInfo(l)}
+                                    <span className="flex gap-1 shrink-0 items-center pt-0.5">
                                         {isSuper && (['6m', '12m'] as const).map(leg => <button key={leg} type="button" onClick={() => setSplit(s => ({ ...s, [l.id]: leg }))} className={`text-[11px] font-bold px-2 py-0.5 rounded ${trailerOf(l) === leg ? 'bg-[#13294b] text-white' : 'bg-slate-100 text-slate-500'}`}>{leg}</button>)}
                                         <button type="button" onClick={() => removeToFloor(l.id)} title="Send back to the floor" className="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-700">↩ floor</button>
                                     </span>
@@ -329,9 +337,9 @@ const BuildManifestPanel: React.FC<{ initialLoads: LoadConfirmation[]; floorAll:
                         <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
                             {floor.length === 0 && <div className="px-3 py-4 text-center text-xs text-slate-400">No more cargo waiting {lockedDest ? `for ${code(lockedDest)}` : ''}.</div>}
                             {floor.map(l => (
-                                <div key={l.id} className="px-3 py-1.5 text-sm flex items-center justify-between gap-2">
-                                    <span className="min-w-0 truncate"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span> <span className="text-slate-500">{clientName(l)} · {code(l.collectionBranch)}→{code(l.destinationBranch)} · {kgOf(l) ? kg(kgOf(l)) + ' kg' : '? kg'}</span></span>
-                                    <span className="flex gap-1 shrink-0">
+                                <div key={l.id} className="px-3 py-1.5 text-sm flex items-start justify-between gap-2">
+                                    {LoadInfo(l)}
+                                    <span className="flex gap-1 shrink-0 pt-0.5">
                                         {isSuper
                                             ? (['6m', '12m'] as const).map(leg => <button key={leg} type="button" onClick={() => addToTruck(l.id, leg)} className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200">+{leg}</button>)
                                             : <button type="button" onClick={() => addToTruck(l.id)} className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200">+ Load</button>}

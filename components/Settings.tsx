@@ -4,6 +4,7 @@ import { NOTIFICATION_TRIGGERS } from '../constants';
 import { useAuth, useUIState } from '../contexts/AppContexts';
 import { directSelect, directUpdate } from '../lib/supabase';
 import { loadBranchConfig } from '../lib/branchConfig';
+import { loadEmailRecipients } from '../lib/emailRecipients';
 import { ALL_NAV_ITEMS } from './shared/navConfig';
 import { ArrowUpIcon } from './icons/ArrowUpIcon';
 import { ArrowDownIcon } from './icons/ArrowDownIcon';
@@ -31,6 +32,35 @@ const Settings: React.FC = () => {
         if (error) showToast(`Could not save ${b.code}: ${error.message}`);
         else { await loadBranchConfig(); showToast(`${b.code} routing saved — applies everywhere now.`); }
         setSavingId(null);
+    };
+
+    // Standing email CC recipients (Super-Admin) — the fixed department addresses that
+    // are CC'd on system emails. Editable here; applied via lib/emailRecipients. Each row
+    // notes which emails it covers so this screen doubles as the "what do we send" list.
+    const CC_GROUPS: { key: 'cc_loadcons' | 'cc_ops' | 'cc_debtors'; label: string; covers: string }[] = [
+        { key: 'cc_loadcons', label: 'LoadCons monitoring', covers: 'CC on every LoadCon, Client Order, amended LoadCon, and POD request/chase.' },
+        { key: 'cc_ops', label: 'Ops general', covers: 'CC on status / phase updates, POD emails, ETA changes, inter-branch handover.' },
+        { key: 'cc_debtors', label: 'Accounts / debtors', covers: 'CC on proforma invoices and carrier-invoice notifications.' },
+    ];
+    const [ccSettings, setCcSettings] = useState<Record<string, string>>({});
+    const [ccSaving, setCcSaving] = useState(false);
+    useEffect(() => {
+        if (!isSuperAdmin) return;
+        directSelect('email_settings?id=eq.1&select=cc_loadcons,cc_ops,cc_debtors').then(({ data }: any) => {
+            const row = Array.isArray(data) ? data[0] : data;
+            if (row) setCcSettings({ cc_loadcons: row.cc_loadcons || '', cc_ops: row.cc_ops || '', cc_debtors: row.cc_debtors || '' });
+        });
+    }, [isSuperAdmin]);
+    const saveCc = async () => {
+        setCcSaving(true);
+        const { error } = await directUpdate('email_settings', { id: '1' }, {
+            cc_loadcons: (ccSettings.cc_loadcons || '').trim() || null,
+            cc_ops: (ccSettings.cc_ops || '').trim() || null,
+            cc_debtors: (ccSettings.cc_debtors || '').trim() || null,
+        } as any);
+        if (error) showToast(`Could not save recipients: ${error.message}`);
+        else { await loadEmailRecipients(); showToast('Email recipients saved — applied to new emails now.'); }
+        setCcSaving(false);
     };
 
     const allowedTabs = useMemo(() => {
@@ -173,6 +203,28 @@ const Settings: React.FC = () => {
                                         <input value={b.address || ''} onChange={e => setBranchField(b.id, 'address', e.target.value)} placeholder="Street, suburb, city" className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" />
                                     </div>
                                 </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Standing email recipients (Super-Admin) — the fixed department CCs on system emails. */}
+            {isSuperAdmin && (
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-xl font-bold text-white">System Email Recipients</h3>
+                        <button onClick={saveCc} disabled={ccSaving} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-1.5 px-4 rounded-lg">{ccSaving ? 'Saving…' : 'Save recipients'}</button>
+                    </div>
+                    <p className="text-gray-400 text-sm mb-4">The standing addresses that are automatically CC'd on outgoing emails. Add or remove people here (comma-separated) — it applies to new emails immediately. Client &amp; subcontractor addresses are handled automatically per load and are never mixed.</p>
+                    <div className="space-y-3">
+                        {CC_GROUPS.map(g => (
+                            <div key={g.key} className="bg-gray-700/40 border border-gray-700 rounded-xl p-4">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="font-bold text-white">{g.label}</span>
+                                </div>
+                                <p className="text-[11px] text-gray-400 mb-2">{g.covers}</p>
+                                <input value={ccSettings[g.key] ?? ''} onChange={e => setCcSettings(s => ({ ...s, [g.key]: e.target.value }))} placeholder="name@fbn-transport.co.za, another@…" className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" style={{ textTransform: 'none' }} />
                             </div>
                         ))}
                     </div>

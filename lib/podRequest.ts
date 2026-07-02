@@ -1,5 +1,6 @@
 import { invokeFn } from './supabase';
 import { brandedEmail, emailButton } from './emailTemplate';
+import { loadconsCc } from './emailRecipients';
 
 // ONE source of truth for the "please upload the signed POD" email — used by the
 // Deliveries/POD board, the Load Board, and anywhere else a POD chase happens, so
@@ -35,7 +36,7 @@ export async function sendPodRequest(lc: any, requestedBy: string, accountsCc: s
     // their accounts usually hold the signed POD (attached to the carrier invoice), so
     // copying them in means whoever actually has it can upload. Deduped.
     const cc = Array.from(new Set([
-        'loadcons@fbn-transport.co.za',
+        ...loadconsCc(),
         ...String(lc.ccEmail || '').split(/[,;]/).map((t: string) => t.trim()),
         ...accountsCc.map((t: string) => t.trim()),
     ].filter(Boolean).filter(e => e.toLowerCase() !== to.toLowerCase())));

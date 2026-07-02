@@ -5,6 +5,7 @@ import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, SubcontractorInvoice, LoadBoardPost, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
 import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
 import { opsEmailFor as branchOpsEmail } from '../lib/branchConfig';
+import { loadconsCc, opsCc } from '../lib/emailRecipients';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -273,7 +274,7 @@ export const sendAmendedLoadConEmail = async (lc: any, changed: string[]): Promi
         await invokeFn('send-email', {
             body: {
                 to,
-                cc: ['loadcons@fbn-transport.co.za', ...(lc.ccEmail ? [lc.ccEmail] : [])],
+                cc: [...loadconsCc(), ...(lc.ccEmail ? [lc.ccEmail] : [])],
                 subject: `AMENDED Load Confirmation ${lc.loadConNumber} - please re-confirm`,
                 html,
                 fromName: 'FBN Transport',
@@ -325,7 +326,7 @@ const opsCcForPhase = (lc: any, status: string): string[] => {
     const origin = opsEmail(lc.collectionBranch || lc.arrangingBranch);
     const dest = opsEmail(lc.destinationBranch);
     const set = COLLECTION_PHASE.has(status) ? [origin] : (origin === dest ? [origin] : [dest, origin]);
-    return [...new Set([...set, OPS_GENERAL])];
+    return [...new Set([...set, ...opsCc()])];
 };
 
 // A clean label/value detail block for the collection emails (skips blanks).

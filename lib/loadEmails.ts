@@ -5,6 +5,7 @@
 import { directInvoke, invokeFn } from './supabase';
 import { buildLoadConPdf } from './loadconPdf';
 import { depotAddrFor } from './branchConfig';
+import { loadconsCc } from './emailRecipients';
 import { brandedEmail, emailButton } from './emailTemplate';
 
 const fmtD = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? (d || '') : dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }); };
@@ -122,7 +123,7 @@ export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent>
       <p>Regards,<br>FBN Transport</p>`);
     try {
         // Subbie LoadCon: cc the subbie docs team + ops — strip any CLIENT address.
-        const cc = dropAddrs(['loadcons@fbn-transport.co.za', ...splitEmails(lc.ccEmail)], lc_clientAddrs(lc));
+        const cc = dropAddrs([...loadconsCc(), ...splitEmails(lc.ccEmail)], lc_clientAddrs(lc));
         const legDest = lc.transitDepot ? (branchCode(lc.transitDepot) || placeAddr(subDel)) : placeAddr(lc.deliveryPoint);
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${lc.loadConNumber} - ${placeAddr(lc.collectionPoint)} to ${legDest}`, html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
@@ -156,7 +157,7 @@ export async function sendGroupLoadConToSupplier(loads: any[], to?: string): Pro
       ${loads.some(l => l.podRequired !== false) ? '<p>A signed POD is to be returned on delivery for each delivering vehicle.</p>' : ''}
       <p>Regards,<br>FBN Transport</p>`);
     try {
-        const cc = dropAddrs(['loadcons@fbn-transport.co.za', ...splitEmails(lc0.ccEmail)], lc_clientAddrs(lc0));
+        const cc = dropAddrs([...loadconsCc(), ...splitEmails(lc0.ccEmail)], lc_clientAddrs(lc0));
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Load Confirmation ${waybill} - ${loads.length} vehicles - ${placeAddr(lc0.collectionPoint)} to ${placeAddr(lc0.deliveryPoint)}`, html, fromName: 'FBN Transport' } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
@@ -187,7 +188,7 @@ export async function sendLoadOfferToCarrier(lc: any, to: string, name?: string)
       <p>Regards,<br>FBN Transport &middot; Operations</p>`);
     try {
         // Strip any CLIENT address; offers go to the carrier (+ loadcons desk) only.
-        const cc = dropAddrs(['loadcons@fbn-transport.co.za'], lc_clientAddrs(lc));
+        const cc = dropAddrs([...loadconsCc()], lc_clientAddrs(lc));
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `Load available — ${placeAddr(lc.collectionPoint)} to ${placeAddr(lc.deliveryPoint)} (${fmtD(lc.collectionDate)}) — your rate?`, html, fromName: 'FBN Transport' } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
@@ -230,7 +231,7 @@ export async function sendOrderToClient(lc: any, to?: string): Promise<Sent> {
     try {
         // Client Order goes to the client + the full CLIENT team (lc.clientCc) +
         // operations. NEVER the subcontractor's list — strip any SUBBIE address.
-        const cc = dropAddrs([...splitEmails(lc.clientCc), 'loadcons@fbn-transport.co.za'], lc_subbieAddrs(lc));
+        const cc = dropAddrs([...splitEmails(lc.clientCc), ...loadconsCc()], lc_subbieAddrs(lc));
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: clientSubject(lc), html, fromName: 'FBN Transport', attachments } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }
@@ -290,7 +291,7 @@ export async function sendClientGroupUpdate(loads: any[], trigger?: any): Promis
             : `<p>We'll keep you posted with each vehicle's progress through to delivery, and the signed PODs as they come in. Should you need anything, simply reply to this email.</p>`}
       <p>Kind regards,<br>FBN Transport &middot; Commercial Freight Specialists</p>`);
     try {
-        const cc = dropAddrs([...splitEmails(primary.clientCc), 'loadcons@fbn-transport.co.za'], lc_subbieAddrs(primary));
+        const cc = dropAddrs([...splitEmails(primary.clientCc), ...loadconsCc()], lc_subbieAddrs(primary));
         const { data, error } = await invokeFn('send-email', { body: { to: dest, cc, subject: `FBN Shipment Update ${waybill} - ${placeAddr(primary.collectionPoint)} to ${placeAddr(primary.deliveryPoint)} (${ordered.length} vehicles)`, html, fromName: 'FBN Transport' } });
         if (error || (data as any)?.error) return { ok: false, error: (data as any)?.error || error?.message };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'send failed' }; }

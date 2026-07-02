@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { LoadConfirmation } from '../../types';
 import { useOperations, useUIState, useAuth, useVehicles } from '../../contexts/AppContexts';
 import { fmtDay } from '../../lib/format';
+import { optimiseRoute } from '../../lib/routeOptimize';
+import { depotAddrFor } from '../../lib/branchConfig';
 
 // OPERATIONS → TRIP SHEETS (per branch)
 // Once line-haul cargo arrives it sits on this branch's depot floor. Load it onto
@@ -27,6 +29,7 @@ const OperationsTripSheets: React.FC = () => {
     const [sel, setSel] = useState<Set<string>>(new Set());
     const [building, setBuilding] = useState<LoadConfirmation[] | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
+    const [optimising, setOptimising] = useState<string | null>(null);
 
     const clientName = (lc: LoadConfirmation) => lc.clientName || (clients.find((c: any) => c.id === lc.clientId)?.name) || '—';
 
@@ -60,6 +63,23 @@ const OperationsTripSheets: React.FC = () => {
     const saveStops = async (t: any, stops: any[]) => { const r = await handleUpdateTripSheet(t.id, { stops }); if (r?.ok === false) showToast(`Could not reorder: ${r.error}`); };
     const move = (t: any, fromIdx: number, toIdx: number) => { const arr = runStops(t); if (toIdx < 0 || toIdx >= arr.length) return; const [m] = arr.splice(fromIdx, 1); arr.splice(toIdx, 0, m); saveStops(t, arr.map((s, i) => ({ ...s, order: i }))); };
     const toggleUrgent = (t: any, loadId: string) => { const arr = runStops(t).map(s => s.loadId === loadId ? { ...s, urgent: !s.urgent } : s); saveStops(t, arr); };
+    // Auto-order the run into the most efficient route (browser Google Directions, depot as
+    // origin). Ops override still wins: urgent drops stay first, and manual ▲▼ works after.
+    const optimise = async (t: any, silent = false): Promise<void> => {
+        const stops = runStops(t);
+        if (stops.length < 2) { if (!silent) showToast('Nothing to optimise — one drop.'); return; }
+        setOptimising(t.id);
+        const addrList = stops.map(s => ({ loadId: s.loadId, address: (loadConfirmations as any[]).find(l => l.id === s.loadId)?.deliveryPoint || '' }));
+        const ordered = await optimiseRoute(depotAddrFor(t.branch), addrList);
+        setOptimising(null);
+        if (!ordered) { if (!silent) showToast('Could not optimise — need at least 2 delivery addresses.'); return; }
+        const byId: Record<string, any> = Object.fromEntries(stops.map(s => [s.loadId, s]));
+        let seq = ordered.map(id => byId[id]).filter(Boolean);
+        stops.forEach(s => { if (!seq.includes(s)) seq.push(s); }); // keep any address-less drops
+        seq = [...seq.filter(s => s.urgent), ...seq.filter(s => !s.urgent)]; // urgent first (override)
+        await saveStops(t, seq.map((s, i) => ({ ...s, order: i })));
+        if (!silent) showToast('Route optimised — drops reordered (urgent stay first).');
+    };
     // A drop that couldn't be delivered today — capture the reason and auto-flag it
     // URGENT for the next day so it's first on the run.
     const markNotDelivered = (t: any, loadId: string) => {
@@ -122,6 +142,7 @@ const OperationsTripSheets: React.FC = () => {
                                         <span className="text-sm font-bold text-slate-700">{veh?.registration || 'vehicle'}</span>
                                         <span className="text-xs text-slate-500">{loads.length} drop{loads.length === 1 ? '' : 's'} · {code(t.branch)}</span>
                                         <span className="flex gap-1.5">
+                                            {loads.length > 1 && <button onClick={() => optimise(t)} disabled={optimising === t.id} title="Auto-order the drops into the most efficient route" className="text-[10px] font-bold py-1 px-2 rounded bg-[#13294b] text-white hover:bg-[#1d3a66] disabled:opacity-50 uppercase">{optimising === t.id ? 'Optimising…' : '↳ Optimise route'}</button>}
                                             <button onClick={() => copyRun(t)} title="Copy the driver run link" className="text-[10px] font-bold py-1 px-2 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 uppercase">📋 Driver link</button>
                                             <button onClick={() => waRun(t)} title="Share the run link on WhatsApp" className="text-[10px] font-bold py-1 px-2 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 uppercase">WhatsApp</button>
                                         </span>
@@ -176,6 +197,8 @@ const OperationsTripSheets: React.FC = () => {
                     const r = await handleCreateTripSheet({ vehicleId, driverId, loadConIds: building.map(l => l.id), branch, odometerStart: odo });
                     if (r?.ok === false) { showToast(`Could not create: ${r.error}`); return; }
                     showToast('Trip sheet created — out for delivery.');
+                    // Auto-order the drops into the most efficient route on creation (silent, best-effort).
+                    if (r?.value && (r.value.loadConfirmationIds || []).length > 1) void optimise(r.value, true);
                     if (r?.value) showModal('tripSheetDoc', { tripSheet: r.value });
                     setBuilding(null); setSel(new Set());
                 }} />}

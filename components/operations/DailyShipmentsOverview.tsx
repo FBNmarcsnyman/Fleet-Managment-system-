@@ -39,6 +39,7 @@ const DailyShipmentsOverview: React.FC = () => {
     const { currentUser } = useAuth();
     const goTab = (view: string) => handleOperationsSubViewChange(view);
     const [sel, setSel] = useState<string | null>(null);
+    const [alertKey, setAlertKey] = useState<string | null>(null);
 
     // Branch scope: single-branch ops are locked to their depot; managers/admins pick
     // All / a branch. A load "belongs" to a branch if it collects, delivers, or is
@@ -124,6 +125,18 @@ const DailyShipmentsOverview: React.FC = () => {
         };
     }, [containers, today]);
 
+    // Live exceptions the branch should act on — surfaced up top so nothing slips.
+    const alerts: Record<string, { label: string; tone: string; items: LoadConfirmation[] }> = useMemo(() => {
+        const notDone = (l: any) => !['Delivered', 'POD Submitted', 'Invoiced', 'Cancelled'].includes(l.status);
+        return {
+            overdue: { label: 'Overdue collection', tone: 'red', items: loads.filter(l => l.collectionDate && dOnly(l.collectionDate) < today && ['Booked', 'Driver Assigned', 'At Collection Point', 'Loading'].includes(l.status)) },
+            podOut: { label: 'POD outstanding', tone: 'amber', items: loads.filter(l => l.status === 'Delivered' && !(l as any).podPhoto && !(l as any).podDriveUrl) },
+            noCarrier: { label: 'No transporter yet', tone: 'amber', items: loads.filter(l => l.status === 'Booked' && !(l as any).subcontractorName && !(l as any).supplierId && !(l as any).vehicleId) },
+            codHeld: { label: 'COD held (unpaid)', tone: 'rose', items: loads.filter(l => (l as any).codHold && !(l as any).codReleasedAt && notDone(l)) },
+        };
+    }, [loads, today]);
+    const alertList = alertKey && alerts[alertKey] ? alerts[alertKey].items : null;
+
     const selected = sel ? (byStatus.get(sel) || []) : null;
 
     const Card: React.FC<{ label: string; n: number; active: boolean; onClick: () => void; tone?: string }> = ({ label, n, active, onClick, tone }) => (
@@ -197,8 +210,30 @@ const DailyShipmentsOverview: React.FC = () => {
                 </div>
             )}
 
+            {/* Exceptions strip — only the alerts that have something in them. */}
+            {Object.values(alerts).some(a => a.items.length > 0) && (
+                <div className="flex gap-2 flex-wrap">
+                    {Object.entries(alerts).filter(([, a]) => a.items.length > 0).map(([k, a]) => {
+                        const on = alertKey === k;
+                        const tone = a.tone === 'red' ? 'border-red-300 bg-red-50 text-red-700' : a.tone === 'rose' ? 'border-rose-300 bg-rose-50 text-rose-700' : 'border-amber-300 bg-amber-50 text-amber-700';
+                        return (
+                            <button key={k} onClick={() => { setAlertKey(on ? null : k); setSel(null); }} className={`rounded-xl px-3 py-2 border text-left min-w-[110px] ${on ? 'ring-2 ring-offset-1 ring-slate-400 ' : ''}${tone}`}>
+                                <div className="text-2xl font-black">{a.items.length}</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider">{a.label}</div>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+            {alertList && (
+                <div>
+                    <h4 className="text-sm font-black text-slate-700 uppercase tracking-wider mb-2">{alerts[alertKey!].label} — {alertList.length}</h4>
+                    <List items={alertList} />
+                </div>
+            )}
+
             <div className="flex gap-2 flex-wrap">
-                {PIPELINE.map(s => <Card key={s.key} label={s.label} n={(byStatus.get(s.key) || []).length} active={sel === s.key} onClick={() => setSel(sel === s.key ? null : s.key)} />)}
+                {PIPELINE.map(s => <Card key={s.key} label={s.label} n={(byStatus.get(s.key) || []).length} active={sel === s.key} onClick={() => { setSel(sel === s.key ? null : s.key); setAlertKey(null); }} />)}
             </div>
 
             {selected && (

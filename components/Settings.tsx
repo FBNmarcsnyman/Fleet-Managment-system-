@@ -1,7 +1,9 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { NOTIFICATION_TRIGGERS } from '../constants';
-import { useAuth } from '../contexts/AppContexts';
+import { useAuth, useUIState } from '../contexts/AppContexts';
+import { directSelect, directUpdate } from '../lib/supabase';
+import { loadBranchConfig } from '../lib/branchConfig';
 import { ALL_NAV_ITEMS } from './shared/navConfig';
 import { ArrowUpIcon } from './icons/ArrowUpIcon';
 import { ArrowDownIcon } from './icons/ArrowDownIcon';
@@ -10,7 +12,27 @@ import { EyeSlashIcon } from './icons/EyeSlashIcon';
 
 const Settings: React.FC = () => {
     const { currentUser, updateNavPreferences, hasPermission } = useAuth();
-    
+    const { showToast } = useUIState();
+
+    // Branch routing config (Super-Admin) — ops inbox + depot address per branch. These
+    // feed load/collection routing, manifests and inter-branch emails via lib/branchConfig.
+    const isSuperAdmin = currentUser?.role === 'Super Admin';
+    const [branches, setBranches] = useState<any[]>([]);
+    const [savingId, setSavingId] = useState<string | null>(null);
+    useEffect(() => {
+        if (!isSuperAdmin) return;
+        directSelect('branches?select=id,code,name,email,address&order=code.asc').then(({ data }: any) => { if (Array.isArray(data)) setBranches(data); });
+    }, [isSuperAdmin]);
+    const setBranchField = (id: string, field: 'email' | 'address', value: string) =>
+        setBranches(bs => bs.map(b => b.id === id ? { ...b, [field]: value } : b));
+    const saveBranch = async (b: any) => {
+        setSavingId(b.id);
+        const { error } = await directUpdate('branches', { id: b.id }, { email: (b.email || '').trim() || null, address: (b.address || '').trim() || null } as any);
+        if (error) showToast(`Could not save ${b.code}: ${error.message}`);
+        else { await loadBranchConfig(); showToast(`${b.code} routing saved — applies everywhere now.`); }
+        setSavingId(null);
+    };
+
     const allowedTabs = useMemo(() => {
         const baseAllowed = ALL_NAV_ITEMS.filter(item => hasPermission(item.permission));
         const prefs = currentUser?.navigationPreferences;
@@ -126,6 +148,36 @@ const Settings: React.FC = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Branch routing — Super-Admin edits the ops inbox + depot address per branch.
+                One source of truth (branches table via lib/branchConfig); applies everywhere. */}
+            {isSuperAdmin && (
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <h3 className="text-xl font-bold text-white mb-1">Branch Routing</h3>
+                    <p className="text-gray-400 text-sm mb-4">The ops inbox and depot address for each branch — used for load/collection routing, manifests and inter-branch handover emails. Changes apply everywhere immediately (no code needed).</p>
+                    <div className="space-y-3">
+                        {branches.length === 0 && <p className="text-gray-500 text-sm">Loading branches…</p>}
+                        {branches.map(b => (
+                            <div key={b.id} className="bg-gray-700/40 border border-gray-700 rounded-xl p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="font-bold text-white">{b.code} <span className="text-gray-400 font-normal text-sm">· {b.name}</span></span>
+                                    <button onClick={() => saveBranch(b)} disabled={savingId === b.id} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-1.5 px-4 rounded-lg">{savingId === b.id ? 'Saving…' : 'Save'}</button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Ops inbox email</label>
+                                        <input type="email" value={b.email || ''} onChange={e => setBranchField(b.id, 'email', e.target.value)} placeholder="ops@fbn-transport.co.za" className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" style={{ textTransform: 'none' }} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Depot address</label>
+                                        <input value={b.address || ''} onChange={e => setBranchField(b.id, 'address', e.target.value)} placeholder="Street, suburb, city" className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

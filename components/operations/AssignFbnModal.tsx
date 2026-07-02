@@ -26,10 +26,8 @@ const AssignFbnModal: React.FC = () => {
     const lc: LoadConfirmation = modal.payload?.loadCon;
     const collBranch = lc?.collectionBranch;
     const collTok = branchToken(collBranch);
-    const [allBranches, setAllBranches] = useState(false); // show every branch's fleet (e.g. a DBN truck sitting in JHB)
     // Branch-scoped if we recognise the collecting branch; LM (line-haul) is
-    // always offered. If we don't recognise it, fall back to the whole fleet so
-    // the list is never empty.
+    // always in the depot group. Unknown/no-branch entries sit in the depot group too.
     const inScope = (b?: string) => {
         if (!collTok) return true;
         const t = branchToken(b);
@@ -41,16 +39,15 @@ const AssignFbnModal: React.FC = () => {
         const n = parseFloat(String(v.weightCategory || '').replace(/[^0-9.]/g, ''));
         return isNaN(n) ? Number.MAX_SAFE_INTEGER : n;
     };
-    const fleetVehicles = useMemo(() => {
-        const all = (vehicles as any[]).filter(v => v.registration && v.status !== 'Sold');
-        const scoped = allBranches ? all : all.filter(v => inScope(v.branch));
-        return (scoped.length ? scoped : all).sort((a, b) => sizeOf(a) - sizeOf(b));
-    }, [vehicles, collTok, allBranches]);
-    const fleetDrivers = useMemo(() => {
-        const all = (drivers as Driver[]).filter(d => d.isActive !== false && d.name);
-        const scoped = allBranches ? all : all.filter(d => inScope(d.branch));
-        return (scoped.length ? scoped : all).sort((a, b) => String(a.name).localeCompare(String(b.name)));
-    }, [drivers, collTok, allBranches]);
+    // Whole fleet, sorted — then split into "this depot (+line-haul)" first and
+    // "other branches" after, so the depot's own trucks/drivers are at the top of the
+    // list but the entire fleet is still there below (no toggle needed).
+    const allVehicles = useMemo(() => (vehicles as any[]).filter(v => v.registration && v.status !== 'Sold').sort((a, b) => sizeOf(a) - sizeOf(b)), [vehicles]);
+    const depotVehicles = useMemo(() => collTok ? allVehicles.filter(v => inScope(v.branch)) : allVehicles, [allVehicles, collTok]);
+    const otherVehicles = useMemo(() => collTok ? allVehicles.filter(v => !inScope(v.branch)) : [], [allVehicles, collTok]);
+    const fleetDrivers = useMemo(() => (drivers as Driver[]).filter(d => d.isActive !== false && d.name).sort((a, b) => String(a.name).localeCompare(String(b.name))), [drivers]);
+    const depotDrivers = useMemo(() => collTok ? fleetDrivers.filter(d => inScope(d.branch)) : fleetDrivers, [fleetDrivers, collTok]);
+    const otherDrivers = useMemo(() => collTok ? fleetDrivers.filter(d => !inScope(d.branch)) : [], [fleetDrivers, collTok]);
 
     const initDriver = useMemo(() => fleetDrivers.find(d => (d.name || '').toUpperCase() === (lc?.subcontractorDriverName || '').toUpperCase()), [fleetDrivers, lc]);
     const [driverId, setDriverId] = useState(initDriver?.id || '');
@@ -107,31 +104,45 @@ const AssignFbnModal: React.FC = () => {
 
     const inp = 'w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 text-base focus:outline-none focus:ring-2 focus:ring-brand-secondary';
     const lbl = 'block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1';
-    const branchLabel = collBranch ? `${String(collBranch).replace('FBN ', '')} + LM` : 'all';
+    const depotLabel = collBranch ? `${String(collBranch).replace('FBN ', '')} depot` : 'Fleet';
 
     return (
         <div>
             <h2 className="text-xl font-black text-white mb-1">Assign to FBN fleet — {lc.loadConNumber}</h2>
-            <p className="text-xs text-gray-400 mb-3">Own driver &amp; vehicle ({branchLabel}). Pick a driver and their truck + cell fill in automatically.</p>
-            <label className="flex items-center gap-2 mb-3 text-xs text-gray-300 cursor-pointer">
-                <input type="checkbox" checked={allBranches} onChange={e => setAllBranches(e.target.checked)} className="h-4 w-4 rounded" />
-                Show all branches' vehicles &amp; drivers (e.g. a {collBranch ? String(collBranch).replace('FBN ', '') : 'DBN'} truck sitting in another depot)
-            </label>
+            <p className="text-xs text-gray-400 mb-3">Own driver &amp; vehicle — this depot's trucks are at the top, the rest of the fleet below. Pick a driver and their truck + cell fill in automatically (change either if needed).</p>
             <div className="space-y-3.5">
                 <div>
                     <label className={lbl}>Driver</label>
                     <select value={driverId} onChange={e => onPickDriver(e.target.value)} className={inp}>
                         <option value="">— Select driver —</option>
-                        {fleetDrivers.map(d => <option key={d.id} value={d.id}>{d.name}{d.branch ? ` (${String(d.branch).replace('FBN ', '')})` : ''}</option>)}
+                        {depotDrivers.length > 0 && (
+                            <optgroup label={`${depotLabel} drivers`}>
+                                {depotDrivers.map(d => <option key={d.id} value={d.id}>{d.name}{d.branch ? ` (${String(d.branch).replace('FBN ', '')})` : ''}</option>)}
+                            </optgroup>
+                        )}
+                        {otherDrivers.length > 0 && (
+                            <optgroup label="Other branches">
+                                {otherDrivers.map(d => <option key={d.id} value={d.id}>{d.name}{d.branch ? ` (${String(d.branch).replace('FBN ', '')})` : ''}</option>)}
+                            </optgroup>
+                        )}
                     </select>
-                    {!fleetDrivers.length && <p className="text-[11px] text-amber-300 mt-1">No drivers on file for this branch — add them under Fleet › Drivers.</p>}
+                    {!fleetDrivers.length && <p className="text-[11px] text-amber-300 mt-1">No drivers on file — add them under Fleet › Drivers.</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div>
                         <label className={lbl}>Vehicle</label>
                         <select value={reg} onChange={e => onPickVehicle(e.target.value)} className={inp}>
                             <option value="">— Select vehicle —</option>
-                            {fleetVehicles.map(v => <option key={v.id} value={v.registration}>{v.registration}{v.name ? ` · ${v.name}` : ''}</option>)}
+                            {depotVehicles.length > 0 && (
+                                <optgroup label={`${depotLabel} fleet`}>
+                                    {depotVehicles.map(v => <option key={v.id} value={v.registration}>{v.registration}{v.name ? ` · ${v.name}` : ''}</option>)}
+                                </optgroup>
+                            )}
+                            {otherVehicles.length > 0 && (
+                                <optgroup label="Other branches">
+                                    {otherVehicles.map(v => <option key={v.id} value={v.registration}>{v.registration}{v.name ? ` · ${v.name}` : ''}</option>)}
+                                </optgroup>
+                            )}
                         </select>
                     </div>
                     <div><label className={lbl}>Driver cell (WhatsApp)</label><input value={cell} onChange={e => setCell(e.target.value)} className={inp} placeholder="0__ ___ ____" /></div>

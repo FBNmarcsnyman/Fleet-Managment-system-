@@ -8,18 +8,23 @@ import { directSelect } from './supabase';
 const DEF_LOADCONS = ['loadcons@fbn-transport.co.za'];
 const DEF_OPS = ['ops@fbn-transport.co.za'];
 const DEF_DEBTORS = ['fbndebtors@fbn-transport.co.za'];
+const DEF_QUOTES = ['quotes@fbn-transport.co.za'];
+const DEF_MANAGEMENT = ['management@fbn-transport.co.za'];
 
 const split = (s?: string | null): string[] => String(s || '').split(/[,;]/).map(t => t.trim()).filter(Boolean);
 
-let cache: { loadcons: string[]; ops: string[]; debtors: string[] } | null = null;
+let cache: { loadcons: string[]; ops: string[]; debtors: string[]; quotes: string[]; management: string[] } | null = null;
 
 export async function loadEmailRecipients(): Promise<void> {
     try {
-        const { data } = await directSelect('email_settings?id=eq.1&select=cc_loadcons,cc_ops,cc_debtors');
+        const { data } = await directSelect('email_settings?id=eq.1&select=cc_loadcons,cc_ops,cc_debtors,cc_quotes,cc_management');
         const row: any = Array.isArray(data) ? data[0] : data;
         if (row) {
-            const l = split(row.cc_loadcons), o = split(row.cc_ops), d = split(row.cc_debtors);
-            cache = { loadcons: l.length ? l : DEF_LOADCONS, ops: o.length ? o : DEF_OPS, debtors: d.length ? d : DEF_DEBTORS };
+            const l = split(row.cc_loadcons), o = split(row.cc_ops), d = split(row.cc_debtors), q = split(row.cc_quotes), m = split(row.cc_management);
+            cache = {
+                loadcons: l.length ? l : DEF_LOADCONS, ops: o.length ? o : DEF_OPS, debtors: d.length ? d : DEF_DEBTORS,
+                quotes: q.length ? q : DEF_QUOTES, management: m.length ? m : DEF_MANAGEMENT,
+            };
         }
     } catch { /* keep defaults */ }
 }
@@ -31,3 +36,7 @@ export const loadconsCc = (): string[] => cache?.loadcons || DEF_LOADCONS;
 export const opsCc = (): string[] => cache?.ops || DEF_OPS;
 /** Accounts / debtors — CC'd on proformas and carrier invoices. */
 export const debtorsCc = (): string[] => cache?.debtors || DEF_DEBTORS;
+/** Quotes monitoring team — CC'd on quote requests / RFQs (before approval). */
+export const quotesCc = (): string[] => cache?.quotes || DEF_QUOTES;
+/** Management oversight — CC'd on workshop breakdowns / inspections / incidents. */
+export const managementCc = (): string[] => cache?.management || DEF_MANAGEMENT;

@@ -22,13 +22,13 @@ const Settings: React.FC = () => {
     const [savingId, setSavingId] = useState<string | null>(null);
     useEffect(() => {
         if (!isSuperAdmin) return;
-        directSelect('branches?select=id,code,name,email,address&order=code.asc').then(({ data }: any) => { if (Array.isArray(data)) setBranches(data); });
+        directSelect('branches?select=id,code,name,email,address,workshop_email&order=code.asc').then(({ data }: any) => { if (Array.isArray(data)) setBranches(data); });
     }, [isSuperAdmin]);
-    const setBranchField = (id: string, field: 'email' | 'address', value: string) =>
+    const setBranchField = (id: string, field: 'email' | 'address' | 'workshop_email', value: string) =>
         setBranches(bs => bs.map(b => b.id === id ? { ...b, [field]: value } : b));
     const saveBranch = async (b: any) => {
         setSavingId(b.id);
-        const { error } = await directUpdate('branches', { id: b.id }, { email: (b.email || '').trim() || null, address: (b.address || '').trim() || null } as any);
+        const { error } = await directUpdate('branches', { id: b.id }, { email: (b.email || '').trim() || null, address: (b.address || '').trim() || null, workshop_email: (b.workshop_email || '').trim() || null } as any);
         if (error) showToast(`Could not save ${b.code}: ${error.message}`);
         else { await loadBranchConfig(); showToast(`${b.code} routing saved — applies everywhere now.`); }
         setSavingId(null);
@@ -37,18 +37,20 @@ const Settings: React.FC = () => {
     // Standing email CC recipients (Super-Admin) — the fixed department addresses that
     // are CC'd on system emails. Editable here; applied via lib/emailRecipients. Each row
     // notes which emails it covers so this screen doubles as the "what do we send" list.
-    const CC_GROUPS: { key: 'cc_loadcons' | 'cc_ops' | 'cc_debtors'; label: string; covers: string }[] = [
+    const CC_GROUPS: { key: 'cc_loadcons' | 'cc_ops' | 'cc_debtors' | 'cc_quotes' | 'cc_management'; label: string; covers: string }[] = [
         { key: 'cc_loadcons', label: 'LoadCons monitoring', covers: 'CC on every LoadCon, Client Order, amended LoadCon, and POD request/chase.' },
         { key: 'cc_ops', label: 'Ops general', covers: 'CC on status / phase updates, POD emails, ETA changes, inter-branch handover.' },
+        { key: 'cc_quotes', label: 'Quotes monitoring', covers: 'CC on quote requests and RFQs (carrier rate requests) — the quote in/out team.' },
+        { key: 'cc_management', label: 'Management oversight', covers: 'CC on workshop breakdowns, inspections and driver incidents.' },
         { key: 'cc_debtors', label: 'Accounts / debtors', covers: 'CC on proforma invoices and carrier-invoice notifications.' },
     ];
     const [ccSettings, setCcSettings] = useState<Record<string, string>>({});
     const [ccSaving, setCcSaving] = useState(false);
     useEffect(() => {
         if (!isSuperAdmin) return;
-        directSelect('email_settings?id=eq.1&select=cc_loadcons,cc_ops,cc_debtors').then(({ data }: any) => {
+        directSelect('email_settings?id=eq.1&select=cc_loadcons,cc_ops,cc_debtors,cc_quotes,cc_management').then(({ data }: any) => {
             const row = Array.isArray(data) ? data[0] : data;
-            if (row) setCcSettings({ cc_loadcons: row.cc_loadcons || '', cc_ops: row.cc_ops || '', cc_debtors: row.cc_debtors || '' });
+            if (row) setCcSettings({ cc_loadcons: row.cc_loadcons || '', cc_ops: row.cc_ops || '', cc_debtors: row.cc_debtors || '', cc_quotes: row.cc_quotes || '', cc_management: row.cc_management || '' });
         });
     }, [isSuperAdmin]);
     const saveCc = async () => {
@@ -57,6 +59,8 @@ const Settings: React.FC = () => {
             cc_loadcons: (ccSettings.cc_loadcons || '').trim() || null,
             cc_ops: (ccSettings.cc_ops || '').trim() || null,
             cc_debtors: (ccSettings.cc_debtors || '').trim() || null,
+            cc_quotes: (ccSettings.cc_quotes || '').trim() || null,
+            cc_management: (ccSettings.cc_management || '').trim() || null,
         } as any);
         if (error) showToast(`Could not save recipients: ${error.message}`);
         else { await loadEmailRecipients(); showToast('Email recipients saved — applied to new emails now.'); }
@@ -201,6 +205,10 @@ const Settings: React.FC = () => {
                                     <div>
                                         <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Depot address</label>
                                         <input value={b.address || ''} onChange={e => setBranchField(b.id, 'address', e.target.value)} placeholder="Street, suburb, city" className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Workshop inbox email</label>
+                                        <input type="email" value={b.workshop_email || ''} onChange={e => setBranchField(b.id, 'workshop_email', e.target.value)} placeholder="workshopjhb@fbn-transport.co.za" className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" style={{ textTransform: 'none' }} />
                                     </div>
                                 </div>
                             </div>

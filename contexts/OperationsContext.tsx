@@ -5,7 +5,7 @@ import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, SubcontractorInvoice, LoadBoardPost, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
 import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
 import { opsEmailFor as branchOpsEmail } from '../lib/branchConfig';
-import { loadconsCc, opsCc } from '../lib/emailRecipients';
+import { loadconsCc, opsCc, quotesCc } from '../lib/emailRecipients';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -1994,7 +1994,7 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                       ${rfq.notes ? `<p style="color:#475569;font-size:13px"><strong>Notes:</strong> ${rfq.notes}</p>` : ''}
                       ${emailButton(link, 'Submit your quote &rarr;', '#16a34a')}
                       <p style="color:#94a3b8;font-size:12px">Reference ${requestNumber}. Reply to this email to reach ${branchLabel} directly.</p>`);
-                    void invokeFn('send-email', { body: { to: rec.email, cc: [replyTo], replyTo, subject: `Load available: ${rfq.origin} → ${rfq.destination} (${requestNumber})`, html, fromName: branchLabel } });
+                    void invokeFn('send-email', { body: { to: rec.email, cc: [replyTo, ...quotesCc()], replyTo, subject: `Load available: ${rfq.origin} → ${rfq.destination} (${requestNumber})`, html, fromName: branchLabel } });
                 }
                 return { ok: true, value: domain };
             } catch (err) { return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' }; }

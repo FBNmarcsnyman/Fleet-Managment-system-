@@ -20,15 +20,23 @@ const FALLBACK_DEPOT: Record<string, string> = {
     'FBN CPT': 'FBN TRANSPORT, CAPE TOWN',
 };
 
-let cache: Record<string, { email: string; address: string | null; name: string }> | null = null;
+// Area-specific workshop inbox fallbacks (used until the DB config loads / when unset).
+const heuristicWorkshop = (code?: string): string => {
+    const c = String(code || '').toUpperCase();
+    if (/JHB|JOHAN/.test(c)) return 'workshopjhb@fbn-transport.co.za';
+    if (/DBN|DURBAN/.test(c)) return 'workshopdbn@fbn-transport.co.za';
+    return 'workshop@fbn-transport.co.za';
+};
+
+let cache: Record<string, { email: string; address: string | null; name: string; workshop: string | null }> | null = null;
 
 // Load/refresh the branch config from the DB. Call after login and after edits.
 export async function loadBranchConfig(): Promise<void> {
     try {
-        const { data } = await directSelect('branches?select=code,name,email,address');
+        const { data } = await directSelect('branches?select=code,name,email,address,workshop_email');
         if (Array.isArray(data)) {
-            const m: Record<string, { email: string; address: string | null; name: string }> = {};
-            data.forEach((b: any) => { if (b.code) m[b.code] = { email: b.email || '', address: b.address ?? null, name: b.name || b.code }; });
+            const m: Record<string, { email: string; address: string | null; name: string; workshop: string | null }> = {};
+            data.forEach((b: any) => { if (b.code) m[b.code] = { email: b.email || '', address: b.address ?? null, name: b.name || b.code, workshop: b.workshop_email ?? null }; });
             cache = m;
         }
     } catch { /* keep fallbacks */ }
@@ -46,6 +54,12 @@ export const opsEmailFor = (code?: string): string => {
 export const depotAddrFor = (code?: string): string => {
     const c = String(code || '');
     return (cache?.[c]?.address) || FALLBACK_DEPOT[c] || '';
+};
+
+/** Area workshop inbox for a branch (DB value, else heuristic by code, else general). */
+export const workshopEmailFor = (code?: string): string => {
+    const c = String(code || '');
+    return (cache?.[c]?.workshop) || heuristicWorkshop(c);
 };
 
 /** Classify a free-text place → the FBN branch that owns that area (or null). */

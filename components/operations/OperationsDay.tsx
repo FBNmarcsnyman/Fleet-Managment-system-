@@ -207,7 +207,7 @@ const OperationsDay: React.FC = () => {
                     action={sel.size > 0 && <BuildBtn count={sel.size} dest={selDests.length === 1 ? code(selDests[0] as string) : ''} label="Group → build manifest" onClick={() => openBuild('manifest')} onClear={() => setSel(new Set())} />}>
                     {/* desktop table */}
                     <div className="hidden md:block">
-                    <Table cols={['', 'Load', 'Client', 'Route', 'Pkgs', 'Weight', 'Collect by', 'FBN unit', 'Status', 'Action']}>
+                    <Table cols={['', 'Load', 'Client', 'Route', 'Pkgs', 'Weight', 'Collect by', 'Deliver by', 'FBN unit', 'Status', 'Action']}>
                         {collections.map(lc => {
                             const step = nextStep(lc);
                             const overdue = lc.collectionDate && lc.collectionDate < todayISO();
@@ -220,6 +220,7 @@ const OperationsDay: React.FC = () => {
                                     <Cell className="font-bold text-slate-700">{pkgs(lc) || '—'}</Cell>
                                     <Cell className="text-slate-600">{weight(lc)}</Cell>
                                     <Cell className={overdue ? 'text-red-600 font-bold' : 'text-slate-600'}>{fmtDay(lc.collectionDate)}{overdue ? ' ⚠' : ''}</Cell>
+                                    <Cell className="text-slate-600">{lc.deliveryDate ? fmtDay(lc.deliveryDate) : '—'}</Cell>
                                     <Cell className="text-slate-600 max-w-[150px] truncate">{unit(lc)}</Cell>
                                     <Cell><Chip lc={lc} /></Cell>
                                     <Cell stop className="text-right">
@@ -248,7 +249,7 @@ const OperationsDay: React.FC = () => {
                                 <MobileCard key={lc.id} lc={lc} selected={sel.has(lc.id)} onOpen={() => showModal('loadDetail', { loadCon: lc })}
                                     checkbox={<input type="checkbox" checked={sel.has(lc.id)} onChange={() => toggle(lc.id)} onClick={e => e.stopPropagation()} className="h-5 w-5 accent-[#13294b] mt-0.5" />}
                                     client={clientName(lc)} route={`${code(lc.collectionBranch)} → ${code(lc.destinationBranch)}`} place={lc.collectionPoint}
-                                    meta={`${pkgs(lc) || '—'} pkgs · ${weight(lc)}`} dateLabel={`Collect ${fmtDay(lc.collectionDate)}`} overdue={!!overdue} unit={unit(lc)}
+                                    meta={`${pkgs(lc) || '—'} pkgs · ${weight(lc)}`} dateLabel={`Collect ${fmtDay(lc.collectionDate)}${lc.deliveryDate ? ` · Deliver ${fmtDay(lc.deliveryDate)}` : ''}`} overdue={!!overdue} unit={unit(lc)}
                                     action={<div className="flex gap-1.5 flex-wrap">
                                         {!lc.acceptedAt && <ActBtn tone="navy" disabled={busy === lc.id} onClick={() => acceptLoad(lc)}>{busy === lc.id ? '…' : '✓ Accept'}</ActBtn>}
                                         {!isAssigned(lc) && lc.status === 'Booked'

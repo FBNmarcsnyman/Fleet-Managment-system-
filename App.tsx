@@ -12,6 +12,7 @@ import ClientQuoteView from './components/ClientQuoteView';
 import PublicPodUpload from './components/PublicPodUpload';
 import CompleteCargoDetails from './components/CompleteCargoDetails';
 import PublicLoad from './components/PublicLoad';
+import PublicTripRun from './components/PublicTripRun';
 import PublicMarketingPrefs from './components/PublicMarketingPrefs';
 import PublicTerms from './components/PublicTerms';
 import PublicRfqQuote from './components/PublicRfqQuote';
@@ -280,6 +281,7 @@ const App: React.FC = () => {
     const trackLoadId = urlParams.get('track');
     const acceptLoadId = urlParams.get('accept');
     const updateLoadId = urlParams.get('update');
+    const runTripId = urlParams.get('run');
     const prefsContactId = urlParams.get('prefs');
     const showTerms = urlParams.get('tcs');
     const portal = urlParams.get('portal');
@@ -335,6 +337,10 @@ const App: React.FC = () => {
     // Public supplier/controller update portal — push status updates through the trip.
     if (updateLoadId) {
         return <PublicLoad loadId={updateLoadId} mode="update" />;
+    }
+    // Public DRIVER delivery-run page — one link, all drops in order (tap on-my-way/delivered + POD).
+    if (runTripId) {
+        return <PublicTripRun tripId={runTripId} />;
     }
     // Public marketing self-service (opt out/in, update details, add colleagues).
     if (prefsContactId) {

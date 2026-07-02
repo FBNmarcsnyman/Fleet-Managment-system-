@@ -70,6 +70,10 @@ const OperationsTripSheets: React.FC = () => {
     };
     const clearNotDelivered = (t: any, loadId: string) => { const arr = runStops(t).map((s: any) => s.loadId === loadId ? { ...s, failed: false, reason: undefined } : s); saveStops(t, arr); };
     const isDelivered = (l: any) => ['Delivered', 'POD Submitted', 'Invoiced'].includes(l.status) || !!l.podPhoto;
+    // One no-login run link the driver opens to work the whole run (tap on-my-way / delivered + POD).
+    const runLink = (t: any) => `${window.location.origin}/?run=${t.id}`;
+    const copyRun = (t: any) => { const url = runLink(t); navigator.clipboard?.writeText(url).then(() => showToast('Driver run link copied — send it to the driver.')).catch(() => showToast(url)); };
+    const waRun = (t: any) => window.open(`https://wa.me/?text=${encodeURIComponent(`FBN delivery run ${t.tripSheetNumber || ''} — open your drops here: ${runLink(t)}`)}`, '_blank');
 
     return (
         <div className="max-w-[1600px] mx-auto px-1">
@@ -117,6 +121,10 @@ const OperationsTripSheets: React.FC = () => {
                                         <button onClick={() => showModal('tripSheetDoc', { tripSheet: t })} className="font-bold text-[#13294b] underline decoration-dotted">{t.tripSheetNumber}</button>
                                         <span className="text-sm font-bold text-slate-700">{veh?.registration || 'vehicle'}</span>
                                         <span className="text-xs text-slate-500">{loads.length} drop{loads.length === 1 ? '' : 's'} · {code(t.branch)}</span>
+                                        <span className="flex gap-1.5">
+                                            <button onClick={() => copyRun(t)} title="Copy the driver run link" className="text-[10px] font-bold py-1 px-2 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 uppercase">📋 Driver link</button>
+                                            <button onClick={() => waRun(t)} title="Share the run link on WhatsApp" className="text-[10px] font-bold py-1 px-2 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 uppercase">WhatsApp</button>
+                                        </span>
                                         {(() => { const done = loads.filter(isDelivered).length; const failed = runStops(t).filter((s: any) => s.failed).length; return <><span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${done === loads.length ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{done}/{loads.length} delivered</span>{failed > 0 && <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700">{failed} not delivered ⚠</span>}</>; })()}
                                     </div>
                                     {/* Ordered delivery run — drop 1, 2, 3… (reorder / flag urgent) */}

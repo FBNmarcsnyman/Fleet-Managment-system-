@@ -719,6 +719,8 @@ export interface LoadConfirmation {
     clientRequestReply?: string;
     commodity?: string;
     packaging?: string;
+    hazardous?: boolean;           // cargo flagged hazardous on capture
+    clientPhone?: string;          // client contact cell/phone (esp. one-off/COD clients)
     loadSpec?: string;
     // Transport Order (loadcon) fields — mirror the FBN Transport Order form.
     arrangingBranch?: string;

@@ -40,6 +40,7 @@ const QuickCollectionForm: React.FC = () => {
     const [clientId, setClientId] = useState('');
     const [clientEmail, setClientEmail] = useState('');
     const [clientContact, setClientContact] = useState('');
+    const [clientPhone, setClientPhone] = useState(''); // client cell — esp. one-off/COD clients not in the directory
     // Multi-branch clients (e.g. Waco → Formscaff DBN/Ballito/…): a transfer can collect
     // from one site and deliver to / be billed to another. Two separate pickers.
     const [collectBranch, setCollectBranch] = useState(''); // where we COLLECT (drives collection area)
@@ -48,8 +49,12 @@ const QuickCollectionForm: React.FC = () => {
     const [collectionPoint, setCollectionPoint] = useState('');
     const [deliveryPoint, setDeliveryPoint] = useState('');
     const [commodity, setCommodity] = useState('');
-    const [packages, setPackages] = useState('');
+    const [packages, setPackages] = useState('');       // no. of packages
+    const [pkgType, setPkgType] = useState('');         // packaging type — pallets / cases / bags (managed list)
+    const [pkgBreakdown, setPkgBreakdown] = useState(''); // e.g. "120 bags on 12 pallets"
+    const [hazardous, setHazardous] = useState(false);  // dangerous goods flag
     const [collectionDate, setCollectionDate] = useState(today);
+    const [deliveryDate, setDeliveryDate] = useState(''); // required delivery date
     const [collArea, setCollArea] = useState<Branch>('FBN JHB');
     const [delArea, setDelArea] = useState<Branch>('FBN JHB');
     const [notes, setNotes] = useState('');
@@ -85,8 +90,9 @@ const QuickCollectionForm: React.FC = () => {
     const [busy, setBusy] = useState(false);
 
     const clientNames = useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
-    // Managed, learn-as-you-go commodity list (shared with the load detail + broking forms).
+    // Managed, learn-as-you-go commodity + packaging lists (shared with the broking form).
     const commodities = usePickOptions('commodity');
+    const packagingTypes = usePickOptions('packaging');
 
     const onClient = (name: string) => {
         setClientName(name);
@@ -177,26 +183,30 @@ const QuickCollectionForm: React.FC = () => {
         if (!clientName || !collectionPoint) { showToast('Add the client and collection address.'); return; }
         if (isContainer && !ctrNo.trim()) { showToast('Add the container number.'); return; }
         setBusy(true);
-        // Learn a newly-typed commodity so it's offered on the next collection.
+        // Learn a newly-typed commodity + packaging type so they're offered next time.
         if (commodity.trim() && !commodities.some(c => c.toUpperCase() === commodity.trim().toUpperCase())) void addPickOption('commodity', commodity);
+        if (pkgType.trim() && !packagingTypes.some(c => c.toUpperCase() === pkgType.trim().toUpperCase())) void addPickOption('packaging', pkgType);
         const containerNote = isContainer
             ? `CONTAINER #${ctrNo.toUpperCase()}${seal ? ` · Seal ${seal.toUpperCase()}` : ''}${ctrSize ? ` · ${ctrSize}` : ''}${operator ? ` · Operator ${operator.toUpperCase()}` : ''}${turnIn ? ` · Empty turn-in: ${turnIn.toUpperCase()}` : ''}`
             : '';
         const data: any = {
             clientId: clientId || '', clientName, clientBranch: billBranch || undefined, collectionBranchSite: collectBranch || undefined, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined,
+            clientPhone: clientPhone.trim() || undefined,
             ccEmail: ccEmails.filter(e => e && e.toLowerCase() !== (clientEmail || '').toLowerCase()).join(', ') || undefined,
             // One-off / COD: don't add to the client directory, hold the cargo as COD.
             skipClientDirectory: oneOffCod || undefined, codHold: oneOffCod || undefined,
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Collection' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint,
-            collectionDate, commodity: commodity || undefined,
+            collectionDate, deliveryDate: deliveryDate || undefined, commodity: commodity || undefined,
             loadRefNo: loadRefNo ? loadRefNo.toUpperCase() : undefined,
             loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (composedLoadType || undefined),
             loadSpec: (loadCategory === 'Part Load' ? deckSpace : loadCategory === 'Full Load' ? fullVehicle : bodyType) || undefined,
-            packaging: packages ? `${packages}` : undefined,
+            packaging: pkgType.trim() || undefined,           // packaging TYPE (pallets/cases/bags)
+            quantity: packages.trim() || undefined,            // no. of packages
+            hazardous: hazardous || undefined,
             weightKg: weightKg || undefined,
             volume: dimensions || undefined,
-            specialInstructions: [notes, pkgDims ? `Package dims: ${pkgDims}` : '', containerNote].filter(Boolean).join(' · ') || undefined,
+            specialInstructions: [notes, pkgBreakdown.trim() ? `Packages: ${pkgBreakdown.trim()}` : '', hazardous ? 'HAZARDOUS / DANGEROUS GOODS' : '', pkgDims ? `Package dims: ${pkgDims}` : '', containerNote].filter(Boolean).join(' · ') || undefined,
             arrangingBranch: collArea, collectionBranch: collArea, destinationBranch: delArea,
             priority: 'Medium', totalAmount: rate ? Number(rate) : 0, supplierRate: 0,
             isCollection: true, repEmail: currentUser?.email,
@@ -298,6 +308,8 @@ const QuickCollectionForm: React.FC = () => {
                     </div>
                     <div><label className={lbl}>Client email (main — goes on To)</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} /></div>
                 </div>
+                {/* Client cell — captured even for one-off / COD clients not saved to the directory. */}
+                <div><label className={lbl}>Client cell / phone</label><input type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} placeholder="e.g. 082 123 4567" /></div>
                 {/* Keep-in-copy recipients: main contact goes on To, everyone here is CC'd so
                     the whole group stays together on one email thread (Marc's rule). */}
                 <div className="bg-gray-900/40 rounded-lg p-3 border border-gray-700 space-y-2">
@@ -336,6 +348,16 @@ const QuickCollectionForm: React.FC = () => {
                 </div>
                 <div><label className={lbl}>Commodity</label><input list="qcComm" value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. flour" /><datalist id="qcComm">{commodities.map(c => <option key={c} value={c} />)}</datalist></div>
 
+                {/* Cargo details — always captured: packaging type, count (+ pallet breakdown), haz. */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div><label className={lbl}>Packaging type</label><input list="qcPkg" value={pkgType} onChange={e => setPkgType(e.target.value)} className={inp} placeholder="pallets / cases / bags" /><datalist id="qcPkg">{packagingTypes.map(p => <option key={p} value={p} />)}</datalist></div>
+                    <div><label className={lbl}>No. of packages</label><input value={packages} onChange={e => setPackages(e.target.value)} className={inp} placeholder="e.g. 12" /></div>
+                    <div className="col-span-2"><label className={lbl}>Package breakdown (if pallets carry loose items)</label><input value={pkgBreakdown} onChange={e => setPkgBreakdown(e.target.value)} className={inp} placeholder="e.g. 120 bags on 12 pallets" style={{ textTransform: 'none' }} /></div>
+                    <label className="col-span-2 flex items-center gap-2 cursor-pointer text-sm font-bold text-amber-300">
+                        <input type="checkbox" checked={hazardous} onChange={e => setHazardous(e.target.checked)} /> ⚠ Hazardous / dangerous goods
+                    </label>
+                </div>
+
                 {/* Load type — Consol / Part load / Full load, each with its own fields. */}
                 {!isContainer && (
                     <div>
@@ -350,7 +372,6 @@ const QuickCollectionForm: React.FC = () => {
                             <div className="grid grid-cols-2 gap-3 bg-gray-900/40 p-3 rounded-lg border border-gray-700">
                                 {loadCategory === 'Consol' && (
                                     <>
-                                        <div><label className={lbl}>No. of packages</label><input value={packages} onChange={e => setPackages(e.target.value)} className={inp} placeholder="e.g. 12" /></div>
                                         <div><label className={lbl}>Weight (kg)</label><input value={weightKg} onChange={e => setWeightKg(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="total kg" /></div>
                                         <div><label className={lbl}>Total cubes (m³)</label><input value={dimensions} onChange={e => setDimensions(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 4.5" /></div>
                                         <div className="col-span-2"><label className={lbl}>Dimensions per package (if they differ)</label><textarea value={pkgDims} onChange={e => setPkgDims(e.target.value)} rows={2} className={inp} placeholder="e.g. 2× 1.2×1.0×1.5m · 1× 0.8×0.6×0.9m" style={{ textTransform: 'none' }} /></div>
@@ -385,7 +406,10 @@ const QuickCollectionForm: React.FC = () => {
                     <div><label className={lbl}>Delivery area</label><select value={delArea} onChange={e => setDelArea(e.target.value as Branch)} className={inp}>{AREAS.map(a => <option key={a.code} value={a.code}>{a.label}</option>)}</select></div>
                 </div>
                 {collArea !== delArea && <p className="text-[11px] text-purple-300">Inter-branch: {collArea} → {delArea} (handed over at the depot).</p>}
-                <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                    <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>
+                    <div><label className={lbl}>Required delivery date</label><DateField value={deliveryDate} onChange={setDeliveryDate} className={inp} /></div>
+                </div>
                 {/* Rate — optional, expandable */}
                 <div>
                     <button type="button" onClick={() => setShowDetails(s => !s)} className="text-xs font-bold text-brand-secondary hover:underline">{showDetails ? '− Hide rate' : '+ Add client rate (optional)'}</button>

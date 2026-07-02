@@ -29,6 +29,7 @@ const BrokingCollectionForm: React.FC = () => {
     const [clientId, setClientId] = useState('');
     const [clientEmail, setClientEmail] = useState('');
     const [clientContact, setClientContact] = useState('');
+    const [clientPhone, setClientPhone] = useState(''); // client cell — esp. one-off/COD clients
     const [clientCc, setClientCc] = useState('');
     // Selectable keep-in-copy recipients (client people) + one-off/COD flag — mirrors
     // the ops Quick Collection so the whole client group stays on one email thread.
@@ -38,7 +39,10 @@ const BrokingCollectionForm: React.FC = () => {
     const [loadRefNo, setLoadRefNo] = useState('');
     const [collectionPoint, setCollectionPoint] = useState('');
     const [deliveryPoint, setDeliveryPoint] = useState('');
-    const [packages, setPackages] = useState('');
+    const [packages, setPackages] = useState('');       // no. of packages
+    const [pkgType, setPkgType] = useState('');         // packaging type — pallets / cases / bags (managed)
+    const [pkgBreakdown, setPkgBreakdown] = useState(''); // e.g. "120 bags on 12 pallets"
+    const [hazardous, setHazardous] = useState(false);  // dangerous goods flag
     const [deckSpace, setDeckSpace] = useState('');
     const [vehicleSize, setVehicleSize] = useState('');
     const [commodity, setCommodity] = useState('');
@@ -46,11 +50,13 @@ const BrokingCollectionForm: React.FC = () => {
     const [remarks, setRemarks] = useState('');
     const [weight, setWeight] = useState('');
     const [collectionDate, setCollectionDate] = useState(today);
+    const [deliveryDate, setDeliveryDate] = useState(''); // required delivery date
     // transporter
     const [supName, setSupName] = useState('');
     const [supId, setSupId] = useState('');
     const [supEmail, setSupEmail] = useState('');
     const [supContact, setSupContact] = useState('');
+    const [supCell, setSupCell] = useState('');         // transporter contact cell (when adding a new one)
     const [supCc, setSupCc] = useState('');
     const [rate, setRate] = useState('');
     const [clientRate, setClientRate] = useState('');
@@ -72,6 +78,7 @@ const BrokingCollectionForm: React.FC = () => {
     const clientNames = useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
     const supplierNames = useMemo(() => [...new Set((suppliers as any[]).map(s => s.name).filter(Boolean))].sort(), [suppliers]);
     const commodities = usePickOptions('commodity'); // managed, learn-as-you-go list
+    const packagingTypes = usePickOptions('packaging');
     const selClient = useMemo(() => (clients as any[]).find(c => c.id === clientId), [clients, clientId]);
     // This client's people (company + every branch), for the contact dropdown + CC picker.
     const clientContacts: Contact[] = useMemo(() => {
@@ -107,6 +114,7 @@ const BrokingCollectionForm: React.FC = () => {
             const docs = cs.filter(x => (x as any).getsDocs !== false);
             setSupEmail(docs[0]?.email || cs[0]?.email || (s as any).contactEmail || (s as any).email || '');
             setSupContact(docs[0]?.name || cs[0]?.name || (s as any).contactPerson || '');
+            setSupCell((docs[0] as any)?.phone || (cs[0] as any)?.phone || (s as any).contactPhone || '');
             setSupCc((docs.length ? docs : cs).slice(1).map(x => x.email).filter(Boolean).join(', '));
             // Pull the rate from this transporter's last load.
             const past = (loadConfirmations as any[]).filter(l => (l.subcontractorName || '').toLowerCase() === name.toLowerCase() && l.supplierRate).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
@@ -119,31 +127,37 @@ const BrokingCollectionForm: React.FC = () => {
         if (!clientName || !collectionPoint) { showToast('Add the client and collection address.'); return; }
         if (isContainer && !ctrNo.trim()) { showToast('Add the container number.'); return; }
         setBusy(true);
-        // Learn a newly-typed commodity so it's offered next time.
+        // Learn a newly-typed commodity + packaging type so they're offered next time.
         if (commodity.trim() && !commodities.some(c => c.toUpperCase() === commodity.trim().toUpperCase())) void addPickOption('commodity', commodity);
+        if (pkgType.trim() && !packagingTypes.some(c => c.toUpperCase() === pkgType.trim().toUpperCase())) void addPickOption('packaging', pkgType);
         const containerNote = isContainer
             ? `CONTAINER #${ctrNo.toUpperCase()}${seal ? ` · Seal ${seal.toUpperCase()}` : ''}${ctrSize ? ` · ${ctrSize}` : ''}${operator ? ` · Operator ${operator.toUpperCase()}` : ''}${turnIn ? ` · Empty turn-in: ${turnIn.toUpperCase()}` : ''}`
             : '';
         const data: any = {
             clientId: clientId || '', clientName, clientEmail: clientEmail || undefined, clientContact: clientContact || undefined,
+            clientPhone: clientPhone.trim() || undefined,
             clientCc: (ccEmails.length ? ccEmails.filter(e => e && e.toLowerCase() !== (clientEmail || '').toLowerCase()).join(', ') : clientCc) || undefined,
             // One-off / COD: don't add to the client directory, hold the cargo as COD.
             skipClientDirectory: oneOffCod || undefined, codHold: oneOffCod || undefined,
             items: [], legs: [{ id: 'leg-1', collectionPoint, deliveryPoint, movementType: 'Delivery' }],
             collectionPoint, deliveryPoint: deliveryPoint || collectionPoint, collectionDate,
+            deliveryDate: deliveryDate || undefined,
             loadRefNo: loadRefNo ? loadRefNo.toUpperCase() : undefined,
             // Transit-depot routing: cross-branch so the depot flow fires, and the
             // subbie's leg-1 LoadCon delivers to the transit depot (not the final).
             ...(transitVia ? { transitDepot, collectionBranch: collBranch, destinationBranch: delBranch, arrangingBranch: collBranch } : {}),
             loadType: isContainer ? (ctrSize ? `CONTAINER ${ctrSize}` : 'CONTAINER') : (vehicleSize || undefined),
             commodity: commodity || undefined,
-            specialInstructions: [remarks, dimensions ? `Total cubes: ${dimensions} m³` : '', containerNote].filter(Boolean).join(' · ') || undefined,
-            packaging: packages ? `${packages}` : undefined,
+            specialInstructions: [remarks, pkgBreakdown.trim() ? `Packages: ${pkgBreakdown.trim()}` : '', hazardous ? 'HAZARDOUS / DANGEROUS GOODS' : '', dimensions ? `Total cubes: ${dimensions} m³` : '', containerNote].filter(Boolean).join(' · ') || undefined,
+            packaging: pkgType.trim() || undefined,           // packaging TYPE (pallets/cases/bags)
+            quantity: packages.trim() || undefined,            // no. of packages
+            hazardous: hazardous || undefined,
             loadedPackages: packages ? Number(String(packages).replace(/[^\d]/g, '')) || undefined : undefined,
             weightKg: weight || undefined, volume: deckSpace || undefined,
             // transporter (brokered) — triggers LoadCon-to-supplier + Order-to-client.
             supplierId: supId || undefined, subcontractorName: supName || undefined,
             subcontractorEmail: supEmail || undefined, forAttention: supContact || undefined, ccEmail: supCc || undefined,
+            subcontractorDriverCell: supCell.trim() || undefined,
             supplierRate: rate ? Number(rate) : 0,
             status: supId || supName ? 'Driver Assigned' : 'Booked',
             priority: 'Medium', totalAmount: clientRate ? Number(clientRate) : 0, isCollection: false,
@@ -203,6 +217,12 @@ const BrokingCollectionForm: React.FC = () => {
                     </div>
                     <div><label className={lbl}>Client email (main — goes on To)</label><input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} /></div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                    {/* Client cell — captured even for one-off / COD clients not saved to the directory. */}
+                    <div><label className={lbl}>Client cell / phone</label><input type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} placeholder="e.g. 082 123 4567" /></div>
+                    {/* Client rate lives UP HERE by the client — never mixed up with the transporter cost below. */}
+                    <div><label className={lbl}>Client rate (R) <span className="text-emerald-300 normal-case font-normal">— what WE bill the client</span></label><input value={clientRate} onChange={e => setClientRate(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 11000" /></div>
+                </div>
                 {/* Keep-in-copy recipients — one email, everyone (loader/receiver/etc.) in the loop. */}
                 <div className="bg-gray-900/40 rounded-lg p-3 border border-gray-700 space-y-2">
                     <label className={lbl}>Also keep in copy (CC) — one email, everyone in the loop</label>
@@ -247,17 +267,25 @@ const BrokingCollectionForm: React.FC = () => {
                     )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                    <div><label className={lbl}>Packages</label><input value={packages} onChange={e => setPackages(e.target.value)} className={inp} placeholder="e.g. 12" /></div>
+                    <div><label className={lbl}>Commodity</label><input list="bkComm" value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. steel" /><datalist id="bkComm">{commodities.map(c => <option key={c} value={c} />)}</datalist></div>
+                    <div><label className={lbl}>Packaging type</label><input list="bkPkg" value={pkgType} onChange={e => setPkgType(e.target.value)} className={inp} placeholder="pallets / cases / bags" /><datalist id="bkPkg">{packagingTypes.map(p => <option key={p} value={p} />)}</datalist></div>
+                    <div><label className={lbl}>No. of packages</label><input value={packages} onChange={e => setPackages(e.target.value)} className={inp} placeholder="e.g. 12" /></div>
                     <div><label className={lbl}>Deck space</label><input value={deckSpace} onChange={e => setDeckSpace(e.target.value)} className={inp} placeholder="e.g. 6 m" /></div>
+                    <div className="col-span-2"><label className={lbl}>Package breakdown (if pallets carry loose items)</label><input value={pkgBreakdown} onChange={e => setPkgBreakdown(e.target.value)} className={inp} placeholder="e.g. 120 bags on 12 pallets" style={{ textTransform: 'none' }} /></div>
+                    <label className="col-span-2 flex items-center gap-2 cursor-pointer text-sm font-bold text-amber-300">
+                        <input type="checkbox" checked={hazardous} onChange={e => setHazardous(e.target.checked)} /> ⚠ Hazardous / dangerous goods
+                    </label>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                     <div><label className={lbl}>Vehicle size</label><input list="bkSizes" value={vehicleSize} onChange={e => setVehicleSize(e.target.value)} className={inp} placeholder="e.g. Superlink" /><datalist id="bkSizes">{VEHICLE_SIZES.map(s => <option key={s} value={s} />)}</datalist></div>
                     <div><label className={lbl}>Weight (kg)</label><input value={weight} onChange={e => setWeight(e.target.value)} className={inp} /></div>
-                    <div><label className={lbl}>Commodity</label><input list="bkComm" value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. steel" /><datalist id="bkComm">{commodities.map(c => <option key={c} value={c} />)}</datalist></div>
                     <div><label className={lbl}>Total cubes (m³)</label><input value={dimensions} onChange={e => setDimensions(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 12.5" /></div>
                     <div className="col-span-2"><label className={lbl}>Remarks / notes</label><textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={2} className={inp} placeholder="anything ops/the subbie should know" /></div>
                 </div>
-                <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                    <div><label className={lbl}>Loading date</label><DateField value={collectionDate} onChange={setCollectionDate} className={inp} /></div>
+                    <div><label className={lbl}>Required delivery date</label><DateField value={deliveryDate} onChange={setDeliveryDate} className={inp} /></div>
+                </div>
                 <div className="border-t border-gray-700 pt-3">
                     <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-200">
                         <input type="checkbox" checked={isContainer} onChange={e => setIsContainer(e.target.checked)} /> Container collection
@@ -277,9 +305,9 @@ const BrokingCollectionForm: React.FC = () => {
                     <input list="bkSups" value={supName} onChange={e => onSup(e.target.value)} className={inp} placeholder="transporter / subcontractor" />
                     <datalist id="bkSups">{supplierNames.map(n => <option key={n} value={n} />)}</datalist>
                     <div className="grid grid-cols-2 gap-3 mt-3">
-                        <div><label className={lbl}>Transporter email</label><input type="email" value={supEmail} onChange={e => setSupEmail(e.target.value)} className={inp} /></div>
-                        <div><label className={lbl}>Transport rate (R) <span className="text-gray-500 normal-case font-normal">— supplier cost</span></label><input value={rate} onChange={e => setRate(e.target.value)} className={inp} placeholder="e.g. 8500" /></div>
-                        <div><label className={lbl}>Client rate (R) <span className="text-gray-500 normal-case font-normal">— what we bill</span></label><input value={clientRate} onChange={e => setClientRate(e.target.value)} className={inp} placeholder="e.g. 11000" /></div>
+                        <div><label className={lbl}>Transporter email</label><input type="email" value={supEmail} onChange={e => setSupEmail(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} /></div>
+                        <div><label className={lbl}>Transporter cell</label><input type="tel" value={supCell} onChange={e => setSupCell(e.target.value)} className={inp + ' normal-case'} style={{ textTransform: 'none' }} placeholder="e.g. 082 123 4567" /></div>
+                        <div className="col-span-2"><label className={lbl}>Transport rate (R) <span className="text-gray-500 normal-case font-normal">— what WE pay the transporter</span></label><input value={rate} onChange={e => setRate(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 8500" /></div>
                     </div>
                 </div>
             </div>

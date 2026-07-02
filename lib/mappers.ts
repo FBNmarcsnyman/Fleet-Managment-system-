@@ -676,6 +676,8 @@ export const mapLoadConfirmation = (row: Tables['load_confirmations']['Row'], ct
     clientRequestReply: (row as any).client_request_reply ?? undefined,
     commodity: row.commodity ?? undefined,
     packaging: row.packaging ?? undefined,
+    hazardous: (row as any).hazardous ?? false,
+    clientPhone: (row as any).client_phone ?? undefined,
     loadSpec: row.load_spec ?? undefined,
     arrangingBranch: row.arranging_branch ?? undefined,
     loadRefNo: row.load_ref_no ?? undefined,
@@ -1308,6 +1310,9 @@ export const toLoadConfirmationInsert = (
     subcontractor_driver_cell: lc.subcontractorDriverCell ?? null,
     commodity: lc.commodity ?? null,
     packaging: lc.packaging ?? null,
+    // New columns not yet in the generated types — spread with a cast so the literal
+    // excess-property check passes (columns exist in the DB; see migration).
+    ...({ hazardous: lc.hazardous ?? false, client_phone: lc.clientPhone ?? null } as any),
     load_spec: lc.loadSpec ?? null,
     arranging_branch: lc.arrangingBranch ?? null,
     load_ref_no: lc.loadRefNo ?? null,
@@ -1660,6 +1665,8 @@ export const toLoadConfirmationUpdate = (
     if (updates.clientEmail !== undefined) row.client_email = updates.clientEmail ?? null;
     if (updates.commodity !== undefined) row.commodity = updates.commodity ?? null;
     if (updates.packaging !== undefined) row.packaging = updates.packaging ?? null;
+    if ((updates as any).hazardous !== undefined) (row as any).hazardous = (updates as any).hazardous ?? false;
+    if ((updates as any).clientPhone !== undefined) (row as any).client_phone = (updates as any).clientPhone ?? null;
     if (updates.loadSpec !== undefined) row.load_spec = updates.loadSpec ?? null;
     // Remaining Transport Order fields, so a full edit persists everything.
     if (updates.arrangingBranch !== undefined) row.arranging_branch = updates.arrangingBranch ?? null;

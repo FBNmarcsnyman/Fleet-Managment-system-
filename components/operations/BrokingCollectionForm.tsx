@@ -5,6 +5,7 @@ import { directInsert } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
+import { usePickOptions, addPickOption } from '../../hooks/usePickOptions';
 
 const VEHICLE_SIZES = ['2 TON', '5 TON', '8 TON', '12 TON', '15 TON', 'TRI-AXLE (28T)', 'SUPERLINK (34T)', 'LINK', 'TAUTLINER', 'FLAT DECK', 'FLAT DECK + UPRIGHTS', '6M FLAT DECK', '12M FLAT DECK', 'TRI-AXLE FLAT', 'LDV', 'TANKER', 'REEFER', 'ABNORMAL'];
 const FBN_BRANCHES: { code: Branch; label: string }[] = [
@@ -70,6 +71,7 @@ const BrokingCollectionForm: React.FC = () => {
 
     const clientNames = useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
     const supplierNames = useMemo(() => [...new Set((suppliers as any[]).map(s => s.name).filter(Boolean))].sort(), [suppliers]);
+    const commodities = usePickOptions('commodity'); // managed, learn-as-you-go list
     const selClient = useMemo(() => (clients as any[]).find(c => c.id === clientId), [clients, clientId]);
     // This client's people (company + every branch), for the contact dropdown + CC picker.
     const clientContacts: Contact[] = useMemo(() => {
@@ -117,6 +119,8 @@ const BrokingCollectionForm: React.FC = () => {
         if (!clientName || !collectionPoint) { showToast('Add the client and collection address.'); return; }
         if (isContainer && !ctrNo.trim()) { showToast('Add the container number.'); return; }
         setBusy(true);
+        // Learn a newly-typed commodity so it's offered next time.
+        if (commodity.trim() && !commodities.some(c => c.toUpperCase() === commodity.trim().toUpperCase())) void addPickOption('commodity', commodity);
         const containerNote = isContainer
             ? `CONTAINER #${ctrNo.toUpperCase()}${seal ? ` · Seal ${seal.toUpperCase()}` : ''}${ctrSize ? ` · ${ctrSize}` : ''}${operator ? ` · Operator ${operator.toUpperCase()}` : ''}${turnIn ? ` · Empty turn-in: ${turnIn.toUpperCase()}` : ''}`
             : '';
@@ -249,7 +253,7 @@ const BrokingCollectionForm: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <div><label className={lbl}>Vehicle size</label><input list="bkSizes" value={vehicleSize} onChange={e => setVehicleSize(e.target.value)} className={inp} placeholder="e.g. Superlink" /><datalist id="bkSizes">{VEHICLE_SIZES.map(s => <option key={s} value={s} />)}</datalist></div>
                     <div><label className={lbl}>Weight (kg)</label><input value={weight} onChange={e => setWeight(e.target.value)} className={inp} /></div>
-                    <div><label className={lbl}>Commodity</label><input value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. steel" /></div>
+                    <div><label className={lbl}>Commodity</label><input list="bkComm" value={commodity} onChange={e => setCommodity(e.target.value)} className={inp} placeholder="e.g. steel" /><datalist id="bkComm">{commodities.map(c => <option key={c} value={c} />)}</datalist></div>
                     <div><label className={lbl}>Total cubes (m³)</label><input value={dimensions} onChange={e => setDimensions(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" className={inp} placeholder="e.g. 12.5" /></div>
                     <div className="col-span-2"><label className={lbl}>Remarks / notes</label><textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={2} className={inp} placeholder="anything ops/the subbie should know" /></div>
                 </div>

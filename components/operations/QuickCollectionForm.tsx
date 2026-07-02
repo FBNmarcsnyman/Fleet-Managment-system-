@@ -6,6 +6,7 @@ import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
 import { classifyArea } from '../../lib/branchConfig';
+import { usePickOptions, addPickOption } from '../../hooks/usePickOptions';
 
 const CONTAINER_SIZES = ['20FT', '40FT', '40HC', '45FT', 'REEFER 20FT', 'REEFER 40FT', 'FLAT RACK', 'OPEN TOP'];
 
@@ -84,7 +85,8 @@ const QuickCollectionForm: React.FC = () => {
     const [busy, setBusy] = useState(false);
 
     const clientNames = useMemo(() => [...new Set((clients as any[]).map(c => c.name).filter(Boolean))].sort(), [clients]);
-    const commodities = useMemo(() => [...new Set((loadConfirmations as any[]).map(l => l.commodity).filter(Boolean))].sort(), [loadConfirmations]);
+    // Managed, learn-as-you-go commodity list (shared with the load detail + broking forms).
+    const commodities = usePickOptions('commodity');
 
     const onClient = (name: string) => {
         setClientName(name);
@@ -175,6 +177,8 @@ const QuickCollectionForm: React.FC = () => {
         if (!clientName || !collectionPoint) { showToast('Add the client and collection address.'); return; }
         if (isContainer && !ctrNo.trim()) { showToast('Add the container number.'); return; }
         setBusy(true);
+        // Learn a newly-typed commodity so it's offered on the next collection.
+        if (commodity.trim() && !commodities.some(c => c.toUpperCase() === commodity.trim().toUpperCase())) void addPickOption('commodity', commodity);
         const containerNote = isContainer
             ? `CONTAINER #${ctrNo.toUpperCase()}${seal ? ` · Seal ${seal.toUpperCase()}` : ''}${ctrSize ? ` · ${ctrSize}` : ''}${operator ? ` · Operator ${operator.toUpperCase()}` : ''}${turnIn ? ` · Empty turn-in: ${turnIn.toUpperCase()}` : ''}`
             : '';

@@ -221,6 +221,9 @@ const BuildManifestPanel: React.FC<{ initialLoads: LoadConfirmation[]; floorAll:
     // the 12m trailer auto-fills its paired partner in the other box — the box you choose is
     // the role (the fleet has no hard 6m/12m tag per trailer). See fleet-structure memory.
     const superTrailers = useMemo(() => vehicles.filter((v: any) => /superlink/i.test(v.weightCategory || '')), [vehicles]);
+    // Show trailers with the matching length tag first (Marc tags 6m / 12m on the fleet list).
+    const superByLen = (want: string) => [...superTrailers].sort((a: any, b: any) => ((a.trailerLength === want ? 0 : 1) - (b.trailerLength === want ? 0 : 1)) || String(a.registration).localeCompare(String(b.registration)));
+    const trailerOpt = (v: any) => `${v.registration} — ${v.name}${v.trailerLength ? ` · ${v.trailerLength}` : ''}`;
     const trailerByReg = (reg: string) => superTrailers.find((v: any) => v.registration === reg);
     const partnerReg = (reg: string): string | undefined => { const t = trailerByReg(reg); const p = t?.linkedVehicleId ? vehicles.find((v: any) => v.id === t.linkedVehicleId) : undefined; return p?.registration; };
     const pick6m = (reg: string) => { setReg6m(reg); const p = partnerReg(reg); if (p) setReg12m(p); };
@@ -387,14 +390,14 @@ const BuildManifestPanel: React.FC<{ initialLoads: LoadConfirmation[]; floorAll:
                         {(isSuper || trailer === '6m') && (
                             <div><label className={lbl}>6m trailer{isSuper && reg6m ? ' ✓ paired' : ''}</label>
                                 {isSuper
-                                    ? <select value={reg6m} onChange={e => pick6m(e.target.value)} className={inp}><option value="">-- pick 6m (auto-pairs 12m) --</option>{superTrailers.map((v: any) => <option key={v.id} value={v.registration}>{v.registration} — {v.name}</option>)}</select>
+                                    ? <select value={reg6m} onChange={e => pick6m(e.target.value)} className={inp}><option value="">-- pick 6m (auto-pairs 12m) --</option>{superByLen('6m').map((v: any) => <option key={v.id} value={v.registration}>{trailerOpt(v)}</option>)}</select>
                                     : <input list="trReg" value={reg6m} onChange={e => setReg6m(e.target.value)} className={inp} placeholder="reg" />}
                             </div>
                         )}
                         {(isSuper || trailer === '12m') && (
                             <div><label className={lbl}>12m trailer{isSuper && reg12m ? ' ✓ paired' : ''}</label>
                                 {isSuper
-                                    ? <select value={reg12m} onChange={e => pick12m(e.target.value)} className={inp}><option value="">-- pick 12m (auto-pairs 6m) --</option>{superTrailers.map((v: any) => <option key={v.id} value={v.registration}>{v.registration} — {v.name}</option>)}</select>
+                                    ? <select value={reg12m} onChange={e => pick12m(e.target.value)} className={inp}><option value="">-- pick 12m (auto-pairs 6m) --</option>{superByLen('12m').map((v: any) => <option key={v.id} value={v.registration}>{trailerOpt(v)}</option>)}</select>
                                     : <input list="trReg" value={reg12m} onChange={e => setReg12m(e.target.value)} className={inp} placeholder="reg" />}
                             </div>
                         )}

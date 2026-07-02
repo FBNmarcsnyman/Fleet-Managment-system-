@@ -70,6 +70,9 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
     const [status, setStatus] = useState<VehicleStatus>(vehicleData?.status || 'On the road');
     const [assignedDriverId, setAssignedDriverId] = useState<string>(vehicleData?.assignedDriverId || '');
     const [linkedVehicleId, setLinkedVehicleId] = useState<string>(vehicleData?.linkedVehicleId || '');
+    // Trailer tags — body style + length role (the superlink 6m-vs-12m pick on manifests uses length).
+    const [bodyType, setBodyType] = useState<string>(vehicleData?.bodyType || '');
+    const [trailerLength, setTrailerLength] = useState<string>(vehicleData?.trailerLength || '');
     const [onMaintenancePlan, setOnMaintenancePlan] = useState<boolean>(vehicleData?.onMaintenancePlan || false);
     const [maintenancePlanProvider, setMaintenancePlanProvider] = useState<string>(vehicleData?.maintenancePlanProvider || '');
     const [submitting, setSubmitting] = useState(false);
@@ -121,6 +124,8 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
                 vin,
                 branch,
                 weightCategory,
+                bodyType: bodyType || undefined,
+                trailerLength: trailerLength || undefined,
                 status,
                 purchasePrice,
                 currentHours: vehicleData?.currentHours,
@@ -176,6 +181,18 @@ const AddVehicleForm: React.FC<AddVehicleFormProps> = ({ vehicleData, onSubmit, 
                     <select value={weightCategory} onChange={e => setWeightCategory(e.target.value)} className={inputClasses}>
                         {VEHICLE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
+                </div>
+                {/* Trailer tags — body style + length role. Length drives the superlink
+                    6m-vs-12m pick on the manifest builder. Optional for non-trailers. */}
+                <div>
+                    <label className={labelClasses}>Body type (trailers)</label>
+                    <input list="bodyTypeOpts" value={bodyType} onChange={e => setBodyType(e.target.value)} className={inputClasses} placeholder="Flatbed / Tautliner / Triaxle / Skeleton" />
+                    <datalist id="bodyTypeOpts">{['Flatbed', 'Tautliner', 'Triaxle', 'Skeleton', 'Superlink', 'Tanker', 'Reefer', 'Dropside'].map(o => <option key={o} value={o} />)}</datalist>
+                </div>
+                <div>
+                    <label className={labelClasses}>Trailer length</label>
+                    <input list="trailerLenOpts" value={trailerLength} onChange={e => setTrailerLength(e.target.value)} className={inputClasses} placeholder="6m / 12m / 13m / 13.5m" />
+                    <datalist id="trailerLenOpts">{['6m', '12m', '13m', '13.5m', '8m', '15m'].map(o => <option key={o} value={o} />)}</datalist>
                 </div>
                 <div>
                     <label className={labelClasses}>Current Status</label>

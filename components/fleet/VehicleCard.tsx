@@ -132,6 +132,12 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onSelect }) => {
                     <div>
                         <div className="uppercase tracking-widest font-black mb-1 text-[10px] text-gray-500">Size</div>
                         <div className="text-sm text-gray-100">{vehicle.weightCategory || 'N/A'}</div>
+                        {(vehicle.bodyType || vehicle.trailerLength) && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                                {vehicle.trailerLength && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">{vehicle.trailerLength}</span>}
+                                {vehicle.bodyType && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">{vehicle.bodyType}</span>}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

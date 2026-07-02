@@ -75,6 +75,8 @@ export const mapVehicle = (row: Tables['vehicles']['Row'], ctx: MapperCtx): Vehi
     vin: row.vin ?? '',
     branch: resolveBranch(row.branch_id, ctx),
     weightCategory: row.weight_category ?? '',
+    bodyType: (row as any).body_type ?? undefined,
+    trailerLength: (row as any).trailer_length ?? undefined,
     status: row.status,
     purchasePrice: row.purchase_price ?? 0,
     currentValue: row.current_value ?? 0,
@@ -1038,6 +1040,8 @@ export const toVehicleInsert = (
     year: vehicle.year ?? null,
     vin: vehicle.vin || null,
     weight_category: vehicle.weightCategory || null,
+    body_type: vehicle.bodyType ?? null,
+    trailer_length: vehicle.trailerLength ?? null,
     status: vehicle.status,
     purchase_price: vehicle.purchasePrice ?? null,
     current_value: vehicle.currentValue ?? null,
@@ -1069,6 +1073,8 @@ export const toVehicleUpdate = (
     if (updates.year !== undefined) row.year = updates.year;
     if (updates.vin !== undefined) row.vin = updates.vin;
     if (updates.weightCategory !== undefined) row.weight_category = updates.weightCategory;
+    if (updates.bodyType !== undefined) (row as any).body_type = updates.bodyType ?? null;
+    if (updates.trailerLength !== undefined) (row as any).trailer_length = updates.trailerLength ?? null;
     if (updates.status !== undefined) row.status = updates.status;
     if (updates.purchasePrice !== undefined) row.purchase_price = updates.purchasePrice;
     if (updates.currentValue !== undefined) row.current_value = updates.currentValue;

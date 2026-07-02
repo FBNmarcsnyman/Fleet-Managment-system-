@@ -30,6 +30,8 @@ export interface Vehicle {
   vin: string;
   branch: Branch;
   weightCategory: string;
+  bodyType?: string;        // Flatbed / Tautliner / Triaxle / Skeleton / Superlink / Tanker / Reefer
+  trailerLength?: string;   // 6m / 12m / 13m / 13.5m — role for superlink 6m-vs-12m pairing
   status: VehicleStatus;
   purchasePrice: number;
   currentValue: number;

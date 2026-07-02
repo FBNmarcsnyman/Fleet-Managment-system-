@@ -4,6 +4,7 @@ import { useOperations, useUIState, useAuth, useVehicles } from '../../contexts/
 import { fmtDay } from '../../lib/format';
 import { optimiseRoute } from '../../lib/routeOptimize';
 import { depotAddrFor } from '../../lib/branchConfig';
+import { geocodeAddress } from '../../lib/geocode';
 
 // OPERATIONS → TRIP SHEETS (per branch)
 // Once line-haul cargo arrives it sits on this branch's depot floor. Load it onto
@@ -63,22 +64,35 @@ const OperationsTripSheets: React.FC = () => {
     const saveStops = async (t: any, stops: any[]) => { const r = await handleUpdateTripSheet(t.id, { stops }); if (r?.ok === false) showToast(`Could not reorder: ${r.error}`); };
     const move = (t: any, fromIdx: number, toIdx: number) => { const arr = runStops(t); if (toIdx < 0 || toIdx >= arr.length) return; const [m] = arr.splice(fromIdx, 1); arr.splice(toIdx, 0, m); saveStops(t, arr.map((s, i) => ({ ...s, order: i }))); };
     const toggleUrgent = (t: any, loadId: string) => { const arr = runStops(t).map(s => s.loadId === loadId ? { ...s, urgent: !s.urgent } : s); saveStops(t, arr); };
-    // Auto-order the run into the most efficient route (browser Google Directions, depot as
-    // origin). Ops override still wins: urgent drops stay first, and manual ▲▼ works after.
+    // Prepare a run: (1) LOCATE each drop (coords, for the truck-geofence cron) via stored load
+    // coords or a browser geocode, and (2) auto-order into the most efficient route (browser
+    // Google Directions, depot origin). Ops override still wins: urgent drops stay first, ▲▼ after.
     const optimise = async (t: any, silent = false): Promise<void> => {
         const stops = runStops(t);
-        if (stops.length < 2) { if (!silent) showToast('Nothing to optimise — one drop.'); return; }
+        if (!stops.length) return;
         setOptimising(t.id);
-        const addrList = stops.map(s => ({ loadId: s.loadId, address: (loadConfirmations as any[]).find(l => l.id === s.loadId)?.deliveryPoint || '' }));
-        const ordered = await optimiseRoute(depotAddrFor(t.branch), addrList);
+        // 1) coords per drop — reuse the load's stored coords, else geocode the address.
+        const located = await Promise.all(stops.map(async (s: any) => {
+            const l = (loadConfirmations as any[]).find(x => x.id === s.loadId);
+            let lat = s.lat ?? l?.deliveryLat, lng = s.lng ?? l?.deliveryLng;
+            if ((lat == null || lng == null) && l?.deliveryPoint) { const g = await geocodeAddress(l.deliveryPoint); if (g) { lat = g.lat; lng = g.lng; } }
+            return { ...s, lat: lat ?? null, lng: lng ?? null };
+        }));
+        // 2) optimise order when there are ≥2 addresses to sequence.
+        let seq = located;
+        if (stops.length > 1) {
+            const addrList = stops.map((s: any) => ({ loadId: s.loadId, address: (loadConfirmations as any[]).find(l => l.id === s.loadId)?.deliveryPoint || '' }));
+            const ordered = await optimiseRoute(depotAddrFor(t.branch), addrList);
+            if (ordered) {
+                const byId: Record<string, any> = Object.fromEntries(located.map(s => [s.loadId, s]));
+                seq = ordered.map(id => byId[id]).filter(Boolean);
+                located.forEach(s => { if (!seq.includes(s)) seq.push(s); }); // keep any address-less drops
+                seq = [...seq.filter(s => s.urgent), ...seq.filter(s => !s.urgent)]; // urgent first (override)
+            } else if (!silent) { showToast('Located drops (could not auto-order — check addresses).'); }
+        }
         setOptimising(null);
-        if (!ordered) { if (!silent) showToast('Could not optimise — need at least 2 delivery addresses.'); return; }
-        const byId: Record<string, any> = Object.fromEntries(stops.map(s => [s.loadId, s]));
-        let seq = ordered.map(id => byId[id]).filter(Boolean);
-        stops.forEach(s => { if (!seq.includes(s)) seq.push(s); }); // keep any address-less drops
-        seq = [...seq.filter(s => s.urgent), ...seq.filter(s => !s.urgent)]; // urgent first (override)
         await saveStops(t, seq.map((s, i) => ({ ...s, order: i })));
-        if (!silent) showToast('Route optimised — drops reordered (urgent stay first).');
+        if (!silent) showToast(stops.length > 1 ? 'Route optimised & drops located for tracking.' : 'Drop located for tracking.');
     };
     // A drop that couldn't be delivered today — capture the reason and auto-flag it
     // URGENT for the next day so it's first on the run.
@@ -197,8 +211,8 @@ const OperationsTripSheets: React.FC = () => {
                     const r = await handleCreateTripSheet({ vehicleId, driverId, loadConIds: building.map(l => l.id), branch, odometerStart: odo });
                     if (r?.ok === false) { showToast(`Could not create: ${r.error}`); return; }
                     showToast('Trip sheet created — out for delivery.');
-                    // Auto-order the drops into the most efficient route on creation (silent, best-effort).
-                    if (r?.value && (r.value.loadConfirmationIds || []).length > 1) void optimise(r.value, true);
+                    // Locate drops (for truck geofence) + auto-order the route on creation (silent).
+                    if (r?.value && (r.value.loadConfirmationIds || []).length >= 1) void optimise(r.value, true);
                     if (r?.value) showModal('tripSheetDoc', { tripSheet: r.value });
                     setBuilding(null); setSel(new Set());
                 }} />}

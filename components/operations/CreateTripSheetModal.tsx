@@ -1,7 +1,17 @@
 
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { LoadConfirmation, Vehicle, User } from '../../types';
+import { useVehicles } from '../../contexts/AppContexts';
+
+const branchToken = (s?: string): string => {
+    const t = String(s || '').toUpperCase();
+    if (t.includes('LOADMASTER') || t === 'LM') return 'LM';
+    if (t.includes('DURBAN') || t.includes('DBN')) return 'DBN';
+    if (t.includes('JOHANNES') || t.includes('JHB') || t.includes('JBG')) return 'JHB';
+    if (t.includes('CAPE') || t.includes('CPT')) return 'CPT';
+    return t;
+};
 
 interface CreateTripSheetModalProps {
     availableLoads: LoadConfirmation[];
@@ -13,6 +23,7 @@ interface CreateTripSheetModalProps {
 }
 
 const CreateTripSheetModal: React.FC<CreateTripSheetModalProps> = ({ availableLoads, vehicles, users, selectedBranch, onSubmit, onCancel }) => {
+    const { drivers = [] } = useVehicles() as any;
     const [selectedLoadIds, setSelectedLoadIds] = useState<string[]>([]);
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
@@ -32,21 +43,34 @@ const CreateTripSheetModal: React.FC<CreateTripSheetModalProps> = ({ availableLo
         onSubmit({ vehicleId, driverId, loadConIds: selectedLoadIds, branch: selectedBranch });
     };
 
-    // Local delivery vehicles for this branch + the line-haul (LOADMASTER) fleet,
-    // smallest first; drivers scoped the same way, A–Z. (Same rule as collections.)
+    // Local DELIVERY vehicles (smallest first). This depot's vehicles are offered first,
+    // then the rest of the fleet below. Drivers from the fleet register, depot first.
+    // Picking a vehicle fills its driver (and vice-versa), editable.
     const SIZE_ORDER = ['BAKKIE', '1 TONNER', '2 TONNER', '5 TONNER', '8 TONNER', '12 TONNER', '15 TONNER'];
     const sizeOf = (v: any) => {
         if (typeof v.payloadKg === 'number' && v.payloadKg > 0) return v.payloadKg;
         const i = SIZE_ORDER.indexOf(v.weightCategory);
         return i >= 0 ? i : Number.MAX_SAFE_INTEGER;
     };
-    const localVehicles = vehicles
-        .filter(v => v.status === 'On the road' && SIZE_ORDER.includes(v.weightCategory) && ((v as any).branch === selectedBranch || (v as any).branch === 'LOADMASTER'))
-        .sort((a, b) => sizeOf(a) - sizeOf(b));
-    const tripDrivers = users
-        .filter(u => (u.role === 'Driver' || u.role === 'Staff') && u.name)
-        .filter(u => { const ab = (u as any).assignedBranches || []; return ab.length === 0 || ab.includes(selectedBranch) || ab.includes('LOADMASTER'); })
-        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    const tok = branchToken(selectedBranch);
+    const depotLabel = selectedBranch.replace('FBN ', '');
+    const localAll = useMemo(() => (vehicles as any[]).filter(v => v.status === 'On the road' && SIZE_ORDER.includes(v.weightCategory)).sort((a, b) => sizeOf(a) - sizeOf(b)), [vehicles]);
+    const depotVehicles = useMemo(() => localAll.filter(v => branchToken((v as any).branch) === tok), [localAll, tok]);
+    const otherVehicles = useMemo(() => localAll.filter(v => branchToken((v as any).branch) !== tok), [localAll, tok]);
+    const fleetDrivers = useMemo(() => (drivers as any[]).filter(d => d.isActive !== false && d.name).sort((a, b) => String(a.name).localeCompare(String(b.name))), [drivers]);
+    const depotDrivers = useMemo(() => fleetDrivers.filter(d => { const t = branchToken(d.branch); return !d.branch || t === tok || t === 'LM'; }), [fleetDrivers, tok]);
+    const otherDrivers = useMemo(() => fleetDrivers.filter(d => { const t = branchToken(d.branch); return d.branch && t !== tok && t !== 'LM'; }), [fleetDrivers, tok]);
+    const onPickVehicle = (id: string) => {
+        setVehicleId(id);
+        const v = (vehicles as any[]).find(x => x.id === id); if (!v) return;
+        const d = fleetDrivers.find(x => x.assignedVehicleId === v.id) || fleetDrivers.find(x => x.id === v.assignedDriverId);
+        if (d && !driverId) setDriverId(d.id);
+    };
+    const onPickDriver = (id: string) => {
+        setDriverId(id);
+        const d = fleetDrivers.find(x => x.id === id); if (!d) return;
+        if (d.assignedVehicleId && !vehicleId && localAll.some(v => v.id === d.assignedVehicleId)) setVehicleId(d.assignedVehicleId);
+    };
     const inputClasses = "w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-secondary";
 
     const getGoodsSummary = (lc: LoadConfirmation) => {
@@ -76,13 +100,15 @@ const CreateTripSheetModal: React.FC<CreateTripSheetModalProps> = ({ availableLo
                         ))}
                     </div>
                 </div>
-                <select value={vehicleId} onChange={e => setVehicleId(e.target.value)} required className={inputClasses}>
-                    <option value="" disabled>-- Select Local Vehicle --</option>
-                    {localVehicles.map(v => <option key={v.id} value={v.id}>{v.registration} ({v.name})</option>)}
+                <select value={vehicleId} onChange={e => onPickVehicle(e.target.value)} required className={inputClasses}>
+                    <option value="">-- Select Local Vehicle --</option>
+                    {depotVehicles.length > 0 && <optgroup label={`${depotLabel} depot`}>{depotVehicles.map(v => <option key={v.id} value={v.id}>{v.registration} ({v.name})</option>)}</optgroup>}
+                    {otherVehicles.length > 0 && <optgroup label="Other branches">{otherVehicles.map(v => <option key={v.id} value={v.id}>{v.registration} ({v.name})</option>)}</optgroup>}
                 </select>
-                <select value={driverId} onChange={e => setDriverId(e.target.value)} required className={inputClasses}>
-                    <option value="" disabled>-- Select Driver --</option>
-                    {tripDrivers.map(d => <option key={d.email} value={d.email}>{d.name}</option>)}
+                <select value={driverId} onChange={e => onPickDriver(e.target.value)} required className={inputClasses}>
+                    <option value="">-- Select Driver --</option>
+                    {depotDrivers.length > 0 && <optgroup label={`${depotLabel} drivers`}>{depotDrivers.map(d => <option key={d.id} value={d.id}>{d.name}{d.branch ? ` (${String(d.branch).replace('FBN ', '')})` : ''}</option>)}</optgroup>}
+                    {otherDrivers.length > 0 && <optgroup label="Other branches">{otherDrivers.map(d => <option key={d.id} value={d.id}>{d.name}{d.branch ? ` (${String(d.branch).replace('FBN ', '')})` : ''}</option>)}</optgroup>}
                 </select>
             </div>
 

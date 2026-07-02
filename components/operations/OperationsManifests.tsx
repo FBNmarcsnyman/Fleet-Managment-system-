@@ -77,6 +77,7 @@ const OperationsManifests: React.FC = () => {
                     : <select value={origin} onChange={e => { setOrigin(e.target.value); setSel(new Set()); }} className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm">
                         {BRANCHES.map(b => <option key={b} value={b}>From {b}</option>)}
                     </select>}
+                <button onClick={() => setBuilding([])} className="bg-[#13294b] hover:bg-[#1d3a66] text-white font-black py-1.5 px-3 rounded-lg text-xs uppercase tracking-wider">+ New manifest</button>
                 <p className="text-xs text-slate-500">Load the LM superlink trucks for inter-depot transfer.</p>
             </div>
 
@@ -136,10 +137,10 @@ const OperationsManifests: React.FC = () => {
                 )}
             </div>
 
-            {building && <BuildManifestPanel loads={building} origin={origin} vehicles={vehicles} drivers={drivers} suppliers={suppliers} canSeeMargin={isManager} clientName={clientName}
+            {building && <BuildManifestPanel initialLoads={building} floorAll={ready} origin={origin} vehicles={vehicles} drivers={drivers} suppliers={suppliers} canSeeMargin={isManager} clientName={clientName}
                 onClose={() => setBuilding(null)}
                 onBuild={async (data) => {
-                    const r = await handleCreateManifest({ ...data, loadConIds: building.map(l => l.id), originBranch: origin });
+                    const r = await handleCreateManifest({ ...data, loadConIds: data.loadConIds, originBranch: origin });
                     if (r?.ok === false) { showToast(`Could not build: ${r.error}`); return; }
                     showToast('Manifest built — truck dispatched.');
                     if (r?.value) showModal('manifestDoc', { manifest: r.value });
@@ -164,9 +165,16 @@ const vBranchCode = (v: any): string => {
     return '—';
 };
 
-interface BuildData { vehicleId: string; driverId: string; trailerSize: string; trailerReg6m?: string; trailerReg12m?: string; trailerSplit?: Record<string, '6m' | '12m'>; startOdometer?: number; totalRate?: number; carrierName?: string; carrierVehicleReg?: string; carrierDriver?: string; carrierCell?: string; carrierEmail?: string; }
-const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; vehicles: any[]; drivers: any[]; suppliers?: any[]; canSeeMargin?: boolean; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ loads, origin, vehicles, drivers, suppliers = [], canSeeMargin = false, clientName, onClose, onBuild }) => {
+interface BuildData { loadConIds: string[]; vehicleId: string; driverId: string; trailerSize: string; trailerReg6m?: string; trailerReg12m?: string; trailerSplit?: Record<string, '6m' | '12m'>; startOdometer?: number; totalRate?: number; carrierName?: string; carrierVehicleReg?: string; carrierDriver?: string; carrierCell?: string; carrierEmail?: string; }
+const BuildManifestPanel: React.FC<{ initialLoads: LoadConfirmation[]; floorAll: LoadConfirmation[]; origin: string; vehicles: any[]; drivers: any[]; suppliers?: any[]; canSeeMargin?: boolean; clientName: (l: LoadConfirmation) => string; onClose: () => void; onBuild: (data: BuildData) => Promise<void> }> = ({ initialLoads, floorAll, origin, vehicles, drivers, suppliers = [], canSeeMargin = false, clientName, onClose, onBuild }) => {
     const [runner, setRunner] = useState<'own' | 'broker'>('own');
+    // Cargo on THIS truck (seeded from the selection, or empty for a + New manifest). Ops
+    // add loads from the floor and can send any back. A truck runs one way, so once the
+    // first load is on, the floor only offers same-destination cargo.
+    const [assignedIds, setAssignedIds] = useState<Set<string>>(() => new Set(initialLoads.map(l => l.id)));
+    const loads = useMemo(() => floorAll.filter(l => assignedIds.has(l.id)), [floorAll, assignedIds]);
+    const lockedDest = loads[0]?.destinationBranch;
+    const floor = useMemo(() => floorAll.filter(l => !assignedIds.has(l.id) && (!lockedDest || l.destinationBranch === lockedDest)), [floorAll, assignedIds, lockedDest]);
     const [vehicleId, setVehicleId] = useState('');
     const [driverId, setDriverId] = useState('');
     const [trailer, setTrailer] = useState('12m');
@@ -209,6 +217,14 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
         return g;
     }, [eligibleTrucks, homeCode]);
     const trailerRegs = useMemo(() => vehicles.filter(isTrailerVeh).map((v: any) => v.registration).filter(Boolean), [vehicles]);
+    // Superlink trailers come in linked PAIRS (linked_vehicle_id). Picking either the 6m or
+    // the 12m trailer auto-fills its paired partner in the other box — the box you choose is
+    // the role (the fleet has no hard 6m/12m tag per trailer). See fleet-structure memory.
+    const superTrailers = useMemo(() => vehicles.filter((v: any) => /superlink/i.test(v.weightCategory || '')), [vehicles]);
+    const trailerByReg = (reg: string) => superTrailers.find((v: any) => v.registration === reg);
+    const partnerReg = (reg: string): string | undefined => { const t = trailerByReg(reg); const p = t?.linkedVehicleId ? vehicles.find((v: any) => v.id === t.linkedVehicleId) : undefined; return p?.registration; };
+    const pick6m = (reg: string) => { setReg6m(reg); const p = partnerReg(reg); if (p) setReg12m(p); };
+    const pick12m = (reg: string) => { setReg12m(reg); const p = partnerReg(reg); if (p) setReg6m(p); };
     // Active drivers from the register, this depot first.
     const driverList = useMemo(() => (drivers || [])
         .filter((d: any) => d.isActive !== false)
@@ -236,6 +252,9 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
     const kgOf = (l: any) => Number(l.weightKg) || 0;
     // Which trailer each load sits on. Single-trailer = all on it; superlink = per the split (default 12m).
     const trailerOf = (l: any): '6m' | '12m' => isSuper ? (split[l.id] || '12m') : (trailer as '6m' | '12m');
+    // Add a floor load onto the truck (optionally straight onto a chosen trailer); send one back.
+    const addToTruck = (id: string, leg?: '6m' | '12m') => { setAssignedIds(s => new Set(s).add(id)); if (leg) setSplit(sp => ({ ...sp, [id]: leg })); };
+    const removeToFloor = (id: string) => { setAssignedIds(s => { const n = new Set(s); n.delete(id); return n; }); setSplit(sp => { const n = { ...sp }; delete n[id]; return n; }); };
     const totals = useMemo(() => {
         const t: Record<string, number> = { '6m': 0, '12m': 0 };
         loads.forEach(l => { t[trailerOf(l)] = (t[trailerOf(l)] || 0) + kgOf(l); });
@@ -245,6 +264,7 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
     const overloaded = legs.filter(leg => (totals[leg] || 0) > (TRAILER_CAP[leg] || Infinity));
 
     const submit = async () => {
+        if (!assignedIds.size) { alert('Add at least one load onto the truck from the floor.'); return; }
         if (isBroker) { if (!carrierName.trim()) { alert('Enter the broker (carrier) name.'); return; } }
         else if (!vehicleId || !driverId) { alert('Pick a truck and a driver.'); return; }
         if (overloaded.length) {
@@ -253,6 +273,7 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
         }
         setSaving(true);
         await onBuild({
+            loadConIds: Array.from(assignedIds),
             vehicleId: isBroker ? '' : vehicleId, driverId: isBroker ? '' : driverId, trailerSize: trailer,
             trailerReg6m: (isSuper || trailer === '6m') ? (reg6m || undefined) : undefined,
             trailerReg12m: (isSuper || trailer === '12m') ? (reg12m || undefined) : undefined,
@@ -279,21 +300,39 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
                     <span className="text-sm text-white/80">{code(origin)} → {code(dest)}</span>
                 </div>
                 <div className="p-5 space-y-4">
-                    {/* cargo + per-trailer assignment */}
+                    {/* ON THE TRUCK — cargo loaded, per-trailer assignment + send back to floor */}
                     <div>
                         <div className="flex items-center justify-between mb-1">
-                            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{loads.length} shipment{loads.length === 1 ? '' : 's'}{isSuper ? ' — assign each to 6m / 12m' : ''}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">On the truck — {loads.length}{isSuper ? ' · assign each to 6m / 12m' : ''}</div>
                             <div className="flex gap-1.5 flex-wrap">{legs.map(capPill)}</div>
                         </div>
                         <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                            {loads.length === 0 && <div className="px-3 py-4 text-center text-xs text-slate-400">Nothing loaded yet — add cargo from the floor below.</div>}
                             {loads.map(l => (
                                 <div key={l.id} className="px-3 py-1.5 text-sm flex items-center justify-between gap-2">
                                     <span className="min-w-0 truncate"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span> <span className="text-slate-500">{clientName(l)} · {kgOf(l) ? kg(kgOf(l)) + ' kg' : '? kg'}</span></span>
-                                    {isSuper && (
-                                        <span className="flex gap-1 shrink-0">
-                                            {(['6m', '12m'] as const).map(leg => <button key={leg} type="button" onClick={() => setSplit(s => ({ ...s, [l.id]: leg }))} className={`text-[11px] font-bold px-2 py-0.5 rounded ${trailerOf(l) === leg ? 'bg-[#13294b] text-white' : 'bg-slate-100 text-slate-500'}`}>{leg}</button>)}
-                                        </span>
-                                    )}
+                                    <span className="flex gap-1 shrink-0 items-center">
+                                        {isSuper && (['6m', '12m'] as const).map(leg => <button key={leg} type="button" onClick={() => setSplit(s => ({ ...s, [l.id]: leg }))} className={`text-[11px] font-bold px-2 py-0.5 rounded ${trailerOf(l) === leg ? 'bg-[#13294b] text-white' : 'bg-slate-100 text-slate-500'}`}>{leg}</button>)}
+                                        <button type="button" onClick={() => removeToFloor(l.id)} title="Send back to the floor" className="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-700">↩ floor</button>
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* FLOOR — cargo ready at this depot for the same destination; tap to load on */}
+                    <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Floor — ready {lockedDest ? `for ${code(lockedDest)}` : `at ${code(origin)}`} <span className="text-slate-400">({floor.length})</span></div>
+                        <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                            {floor.length === 0 && <div className="px-3 py-4 text-center text-xs text-slate-400">No more cargo waiting {lockedDest ? `for ${code(lockedDest)}` : ''}.</div>}
+                            {floor.map(l => (
+                                <div key={l.id} className="px-3 py-1.5 text-sm flex items-center justify-between gap-2">
+                                    <span className="min-w-0 truncate"><span className="font-bold text-[#13294b]">{l.loadConNumber}</span> <span className="text-slate-500">{clientName(l)} · {code(l.collectionBranch)}→{code(l.destinationBranch)} · {kgOf(l) ? kg(kgOf(l)) + ' kg' : '? kg'}</span></span>
+                                    <span className="flex gap-1 shrink-0">
+                                        {isSuper
+                                            ? (['6m', '12m'] as const).map(leg => <button key={leg} type="button" onClick={() => addToTruck(l.id, leg)} className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200">+{leg}</button>)
+                                            : <button type="button" onClick={() => addToTruck(l.id)} className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200">+ Load</button>}
+                                    </span>
                                 </div>
                             ))}
                         </div>
@@ -346,10 +385,18 @@ const BuildManifestPanel: React.FC<{ loads: LoadConfirmation[]; origin: string; 
                             </>
                         )}
                         {(isSuper || trailer === '6m') && (
-                            <div><label className={lbl}>6m trailer reg</label><input list="trReg" value={reg6m} onChange={e => setReg6m(e.target.value)} className={inp} placeholder="reg" /></div>
+                            <div><label className={lbl}>6m trailer{isSuper && reg6m ? ' ✓ paired' : ''}</label>
+                                {isSuper
+                                    ? <select value={reg6m} onChange={e => pick6m(e.target.value)} className={inp}><option value="">-- pick 6m (auto-pairs 12m) --</option>{superTrailers.map((v: any) => <option key={v.id} value={v.registration}>{v.registration} — {v.name}</option>)}</select>
+                                    : <input list="trReg" value={reg6m} onChange={e => setReg6m(e.target.value)} className={inp} placeholder="reg" />}
+                            </div>
                         )}
                         {(isSuper || trailer === '12m') && (
-                            <div><label className={lbl}>12m trailer reg</label><input list="trReg" value={reg12m} onChange={e => setReg12m(e.target.value)} className={inp} placeholder="reg" /></div>
+                            <div><label className={lbl}>12m trailer{isSuper && reg12m ? ' ✓ paired' : ''}</label>
+                                {isSuper
+                                    ? <select value={reg12m} onChange={e => pick12m(e.target.value)} className={inp}><option value="">-- pick 12m (auto-pairs 6m) --</option>{superTrailers.map((v: any) => <option key={v.id} value={v.registration}>{v.registration} — {v.name}</option>)}</select>
+                                    : <input list="trReg" value={reg12m} onChange={e => setReg12m(e.target.value)} className={inp} placeholder="reg" />}
+                            </div>
                         )}
                         <datalist id="trReg">{trailerRegs.map((r: string) => <option key={r} value={r} />)}</datalist>
                         {!isBroker && <div>

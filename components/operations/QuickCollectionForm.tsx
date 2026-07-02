@@ -5,6 +5,7 @@ import { directInsert } from '../../lib/supabase';
 import { FBN_ORGANIZATION_ID } from '../../lib/mappers';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import DateField from './DateField';
+import { classifyArea } from '../../lib/branchConfig';
 
 const CONTAINER_SIZES = ['20FT', '40FT', '40HC', '45FT', 'REEFER 20FT', 'REEFER 40FT', 'FLAT RACK', 'OPEN TOP'];
 
@@ -22,15 +23,7 @@ const AREAS: { code: Branch; label: string }[] = [
     { code: 'FBN CPT', label: 'Cape Town' },
 ];
 
-// Read the ops AREA straight off the address (so the dropdowns follow what's typed).
-// Returns null when nothing matches (leave the area as-is).
-const classifyArea = (text: string): Branch | null => {
-    const t = (text || '').toLowerCase();
-    if (/johannesburg|jhb|gauteng|germiston|wadeville|kempton|isando|midrand|pretoria|\bpta\b|boksburg|edenvale|jet park|alberton|roodepoort|sandton|centurion|benoni|brakpan|springs|vereeniging|vanderbijl|krugersdorp|chamdor|nigel|heidelberg/.test(t)) return 'FBN JHB';
-    if (/cape town|\bcpt\b|western cape|bellville|paarl|stellenbosch|somerset west|epping|montague|maitland|parow|brackenfell|killarney/.test(t)) return 'FBN CPT';
-    if (/durban|\bdbn\b|kzn|kwazulu|pinetown|phoenix|umhlanga|pietermaritzburg|\bpmb\b|mobeni|jacobs|prospecton|congella|westmead|new germany|hammarsdale|cato ridge|richards bay/.test(t)) return 'FBN DBN';
-    return null;
-};
+// Area→branch classification now comes from lib/branchConfig (single source of truth).
 
 // Fast, mobile-first "log a collection" form. A collection IS a load — on send it
 // creates the load (flagged is_collection), emails ops in that area to assign a

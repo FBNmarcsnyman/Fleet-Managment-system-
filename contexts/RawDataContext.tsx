@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { COMMODITIES, PACKAGING_TYPES } from '../constants';
 import { supabase, directSelect } from '../lib/supabase';
+import { loadBranchConfig } from '../lib/branchConfig';
 import {
   mapProfile, mapVehicle, mapFuelEntry, mapServiceEntry, mapOtherCost, mapRecurringCost,
   mapRevenueEntry, mapServiceInterval, mapPlannedService, mapFuelPrice, mapBowser, mapBowserRefill,
@@ -646,6 +647,9 @@ async function hydrateFromSupabase(dispatch: Dispatch): Promise<void> {
             type: 'SET_BRANCHES',
             payload: (branchesRes.data || []).map(b => ({ id: b.id, name: b.code as Branch })),
         });
+        // Refresh the single-source branch routing config (ops email / depot address)
+        // now we're authenticated — see lib/branchConfig. Best-effort; fallbacks cover it.
+        void loadBranchConfig();
 
         const [
             profiles, vehicles, fuelEntries, serviceEntries, otherCosts, recurringCosts,

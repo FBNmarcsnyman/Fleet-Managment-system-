@@ -4,6 +4,7 @@ import { RawDataContext } from './RawDataContext';
 import { CommonDataContext } from './CommonDataContext';
 import { User, Quote, LoadConfirmation, Client, Supplier, Branch, ComplianceDoc, SupplierApplication, SubcontractorInvite, SubcontractorInvoice, LoadBoardPost, RfqRequest, RfqRecipient, CarrierQuote } from '../types';
 import { supabase, runWrite, uploadFile, directInsert, directUpdate, directDelete, directSelect, directInvoke, invokeFn } from '../lib/supabase';
+import { opsEmailFor as branchOpsEmail } from '../lib/branchConfig';
 import {
     toClientInsert, toClientUpdate, toSupplierInsert, toSupplierUpdate, toQuoteInsert, toQuoteUpdate,
     toLoadConfirmationInsert, toLoadConfirmationUpdate,
@@ -315,7 +316,7 @@ const baseUrl = () => (typeof window !== 'undefined' ? `${window.location.origin
 // Branch ops mailboxes. Every ops notification also copies the general ops inbox.
 const OPS_GENERAL = 'ops@fbn-transport.co.za';
 const ACCOUNTS_EMAIL = 'fbndebtors@fbn-transport.co.za';
-const opsEmail = (branch?: string) => branch === 'FBN DBN' ? 'opsdbn@fbn-transport.co.za' : branch === 'FBN JHB' ? 'opsjhb@fbn-transport.co.za' : OPS_GENERAL;
+const opsEmail = (branch?: string) => branchOpsEmail(branch);
 // Statuses before the inter-branch transfer (handled by the COLLECTING branch).
 const COLLECTION_PHASE = new Set(['Booked', 'Driver Assigned', 'At Collection Point', 'Loading', 'Collected', 'At Collection Depot']);
 // Which ops mailboxes to copy for a load at a given status: collecting branch up

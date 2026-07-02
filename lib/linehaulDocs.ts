@@ -3,9 +3,10 @@
 // create. Builders take already-resolved data (no DB context) so they can run
 // anywhere (UI or context).
 import { LoadConfirmation, Manifest, TripSheet } from '../types';
+import { opsEmailFor as branchOpsEmail } from './branchConfig';
 
-export const opsEmailFor = (b?: string): string =>
-    b === 'FBN DBN' ? 'opsdbn@fbn-transport.co.za' : b === 'FBN JHB' ? 'opsjhb@fbn-transport.co.za' : 'ops@fbn-transport.co.za';
+// Single source of truth now lives in lib/branchConfig (reads the branches table).
+export const opsEmailFor = (b?: string): string => branchOpsEmail(b);
 
 const kg = (n: number) => Math.round(n).toLocaleString('en-ZA');
 const m3 = (n: number) => n ? n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';

@@ -4,6 +4,7 @@
 // (enforced in the send-email edge function).
 import { directInvoke, invokeFn } from './supabase';
 import { buildLoadConPdf } from './loadconPdf';
+import { depotAddrFor } from './branchConfig';
 import { brandedEmail, emailButton } from './emailTemplate';
 
 const fmtD = (d?: string) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt.getTime()) ? (d || '') : dt.toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric' }); };
@@ -85,14 +86,9 @@ type Sent = { ok: boolean; error?: string; pdfFailed?: boolean };
 export const isHistoricalLoad = (lc: any): boolean =>
     lc?.archived === true || lc?.archived === 'true' || String(lc?.status || '') === 'Invoiced';
 
-// FBN depot addresses for transit-depot legs (subbie drops here, FBN runs onward).
-const DEPOT_ADDR: Record<string, string> = {
-    'FBN JHB': 'FBN TRANSPORT, 307 KREUPELHOUT STREET, WADEVILLE, GERMISTON',
-    'FBN DBN': 'FBN TRANSPORT, 463 SYDNEY ROAD, CONGELLA, DURBAN',
-    'FBN CPT': 'FBN TRANSPORT, CAPE TOWN',
-};
+// Depot addresses for transit-depot legs now come from lib/branchConfig (branches table).
 // Where the SUBBIE delivers: the transit depot when routing via one, else the final door.
-const subbieDeliveryPoint = (lc: any): string => lc.transitDepot ? (DEPOT_ADDR[lc.transitDepot] || `${lc.transitDepot} DEPOT`) : (lc.deliveryPoint || '');
+const subbieDeliveryPoint = (lc: any): string => lc.transitDepot ? (depotAddrFor(lc.transitDepot) || `${lc.transitDepot} DEPOT`) : (lc.deliveryPoint || '');
 
 // LoadCon → subcontractor (their copy, with the transport rate + accept link).
 export async function sendLoadConToSupplier(lc: any, to?: string): Promise<Sent> {

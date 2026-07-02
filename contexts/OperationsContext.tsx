@@ -806,7 +806,19 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const m = (l.loadConNumber || '').match(/^FBN-\d{4}-\d{2}-(\d+)$/);
                     if (m && (l.loadConNumber || '').startsWith(numPrefix)) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
                 });
-                const loadConNumber = `${numPrefix}${String(maxSeq + 1).padStart(4, '0')}`;
+                // The browser's in-memory list can be STALE or partial (another user just
+                // created one, or the board only holds a subset), which caused duplicate
+                // FBN-…-#### numbers → a 409 unique-constraint error. Also read the LIVE max
+                // for this month from the DB and take the higher. (Retry-on-collision below
+                // is the final safety net for two people creating at the exact same moment.)
+                try {
+                    const { data: topRows } = await directSelect(`load_confirmations?select=load_con_number&load_con_number=like.${numPrefix}*&order=load_con_number.desc&limit=1`);
+                    const top = Array.isArray(topRows) && topRows[0]?.load_con_number;
+                    const dm = String(top || '').match(/^FBN-\d{4}-\d{2}-(\d+)$/);
+                    if (dm) maxSeq = Math.max(maxSeq, parseInt(dm[1], 10));
+                } catch { /* fall back to in-memory max */ }
+                let seq = maxSeq + 1;
+                let loadConNumber = `${numPrefix}${String(seq).padStart(4, '0')}`;
 
                 // Resolve the subcontractor FIRST (find or create) so the new load is
                 // linked to it and counts as already assigned for dispatch — a
@@ -917,7 +929,21 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     (row as any).cod_hold = true;
                 }
                 // Direct REST insert — the freeze-proof path (see lib/supabase.ts).
-                const { data: inserted, error } = await directInsert('load_confirmations', row as any);
+                // Retry on a duplicate LoadCon-number collision (two people creating at the
+                // same instant): bump to the next number and try again, so the desk never
+                // sees a 409. Any other error breaks out and is surfaced.
+                let inserted: any = null; let error: any = null;
+                for (let attempt = 0; attempt < 15; attempt++) {
+                    const res = await directInsert('load_confirmations', row as any);
+                    inserted = res.data; error = res.error;
+                    if (!error && inserted) break;
+                    const msg = String(error?.message || '');
+                    const isNumberDup = (error?.code === '23505' || /duplicate key value/i.test(msg)) && /load_con_number/i.test(msg);
+                    if (!isNumberDup) break;
+                    seq += 1;
+                    loadConNumber = `${numPrefix}${String(seq).padStart(4, '0')}`;
+                    (row as any).load_con_number = loadConNumber;
+                }
                 if (error || !inserted) {
                     console.error('[ops] createLoadConfirmation failed:', error);
                     return { ok: false, error: error?.message || 'Could not save the load.' };

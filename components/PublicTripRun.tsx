@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { etaFromTo, Eta } from '../lib/etaTraffic';
 
 // DRIVER RUN PAGE (no login) — one link per trip sheet. The driver sees every drop in
 // order, taps "On my way" (notifies that stop's client) then "Delivered", and uploads
@@ -30,13 +31,60 @@ const PublicTripRun: React.FC<{ tripId: string }> = ({ tripId }) => {
     const [run, setRun] = useState<Run | null>(null);
     const [err, setErr] = useState<string | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
+    // Phase 4: the driver phone's own GPS drives a live traffic ETA to the active drop's
+    // client + a geofence "arrived" nudge — no dependency on the Pulsit tracker poll.
+    const [activeEta, setActiveEta] = useState<{ loadId: string; eta: Eta } | null>(null);
+    const [mapsReady, setMapsReady] = useState<boolean>(!!(window as any).google?.maps);
+    const [hasPos, setHasPos] = useState(false);
+    const posRef = useRef<{ lat: number; lng: number } | null>(null);
+    const runRef = useRef<Run | null>(null); runRef.current = run;
 
     const load = async () => { try { setRun(await call({ tripId }) as Run); setErr(null); } catch (e) { setErr(e instanceof Error ? e.message : 'Could not load the run.'); } };
     useEffect(() => { load(); /* eslint-disable-next-line */ }, [tripId]);
 
+    // Google Maps JS is loaded app-wide (index.html); wait for it if not ready yet.
+    useEffect(() => { if (mapsReady) return; const h = () => setMapsReady(true); window.addEventListener('google-maps-api-loaded', h); return () => window.removeEventListener('google-maps-api-loaded', h); }, [mapsReady]);
+
+    // Watch the driver's phone position (their truck's real GPS).
+    useEffect(() => {
+        if (!navigator.geolocation) return;
+        const id = navigator.geolocation.watchPosition(
+            p => { posRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; if (!hasPos) setHasPos(true); },
+            () => { /* permission denied / unavailable — ETA just won't show */ },
+            { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 },
+        );
+        return () => navigator.geolocation.clearWatch(id);
+    }, [hasPos]);
+
+    // Compute the live traffic ETA to the ACTIVE drop every 60s. If the client was already
+    // told we're on the way and the ETA slips materially (>=10 min), send them a revised ETA.
+    useEffect(() => {
+        let cancelled = false;
+        const compute = async () => {
+            const r = runRef.current, pos = posRef.current;
+            if (!r || !mapsReady || !pos) return;
+            const idx = r.stops.findIndex(s => !isDone(s));
+            if (idx < 0) { setActiveEta(null); return; }
+            const stop: any = r.stops[idx];
+            if (!stop.delivery_point) { setActiveEta(null); return; }
+            const eta = await etaFromTo(pos, stop.delivery_point);
+            if (cancelled || !eta) return;
+            setActiveEta({ loadId: stop.loadId, eta });
+            if (stop.onTheWayAt && stop.lastEtaMin != null && eta.minutes - stop.lastEtaMin >= 10) {
+                try { await call({ tripId, loadId: stop.loadId, action: 'eta-update', eta: eta.text, etaMin: eta.minutes }); await load(); } catch { /* */ }
+            }
+        };
+        compute();
+        const iv = setInterval(compute, 60000);
+        return () => { cancelled = true; clearInterval(iv); };
+    }, [mapsReady, hasPos, run, tripId]);
+
     const act = async (loadId: string, action: 'on-the-way' | 'delivered') => {
         setBusy(loadId + action);
-        try { await call({ tripId, loadId, action }); await load(); }
+        const payload: any = { tripId, loadId, action };
+        // Send the client the live traffic ETA with the "on my way" notice.
+        if (action === 'on-the-way' && activeEta && activeEta.loadId === loadId) { payload.eta = activeEta.eta.text; payload.etaMin = activeEta.eta.minutes; }
+        try { await call(payload); await load(); }
         catch (e) { setErr(e instanceof Error ? e.message : 'Could not update.'); }
         setBusy(null);
     };
@@ -91,6 +139,12 @@ const PublicTripRun: React.FC<{ tripId: string }> = ({ tripId }) => {
                                     {s.delivery_telephone && <a href={`tel:${s.delivery_telephone}`} style={{ ...btn('#475569'), textAlign: 'center', textDecoration: 'none', display: 'block', flex: '0 0 auto', padding: '12px 16px' }}>Call</a>}
                                 </div>
 
+                                {!complete && active && activeEta && activeEta.loadId === s.loadId && (
+                                    <div style={{ marginLeft: 36, marginTop: 8, fontSize: 13, fontWeight: 800, padding: '6px 10px', borderRadius: 8, background: activeEta.eta.km < 0.3 ? '#dcfce7' : '#eef2ff', color: activeEta.eta.km < 0.3 ? '#15803d' : NAVY }}>
+                                        {activeEta.eta.km < 0.3 ? '📍 You have arrived at this drop' : `🚚 Live ETA: ${activeEta.eta.text}`}
+                                    </div>
+                                )}
+                                {!complete && active && !hasPos && <div style={{ marginLeft: 36, marginTop: 6, fontSize: 11, color: '#9ca3af' }}>Allow location to send the client a live ETA.</div>}
                                 {!complete && (
                                     <div style={{ display: 'flex', gap: 8, marginTop: 10, marginLeft: 36 }}>
                                         <button onClick={() => act(s.loadId, 'on-the-way')} disabled={!!busy} style={btn(s.onTheWayAt ? '#9ca3af' : YELLOW)}>{busy === s.loadId + 'on-the-way' ? '…' : s.onTheWayAt ? '✓ Client told' : 'On my way'}</button>

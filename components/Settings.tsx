@@ -46,13 +46,25 @@ const Settings: React.FC = () => {
     ];
     const [ccSettings, setCcSettings] = useState<Record<string, string>>({});
     const [ccSaving, setCcSaving] = useState(false);
+    const [linehaulRate, setLinehaulRate] = useState('');
+    const [lhSaving, setLhSaving] = useState(false);
     useEffect(() => {
         if (!isSuperAdmin) return;
-        directSelect('email_settings?id=eq.1&select=cc_loadcons,cc_ops,cc_debtors,cc_quotes,cc_management').then(({ data }: any) => {
+        directSelect('email_settings?id=eq.1&select=cc_loadcons,cc_ops,cc_debtors,cc_quotes,cc_management,linehaul_rate').then(({ data }: any) => {
             const row = Array.isArray(data) ? data[0] : data;
-            if (row) setCcSettings({ cc_loadcons: row.cc_loadcons || '', cc_ops: row.cc_ops || '', cc_debtors: row.cc_debtors || '', cc_quotes: row.cc_quotes || '', cc_management: row.cc_management || '' });
+            if (row) {
+                setCcSettings({ cc_loadcons: row.cc_loadcons || '', cc_ops: row.cc_ops || '', cc_debtors: row.cc_debtors || '', cc_quotes: row.cc_quotes || '', cc_management: row.cc_management || '' });
+                if (row.linehaul_rate != null) setLinehaulRate(String(row.linehaul_rate));
+            }
         });
     }, [isSuperAdmin]);
+    const saveLinehaul = async () => {
+        setLhSaving(true);
+        const { error } = await directUpdate('email_settings', { id: '1' }, { linehaul_rate: linehaulRate.trim() ? Number(linehaulRate.replace(/[^\d.]/g, '')) : null } as any);
+        if (error) showToast(`Could not save: ${error.message}`);
+        else showToast('Linehaul cost saved — used on new manifests.');
+        setLhSaving(false);
+    };
     const saveCc = async () => {
         setCcSaving(true);
         const { error } = await directUpdate('email_settings', { id: '1' }, {
@@ -182,6 +194,21 @@ const Settings: React.FC = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Linehaul cost — a set per-manifest cost management adjusts monthly (fuel). */}
+            {isSuperAdmin && (
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-xl font-bold text-white">Linehaul cost (per manifest)</h3>
+                        <button onClick={saveLinehaul} disabled={lhSaving} className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-1.5 px-4 rounded-lg">{lhSaving ? 'Saving…' : 'Save'}</button>
+                    </div>
+                    <p className="text-gray-400 text-sm mb-3">The set line-haul rate applied to a new manifest. Management changes this monthly with fuel. It pre-fills on the manifest builder (still editable per manifest).</p>
+                    <div className="flex items-center gap-2 max-w-xs">
+                        <span className="text-gray-300 font-bold">R</span>
+                        <input value={linehaulRate} onChange={e => setLinehaulRate(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" placeholder="19785" className="w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 text-sm" />
+                    </div>
+                </div>
+            )}
 
             {/* Branch routing — Super-Admin edits the ops inbox + depot address per branch.
                 One source of truth (branches table via lib/branchConfig); applies everywhere. */}

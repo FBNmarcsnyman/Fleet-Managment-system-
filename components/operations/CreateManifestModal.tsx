@@ -1,8 +1,9 @@
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { LoadConfirmation, Vehicle, User } from '../../types';
 import { useVehicles } from '../../contexts/AppContexts';
+import { directSelect } from '../../lib/supabase';
 
 // Normalise a branch (code OR name OR "Loadmaster") to a token so scoping matches.
 const branchToken = (s?: string): string => {
@@ -47,6 +48,14 @@ const CreateManifestModal: React.FC<CreateManifestModalProps> = ({ availableLoad
     // Subcontractor (external carrier) alternative to an own-fleet horse.
     const [useSubbie, setUseSubbie] = useState(false);
     const [carrier, setCarrier] = useState({ name: '', reg: '', driver: '', cell: '', email: '' });
+    // Line-haul cost — pre-filled from the management-set rate (Settings), editable here.
+    const [rate, setRate] = useState('');
+    useEffect(() => {
+        directSelect('email_settings?id=eq.1&select=linehaul_rate').then(({ data }: any) => {
+            const r = Array.isArray(data) ? data[0] : data;
+            if (r?.linehaul_rate != null) setRate(String(r.linehaul_rate));
+        });
+    }, []);
 
     const onPickVehicle = (id: string) => {
         setVehicleId(id);
@@ -75,13 +84,14 @@ const CreateManifestModal: React.FC<CreateManifestModalProps> = ({ availableLoad
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedLoadIds.length === 0) { alert('Select at least one load for the manifest.'); return; }
+        const totalRate = rate.trim() ? Number(rate.replace(/[^\d.]/g, '')) : undefined;
         if (useSubbie) {
             if (!carrier.name.trim()) { alert('Enter the subcontractor / carrier name.'); return; }
-            onSubmit({ vehicleId: '', driverId: '', loadConIds: selectedLoadIds, carrierName: carrier.name, carrierVehicleReg: carrier.reg, carrierDriver: carrier.driver, carrierCell: carrier.cell, carrierEmail: carrier.email } as any);
+            onSubmit({ vehicleId: '', driverId: '', loadConIds: selectedLoadIds, totalRate, carrierName: carrier.name, carrierVehicleReg: carrier.reg, carrierDriver: carrier.driver, carrierCell: carrier.cell, carrierEmail: carrier.email } as any);
             return;
         }
         if (!vehicleId || !driverId) { alert('Select a vehicle and a driver — or switch to a subcontractor.'); return; }
-        onSubmit({ vehicleId, driverId, loadConIds: selectedLoadIds });
+        onSubmit({ vehicleId, driverId, loadConIds: selectedLoadIds, totalRate } as any);
     };
 
     const getGoodsSummary = (lc: LoadConfirmation) => {
@@ -141,6 +151,11 @@ const CreateManifestModal: React.FC<CreateManifestModalProps> = ({ availableLoad
                         <input value={carrier.email} onChange={e => setCarrier(c => ({ ...c, email: e.target.value }))} placeholder="Carrier email" type="email" className={inputClasses + ' col-span-2'} style={{ textTransform: 'none' }} />
                     </div>
                 )}
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Linehaul cost (R)</label>
+                    <input value={rate} onChange={e => setRate(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" placeholder="19785" className={inputClasses} />
+                    <p className="text-[11px] text-gray-500 mt-1">Pre-filled from the management-set rate (Settings); edit if this manifest differs.</p>
+                </div>
             </div>
 
             <div className="flex justify-end space-x-4 mt-8">

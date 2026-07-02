@@ -1081,6 +1081,14 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const m = (l.loadConNumber || '').match(/^FBN-\d{4}-\d{2}-(\d+)$/);
                     if (m && (l.loadConNumber || '').startsWith(numPrefix)) maxSeq = Math.max(maxSeq, parseInt(m[1], 10));
                 });
+                // Seed from the LIVE DB max too — browser state is stale/partial (same
+                // duplicate-number cause as the single-load create). Retry-bump below covers races.
+                try {
+                    const { data: topRows } = await directSelect(`load_confirmations?select=load_con_number&load_con_number=like.${numPrefix}*&order=load_con_number.desc&limit=1`);
+                    const top = Array.isArray(topRows) && topRows[0]?.load_con_number;
+                    const dm = String(top || '').match(/^FBN-\d{4}-\d{2}-(\d+)$/);
+                    if (dm) maxSeq = Math.max(maxSeq, parseInt(dm[1], 10));
+                } catch { /* fall back to in-memory max */ }
                 const groupLoads: any[] = [{ ...parent, ...pUpd }];
                 for (const a of allocations.slice(1)) {
                     const num = `${numPrefix}${String(++maxSeq).padStart(4, '0')}`;
@@ -1114,7 +1122,18 @@ export const OperationsDataProvider: React.FC<{ children: ReactNode }> = ({ chil
                     const csid = a.supplierId || findSupplierId(a.subcontractorName);
                     if (csid) { (row as any).supplier_id = csid; (row as any).status = 'Driver Assigned'; }
                     else if (a.subcontractorName) (row as any).status = 'Driver Assigned';
-                    const { data: inserted, error } = await directInsert('load_confirmations', row as any);
+                    // Retry-bump on a duplicate number collision (don't silently skip a
+                    // truck — a split must create every leg).
+                    let inserted: any = null; let error: any = null;
+                    for (let attempt = 0; attempt < 15; attempt++) {
+                        const res = await directInsert('load_confirmations', row as any);
+                        inserted = res.data; error = res.error;
+                        if (!error && inserted) break;
+                        const msg = String(error?.message || '');
+                        const isNumberDup = (error?.code === '23505' || /duplicate key value/i.test(msg)) && /load_con_number/i.test(msg);
+                        if (!isNumberDup) break;
+                        (row as any).load_con_number = `${numPrefix}${String(++maxSeq).padStart(4, '0')}`;
+                    }
                     if (error || !inserted) { console.error('[ops] split child create failed:', error); continue; }
                     const mapped = mapLoadConfirmation(inserted, { branchById });
                     dispatch({ type: 'CREATE_LOAD_CONFIRMATION', payload: mapped });

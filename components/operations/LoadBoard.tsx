@@ -55,7 +55,7 @@ const LoadBoard: React.FC = () => {
     const [view, setView] = useState<'list' | 'board'>(() => { try { return (localStorage.getItem('brokingView') as any) || 'list'; } catch { return 'list'; } });
     const [stageFilter, setStageFilter] = useState<StageKey | 'all' | 'archived'>('all');
     // Optional user sort (tap a column). Null = default stage+date grouping.
-    type SortKey = 'load' | 'transporter' | 'client' | 'route' | 'collect' | 'size' | 'weight' | 'stage';
+    type SortKey = 'load' | 'transporter' | 'client' | 'route' | 'collect' | 'deliver' | 'size' | 'weight' | 'stage';
     const [sortKey, setSortKey] = useState<SortKey | null>(null);
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
     const setSort = (k: SortKey) => { if (k === sortKey) { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); } else { setSortKey(k); setSortDir('asc'); } };
@@ -198,6 +198,7 @@ const LoadBoard: React.FC = () => {
                 case 'client': return (clientMap.get(lc.clientId || '') || lc.clientName || '').toLowerCase();
                 case 'route': return routeSimple(lc).toLowerCase();
                 case 'collect': return new Date(lc.collectionDate || lc.date || 0).getTime();
+                case 'deliver': return new Date((lc as any).deliveryDate || 0).getTime();
                 case 'size': return sizeOf(lc).toLowerCase();
                 case 'weight': return Number((lc as any).weightKg) || 0;
                 case 'stage': return STAGE_RANK[stageOf(lc)];
@@ -308,7 +309,8 @@ const LoadBoard: React.FC = () => {
                                             <div className="font-bold text-slate-800 truncate mt-0.5">{clientMap.get(lc.clientId || '') || lc.clientName} <span className="text-[11px] font-mono text-blue-700">· {lc.loadConNumber}</span></div>
                                             <div className="text-xs text-slate-600 font-semibold">{routeSimple(lc)}</div>
                                             <div className="flex items-center gap-3 flex-wrap text-[11px] mt-1 text-slate-500">
-                                                <span className={overdue ? 'text-red-600 font-bold' : ''}>Collect {fmtDay(lc.collectionDate)}{overdue ? ' ⚠' : ''}</span>
+                                                <span className={overdue ? 'text-red-600 font-bold' : ''}>Load {fmtDay(lc.collectionDate)}{overdue ? ' ⚠' : ''}</span>
+                                                {(lc as any).deliveryDate && <span>Offload {fmtDay((lc as any).deliveryDate)}</span>}
                                                 <span>{sizeOf(lc)}</span>
                                                 {weightOf(lc) !== '—' && <span>{weightOf(lc)}</span>}
                                             </div>
@@ -325,7 +327,8 @@ const LoadBoard: React.FC = () => {
                                         <Th k="transporter" label="Transporter" className="py-2 px-2" />
                                         <Th k="client" label="Client" className="py-2 px-2" />
                                         <Th k="route" label="Route" className="py-2 px-2" />
-                                        <Th k="collect" label="Collect" className="py-2 px-2" />
+                                        <Th k="collect" label="Loading" className="py-2 px-2" />
+                                        <Th k="deliver" label="Offload" className="py-2 px-2" />
                                         <Th k="size" label="Size" className="py-2 px-2" />
                                         <Th k="weight" label="Weight" className="py-2 px-2 text-right" />
                                         <Th k="stage" label="Stage" className="py-2 px-2" />
@@ -343,6 +346,7 @@ const LoadBoard: React.FC = () => {
                                                     <td className="py-2 px-2 text-slate-700">{clientMap.get(lc.clientId || '') || lc.clientName}</td>
                                                     <td className="py-2 px-2"><span className="font-bold text-slate-700 whitespace-nowrap">{routeSimple(lc)}</span></td>
                                                     <td className={`py-2 px-2 whitespace-nowrap ${overdue ? 'text-red-600 font-bold' : 'text-slate-600'}`}>{fmtDay(lc.collectionDate)}{overdue ? ' ⚠' : ''}</td>
+                                                    <td className="py-2 px-2 whitespace-nowrap text-slate-600">{(lc as any).deliveryDate ? fmtDay((lc as any).deliveryDate) : '—'}</td>
                                                     <td className="py-2 px-2 text-slate-600 whitespace-nowrap">{sizeOf(lc)}</td>
                                                     <td className="py-2 px-2 text-right text-slate-600 whitespace-nowrap">{weightOf(lc)}</td>
                                                     <td className="py-2 px-2"><span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${st.chip}`}>{st.label}</span></td>
